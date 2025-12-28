@@ -15,11 +15,12 @@ import {
   getLocalSymbolByPath,
   getLocalPackageSymbols,
 } from "@/lib/ir/loader";
+import type { Language } from "@langchain/ir-schema";
 import { CodeBlock } from "./CodeBlock";
 import { MarkdownContent } from "./MarkdownContent";
 
 interface SymbolPageProps {
-  language: UrlLanguage;
+  language: Language;
   packageId: string;
   packageName: string;
   symbolPath: string;
@@ -288,9 +289,7 @@ async function findSymbol(
 }
 
 export async function SymbolPage({ language, packageId, packageName, symbolPath }: SymbolPageProps) {
-  // Load symbol from IR
-  const irLanguage = language === "python" ? "python" : "javascript";
-  const buildId = await getLocalLatestBuildId(irLanguage);
+  const buildId = await getLocalLatestBuildId(language);
 
   let symbol: DisplaySymbol | null = null;
   let knownSymbols = new Set<string>();

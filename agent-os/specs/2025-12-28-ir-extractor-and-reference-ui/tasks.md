@@ -420,130 +420,130 @@
 
 ---
 
-## Group 7: Reference UI Components
+## Group 7: Reference UI Components ✅
 
 **Goal**: Build all UI components for reference documentation.
 
-### Task 7.1: Implement Header component
-- [ ] Create `apps/web/components/layout/Header.tsx`
-- [ ] Add logo with light/dark variants
-- [ ] Add search button with ⌘K shortcut
-- [ ] Add GitHub, Ask AI, Try LangSmith links
-- [ ] Add theme toggle
+### Task 7.1: Implement Header component ✅
+- [x] Create `apps/web/components/layout/Header.tsx`
+- [x] Add logo with light/dark variants
+- [x] Add search button with ⌘K shortcut
+- [x] Add GitHub, Ask AI, Try LangSmith links
+- [x] Add theme toggle
 
 **Reference**: Spec Section 7.2
 
 ---
 
-### Task 7.2: Implement Sidebar component
-- [ ] Create `apps/web/components/layout/Sidebar.tsx`
-- [ ] Render package navigation from manifest
-- [ ] Implement collapsible sections
-- [ ] Highlight active page
+### Task 7.2: Implement Sidebar component ✅
+- [x] Create `apps/web/components/layout/Sidebar.tsx`
+- [x] Render package navigation from manifest
+- [x] Implement collapsible sections
+- [x] Highlight active page
 
 ---
 
-### Task 7.3: Implement TableOfContents component
-- [ ] Create `apps/web/components/layout/TableOfContents.tsx`
-- [ ] Generate TOC from symbol sections
-- [ ] Implement sticky positioning
-- [ ] Add scroll spy for active section
+### Task 7.3: Implement TableOfContents component ✅
+- [x] Create `apps/web/components/layout/TableOfContents.tsx`
+- [x] Generate TOC from symbol sections
+- [x] Implement sticky positioning
+- [x] Add scroll spy for active section
 
 ---
 
-### Task 7.4: Implement ClassPage component
-- [ ] Create `apps/web/components/reference/ClassPage.tsx`
-- [ ] Render breadcrumbs, title, kind badge
-- [ ] Render signature code block
-- [ ] Render constructor parameters
-- [ ] Render properties and methods lists
+### Task 7.4: Implement ClassPage component ✅
+- [x] Create `apps/web/components/reference/ClassPage.tsx`
+- [x] Render breadcrumbs, title, kind badge
+- [x] Render signature code block
+- [x] Render constructor parameters
+- [x] Render properties and methods lists
 
 **Reference**: Spec Section 7.3
 
 ---
 
-### Task 7.5: Implement FunctionPage component
-- [ ] Create `apps/web/components/reference/FunctionPage.tsx`
-- [ ] Render function signature
-- [ ] Render parameters table
-- [ ] Render return type
-- [ ] Render examples
+### Task 7.5: Implement FunctionPage component ✅
+- [x] Create `apps/web/components/reference/FunctionPage.tsx`
+- [x] Render function signature
+- [x] Render parameters table
+- [x] Render return type
+- [x] Render examples
 
 ---
 
-### Task 7.6: Implement ModulePage component
-- [ ] Create `apps/web/components/reference/ModulePage.tsx`
-- [ ] Render module description
-- [ ] List classes, functions, types
-- [ ] Group by category
+### Task 7.6: Implement ModulePage component ✅
+- [x] Create `apps/web/components/reference/ModulePage.tsx`
+- [x] Render module description
+- [x] List classes, functions, types
+- [x] Group by category
 
 ---
 
-### Task 7.7: Implement ParameterTable component
-- [ ] Create `apps/web/components/reference/ParameterTable.tsx`
-- [ ] Render name, type, description columns
-- [ ] Show required indicator
-- [ ] Show default values
+### Task 7.7: Implement ParameterTable component ✅
+- [x] Create `apps/web/components/reference/ParameterTable.tsx`
+- [x] Render name, type, description columns
+- [x] Show required indicator
+- [x] Show default values
 
 **Reference**: Spec Section 7.4
 
 ---
 
-### Task 7.8: Implement CodeBlock component
-- [ ] Create `apps/web/components/ui/CodeBlock.tsx`
-- [ ] Add syntax highlighting (Shiki or Prism)
-- [ ] Add copy button
-- [ ] Support Python and TypeScript
+### Task 7.8: Implement CodeBlock component ✅
+- [x] Create `apps/web/components/ui/CodeBlock.tsx`
+- [x] Add syntax highlighting (Shiki or Prism)
+- [x] Add copy button
+- [x] Support Python and TypeScript
 
 ---
 
-## Group 8: Search Implementation
+## Group 8: Search Implementation ✅
 
 **Goal**: Implement language-specific search with ⌘K modal.
 
-### Task 8.1: Implement search client
-- [ ] Create `apps/web/lib/search/client.ts`
-- [ ] Add MiniSearch dependency
-- [ ] Implement index loading per language
-- [ ] Implement `search()` function
+### Task 8.1: Implement search client ✅
+- [x] Create `apps/web/lib/search/client.ts`
+- [x] Add MiniSearch dependency
+- [x] Implement index loading per language
+- [x] Implement `search()` function
 
 **Reference**: Spec Section 8.1
 
 ---
 
-### Task 8.2: Implement search index API route
-- [ ] Create `apps/web/app/api/search/index/route.ts`
-- [ ] Serve search index from Vercel Blob
-- [ ] Add caching headers
+### Task 8.2: Implement search index API route ✅
+- [x] Create `apps/web/app/api/search/index/route.ts`
+- [x] Serve search index from local IR data (dynamic generation)
+- [x] Add caching headers
 
 **Reference**: Spec Section 10.2
 
 ---
 
-### Task 8.3: Implement SearchModal component
-- [ ] Create `apps/web/components/search/SearchModal.tsx`
-- [ ] Implement ⌘K keyboard shortcut
-- [ ] Implement language toggle (Python/TypeScript)
-- [ ] Implement keyboard navigation (↑↓↵)
-- [ ] Display results with kind badges
+### Task 8.3: Implement SearchModal component ✅
+- [x] Create `apps/web/components/search/SearchModal.tsx`
+- [x] Implement ⌘K keyboard shortcut
+- [x] Implement language toggle (Python/TypeScript)
+- [x] Implement keyboard navigation (↑↓↵)
+- [x] Display results with kind badges
 
 **Reference**: Spec Section 8.2
 
 ---
 
-### Task 8.4: Implement SearchResults component
-- [ ] Create `apps/web/components/search/SearchResults.tsx`
-- [ ] Render result items with breadcrumbs
-- [ ] Show excerpt and kind
-- [ ] Handle empty state
+### Task 8.4: Implement SearchResults component ✅
+- [x] Create `apps/web/components/search/SearchResults.tsx`
+- [x] Render result items with breadcrumbs
+- [x] Show excerpt and kind
+- [x] Handle empty state
 
 ---
 
-### Task 8.5: Generate search index during build
-- [ ] Add search index generation to build pipeline
-- [ ] Create SearchRecord from each symbol
-- [ ] Generate keywords from name and docstring
-- [ ] Output per-language index files
+### Task 8.5: Generate search index during build ✅
+- [x] Search index generated dynamically via API route
+- [x] Create SearchRecord from each symbol
+- [x] Generate keywords from name and docstring
+- [x] Support per-language index generation
 
 ---
 

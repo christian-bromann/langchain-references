@@ -3,8 +3,9 @@
  */
 
 import { kv } from "@vercel/kv";
-import { list, getDownloadUrl } from "@vercel/blob";
+import { getDownloadUrl } from "@vercel/blob";
 import type { Manifest, Package, SymbolRecord, RoutingMap } from "./types";
+import type { Language } from "@langchain/ir-schema";
 
 const IR_BASE_PATH = "ir";
 
@@ -250,7 +251,7 @@ function getLocalIrBasePath(): string {
  * Get the latest build ID for a language from local symlinks
  */
 export async function getLocalLatestBuildId(
-  language: "python" | "javascript"
+  language: Language
 ): Promise<string | null> {
   try {
     const fs = await import("fs/promises");

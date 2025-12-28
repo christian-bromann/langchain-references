@@ -7,14 +7,20 @@
  * Matches the Mintlify Aspen theme design.
  */
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useTheme } from "next-themes";
-import { Search, MessageCircle, Github, Moon, Sun, Menu, MoreVertical } from "lucide-react";
+import { Search, MessageCircle, Github, Moon, Sun, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { SearchModal, useSearchShortcut } from "@/components/search/SearchModal";
 
 export function Header() {
   const { theme, setTheme } = useTheme();
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Enable ⌘K shortcut to open search
+  useSearchShortcut(() => setSearchOpen(true));
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm">
@@ -66,10 +72,7 @@ export function Header() {
                 )}
                 id="search-bar-entry"
                 aria-label="Open search"
-                onClick={() => {
-                  // TODO: Open search modal
-                  console.log("Open search");
-                }}
+                onClick={() => setSearchOpen(true)}
               >
                 <div className="flex items-center gap-2 min-w-[42px]">
                   <Search className="min-w-4 flex-none h-4 w-4 text-gray-700 hover:text-gray-800 dark:text-gray-400 hover:dark:text-gray-200" />
@@ -171,6 +174,7 @@ export function Header() {
               className="text-gray-500 w-8 h-8 flex items-center justify-center hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300"
               id="search-bar-entry-mobile"
               aria-label="Open search"
+              onClick={() => setSearchOpen(true)}
             >
               <span className="sr-only">Search...</span>
               <Search className="h-4 w-4" />
@@ -184,6 +188,9 @@ export function Header() {
           </div>
         </div>
       </div>
+
+      {/* Search Modal */}
+      <SearchModal open={searchOpen} onOpenChange={setSearchOpen} />
     </header>
   );
 }
