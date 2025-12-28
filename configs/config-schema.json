@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Build Configuration",
+  "description": "Configuration for the LangChain Reference Docs IR build pipeline",
+  "type": "object",
+  "required": ["language", "repo", "packages"],
+  "properties": {
+    "language": {
+      "type": "string",
+      "enum": ["python", "typescript"],
+      "description": "The programming language to extract"
+    },
+    "repo": {
+      "type": "string",
+      "pattern": "^[^/]+/[^/]+$",
+      "description": "GitHub repository in owner/repo format"
+    },
+    "packages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "path"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Package name (e.g., 'langchain-core' or '@langchain/core')"
+          },
+          "path": {
+            "type": "string",
+            "description": "Path to the package within the repository"
+          },
+          "entryPoints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Entry points for TypeScript extraction (relative to package path)"
+          }
+        }
+      },
+      "description": "List of packages to extract from the repository"
+    }
+  }
+}
+

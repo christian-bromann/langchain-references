@@ -1,0 +1,23 @@
+{
+  "$schema": "./config-schema.json",
+  "language": "python",
+  "repo": "langchain-ai/langchain",
+  "packages": [
+    {
+      "name": "langchain_classic",
+      "path": "libs/langchain"
+    },
+    {
+      "name": "langchain_core",
+      "path": "libs/core"
+    },
+    {
+      "name": "langchain_text_splitters",
+      "path": "libs/text-splitters"
+    },
+    {
+      "name": "langchain_tests",
+      "path": "libs/standard-tests"
+    }
+  ]
+}
