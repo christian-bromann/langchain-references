@@ -5,6 +5,7 @@
  */
 
 import * as td from "typedoc";
+import * as ts from "typescript";
 import path from "path";
 import fs from "fs/promises";
 import { glob } from "tinyglobby";
@@ -125,6 +126,42 @@ async function resolveEntryPoints(
 }
 
 /**
+ * Try to resolve a tsconfig using TypeScript's resolution (handles package specifiers like @langchain/tsconfig).
+ * Returns the parsed config if successful, or null if resolution fails.
+ */
+function tryResolveTsconfig(
+  tsconfigPath: string
+): { config: ts.ParsedCommandLine; error?: undefined } | { config?: undefined; error: string } {
+  const configFile = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
+  if (configFile.error) {
+    return { error: ts.flattenDiagnosticMessageText(configFile.error.messageText, "\n") };
+  }
+
+  const configDir = path.dirname(tsconfigPath);
+  const parsed = ts.parseJsonConfigFileContent(
+    configFile.config,
+    ts.sys,
+    configDir,
+    undefined,
+    tsconfigPath
+  );
+
+  // Check for errors (especially unresolved extends)
+  const fatalErrors = parsed.errors.filter(
+    (e) => e.category === ts.DiagnosticCategory.Error
+  );
+
+  if (fatalErrors.length > 0) {
+    const messages = fatalErrors
+      .map((e) => ts.flattenDiagnosticMessageText(e.messageText, "\n"))
+      .join("; ");
+    return { error: messages };
+  }
+
+  return { config: parsed };
+}
+
+/**
  * TypeScript API extractor using TypeDoc.
  */
 export class TypeScriptExtractor {
@@ -136,44 +173,63 @@ export class TypeScriptExtractor {
   }
 
   /**
-   * Check if a tsconfig is usable (exists and doesn't have problematic extends).
+   * Check if a tsconfig is usable by attempting full resolution including extends.
+   * Uses TypeScript's built-in resolution which handles package specifiers.
    */
-  private async isTsconfigUsable(tsconfigPath: string): Promise<boolean> {
+  private isTsconfigUsable(tsconfigPath: string): boolean {
     try {
-      const content = await fs.readFile(tsconfigPath, "utf-8");
-      const tsconfig = JSON.parse(content);
-
-      // Check if it extends a path that doesn't exist
-      if (tsconfig.extends) {
-        const extendsPath = path.resolve(path.dirname(tsconfigPath), tsconfig.extends);
-        try {
-          await fs.access(extendsPath);
-        } catch {
-          // Extended config doesn't exist
-          return false;
-        }
+      const result = tryResolveTsconfig(tsconfigPath);
+      if (result.error) {
+        console.log(`   ⚠️  tsconfig resolution failed: ${result.error}`);
+        return false;
       }
-
       return true;
-    } catch {
+    } catch (error) {
+      console.error("Error checking tsconfig:", error);
       return false;
     }
   }
 
   /**
-   * Create a temporary tsconfig for extraction.
+   * Create a temporary tsconfig for extraction, optionally merging with original tsconfig settings.
    */
-  private async createTempTsconfig(): Promise<string> {
+  private async createTempTsconfig(originalTsconfigPath?: string): Promise<string> {
     const tempPath = path.join(this.config.packagePath, ".typedoc-tsconfig.json");
 
-    // Customize include paths based on entry points
-    const config = {
+    // Start with minimal config
+    let config: Record<string, unknown> = {
       ...MINIMAL_TSCONFIG,
       include: this.config.entryPoints.map((ep) => {
         const dir = path.dirname(ep);
         return dir ? `${dir}/**/*` : "**/*";
       }),
     };
+
+    // Try to merge settings from original tsconfig (without extends)
+    if (originalTsconfigPath) {
+      try {
+        const content = await fs.readFile(originalTsconfigPath, "utf-8");
+        const { config: originalConfig } = ts.parseConfigFileTextToJson(originalTsconfigPath, content);
+        if (originalConfig) {
+          // Merge compilerOptions from original, but keep our essential overrides
+          const originalCompilerOptions = originalConfig.compilerOptions || {};
+          config = {
+            compilerOptions: {
+              ...originalCompilerOptions,
+              // Essential overrides for extraction
+              skipLibCheck: true,
+              noEmit: true,
+              declaration: false,
+            },
+            include: originalConfig.include || config.include,
+            exclude: originalConfig.exclude || MINIMAL_TSCONFIG.exclude,
+            // Explicitly omit 'extends' to avoid resolution issues
+          };
+        }
+      } catch {
+        // Fall back to minimal config if we can't read original
+      }
+    }
 
     await fs.writeFile(tempPath, JSON.stringify(config, null, 2));
     return tempPath;
@@ -214,12 +270,12 @@ export class TypeScriptExtractor {
       ? path.join(this.config.packagePath, this.config.tsconfig)
       : path.join(this.config.packagePath, "tsconfig.json");
 
-    if (await this.isTsconfigUsable(projectTsconfigPath)) {
+    if (this.isTsconfigUsable(projectTsconfigPath)) {
       tsconfigPath = projectTsconfigPath;
     } else {
-      // Create a temporary minimal tsconfig
-      console.log("   ⚠️  Project tsconfig not usable, using minimal config");
-      tempTsconfigPath = await this.createTempTsconfig();
+      // Create a temporary tsconfig, merging settings from original if possible
+      console.log("   ⚠️  Project tsconfig not usable, creating merged config without extends");
+      tempTsconfigPath = await this.createTempTsconfig(projectTsconfigPath);
       tsconfigPath = tempTsconfigPath;
     }
 

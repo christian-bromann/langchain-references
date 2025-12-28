@@ -97,6 +97,78 @@ export async function getLatestSha(repo: string): Promise<string> {
 }
 
 /**
+ * Detect the package manager used in a directory by checking for lock files.
+ */
+async function detectPackageManager(
+  dir: string
+): Promise<{ name: "pnpm" | "yarn" | "npm"; installCmd: string }> {
+  // Check for lock files in order of preference
+  const lockFiles = [
+    { file: "pnpm-lock.yaml", name: "pnpm" as const, cmd: "pnpm install --ignore-scripts --no-optional" },
+    { file: "yarn.lock", name: "yarn" as const, cmd: "yarn install --ignore-scripts --ignore-optional" },
+    { file: "package-lock.json", name: "npm" as const, cmd: "npm install --ignore-scripts --no-optional --legacy-peer-deps" },
+  ];
+
+  for (const { file, name, cmd } of lockFiles) {
+    try {
+      await fs.access(path.join(dir, file));
+      return { name, installCmd: cmd };
+    } catch {
+      // Lock file not found, try next
+    }
+  }
+
+  // Default to npm if no lock file found
+  return { name: "npm", installCmd: "npm install --ignore-scripts --no-optional --legacy-peer-deps" };
+}
+
+/**
+ * Install dependencies in the extracted directory for proper type resolution.
+ * Detects the package manager from lock files and installs dependencies.
+ */
+async function installDependencies(extractedPath: string): Promise<void> {
+  const { execSync } = await import("child_process");
+
+  // Check if package.json exists
+  const packageJsonPath = path.join(extractedPath, "package.json");
+  try {
+    await fs.access(packageJsonPath);
+  } catch {
+    console.log("   No package.json found, skipping dependency install");
+    return;
+  }
+
+  // Check if dependencies are already installed by looking for a marker file
+  const installMarkerPath = path.join(extractedPath, ".deps-installed");
+  try {
+    await fs.access(installMarkerPath);
+    console.log("   Dependencies already installed, skipping");
+    return;
+  } catch {
+    // Marker doesn't exist, proceed with install
+  }
+
+  // Detect package manager from lock files
+  const { name: pm, installCmd } = await detectPackageManager(extractedPath);
+  console.log(`   📦 Installing dependencies with ${pm}...`);
+
+  try {
+    execSync(installCmd, {
+      cwd: extractedPath,
+      stdio: "pipe",
+      timeout: 600000, // 10 minute timeout for large monorepos
+    });
+
+    // Create marker file to skip future installs
+    await fs.writeFile(installMarkerPath, new Date().toISOString());
+    console.log(`   ✅ Dependencies installed with ${pm}`);
+  } catch (error: any) {
+    console.warn(`   ⚠️  Could not install dependencies: ${error.message?.slice(0, 100)}`);
+    console.warn("   ⚠️  External types may show as 'any'");
+  }
+}
+
+/**
  * Fetch and extract a tarball from GitHub.
  */
 export async function fetchTarball(options: FetchOptions): Promise<FetchResult> {
@@ -116,6 +188,10 @@ export async function fetchTarball(options: FetchOptions): Promise<FetchResult> 
     await fs.access(extractedPath);
     const stats = await fs.stat(path.join(extractedPath, ".fetch-complete"));
     console.log(`✅ Using cached tarball: ${extractedPath}`);
+
+    // Ensure dependencies are installed even for cached tarballs
+    await installDependencies(extractedPath);
+
     return {
       repo,
       sha,
@@ -168,6 +244,10 @@ export async function fetchTarball(options: FetchOptions): Promise<FetchResult> 
     cwd: extractedPath,
     strip: 1, // Remove top-level directory
   });
+
+  // Install dependencies for proper type resolution
+  // This handles both workspace packages and external dependencies (e.g., openai, @anthropic-ai/sdk)
+  await installDependencies(extractedPath);
 
   // Mark extraction as complete
   const fetchedAt = new Date().toISOString();

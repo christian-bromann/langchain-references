@@ -26,42 +26,56 @@ function getPackageSlug(pkg: Package, language: "python" | "javascript"): string
 
 /**
  * Build navigation items from symbols
+ *
+ * Strategy:
+ * - If a package has named exports (sub-modules like `hub`, `chat_models/universal`),
+ *   list them in the sidebar with `index` first.
+ * - If a package doesn't have named exports (just exports classes/functions from a
+ *   single entry point), return empty items - users click the package name to explore.
  */
 function buildNavItems(
   symbols: SymbolRecord[],
   language: "python" | "javascript",
   packageSlug: string
 ): SidebarPackage["items"] {
-  // Get top-level modules (for hierarchical display)
+  // Get top-level modules (named exports / sub-modules)
   const modules = symbols
     .filter(
       (s) =>
         s.kind === "module" &&
         s.tags?.visibility === "public" &&
-        // Only show top-level modules (one level deep)
-        !s.qualifiedName.slice(s.qualifiedName.indexOf(".") + 1).includes(".")
+        // Only show top-level modules (no nested slashes for JS, no nested dots for Python)
+        !s.name.includes("/") &&
+        !s.name.slice(s.name.indexOf(".") + 1).includes(".")
     )
-    .slice(0, 20) // Limit to avoid overwhelming the sidebar
     .map((s) => ({
       name: s.name,
       path: `/${language}/${packageSlug}/${s.name}`,
       kind: s.kind,
     }));
 
-  // If no modules, show top-level classes
+  // If no modules (named exports), return empty - the package link itself is enough
+  // Users can click the package name to explore its exports
   if (modules.length === 0) {
-    const classes = symbols
-      .filter((s) => s.kind === "class" && s.tags?.visibility === "public")
-      .slice(0, 20)
-      .map((s) => ({
-        name: s.name,
-        path: `/${language}/${packageSlug}/${s.name}`,
-        kind: s.kind,
-      }));
-    return classes;
+    return [];
   }
 
-  return modules;
+  // Deduplicate by path
+  const seen = new Set<string>();
+  const uniqueModules = modules.filter((item) => {
+    if (seen.has(item.path)) return false;
+    seen.add(item.path);
+    return true;
+  });
+
+  // Sort: `index` first, then alphabetically
+  uniqueModules.sort((a, b) => {
+    if (a.name === "index") return -1;
+    if (b.name === "index") return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  return uniqueModules;
 }
 
 /**
@@ -99,6 +113,7 @@ async function loadSidebarPackages(
     sidebarPackages.push({
       id: pkg.packageId,
       name: pkg.displayName,
+      path: `/${language}/${slug}`,
       items,
     });
   }
@@ -119,4 +134,5 @@ export async function SidebarLoader() {
     />
   );
 }
+
 

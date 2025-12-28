@@ -203,7 +203,7 @@ async function createManifest(
   const packages: Package[] = [];
 
   for (const pkgConfig of config.packages) {
-    const pkgOutputPath = path.join(irOutputPath, "packages", normalizePackageId(pkgConfig.name));
+    const pkgOutputPath = path.join(irOutputPath, "packages", normalizePackageId(pkgConfig.name, config.language));
 
     try {
       const symbolsPath = path.join(pkgOutputPath, "symbols.json");
@@ -223,7 +223,7 @@ async function createManifest(
       const [owner, repoName] = config.repo.split("/");
 
       packages.push({
-        packageId: normalizePackageId(pkgConfig.name),
+        packageId: normalizePackageId(pkgConfig.name, config.language),
         displayName: pkgConfig.name,
         publishedName: pkgConfig.name,
         language: config.language,
@@ -270,8 +270,8 @@ async function createManifest(
 /**
  * Normalize package name to a valid ID.
  */
-function normalizePackageId(name: string): string {
-  const ecosystem = name.startsWith("@") ? "js" : "py";
+function normalizePackageId(name: string, language: "python" | "typescript"): string {
+  const ecosystem = language === "python" ? "py" : "js";
   const normalized = name
     .replace(/^@/, "")
     .replace(/\//g, "_")
@@ -348,7 +348,7 @@ async function main() {
 
   for (const pkgConfig of config.packages) {
     const packagePath = path.join(fetchResult.extractedPath, pkgConfig.path);
-    const pkgOutputDir = path.join(irOutputPath, "packages", normalizePackageId(pkgConfig.name));
+    const pkgOutputDir = path.join(irOutputPath, "packages", normalizePackageId(pkgConfig.name, config.language));
     await fs.mkdir(pkgOutputDir, { recursive: true });
     const outputPath = path.join(pkgOutputDir, "symbols.json");
 

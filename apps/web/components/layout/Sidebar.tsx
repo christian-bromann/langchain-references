@@ -30,6 +30,7 @@ export interface NavItem {
 export interface SidebarPackage {
   id: string;
   name: string;
+  path: string;
   items: NavItem[];
 }
 
@@ -48,9 +49,8 @@ export function Sidebar({ pythonPackages = [], javascriptPackages = [] }: Sideba
   return (
     <aside
       id="sidebar-content"
-      className="hidden lg:flex fixed left-0 shrink-0 flex-col border-r border-gray-100 dark:border-white/10 transition-transform duration-100"
+      className="hidden lg:flex sticky top-header self-start shrink-0 flex-col border-r border-gray-100 dark:border-white/10 transition-transform duration-100"
       style={{
-        top: "var(--header-height)",
         height: "calc(100vh - var(--header-height))",
         width: "var(--sidebar-width)"
       }}
@@ -93,6 +93,10 @@ function SidebarDivider() {
 
 /**
  * Package section with group header (Mintlify style)
+ *
+ * Shows the package name as a clickable header. If the package has named
+ * sub-modules (exports), they're listed below. If not, users click the
+ * package name to explore its contents.
  */
 function PackageSection({
   package: pkg,
@@ -101,24 +105,41 @@ function PackageSection({
   package: SidebarPackage;
   currentPath: string;
 }) {
+  const isPackageActive = currentPath === pkg.path || currentPath.startsWith(pkg.path + "/");
+  const hasItems = pkg.items.length > 0;
+
   return (
     <div className="my-2">
-      {/* Group header */}
-      <div className="sidebar-group-header flex items-center gap-2.5 pl-4 mb-3.5 lg:mb-2.5">
+      {/* Group header - clickable link to package index */}
+      <Link
+        href={pkg.path}
+        className={cn(
+          "sidebar-group-header flex items-center gap-2.5 pl-4",
+          hasItems ? "mb-3.5 lg:mb-2.5" : "mb-0",
+          "hover:opacity-80 transition-opacity"
+        )}
+      >
         <h5
           id="sidebar-title"
-          className="font-semibold text-gray-700 dark:text-gray-300 text-xs uppercase tracking-wide"
+          className={cn(
+            "font-semibold text-xs uppercase tracking-wide",
+            isPackageActive
+              ? "text-primary dark:text-primary-light"
+              : "text-gray-700 dark:text-gray-300"
+          )}
         >
           {pkg.name}
         </h5>
-      </div>
+      </Link>
 
-      {/* Group items */}
-      <ul id="sidebar-group" className="sidebar-group list-none space-y-px">
-        {pkg.items.map((item) => (
-          <NavItemLink key={item.path} item={item} currentPath={currentPath} />
-        ))}
-      </ul>
+      {/* Group items - only shown if package has named sub-modules */}
+      {hasItems && (
+        <ul id="sidebar-group" className="sidebar-group list-none space-y-px">
+          {pkg.items.map((item, index) => (
+            <NavItemLink key={`${item.path}-${index}`} item={item} currentPath={currentPath} />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

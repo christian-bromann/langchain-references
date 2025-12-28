@@ -9,3 +9,5 @@ export { type ExtractionConfig, defaultConfig } from "./config.js";
 export { TypeScriptExtractor } from "./extractor.js";
 export { TypeDocTransformer } from "./transformer.js";
 
+
+

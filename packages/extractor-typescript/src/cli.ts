@@ -61,7 +61,7 @@ async function main(): Promise<void> {
       tsconfig: options.tsconfig,
       excludePrivate: !options.includePrivate,
       excludeInternal: !options.includeInternal,
-      excludeExternals: true,
+      excludeExternals: false, // Keep re-exports visible
       repo: options.repo,
       sha: options.sha,
     });

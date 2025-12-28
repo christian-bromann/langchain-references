@@ -62,6 +62,7 @@ export class TypeDocTransformer {
   private repo: string;
   private sha: string;
   private sourcePathPrefix: string;
+  private symbolIdMap: Map<number, string>;
 
   constructor(
     project: TypeDocProject,
@@ -79,6 +80,47 @@ export class TypeDocTransformer {
     this.sourcePathPrefix = sourcePathPrefix
       ? sourcePathPrefix.replace(/\/?$/, "/")
       : "";
+    // Build a map from symbol IDs to their names for type resolution
+    this.symbolIdMap = this.buildSymbolIdMap();
+  }
+
+  /**
+   * Build a map from TypeDoc symbol IDs to their names.
+   * This allows us to resolve type references to their original names.
+   */
+  private buildSymbolIdMap(): Map<number, string> {
+    const idMap = new Map<number, string>();
+
+    // TypeDoc includes symbolIdMap in the project for cross-references
+    const projectAny = this.project as any;
+    if (projectAny.symbolIdMap) {
+      for (const [id, info] of Object.entries(projectAny.symbolIdMap)) {
+        const numId = parseInt(id, 10);
+        if (!isNaN(numId) && typeof (info as any)?.name === "string") {
+          idMap.set(numId, (info as any).name);
+        }
+      }
+    }
+
+    // Also build from children recursively
+    const addReflection = (reflection: TypeDocReflection) => {
+      if (reflection.id !== undefined && reflection.name) {
+        idMap.set(reflection.id, reflection.name);
+      }
+      if ("children" in reflection && reflection.children) {
+        for (const child of reflection.children as TypeDocReflection[]) {
+          addReflection(child);
+        }
+      }
+    };
+
+    if (this.project.children) {
+      for (const child of this.project.children) {
+        addReflection(child);
+      }
+    }
+
+    return idMap;
   }
 
   /**
@@ -303,12 +345,56 @@ export class TypeDocTransformer {
       case "intrinsic":
         return type.name;
 
-      case "reference":
+      case "reference": {
+        // Get the qualified name if available (for external types like OpenAIClient.Chat.X)
+        const qualifiedName = (type as any).qualifiedName;
+
+        // Start with the type name
+        let typeName = type.name;
+
+        // Check if we can resolve by target ID (for type aliases that reference other types)
+        const targetId = (type as any).target;
+        if (typeof targetId === "number" && this.symbolIdMap.has(targetId)) {
+          const resolvedName = this.symbolIdMap.get(targetId);
+          if (resolvedName && resolvedName !== "__type") {
+            typeName = resolvedName;
+          }
+        }
+
+        // Check if we can resolve by direct ID
+        const typeId = (type as any).id;
+        if (typeof typeId === "number" && this.symbolIdMap.has(typeId)) {
+          const resolvedName = this.symbolIdMap.get(typeId);
+          if (resolvedName && resolvedName !== "__type") {
+            typeName = resolvedName;
+          }
+        }
+
+        // Handle Zod utility types - TypeDoc resolves these without type arguments
+        // z.input<Schema> and z.output<Schema> become just "z.input" with no schema info
+        // Show "object" as that's the most useful representation for developers
+        if (qualifiedName === "z.input" || qualifiedName === "z.output" ||
+            qualifiedName === "z.infer" || typeName === "input" || typeName === "output") {
+          return "object";
+        }
+
+        // Prefer qualified name for external types (when name is generic like "any")
+        // or when we have a dotted qualified name (e.g., "OpenAIClient.Chat.X")
+        if (qualifiedName && (typeName === "any" || qualifiedName.includes("."))) {
+          typeName = qualifiedName;
+        }
+
+        // Fall back to qualified name if type name is unhelpful
+        if (!typeName || typeName === "input" || typeName === "output") {
+          typeName = qualifiedName || type.name;
+        }
+
         if (type.typeArguments && type.typeArguments.length > 0) {
           const args = type.typeArguments.map((t) => this.formatType(t)).join(", ");
-          return `${type.name}<${args}>`;
+          return `${typeName}<${args}>`;
         }
-        return type.name;
+        return typeName;
+      }
 
       case "array":
         return `${this.formatType(type.elementType)}[]`;
@@ -352,18 +438,57 @@ export class TypeDocTransformer {
           const returns = this.formatType(sig.type);
           return `(${params}) => ${returns}`;
         }
+        // Check if the reflection has a name property (for named object types)
+        if (type.declaration?.name) {
+          return type.declaration.name;
+        }
         return "object";
 
+      case "namedTupleMember":
+        return this.formatType((type as any).element);
+
+      case "templateLiteral":
+        return "string";
+
+      case "predicate":
+        return `${(type as any).name} is ${this.formatType((type as any).targetType)}`;
+
+      case "optional":
+        return `${this.formatType((type as any).elementType)}?`;
+
+      case "rest":
+        return `...${this.formatType((type as any).elementType)}`;
+
       default:
+        // Log unhandled types for debugging
+        console.warn(`Unhandled type: ${type.type}`, JSON.stringify(type).slice(0, 200));
+        // Try to extract a name if available
+        if ("name" in type && typeof (type as any).name === "string") {
+          return (type as any).name;
+        }
         return "unknown";
     }
   }
 
   /**
    * Extract documentation from a reflection.
+   * For functions/methods, also checks the signature for comments (where TypeDoc puts docs for overloaded functions).
    */
   private extractDocs(reflection: TypeDocReflection): SymbolDocs {
-    const comment = "comment" in reflection ? reflection.comment as TypeDocComment : null;
+    // First try to get comment from the reflection itself
+    let comment = "comment" in reflection ? reflection.comment as TypeDocComment : null;
+
+    // For functions/methods, TypeDoc puts the comment on the signature, not the reflection
+    // This is especially important for overloaded functions where the first overload has the docs
+    if (!comment && "signatures" in reflection && Array.isArray(reflection.signatures)) {
+      // Check all signatures for a comment (first one with a comment wins)
+      for (const sig of reflection.signatures as JSONOutput.SignatureReflection[]) {
+        if (sig.comment) {
+          comment = sig.comment as TypeDocComment;
+          break;
+        }
+      }
+    }
 
     if (!comment) {
       return { summary: "" };
@@ -382,10 +507,7 @@ export class TypeDocTransformer {
     // Extract examples
     const examples = comment.blockTags?.filter((t) => t.tag === "@example");
     if (examples && examples.length > 0) {
-      docs.examples = examples.map((t) => ({
-        code: this.extractCommentText(t.content),
-        language: "typescript",
-      }));
+      docs.examples = examples.map((t) => this.parseExample(t.content));
     }
 
     // Check for deprecation
@@ -406,6 +528,46 @@ export class TypeDocTransformer {
   private extractCommentText(content: JSONOutput.CommentDisplayPart[] | undefined): string {
     if (!content) return "";
     return content.map((p) => p.text).join("");
+  }
+
+  /**
+   * Parse an @example block tag into title and code.
+   * Examples can have a title before the code fence:
+   *   @example Title here
+   *   ```typescript
+   *   code here
+   *   ```
+   */
+  private parseExample(content: JSONOutput.CommentDisplayPart[] | undefined): {
+    code: string;
+    language: string;
+    title?: string;
+  } {
+    const rawText = this.extractCommentText(content);
+
+    // Match code fence with optional language: ```lang\ncode\n```
+    const codeFenceRegex = /```(\w+)?\n?([\s\S]*?)```/;
+    const match = rawText.match(codeFenceRegex);
+
+    if (match) {
+      const language = match[1] || "typescript";
+      const code = match[2].trim();
+
+      // Everything before the code fence is the title
+      const beforeFence = rawText.substring(0, rawText.indexOf("```")).trim();
+
+      return {
+        code,
+        language,
+        title: beforeFence || undefined,
+      };
+    }
+
+    // No code fence found - treat entire content as code
+    return {
+      code: rawText.trim(),
+      language: "typescript",
+    };
   }
 
   /**
@@ -448,17 +610,24 @@ export class TypeDocTransformer {
   }
 
   /**
-   * Extract member references from a class/interface.
+   * Extract member references from a class/interface/module.
    */
   private extractMembers(reflection: TypeDocReflection): MemberReference[] | undefined {
     if (!("children" in reflection) || !reflection.children) {
       return undefined;
     }
 
+    // For modules, include all exported symbols (classes, functions, types, etc.)
+    // For classes/interfaces, include methods, properties, and constructors
+    const isModule = reflection.kind === ReflectionKind.Module;
+    const allowedKinds = isModule
+      ? ["class", "function", "interface", "typeAlias", "enum", "variable", "method", "property", "constructor", "namespace"]
+      : ["method", "property", "constructor"];
+
     return (reflection.children as TypeDocReflection[])
       .filter((child) => {
         const kind = this.mapKind(child.kind);
-        return kind && ["method", "property", "constructor"].includes(kind);
+        return kind && allowedKinds.includes(kind);
       })
       .map((child) => {
         const kind = this.mapKind(child.kind) || "property";

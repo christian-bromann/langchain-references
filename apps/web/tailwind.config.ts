@@ -46,6 +46,7 @@ const config: Config = {
       },
       maxWidth: {
         content: "768px",
+        "8xl": "90rem", // 1440px - matches Mintlify header width
       },
     },
   },

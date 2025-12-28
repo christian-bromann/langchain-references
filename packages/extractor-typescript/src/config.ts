@@ -42,7 +42,9 @@ export interface ExtractionConfig {
 export const defaultConfig: Partial<ExtractionConfig> = {
   excludePrivate: true,
   excludeInternal: true,
-  excludeExternals: true,
+  // Don't exclude externals - we want re-exports to be documented
+  // e.g., export { BaseMessage } from "@langchain/core/messages"
+  excludeExternals: false,
   entryPoints: ["src/index.ts"],
 };
 
@@ -57,7 +59,7 @@ export function createConfig(
     entryPoints: ["src/index.ts"],
     excludePrivate: true,
     excludeInternal: true,
-    excludeExternals: true,
+    excludeExternals: false, // Keep re-exports visible
     repo: "",
     sha: "",
     ...partial,
@@ -78,4 +80,5 @@ export function validateConfig(config: ExtractionConfig): void {
     throw new Error("At least one entry point is required");
   }
 }
+
 

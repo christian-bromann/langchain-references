@@ -175,6 +175,9 @@ importers:
       tar:
         specifier: ^7.5.2
         version: 7.5.2
+      tinyglobby:
+        specifier: ^0.2.14
+        version: 0.2.15
     devDependencies:
       '@types/node':
         specifier: ^25.0.3

@@ -36,19 +36,33 @@ export function slugifyPackageName(packageName: string): string {
 /**
  * Convert a slug back to package name
  * @example "langchain-core" with language "javascript" -> "@langchain/core"
+ * @example "langchain" with language "javascript" -> "langchain" (unscoped)
  * @example "langchain-core" with language "python" -> "langchain_core"
+ * 
+ * Note: This is a best-effort reverse transformation. For scoped packages like
+ * @langchain/core -> langchain-core, we can reverse it. For unscoped packages
+ * like "langchain", we keep them as-is since we can't know if they were scoped.
+ * The actual package name should be looked up from the manifest when available.
  */
 export function unslugifyPackageName(
   slug: string,
   language: UrlLanguage
 ): string {
   if (language === "javascript" || language === "typescript") {
-    // JavaScript packages use @scope/name format
+    // JavaScript packages can be either:
+    // 1. Scoped: @scope/name -> scope-name (slug) -> @scope/name (unslug)
+    // 2. Unscoped: name -> name (slug stays the same)
     const parts = slug.split("-");
-    if (parts.length >= 2) {
+    
+    // If it looks like a scoped package slug (has hyphen and first part is a known scope)
+    // We use a heuristic: if the first part is "langchain" and there are more parts,
+    // it was likely @langchain/something
+    if (parts.length >= 2 && parts[0] === "langchain") {
       return `@${parts[0]}/${parts.slice(1).join("-")}`;
     }
-    return `@langchain/${slug}`;
+    
+    // Otherwise, treat as unscoped package
+    return slug;
   } else {
     // Python packages use snake_case
     return slug.replace(/-/g, "_");
@@ -76,11 +90,22 @@ export function packageNameToId(
 /**
  * Slugify a symbol path for URLs
  * @example "langchain_core.messages.BaseMessage" -> "messages/BaseMessage"
+ * @example "ChatDeepSeekCallOptions" -> "ChatDeepSeekCallOptions"
  */
-export function slugifySymbolPath(symbolPath: string): string {
+export function slugifySymbolPath(symbolPath: string, hasPackagePrefix = true): string {
   const parts = symbolPath.split(".");
-  // Skip the package name (first part)
-  return parts.slice(1).join("/");
+  
+  // If only one part, it's just the symbol name (no package prefix)
+  if (parts.length === 1) {
+    return parts[0];
+  }
+  
+  // Skip the package name (first part) if it has a package prefix
+  if (hasPackagePrefix) {
+    return parts.slice(1).join("/");
+  }
+  
+  return parts.join("/");
 }
 
 /**
@@ -148,7 +173,30 @@ export function buildSymbolUrl(
     return `/${langSegment}/${packageSlug}`;
   }
 
-  const pathSegment = slugifySymbolPath(symbolPath);
+  // Check if the symbolPath starts with a package-like prefix
+  // Python packages use underscores (langchain_core.something)
+  // JS packages would rarely have the package name in the path
+  const parts = symbolPath.split(".");
+  const firstPart = parts[0];
+  
+  // Detect if the first part looks like a Python package name (contains underscore)
+  // or matches the package name. If so, skip it.
+  const normalizedPackage = packageName
+    .replace(/^@/, "")
+    .replace(/\//g, "_")
+    .replace(/-/g, "_")
+    .toLowerCase();
+  const normalizedFirst = firstPart.toLowerCase().replace(/-/g, "_");
+  
+  const hasPackagePrefix = normalizedFirst === normalizedPackage || 
+    (language === "python" && firstPart.includes("_"));
+
+  const pathSegment = slugifySymbolPath(symbolPath, hasPackagePrefix);
+  
+  if (!pathSegment) {
+    return `/${langSegment}/${packageSlug}`;
+  }
+  
   return `/${langSegment}/${packageSlug}/${pathSegment}`;
 }
 

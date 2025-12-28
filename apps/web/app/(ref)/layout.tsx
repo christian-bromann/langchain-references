@@ -20,14 +20,15 @@ export default function ReferenceLayout({
       <Header />
 
       {/* Main layout with sidebar */}
-      <div className="flex pt-header">
+      <div className="max-w-8xl mx-auto px-0 lg:px-5">
+        <div className="flex pt-header">
         {/* Sidebar */}
         <Suspense fallback={<SidebarSkeleton />}>
           <SidebarLoader />
         </Suspense>
 
-        {/* Main content - full width on mobile, sidebar offset on lg+ */}
-        <main className="flex-1 min-w-0 lg:ml-sidebar">
+        {/* Main content - full width on mobile */}
+        <main className="flex-1 min-w-0">
           <div className="max-w-content mx-auto px-6 py-8">
             {children}
           </div>
@@ -35,6 +36,7 @@ export default function ReferenceLayout({
 
         {/* Table of Contents placeholder - will be populated by page components */}
         <div className="hidden xl:block w-toc shrink-0" />
+        </div>
       </div>
     </div>
   );
@@ -46,9 +48,8 @@ export default function ReferenceLayout({
 function SidebarSkeleton() {
   return (
     <aside
-      className="hidden lg:flex fixed left-0 shrink-0 flex-col border-r border-gray-100 dark:border-white/10"
+      className="hidden lg:flex sticky top-header self-start shrink-0 flex-col border-r border-gray-100 dark:border-white/10"
       style={{
-        top: "var(--header-height)",
         height: "calc(100vh - var(--header-height))",
         width: "var(--sidebar-width)"
       }}
