@@ -1,5 +1,10 @@
 /**
- * IR Loader - Utilities for loading IR data from Vercel Blob
+ * IR Loader - Utilities for loading IR data from Vercel Blob or local filesystem
+ *
+ * This module provides unified functions that automatically choose the right
+ * data source based on the environment:
+ * - Production (Vercel): Fetches from Vercel Blob storage
+ * - Development: Reads from local ir-output directory
  */
 
 import { getDownloadUrl } from "@vercel/blob";
@@ -7,6 +12,13 @@ import type { Manifest, Package, SymbolRecord, RoutingMap } from "./types";
 
 const IR_BASE_PATH = "ir";
 const POINTERS_PATH = "pointers";
+
+/**
+ * Check if we're running in production (Vercel)
+ */
+export function isProduction(): boolean {
+  return process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+}
 
 /**
  * Cache for manifest data (in-memory for the request lifecycle)
@@ -373,5 +385,55 @@ export async function getLocalSymbolByPath(
     return null;
   }
   return result.symbols.find((s) => s.qualifiedName === symbolPath) || null;
+}
+
+// =============================================================================
+// Unified Environment-Aware Functions
+// =============================================================================
+// These functions automatically choose the right data source based on environment
+
+/**
+ * Get the latest build ID for a language (unified - works in prod and dev)
+ */
+export async function getBuildIdForLanguage(
+  language: "python" | "javascript"
+): Promise<string | null> {
+  return isProduction()
+    ? getLatestBuildIdForLanguage(language)
+    : getLocalLatestBuildId(language);
+}
+
+/**
+ * Get the manifest for a build (unified - works in prod and dev)
+ */
+export async function getManifestData(buildId: string): Promise<Manifest | null> {
+  return isProduction()
+    ? getManifest(buildId)
+    : getLocalManifest(buildId);
+}
+
+/**
+ * Get all symbols for a package (unified - works in prod and dev)
+ */
+export async function getSymbols(
+  buildId: string,
+  packageId: string
+): Promise<{ symbols: SymbolRecord[]; total: number } | null> {
+  return isProduction()
+    ? getPackageSymbols(buildId, packageId)
+    : getLocalPackageSymbols(buildId, packageId);
+}
+
+/**
+ * Get a symbol by its path (unified - works in prod and dev)
+ */
+export async function getSymbolData(
+  buildId: string,
+  packageId: string,
+  symbolPath: string
+): Promise<SymbolRecord | null> {
+  return isProduction()
+    ? getSymbolByPath(buildId, packageId, symbolPath)
+    : getLocalSymbolByPath(buildId, packageId, symbolPath);
 }
 

@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { Box, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { getLocalLatestBuildId, getLocalManifest } from "@/lib/ir/loader";
+import { getBuildIdForLanguage, getManifestData } from "@/lib/ir/loader";
 import type { Package } from "@/lib/ir/types";
 
 /**
@@ -20,18 +20,11 @@ function getPackageSlug(pkg: Package): string {
 }
 
 export default async function JavaScriptIndexPage() {
-  // Load packages from manifest
-  const buildId = await getLocalLatestBuildId("javascript");
-  let packages: Package[] = [];
-
-  if (buildId) {
-    const manifest = await getLocalManifest(buildId);
-    if (manifest) {
-      packages = manifest.packages.filter(
-        (p) => p.language === "typescript" || p.ecosystem === "javascript"
-      );
-    }
-  }
+  const buildId = await getBuildIdForLanguage("javascript");
+  const manifest = buildId ? await getManifestData(buildId) : null;
+  const packages = manifest?.packages.filter(
+    (p) => p.language === "typescript" || p.ecosystem === "javascript"
+  ) ?? [];
 
   return (
     <div className="space-y-8">
@@ -109,4 +102,3 @@ function PackageCard({
     </Link>
   );
 }
-

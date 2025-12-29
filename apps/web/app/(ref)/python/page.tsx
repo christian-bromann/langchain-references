@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { Box, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { getLocalLatestBuildId, getLocalManifest } from "@/lib/ir/loader";
+import { getBuildIdForLanguage, getManifestData } from "@/lib/ir/loader";
 import type { Package } from "@/lib/ir/types";
 
 /**
@@ -20,16 +20,9 @@ function getPackageSlug(pkg: Package): string {
 }
 
 export default async function PythonIndexPage() {
-  // Load packages from manifest
-  const buildId = await getLocalLatestBuildId("python");
-  let packages: Package[] = [];
-
-  if (buildId) {
-    const manifest = await getLocalManifest(buildId);
-    if (manifest) {
-      packages = manifest.packages.filter((p) => p.language === "python");
-    }
-  }
+  const buildId = await getBuildIdForLanguage("python");
+  const manifest = buildId ? await getManifestData(buildId) : null;
+  const packages = manifest?.packages.filter((p) => p.language === "python") ?? [];
 
   return (
     <div className="space-y-8">
@@ -107,4 +100,3 @@ function PackageCard({
     </Link>
   );
 }
-

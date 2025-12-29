@@ -8,11 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import MiniSearch from "minisearch";
 import type { SearchRecord, SearchResult, Language } from "@langchain/ir-schema";
-import {
-  getLocalLatestBuildId,
-  getLocalPackageSymbols,
-  getLocalManifest,
-} from "@/lib/ir/loader";
+import { getBuildIdForLanguage, getManifestData, getSymbols } from "@/lib/ir/loader";
 
 // Cache the MiniSearch indices per language to avoid rebuilding on every request
 const indexCache = new Map<string, { index: MiniSearch<SearchRecord>; buildId: string }>();
@@ -85,26 +81,19 @@ function symbolToSearchRecord(
 async function getSearchIndex(
   language: Language
 ): Promise<MiniSearch<SearchRecord> | null> {
-  // Get the latest build ID for this language
   const irLanguage = language === "python" ? "python" : "javascript";
-  const buildId = await getLocalLatestBuildId(irLanguage);
+  const buildId = await getBuildIdForLanguage(irLanguage);
 
-  if (!buildId) {
-    return null;
-  }
+  if (!buildId) return null;
 
   // Check cache
   const cacheKey = `${language}:${buildId}`;
   const cached = indexCache.get(cacheKey);
-  if (cached && cached.buildId === buildId) {
-    return cached.index;
-  }
+  if (cached?.buildId === buildId) return cached.index;
 
   // Build new index
-  const manifest = await getLocalManifest(buildId);
-  if (!manifest) {
-    return null;
-  }
+  const manifest = await getManifestData(buildId);
+  if (!manifest) return null;
 
   // Filter packages by language
   const packages = manifest.packages.filter((p) =>
@@ -137,7 +126,7 @@ async function getSearchIndex(
   const recordsMap = new Map<string, SearchRecord>();
 
   for (const pkg of packages) {
-    const result = await getLocalPackageSymbols(buildId, pkg.packageId);
+    const result = await getSymbols(buildId, pkg.packageId);
 
     if (result?.symbols) {
       for (const symbol of result.symbols) {
@@ -243,4 +232,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

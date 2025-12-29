@@ -5,11 +5,7 @@
  */
 
 import { Sidebar, type SidebarPackage } from "./Sidebar";
-import {
-  getLocalLatestBuildId,
-  getLocalManifest,
-  getLocalPackageSymbols,
-} from "@/lib/ir/loader";
+import { getBuildIdForLanguage, getManifestData, getSymbols } from "@/lib/ir/loader";
 import type { Package, SymbolRecord } from "@/lib/ir/types";
 
 /**
@@ -87,15 +83,11 @@ function buildNavItems(
 async function loadSidebarPackages(
   language: "python" | "javascript"
 ): Promise<SidebarPackage[]> {
-  const buildId = await getLocalLatestBuildId(language);
-  if (!buildId) {
-    return [];
-  }
+  const buildId = await getBuildIdForLanguage(language);
+  if (!buildId) return [];
 
-  const manifest = await getLocalManifest(buildId);
-  if (!manifest) {
-    return [];
-  }
+  const manifest = await getManifestData(buildId);
+  if (!manifest) return [];
 
   const packages = manifest.packages.filter((p) =>
     language === "python"
@@ -107,11 +99,8 @@ async function loadSidebarPackages(
 
   for (const pkg of packages) {
     const slug = getPackageSlug(pkg, language);
-    const result = await getLocalPackageSymbols(buildId, pkg.packageId);
-
-    const items = result?.symbols
-      ? buildNavItems(result.symbols, language, slug)
-      : [];
+    const result = await getSymbols(buildId, pkg.packageId);
+    const items = result?.symbols ? buildNavItems(result.symbols, language, slug) : [];
 
     sidebarPackages.push({
       id: pkg.packageId,
@@ -137,5 +126,3 @@ export async function SidebarLoader() {
     />
   );
 }
-
-

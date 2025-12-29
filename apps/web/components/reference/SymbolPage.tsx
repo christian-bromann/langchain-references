@@ -11,10 +11,10 @@ import type { UrlLanguage } from "@/lib/utils/url";
 import { buildPackageUrl, getKindColor, getKindLabel, slugifyPackageName } from "@/lib/utils/url";
 import type { SymbolKind, Visibility, Stability, SymbolRecord } from "@/lib/ir/types";
 import {
-  getLocalLatestBuildId,
-  getLocalSymbolByPath,
-  getLocalPackageSymbols,
-  getLocalManifest,
+  getBuildIdForLanguage,
+  getManifestData,
+  getSymbols,
+  getSymbolData,
 } from "@/lib/ir/loader";
 import type { Language } from "@langchain/ir-schema";
 import { CodeBlock } from "./CodeBlock";
@@ -457,12 +457,12 @@ async function findSymbol(
 
   // Try each variation
   for (const path of pathVariations) {
-    const symbol = await getLocalSymbolByPath(buildId, packageId, path);
+    const symbol = await getSymbolData(buildId, packageId, path);
     if (symbol) return symbol;
   }
 
   // Try searching in all symbols
-  const result = await getLocalPackageSymbols(buildId, packageId);
+  const result = await getSymbols(buildId, packageId);
   if (result?.symbols) {
     // Build a list of paths to try matching
     const pathsToMatch = new Set(pathVariations);
@@ -508,7 +508,7 @@ async function resolveInheritedMembers(
   const processedBases = new Set<string>();
 
   // Get manifest to find all packages for cross-package inheritance
-  const manifest = await getLocalManifest(buildId);
+  const manifest = await getManifestData(buildId);
   const allPackageIds = manifest?.packages.map((p) => p.packageId) || [];
 
   // Helper to find a symbol by name across all packages
@@ -538,7 +538,7 @@ async function resolveInheritedMembers(
     for (const pkgId of allPackageIds) {
       if (pkgId === currentPackageId) continue;
 
-      const pkgSymbols = await getLocalPackageSymbols(buildId, pkgId);
+      const pkgSymbols = await getSymbols(buildId, pkgId);
       if (!pkgSymbols?.symbols) continue;
 
       baseSymbol =
@@ -576,7 +576,7 @@ async function resolveInheritedMembers(
     const pkgSymbols =
       basePackageId === currentPackageId
         ? currentPackageSymbols
-        : (await getLocalPackageSymbols(buildId, basePackageId))?.symbols || [];
+        : (await getSymbols(buildId, basePackageId))?.symbols || [];
 
     const symbolsById = new Map(pkgSymbols.map((s) => [s.id, s]));
 
@@ -665,14 +665,14 @@ async function resolveInheritedMembers(
 
 export async function SymbolPage({ language, packageId, packageName, symbolPath }: SymbolPageProps) {
   const irLanguage = language === "python" ? "python" : "javascript";
-  const buildId = await getLocalLatestBuildId(irLanguage);
+  const buildId = await getBuildIdForLanguage(irLanguage);
 
   let symbol: DisplaySymbol | null = null;
   let knownSymbols = new Set<string>();
 
   if (buildId) {
     // Load all package symbols for linking and member resolution
-    const allSymbolsResult = await getLocalPackageSymbols(buildId, packageId);
+    const allSymbolsResult = await getSymbols(buildId, packageId);
 
     if (allSymbolsResult?.symbols) {
       // Build a set of known symbol names for type linking

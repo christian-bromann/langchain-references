@@ -9,10 +9,7 @@ import { Box, Code, Folder, ChevronRight, FileType } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
 import { buildSymbolUrl, getKindColor, getKindLabel } from "@/lib/utils/url";
-import {
-  getLocalLatestBuildId,
-  getLocalPackageSymbols,
-} from "@/lib/ir/loader";
+import { getBuildIdForLanguage, getSymbols } from "@/lib/ir/loader";
 import type { SymbolRecord } from "@/lib/ir/types";
 
 interface PackagePageProps {
@@ -48,21 +45,13 @@ function toDisplaySymbol(symbol: SymbolRecord): DisplaySymbol {
 }
 
 export async function PackagePage({ language, packageId, packageName }: PackagePageProps) {
-  // Load symbols from local IR
   const irLanguage = language === "python" ? "python" : "javascript";
-  const buildId = await getLocalLatestBuildId(irLanguage);
+  const buildId = await getBuildIdForLanguage(irLanguage);
+  const result = buildId ? await getSymbols(buildId, packageId) : null;
 
-  let symbols: DisplaySymbol[] = [];
-
-  if (buildId) {
-    const result = await getLocalPackageSymbols(buildId, packageId);
-    if (result?.symbols) {
-      // Filter to only public symbols and convert to display format
-      symbols = result.symbols
-        .filter((s) => s.tags?.visibility === "public")
-        .map(toDisplaySymbol);
-    }
-  }
+  const symbols: DisplaySymbol[] = result?.symbols
+    ?.filter((s) => s.tags?.visibility === "public")
+    .map(toDisplaySymbol) ?? [];
 
   // Group symbols by kind
   const classes = symbols.filter((s) => s.kind === "class");
