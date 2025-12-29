@@ -3,18 +3,36 @@
  *
  * Dynamic route handler for JavaScript/TypeScript package and symbol pages.
  * Parses the URL slug and renders the appropriate component.
+ *
+ * This page is statically generated at build time using generateStaticParams.
  */
 
 import { notFound } from "next/navigation";
 import { parseSlugWithLanguage } from "@/lib/utils/url";
 import { SymbolPage } from "@/components/reference/SymbolPage";
 import { PackagePage } from "@/components/reference/PackagePage";
+import { getStaticParamsForLanguage } from "@/lib/ir/loader";
 
 interface Props {
   params: Promise<{
     slug: string[];
   }>;
 }
+
+/**
+ * Generate static params for all JavaScript packages and symbols.
+ * This enables static generation (SSG) for all pages at build time.
+ */
+export async function generateStaticParams(): Promise<{ slug: string[] }[]> {
+  return getStaticParamsForLanguage("javascript");
+}
+
+/**
+ * Allow dynamic params for paths not generated at build time.
+ * Set to false to return 404 for unknown paths.
+ * Set to true to dynamically render unknown paths on-demand.
+ */
+export const dynamicParams = true;
 
 export default async function JavaScriptSymbolPage({ params }: Props) {
   const { slug } = await params;

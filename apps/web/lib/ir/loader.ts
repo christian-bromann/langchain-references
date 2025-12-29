@@ -56,6 +56,9 @@ interface LatestLanguagePointer {
 
 /**
  * Fetch a pointer JSON from Vercel Blob (public access)
+ *
+ * Uses in-memory cache for deduplication. Pointers are small files
+ * that indicate the latest build ID for each language.
  */
 async function fetchPointer<T>(pointerName: string): Promise<T | null> {
   const cacheKey = `pointer:${pointerName}`;
@@ -68,7 +71,9 @@ async function fetchPointer<T>(pointerName: string): Promise<T | null> {
     if (!url) return null;
 
     const response = await fetch(url, {
-      next: { revalidate: 60 }, // Cache for 1 minute (pointers update more frequently)
+      // Use force-cache to enable static generation
+      // In-memory pointerCache handles deduplication during builds
+      cache: "force-cache",
     });
     if (!response.ok) return null;
 
@@ -111,6 +116,11 @@ export async function getLatestBuildIdForLanguage(
 
 /**
  * Fetch JSON from Vercel Blob (public access)
+ *
+ * Uses force-cache to enable static generation. Large files (>2MB) will
+ * show warnings about not being cached, but this is informational only -
+ * the fetch still works and static generation proceeds normally.
+ * The in-memory caches handle deduplication during the build process.
  */
 async function fetchBlobJson<T>(path: string): Promise<T | null> {
   try {
@@ -118,7 +128,9 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
     if (!url) return null;
 
     const response = await fetch(url, {
-      next: { revalidate: 300 }, // Cache for 5 minutes
+      // Use force-cache to enable static generation
+      // Large files (>2MB) will show cache warnings but still work
+      cache: "force-cache",
     });
     if (!response.ok) return null;
 
@@ -247,7 +259,7 @@ export async function getSymbolByPath(
 }
 
 /**
- * Get all symbols for a package
+ * Get all symbols for a package (paginated)
  */
 export async function getPackageSymbols(
   buildId: string,
@@ -436,5 +448,99 @@ export async function getSymbolData(
   return isProduction()
     ? getSymbolByPath(buildId, packageId, symbolPath)
     : getLocalSymbolByPath(buildId, packageId, symbolPath);
+}
+
+// =============================================================================
+// Static Generation Helpers
+// =============================================================================
+// These functions help generate static params for Next.js static generation
+
+/**
+ * Slugify a package name for URLs
+ * @example "@langchain/core" -> "langchain-core"
+ * @example "langchain_core" -> "langchain-core"
+ */
+function slugifyPackageName(packageName: string): string {
+  return packageName
+    .replace(/^@/, "")
+    .replace(/\//g, "-")
+    .replace(/_/g, "-")
+    .toLowerCase();
+}
+
+/**
+ * Get all static params for a language (for Next.js generateStaticParams)
+ * Returns an array of slug arrays for all packages and symbols
+ */
+export async function getStaticParamsForLanguage(
+  language: "python" | "javascript"
+): Promise<{ slug: string[] }[]> {
+  const buildId = await getBuildIdForLanguage(language);
+  if (!buildId) {
+    console.warn(`No build ID found for ${language}`);
+    return [];
+  }
+
+  const manifest = await getManifestData(buildId);
+  if (!manifest) {
+    console.warn(`No manifest found for build ${buildId}`);
+    return [];
+  }
+
+  const params: { slug: string[] }[] = [];
+  const ecosystem = language === "python" ? "python" : "javascript";
+
+  // Filter packages by ecosystem
+  const packages = manifest.packages.filter((p) => p.ecosystem === ecosystem);
+
+  for (const pkg of packages) {
+    const packageSlug = slugifyPackageName(pkg.publishedName);
+
+    // Add package-level route (e.g., /javascript/langchain-core)
+    params.push({ slug: [packageSlug] });
+
+    // Get all symbols for this package
+    const symbolsResult = await getSymbols(buildId, pkg.packageId);
+    if (!symbolsResult?.symbols) continue;
+
+    // Add symbol routes for public symbols
+    for (const symbol of symbolsResult.symbols) {
+      // Only include public symbols
+      if (symbol.tags?.visibility !== "public") continue;
+
+      // Build the URL path from qualifiedName
+      // For JavaScript: qualifiedName is usually just the symbol name (e.g., "ChatDeepSeek")
+      // For Python: qualifiedName includes module path (e.g., "langchain_core.messages.BaseMessage")
+      const symbolPath = symbol.qualifiedName;
+
+      // Convert to URL path segments
+      // For Python: "langchain_core.messages.BaseMessage" -> ["langchain-core", "messages", "BaseMessage"]
+      // For JavaScript: "ChatDeepSeek" -> ["langchain-deepseek", "ChatDeepSeek"]
+      let pathSegments: string[];
+
+      if (language === "python") {
+        // Python: skip the package prefix (first part of qualifiedName)
+        const parts = symbolPath.split(".");
+        if (parts.length > 1) {
+          pathSegments = parts.slice(1); // Skip package name
+        } else {
+          pathSegments = parts;
+        }
+      } else {
+        // JavaScript: just use the qualified name as-is
+        // For modules with paths like "agents/toolkits/aws_sfn", split by /
+        pathSegments = symbolPath.includes("/")
+          ? symbolPath.split("/")
+          : symbolPath.split(".");
+      }
+
+      if (pathSegments.length > 0 && pathSegments[0]) {
+        params.push({ slug: [packageSlug, ...pathSegments] });
+      }
+    }
+  }
+
+  console.log(`Generated ${params.length} static params for ${language}`);
+  return params;
 }
 
