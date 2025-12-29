@@ -13,6 +13,7 @@ import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { SymbolKind } from "@/lib/ir/types";
+import { LanguageDropdown } from "./LanguageDropdown";
 
 /**
  * Navigation item structure
@@ -59,6 +60,11 @@ export function Sidebar({ pythonPackages = [], javascriptPackages = [] }: Sideba
         className="flex-1 pr-5 pt-5 pb-4 overflow-y-auto scrollbar-hide"
         id="navigation-items"
       >
+        {/* Language Dropdown */}
+        <div className="pl-4 mb-2">
+          <LanguageDropdown />
+        </div>
+
         <div className="text-sm relative">
           {/* Package navigation */}
           {packages.map((pkg, index) => (

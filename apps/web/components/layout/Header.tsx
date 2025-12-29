@@ -51,11 +51,6 @@ export function Header() {
                 />
               </Link>
 
-              {/* Primary navigation */}
-              <nav className="hidden lg:flex items-center gap-x-2">
-                <NavLink href="/python">Python</NavLink>
-                <NavLink href="/javascript">JavaScript</NavLink>
-              </nav>
             </div>
 
             {/* Center: Search bar */}
@@ -195,28 +190,4 @@ export function Header() {
   );
 }
 
-/**
- * Navigation link component (Mintlify style)
- */
-function NavLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "py-1.5 px-2.5 rounded-lg",
-        "text-sm font-medium text-gray-900 dark:text-gray-300",
-        "hover:bg-gray-600/5 dark:hover:bg-gray-200/5",
-        "transition-colors"
-      )}
-    >
-      {children}
-    </Link>
-  );
-}
 
