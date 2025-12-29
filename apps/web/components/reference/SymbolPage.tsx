@@ -20,7 +20,7 @@ import { CodeBlock } from "./CodeBlock";
 import { MarkdownContent } from "./MarkdownContent";
 
 interface SymbolPageProps {
-  language: Language;
+  language: "python" | "javascript";
   packageId: string;
   packageName: string;
   symbolPath: string;
@@ -289,7 +289,8 @@ async function findSymbol(
 }
 
 export async function SymbolPage({ language, packageId, packageName, symbolPath }: SymbolPageProps) {
-  const buildId = await getLocalLatestBuildId(language);
+  const irLanguage = language === "python" ? "python" : "javascript";
+  const buildId = await getLocalLatestBuildId(irLanguage);
 
   let symbol: DisplaySymbol | null = null;
   let knownSymbols = new Set<string>();

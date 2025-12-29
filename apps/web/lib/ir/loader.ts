@@ -251,7 +251,7 @@ function getLocalIrBasePath(): string {
  * Get the latest build ID for a language from local symlinks
  */
 export async function getLocalLatestBuildId(
-  language: Language
+  language: "python" | "javascript"
 ): Promise<string | null> {
   try {
     const fs = await import("fs/promises");
