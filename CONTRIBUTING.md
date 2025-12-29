@@ -66,10 +66,6 @@ For full functionality (cloud storage, builds), create a `.env.local` file:
 # Vercel Blob (optional for local dev)
 BLOB_READ_WRITE_TOKEN=your-blob-token
 
-# Vercel KV (optional for local dev)
-KV_REST_API_URL=your-kv-url
-KV_REST_API_TOKEN=your-kv-token
-
 # GitHub (for tarball fetching)
 GITHUB_TOKEN=your-github-token
 
@@ -280,8 +276,7 @@ chore: upgrade dependencies
 
 The platform is deployed on Vercel with:
 
-- **Vercel Blob**: IR artifact storage
-- **Vercel KV**: Latest build pointers
+- **Vercel Blob**: IR artifact storage and build pointers
 - **GitHub Actions**: Build automation
 
 ### Environment Variables (Production)
@@ -291,8 +286,6 @@ Configure in Vercel project settings:
 | Variable                | Description                      | Required |
 | ----------------------- | -------------------------------- | -------- |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob storage token        | Yes      |
-| `KV_REST_API_URL`       | Vercel KV REST API URL           | Yes      |
-| `KV_REST_API_TOKEN`     | Vercel KV REST API token         | Yes      |
 | `GITHUB_TOKEN`          | GitHub PAT with `workflow` scope | Yes      |
 | `GITHUB_REPOSITORY`     | Repository path                  | Yes      |
 | `BUILD_API_TOKEN`       | Secret for `/api/build` endpoint | Yes      |
@@ -304,8 +297,6 @@ Configure in repository settings:
 | Secret                  | Description               |
 | ----------------------- | ------------------------- |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob storage token |
-| `KV_REST_API_URL`       | Vercel KV REST API URL    |
-| `KV_REST_API_TOKEN`     | Vercel KV REST API token  |
 
 ### Vercel Setup
 
@@ -323,15 +314,11 @@ Configure in repository settings:
 1. Create Blob store in Vercel dashboard
 2. Copy `BLOB_READ_WRITE_TOKEN`
 3. IR builds upload automatically
-
-### Vercel KV Setup
-
-1. Create KV database in Vercel dashboard
-2. Copy `KV_REST_API_URL` and `KV_REST_API_TOKEN`
-3. KV stores:
-   - `latest:build` - Current build pointer
-   - `latest:python:*` - Python version pointers
-   - `latest:javascript:*` - JS version pointers
+4. Pointers are stored in Blob at `pointers/` path:
+   - `pointers/latest-build.json` - Current build pointer
+   - `pointers/latest-python.json` - Python build pointer
+   - `pointers/latest-javascript.json` - JS build pointer
+   - `pointers/packages/{ecosystem}/{name}.json` - Package version pointers
 
 ### Triggering Builds
 
@@ -355,8 +342,6 @@ curl -X POST https://reference.langchain.com/api/build \
 ```bash
 # Set environment variables
 export BLOB_READ_WRITE_TOKEN="your-token"
-export KV_REST_API_URL="your-url"
-export KV_REST_API_TOKEN="your-token"
 export GITHUB_TOKEN="your-token"
 
 # Build and upload TypeScript IR
@@ -377,7 +362,6 @@ pnpm build:ir --config configs/python.json
 | `--dry-run`       | Generate without uploading                |
 | `--local`         | Skip all cloud uploads                    |
 | `--skip-upload`   | Skip Vercel Blob upload                   |
-| `--skip-kv`       | Skip Vercel KV updates                    |
 | `-v, --verbose`   | Verbose output                            |
 
 ---
@@ -388,7 +372,7 @@ pnpm build:ir --config configs/python.json
 
 #### "No latest build found"
 
-The KV database is missing the build pointer. Run a full build:
+The Blob storage is missing the build pointer. Run a full build:
 
 ```bash
 pnpm build:ir --config configs/typescript.json
@@ -413,11 +397,6 @@ pip install griffe
 - Verify `BLOB_READ_WRITE_TOKEN` is correct
 - Ensure token has write permissions
 
-#### KV update fails
-
-- Verify `KV_REST_API_URL` and `KV_REST_API_TOKEN`
-- Check Vercel KV dashboard for issues
-
 ### Viewing Logs
 
 #### GitHub Actions
@@ -434,35 +413,39 @@ pip install griffe
 
 ### Debugging IR Data
 
-Check KV contents:
-
-```typescript
-import { kv } from "@vercel/kv";
-
-const latest = await kv.get("latest:build");
-console.log("Latest build:", latest);
-
-const keys = await kv.keys("*");
-console.log("All keys:", keys);
-```
-
 Check Blob contents:
 
 ```typescript
 import { list } from "@vercel/blob";
 
+// List all blobs
 const blobs = await list();
 console.log("Blobs:", blobs);
+
+// Check pointers
+const pointersResponse = await fetch(
+  `${process.env.BLOB_URL}/pointers/latest-build.json`
+);
+const latestBuild = await pointersResponse.json();
+console.log("Latest build:", latestBuild);
 ```
 
 ### Rollback
 
-Update KV to point to a previous build:
+Update the build pointer to a previous build:
 
 ```typescript
-import { kv } from "@vercel/kv";
+import { put } from "@vercel/blob";
 
-await kv.set("latest:build", { buildId: "previous-build-id" });
+await put(
+  "pointers/latest-build.json",
+  JSON.stringify({
+    buildId: "previous-build-id",
+    updatedAt: new Date().toISOString(),
+    packages: 0,
+  }),
+  { access: "public", allowOverwrite: true }
+);
 ```
 
 ---

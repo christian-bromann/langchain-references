@@ -45,7 +45,7 @@ flowchart TB
     
     subgraph STORAGE["STORAGE LAYER"]
         BLOB["Vercel Blob<br/><br/>/ir/{buildId}/<br/>manifest.json<br/>routing/*.json<br/>symbols/*.json<br/>search/*.json"]
-        KV["Vercel KV<br/><br/>latest:python:*<br/>latest:js:*<br/>build:*"]
+        PTRS["Vercel Blob<br/><br/>/pointers/<br/>latest-build.json<br/>latest-python.json<br/>latest-javascript.json"]
     end
     
     subgraph RENDER["RENDERING LAYER"]
@@ -85,7 +85,7 @@ langchain-reference-docs/
 │   ├── build-ir.ts                   # Main build orchestrator
 │   ├── fetch-tarball.ts              # GitHub tarball fetcher
 │   ├── upload-ir.ts                  # Vercel Blob uploader
-│   └── update-kv.ts                  # Vercel KV updater
+│   └── update-kv.ts                  # Build pointer updater
 │
 ├── configs/                          # Build configurations
 │   ├── python.json                   # Python packages config
@@ -244,7 +244,7 @@ The build pipeline extracts documentation from source repositories:
 2. **Extract**: Run language-specific extractors (griffe/TypeDoc)
 3. **Transform**: Convert to normalized IR format
 4. **Upload**: Store in Vercel Blob (or local filesystem)
-5. **Index**: Update Vercel KV pointers
+5. **Index**: Update build pointers in Vercel Blob
 
 ### Build Commands
 

@@ -8,7 +8,7 @@
  * 3. Runs Python or TypeScript extractors
  * 4. Transforms output to IR format
  * 5. Uploads to Vercel Blob
- * 6. Updates Vercel KV pointers
+ * 6. Updates build pointers in Vercel Blob
  */
 
 import { program } from "commander";
@@ -293,16 +293,16 @@ async function main() {
     .option("--dry-run", "Generate locally without uploading")
     .option("--local", "Local-only mode (skip all cloud uploads)")
     .option("--skip-upload", "Skip upload to Vercel Blob")
-    .option("--skip-kv", "Skip Vercel KV updates")
+    .option("--skip-pointers", "Skip updating build pointers")
     .option("-v, --verbose", "Enable verbose output")
     .parse();
 
   const opts = program.opts();
 
-  // --local is a convenience flag that sets both --skip-upload and --skip-kv
+  // --local is a convenience flag that sets both --skip-upload and --skip-pointers
   if (opts.local) {
     opts.skipUpload = true;
-    opts.skipKv = true;
+    opts.skipPointers = true;
   }
 
   console.log("🔧 LangChain Reference Docs - IR Build Pipeline");
@@ -390,8 +390,8 @@ async function main() {
       });
     } catch (error) {
       console.error(`\n❌ Upload failed: ${error}`);
-      if (!opts.skipKv) {
-        console.log("   Skipping KV update due to upload failure");
+      if (!opts.skipPointers) {
+        console.log("   Skipping pointer update due to upload failure");
       }
       process.exit(1);
     }
@@ -401,8 +401,8 @@ async function main() {
     console.log("\n⏭️  Skipping upload (--skip-upload)");
   }
 
-  // Update Vercel KV
-  if (!opts.dryRun && !opts.skipKv) {
+  // Update build pointers
+  if (!opts.dryRun && !opts.skipPointers) {
     try {
       await updateKV({
         buildId,
@@ -410,13 +410,13 @@ async function main() {
         dryRun: opts.dryRun,
       });
     } catch (error) {
-      console.error(`\n❌ KV update failed: ${error}`);
+      console.error(`\n❌ Pointer update failed: ${error}`);
       process.exit(1);
     }
   } else if (opts.dryRun) {
-    console.log("\n🔍 Dry run mode - skipping KV update");
+    console.log("\n🔍 Dry run mode - skipping pointer update");
   } else {
-    console.log("\n⏭️  Skipping KV update (--skip-kv)");
+    console.log("\n⏭️  Skipping pointer update (--skip-pointers)");
   }
 
   // Create language-specific "latest" symlink

@@ -10,7 +10,6 @@
   "dependencies": {
     "@langchain/ir-schema": "workspace:*",
     "@vercel/blob": "^2.0.0",
-    "@vercel/kv": "^3.0.0",
     "commander": "^14.0.2",
     "tar": "^7.5.2",
     "tinyglobby": "^0.2.14"

@@ -1,13 +1,12 @@
 /**
- * IR Loader - Utilities for loading IR data from Vercel Blob/KV
+ * IR Loader - Utilities for loading IR data from Vercel Blob
  */
 
-import { kv } from "@vercel/kv";
 import { getDownloadUrl } from "@vercel/blob";
 import type { Manifest, Package, SymbolRecord, RoutingMap } from "./types";
-import type { Language } from "@langchain/ir-schema";
 
 const IR_BASE_PATH = "ir";
+const POINTERS_PATH = "pointers";
 
 /**
  * Cache for manifest data (in-memory for the request lifecycle)
@@ -15,16 +14,61 @@ const IR_BASE_PATH = "ir";
 const manifestCache = new Map<string, Manifest>();
 const routingCache = new Map<string, RoutingMap>();
 const symbolShardCache = new Map<string, SymbolRecord[]>();
+const pointerCache = new Map<string, unknown>();
 
 /**
- * Get the latest build ID from Vercel KV
+ * Pointer types stored in Blob
+ */
+interface LatestBuildPointer {
+  buildId: string;
+  updatedAt: string;
+  packages: number;
+}
+
+interface LatestLanguagePointer {
+  buildId: string;
+  updatedAt: string;
+}
+
+/**
+ * Fetch a pointer JSON from Vercel Blob
+ */
+async function fetchPointer<T>(pointerName: string): Promise<T | null> {
+  const cacheKey = `pointer:${pointerName}`;
+  if (pointerCache.has(cacheKey)) {
+    return pointerCache.get(cacheKey) as T;
+  }
+
+  try {
+    const path = `${POINTERS_PATH}/${pointerName}.json`;
+    const url = await getDownloadUrl(path);
+    if (!url) {
+      return null;
+    }
+    const response = await fetch(url, {
+      next: { revalidate: 60 }, // Cache for 1 minute (pointers update more frequently)
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const data = await response.json();
+    pointerCache.set(cacheKey, data);
+    return data;
+  } catch (error) {
+    console.error(`Failed to fetch pointer: ${pointerName}`, error);
+    return null;
+  }
+}
+
+/**
+ * Get the latest build ID from Vercel Blob
  */
 export async function getLatestBuildId(): Promise<string | null> {
   try {
-    const buildId = await kv.get<string>("latest:build");
-    return buildId;
+    const pointer = await fetchPointer<LatestBuildPointer>("latest-build");
+    return pointer?.buildId || null;
   } catch (error) {
-    console.error("Failed to get latest build ID from KV:", error);
+    console.error("Failed to get latest build ID:", error);
     return null;
   }
 }
@@ -36,8 +80,8 @@ export async function getLatestBuildIdForLanguage(
   language: "python" | "javascript"
 ): Promise<string | null> {
   try {
-    const buildId = await kv.get<string>(`latest:${language}`);
-    return buildId;
+    const pointer = await fetchPointer<LatestLanguagePointer>(`latest-${language}`);
+    return pointer?.buildId || null;
   } catch (error) {
     console.error(`Failed to get latest ${language} build ID:`, error);
     return null;

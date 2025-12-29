@@ -11,14 +11,17 @@ export { uploadIR, cleanupOldBuilds } from "./upload-ir.js";
 export type { UploadOptions, UploadResult } from "./upload-ir.js";
 
 export {
-  updateKV,
+  updatePointers,
+  updateKV, // Alias for backwards compatibility
   getLatestBuildId,
   getBuildMetadata,
   getLatestPackageVersion,
   getBuildHistory,
   markBuildFailed,
 } from "./update-kv.js";
-export type { KVUpdateOptions, BuildMetadata, LatestPointer } from "./update-kv.js";
+export type { PointerUpdateOptions, BuildMetadata, LatestPointer } from "./update-kv.js";
+// Backwards compatibility alias
+export type { PointerUpdateOptions as KVUpdateOptions } from "./update-kv.js";
 
 
 

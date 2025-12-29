@@ -6,8 +6,6 @@
 # Environment variables required:
 # - GITHUB_TOKEN: For fetching source tarballs
 # - BLOB_READ_WRITE_TOKEN: For uploading to Vercel Blob
-# - KV_REST_API_URL: Vercel KV REST API URL
-# - KV_REST_API_TOKEN: Vercel KV REST API token
 
 name: Build IR
 
@@ -94,8 +92,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
-          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
-          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
 
       - name: Upload IR artifacts
         if: ${{ inputs.dry_run }}
@@ -146,8 +142,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
-          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
-          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
 
       - name: Upload IR artifacts
         if: ${{ inputs.dry_run }}
