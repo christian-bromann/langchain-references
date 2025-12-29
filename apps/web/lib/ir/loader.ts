@@ -461,8 +461,10 @@ export async function getSymbolData(
  * - Packages: always included (handled separately)
  * - Modules: important for navigation and discovery
  * - Functions: commonly accessed, standalone pages
+ * - Classes: core API elements, frequently accessed
+ * - Methods: class methods, important for API usage
  */
-const STATIC_GENERATION_KINDS = new Set(["module", "function"]);
+const STATIC_GENERATION_KINDS = new Set(["module", "function", "class", "method"]);
 
 /**
  * Slugify a package name for URLs
