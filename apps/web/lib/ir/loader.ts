@@ -53,6 +53,7 @@ async function fetchPointer<T>(pointerName: string): Promise<T | null> {
 
   try {
     const path = `${POINTERS_PATH}/${pointerName}.json`;
+    console.log("path", path);
     const url = await getDownloadUrl(path);
     if (!url) {
       return null;
