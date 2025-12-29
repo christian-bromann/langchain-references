@@ -32,6 +32,7 @@ function getPackageSlug(pkg: Package, language: "python" | "javascript"): string
  *   list them in the sidebar with `index` first.
  * - If a package doesn't have named exports (just exports classes/functions from a
  *   single entry point), return empty items - users click the package name to explore.
+ * - Hide `index` modules that don't have any exports (no members).
  */
 function buildNavItems(
   symbols: SymbolRecord[],
@@ -46,7 +47,9 @@ function buildNavItems(
         s.tags?.visibility === "public" &&
         // Only show top-level modules (no nested slashes for JS, no nested dots for Python)
         !s.name.includes("/") &&
-        !s.name.slice(s.name.indexOf(".") + 1).includes(".")
+        !s.name.slice(s.name.indexOf(".") + 1).includes(".") &&
+        // Hide `index` modules without exports (no members)
+        !(s.name === "index" && (!s.members || s.members.length === 0))
     )
     .map((s) => ({
       name: s.name,

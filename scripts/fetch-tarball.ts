@@ -166,6 +166,75 @@ async function installDependencies(extractedPath: string): Promise<void> {
     console.warn(`   ⚠️  Could not install dependencies: ${error.message?.slice(0, 100)}`);
     console.warn("   ⚠️  External types may show as 'any'");
   }
+
+  // For TypeScript projects, try to build to generate type declarations
+  // This enables TypeDoc to resolve types from workspace dependencies
+  await buildTypeDeclarations(extractedPath, pm);
+}
+
+/**
+ * Build TypeScript declarations for workspace packages.
+ * This helps TypeDoc resolve types from sibling packages in a monorepo.
+ */
+async function buildTypeDeclarations(
+  extractedPath: string,
+  packageManager: "pnpm" | "yarn" | "npm"
+): Promise<void> {
+  const { execSync } = await import("child_process");
+
+  // Check if this is a TypeScript project with a build script
+  const packageJsonPath = path.join(extractedPath, "package.json");
+  try {
+    const content = await fs.readFile(packageJsonPath, "utf-8");
+    const packageJson = JSON.parse(content);
+
+    // Check for a build:types or build script
+    const scripts = packageJson.scripts || {};
+    const hasBuildTypes = scripts["build:types"] || scripts["build"];
+
+    if (!hasBuildTypes) {
+      return;
+    }
+
+    // Check if types are already built
+    const buildMarkerPath = path.join(extractedPath, ".types-built");
+    try {
+      await fs.access(buildMarkerPath);
+      console.log("   Types already built, skipping");
+      return;
+    } catch {
+      // Marker doesn't exist, proceed with build
+    }
+
+    console.log("   🔨 Building type declarations...");
+
+    // Try build:types first, then fall back to build
+    const buildCmd = scripts["build:types"]
+      ? `${packageManager} run build:types`
+      : `${packageManager} run build`;
+
+    try {
+      execSync(buildCmd, {
+        cwd: extractedPath,
+        stdio: "pipe",
+        timeout: 900000, // 15 minute timeout for builds
+        env: {
+          ...process.env,
+          // Skip tests and linting during build
+          CI: "true",
+        },
+      });
+
+      await fs.writeFile(buildMarkerPath, new Date().toISOString());
+      console.log("   ✅ Type declarations built");
+    } catch (error: any) {
+      // Building is optional - extraction will still work but with some "unknown" types
+      console.warn(`   ⚠️  Could not build types: ${error.message?.slice(0, 100)}`);
+      console.warn("   ⚠️  Some external type references may show as 'unknown'");
+    }
+  } catch {
+    // No package.json or couldn't read it
+  }
 }
 
 /**

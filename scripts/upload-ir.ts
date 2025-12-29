@@ -14,6 +14,9 @@ import fs from "fs/promises";
 import path from "path";
 import type { Manifest, SymbolRecord, RoutingMap, SearchIndex } from "@langchain/ir-schema";
 
+// Maximum concurrent uploads to avoid overwhelming the API
+const MAX_CONCURRENT_UPLOADS = 50;
+
 export interface UploadOptions {
   buildId: string;
   irOutputPath: string;
@@ -27,6 +30,11 @@ export interface UploadResult {
   totalSize: number;
 }
 
+interface UploadTask {
+  blobPath: string;
+  content: string | Buffer;
+}
+
 /**
  * Upload a single file to Vercel Blob.
  */
@@ -38,7 +46,6 @@ async function uploadFile(
   const size = Buffer.byteLength(content);
 
   if (dryRun) {
-    console.log(`  [dry-run] Would upload: ${blobPath} (${size} bytes)`);
     return { url: `https://blob.vercel-storage.com/${blobPath}`, size };
   }
 
@@ -49,6 +56,40 @@ async function uploadFile(
   });
 
   return { url: blob.url, size };
+}
+
+/**
+ * Upload multiple files in parallel with concurrency limit.
+ */
+async function uploadFilesInParallel(
+  tasks: UploadTask[],
+  dryRun: boolean,
+  onProgress?: (completed: number, total: number) => void
+): Promise<{ filesUploaded: number; totalSize: number }> {
+  let filesUploaded = 0;
+  let totalSize = 0;
+  let completed = 0;
+
+  // Process tasks in batches
+  for (let i = 0; i < tasks.length; i += MAX_CONCURRENT_UPLOADS) {
+    const batch = tasks.slice(i, i + MAX_CONCURRENT_UPLOADS);
+
+    const results = await Promise.all(
+      batch.map(async (task) => {
+        const result = await uploadFile(task.blobPath, task.content, dryRun);
+        completed++;
+        onProgress?.(completed, tasks.length);
+        return result;
+      })
+    );
+
+    for (const result of results) {
+      filesUploaded++;
+      totalSize += result.size;
+    }
+  }
+
+  return { filesUploaded, totalSize };
 }
 
 /**
@@ -187,6 +228,7 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
   const { buildId, irOutputPath, dryRun = false } = options;
 
   console.log(`\n☁️  Uploading IR artifacts for build ${buildId}`);
+  console.log(`   Concurrency: ${MAX_CONCURRENT_UPLOADS} parallel uploads`);
   if (dryRun) {
     console.log("   (dry-run mode - no actual uploads)\n");
   }
@@ -199,8 +241,8 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
   const manifestContent = await fs.readFile(manifestPath, "utf-8");
   const manifest: Manifest = JSON.parse(manifestContent);
 
-  // Upload manifest
-  console.log("📄 Uploading manifest...");
+  // Upload manifest first (single file, quick)
+  console.log("\n📄 Uploading manifest...");
   const manifestResult = await uploadFile(
     `ir/${buildId}/reference.manifest.json`,
     manifestContent,
@@ -208,11 +250,14 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
   );
   filesUploaded++;
   totalSize += manifestResult.size;
+  console.log("   ✓ Manifest uploaded");
 
-  // Process each package
+  // Collect all upload tasks
+  console.log("\n📦 Preparing upload tasks...");
+  const uploadTasks: UploadTask[] = [];
+  const packageSymbolCounts: Map<string, number> = new Map();
+
   for (const pkg of manifest.packages) {
-    console.log(`\n📦 Processing package: ${pkg.displayName}`);
-
     // Load symbols for this package
     const symbolsPath = path.join(irOutputPath, "packages", pkg.packageId, "symbols.json");
     let symbols: SymbolRecord[] = [];
@@ -222,48 +267,38 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
       const parsed = JSON.parse(symbolsContent);
       // Handle both formats: { symbols: [...] } or just [...]
       symbols = Array.isArray(parsed) ? parsed : (parsed.symbols || []);
-    } catch (error) {
+    } catch {
       console.log(`   ⚠️  No symbols file found for ${pkg.packageId}`);
       continue;
     }
 
-    console.log(`   Found ${symbols.length} symbols`);
+    packageSymbolCounts.set(pkg.displayName, symbols.length);
 
-    // Upload routing map
+    // Add routing map task
     const routingMap = generateRoutingMap(
       pkg.packageId,
       pkg.displayName,
       pkg.language,
       symbols
     );
-    const routingContent = JSON.stringify(routingMap, null, 2);
-    const routingPath = `ir/${buildId}/routing/${pkg.language}/${pkg.packageId}.json`;
+    uploadTasks.push({
+      blobPath: `ir/${buildId}/routing/${pkg.language}/${pkg.packageId}.json`,
+      content: JSON.stringify(routingMap, null, 2),
+    });
 
-    const routingResult = await uploadFile(routingPath, routingContent, dryRun);
-    filesUploaded++;
-    totalSize += routingResult.size;
-    console.log(`   ✓ Routing map uploaded`);
-
-    // Upload sharded symbols
+    // Add symbol tasks
     const shards = shardSymbols(symbols);
-    console.log(`   Uploading ${shards.size} symbol shards...`);
-
     for (const [shardKey, shardSymbols] of shards) {
       for (const symbol of shardSymbols) {
-        const symbolContent = JSON.stringify(symbol, null, 2);
-        const symbolPath = `ir/${buildId}/symbols/${shardKey}/${symbol.id}.json`;
-
-        const symbolResult = await uploadFile(symbolPath, symbolContent, dryRun);
-        filesUploaded++;
-        totalSize += symbolResult.size;
+        uploadTasks.push({
+          blobPath: `ir/${buildId}/symbols/${shardKey}/${symbol.id}.json`,
+          content: JSON.stringify(symbol, null, 2),
+        });
       }
     }
-    console.log(`   ✓ ${symbols.length} symbols uploaded`);
   }
 
-  // Generate and upload search indices
-  console.log("\n🔍 Generating search indices...");
-
+  // Add search index tasks
   for (const language of ["python", "typescript"] as const) {
     const languageSymbols: SymbolRecord[] = [];
 
@@ -283,20 +318,49 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
     if (languageSymbols.length === 0) continue;
 
     const searchIndex = generateSearchIndex(buildId, language, languageSymbols);
-    const searchContent = JSON.stringify(searchIndex);
-    const searchPath = `ir/${buildId}/search/${language}.json`;
-
-    const searchResult = await uploadFile(searchPath, searchContent, dryRun);
-    filesUploaded++;
-    totalSize += searchResult.size;
-    console.log(`   ✓ ${language} search index (${searchIndex.totalRecords} records)`);
+    uploadTasks.push({
+      blobPath: `ir/${buildId}/search/${language}.json`,
+      content: JSON.stringify(searchIndex),
+    });
   }
 
+  // Log summary
+  console.log(`   Packages: ${packageSymbolCounts.size}`);
+  for (const [pkgName, count] of packageSymbolCounts) {
+    console.log(`     - ${pkgName}: ${count} symbols`);
+  }
+  console.log(`   Total upload tasks: ${uploadTasks.length}`);
+
+  // Upload all files in parallel
+  console.log("\n⬆️  Uploading files...");
+  const startTime = Date.now();
+  let lastProgressLog = 0;
+
+  const result = await uploadFilesInParallel(
+    uploadTasks,
+    dryRun,
+    (completed, total) => {
+      // Log progress every 10% or every 100 files
+      const progress = Math.floor((completed / total) * 100);
+      if (progress >= lastProgressLog + 10 || completed === total) {
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`   Progress: ${completed}/${total} (${progress}%) - ${elapsed}s elapsed`);
+        lastProgressLog = progress;
+      }
+    }
+  );
+
+  filesUploaded += result.filesUploaded;
+  totalSize += result.totalSize;
+
+  const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
   const uploadedAt = new Date().toISOString();
 
   console.log(`\n✅ Upload complete!`);
   console.log(`   Files: ${filesUploaded}`);
   console.log(`   Total size: ${(totalSize / 1024).toFixed(1)} KB`);
+  console.log(`   Time: ${totalTime}s`);
+  console.log(`   Speed: ${(filesUploaded / parseFloat(totalTime)).toFixed(1)} files/sec`);
 
   return {
     buildId,

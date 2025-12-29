@@ -14,14 +14,14 @@ export default function HomePage() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
-            href="/python/langchain"
+            href="/python"
             className="px-6 py-3 rounded-lg bg-primary text-white font-medium
                      hover:bg-primary-dark transition-colors"
           >
             Python Reference
           </Link>
           <Link
-            href="/javascript/@langchain/core"
+            href="/javascript"
             className="px-6 py-3 rounded-lg border border-border bg-background-secondary
                      text-foreground font-medium hover:border-primary transition-colors"
           >

@@ -102,7 +102,8 @@ async function main(): Promise<void> {
         config.packageName,
         config.repo,
         config.sha,
-        options.sourcePathPrefix
+        options.sourcePathPrefix,
+        config.packagePath  // Pass package path for AST fallback resolution
       );
 
       const symbols = transformer.transform();

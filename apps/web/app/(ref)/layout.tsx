@@ -29,13 +29,10 @@ export default function ReferenceLayout({
 
         {/* Main content - full width on mobile */}
         <main className="flex-1 min-w-0">
-          <div className="max-w-content mx-auto px-6 py-8">
+          <div className="px-6 py-8">
             {children}
           </div>
         </main>
-
-        {/* Table of Contents placeholder - will be populated by page components */}
-        <div className="hidden xl:block w-toc shrink-0" />
         </div>
       </div>
     </div>

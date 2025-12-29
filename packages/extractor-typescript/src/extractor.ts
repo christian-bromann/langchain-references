@@ -130,20 +130,33 @@ async function resolveEntryPoints(
  * Returns the parsed config if successful, or null if resolution fails.
  */
 function tryResolveTsconfig(
-  tsconfigPath: string
+  tsconfigPath: string,
+  workingDir?: string
 ): { config: ts.ParsedCommandLine; error?: undefined } | { config?: undefined; error: string } {
-  const configFile = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
+  const absoluteTsconfigPath = path.resolve(tsconfigPath);
+  const configDir = path.dirname(absoluteTsconfigPath);
+
+  // Use the package directory as the base for resolution, not the cwd
+  // This is important for monorepos where node_modules is at a different level
+  const resolveDir = workingDir ? path.resolve(workingDir) : configDir;
+
+  // Create a custom CompilerHost that resolves from the package directory
+  const customSys: ts.System = {
+    ...ts.sys,
+    getCurrentDirectory: () => resolveDir,
+  };
+
+  const configFile = ts.readConfigFile(absoluteTsconfigPath, ts.sys.readFile);
   if (configFile.error) {
     return { error: ts.flattenDiagnosticMessageText(configFile.error.messageText, "\n") };
   }
 
-  const configDir = path.dirname(tsconfigPath);
   const parsed = ts.parseJsonConfigFileContent(
     configFile.config,
-    ts.sys,
+    customSys,
     configDir,
     undefined,
-    tsconfigPath
+    absoluteTsconfigPath
   );
 
   // Check for errors (especially unresolved extends)
@@ -178,7 +191,8 @@ export class TypeScriptExtractor {
    */
   private isTsconfigUsable(tsconfigPath: string): boolean {
     try {
-      const result = tryResolveTsconfig(tsconfigPath);
+      // Pass the package path as the working directory for proper module resolution
+      const result = tryResolveTsconfig(tsconfigPath, this.config.packagePath);
       if (result.error) {
         console.log(`   ⚠️  tsconfig resolution failed: ${result.error}`);
         return false;

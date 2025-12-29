@@ -14,16 +14,75 @@ import {
   getLocalLatestBuildId,
   getLocalSymbolByPath,
   getLocalPackageSymbols,
+  getLocalManifest,
 } from "@/lib/ir/loader";
 import type { Language } from "@langchain/ir-schema";
 import { CodeBlock } from "./CodeBlock";
 import { MarkdownContent } from "./MarkdownContent";
+import { TableOfContents, type TOCSection, type TOCItem, type TOCInheritedGroup } from "./TableOfContents";
 
 interface SymbolPageProps {
   language: "python" | "javascript";
   packageId: string;
   packageName: string;
   symbolPath: string;
+}
+
+/**
+ * Format a long function/method signature to be multi-line.
+ * When a signature exceeds a reasonable width, each parameter is placed on its own line.
+ */
+function formatSignature(signature: string, language: UrlLanguage): string {
+  // Only format if signature contains parentheses (functions/methods)
+  const parenStart = signature.indexOf("(");
+  const parenEnd = signature.lastIndexOf(")");
+
+  if (parenStart === -1 || parenEnd === -1 || parenEnd <= parenStart) {
+    return signature;
+  }
+
+  // Check if signature is "long" - threshold of 80 characters
+  if (signature.length <= 80) {
+    return signature;
+  }
+
+  const prefix = signature.slice(0, parenStart + 1); // e.g., "handleText("
+  const paramsStr = signature.slice(parenStart + 1, parenEnd); // e.g., "text: string, runId: string, ..."
+  const suffix = signature.slice(parenEnd); // e.g., "): void | Promise<void>"
+
+  // Parse parameters - handle nested generics and brackets
+  const params: string[] = [];
+  let current = "";
+  let depth = 0;
+
+  for (const char of paramsStr) {
+    if (char === "<" || char === "[" || char === "{" || char === "(") {
+      depth++;
+      current += char;
+    } else if (char === ">" || char === "]" || char === "}" || char === ")") {
+      depth--;
+      current += char;
+    } else if (char === "," && depth === 0) {
+      params.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  if (current.trim()) {
+    params.push(current.trim());
+  }
+
+  // If only 1-2 params and not too long, keep on one line
+  if (params.length <= 2 && signature.length <= 100) {
+    return signature;
+  }
+
+  // Format with each parameter on its own line
+  const indent = "  ";
+  const formattedParams = params.map((p) => `${indent}${p}`).join(",\n");
+
+  return `${prefix}\n${formattedParams}\n${suffix}`;
 }
 
 /**
@@ -54,8 +113,8 @@ function getDisplayCode(
     }
   }
 
-  // For other symbols, return the signature as-is
-  return symbol.signature;
+  // For other symbols, format the signature if it's long
+  return formatSignature(symbol.signature, language);
 }
 
 /**
@@ -83,6 +142,17 @@ interface DisplaySymbol {
   };
   members?: DisplayMember[];
   bases?: string[];
+  inheritedMembers?: InheritedMemberGroup[];
+}
+
+/**
+ * A group of inherited members from a base class
+ */
+interface InheritedMemberGroup {
+  baseName: string;
+  basePackageId?: string;
+  basePackageName?: string;
+  members: DisplayMember[];
 }
 
 /**
@@ -144,7 +214,8 @@ function extractTypeFromSignature(signature: string, kind: string): string | und
  */
 function toDisplaySymbol(
   symbol: SymbolRecord,
-  memberSymbols?: Map<string, SymbolRecord>
+  memberSymbols?: Map<string, SymbolRecord>,
+  inheritedMembers?: InheritedMemberGroup[]
 ): DisplaySymbol {
   // Build sections from params if available
   const sections: DocSection[] = [];
@@ -217,6 +288,7 @@ function toDisplaySymbol(
       : undefined,
     members,
     bases: symbol.relations?.extends,
+    inheritedMembers,
   };
 }
 
@@ -224,6 +296,137 @@ function toDisplaySymbol(
  * Kind prefixes used in URLs that should be stripped when looking up symbols
  */
 const KIND_PREFIXES = ["modules", "classes", "functions", "interfaces", "types", "enums", "variables", "methods", "propertys", "namespaces"];
+
+/**
+ * Generate Table of Contents data from a symbol
+ */
+function generateTOCData(
+  symbol: DisplaySymbol
+): { topItems: TOCItem[]; sections: TOCSection[]; inheritedGroups: TOCInheritedGroup[] } {
+  const topItems: TOCItem[] = [];
+  const sections: TOCSection[] = [];
+  const inheritedGroups: TOCInheritedGroup[] = [];
+
+  // Add examples to top items if present
+  if (symbol.docs?.sections) {
+    const exampleSections = symbol.docs.sections.filter((s) => s.kind === "example");
+    if (exampleSections.length > 0) {
+      topItems.push({
+        id: "examples",
+        label: "Examples",
+      });
+    }
+
+    // Add parameters section if present
+    const paramSections = symbol.docs.sections.filter(
+      (s) => s.kind === "parameters" || s.kind === "attributes"
+    );
+    if (paramSections.length > 0) {
+      topItems.push({
+        id: "parameters",
+        label: "Parameters",
+      });
+    }
+  }
+
+  // Group members by kind for sections
+  if (symbol.members && symbol.members.length > 0) {
+    const groupedMembers = symbol.members.reduce(
+      (acc, member) => {
+        const kind = member.kind;
+        if (!Object.hasOwn(acc, kind)) {
+          acc[kind] = [];
+        }
+        acc[kind].push(member);
+        return acc;
+      },
+      Object.create(null) as Record<string, DisplayMember[]>
+    );
+
+    const kindOrder = [
+      "constructor",
+      "property",
+      "attribute",
+      "accessor",
+      "method",
+      "function",
+    ];
+
+    const kindLabels: Record<string, string> = {
+      constructor: "Constructors",
+      property: "Properties",
+      attribute: "Attributes",
+      accessor: "Accessors",
+      method: "Methods",
+      function: "Functions",
+    };
+
+    for (const kind of kindOrder) {
+      if (groupedMembers[kind] && groupedMembers[kind].length > 0) {
+        sections.push({
+          id: `section-${kind}`,
+          title: kindLabels[kind] || `${kind.charAt(0).toUpperCase()}${kind.slice(1)}s`,
+          items: groupedMembers[kind].map((member) => ({
+            id: `member-${member.name}`,
+            label: member.name,
+            kind: member.kind,
+          })),
+        });
+      }
+    }
+  }
+
+  // Add inherited members as nested groups
+  if (symbol.inheritedMembers && symbol.inheritedMembers.length > 0) {
+    for (const group of symbol.inheritedMembers) {
+      const inheritedGrouped = group.members.reduce(
+        (acc, member) => {
+          const kind = member.kind;
+          if (!Object.hasOwn(acc, kind)) {
+            acc[kind] = [];
+          }
+          acc[kind].push(member);
+          return acc;
+        },
+        Object.create(null) as Record<string, DisplayMember[]>
+      );
+
+      const kindOrder = ["property", "attribute", "accessor", "method", "function"];
+      const kindLabels: Record<string, string> = {
+        property: "Properties",
+        attribute: "Attributes",
+        accessor: "Accessors",
+        method: "Methods",
+        function: "Functions",
+      };
+
+      const nestedSections: TOCSection[] = [];
+      for (const kind of kindOrder) {
+        if (inheritedGrouped[kind] && inheritedGrouped[kind].length > 0) {
+          nestedSections.push({
+            id: `inherited-${group.baseName}-${kind}`,
+            title: kindLabels[kind] || `${kind.charAt(0).toUpperCase()}${kind.slice(1)}s`,
+            items: inheritedGrouped[kind].map((member) => ({
+              id: `inherited-${group.baseName}-${member.name}`,
+              label: member.name,
+              kind: member.kind,
+            })),
+          });
+        }
+      }
+
+      if (nestedSections.length > 0) {
+        inheritedGroups.push({
+          id: `inherited-${group.baseName}`,
+          baseName: group.baseName,
+          sections: nestedSections,
+        });
+      }
+    }
+  }
+
+  return { topItems, sections, inheritedGroups };
+}
 
 /**
  * Find a symbol by path, trying different variations
@@ -288,6 +491,178 @@ async function findSymbol(
   return null;
 }
 
+/**
+ * Resolve inherited members from base classes.
+ * Searches for base class symbols in the current package and other packages.
+ * Recursively follows the inheritance chain.
+ */
+async function resolveInheritedMembers(
+  buildId: string,
+  currentPackageId: string,
+  baseClassNames: string[],
+  ownMemberNames: string[],
+  currentPackageSymbols: SymbolRecord[]
+): Promise<InheritedMemberGroup[]> {
+  const inheritedGroups: InheritedMemberGroup[] = [];
+  const ownMemberSet = new Set(ownMemberNames);
+  const processedBases = new Set<string>();
+
+  // Get manifest to find all packages for cross-package inheritance
+  const manifest = await getLocalManifest(buildId);
+  const allPackageIds = manifest?.packages.map((p) => p.packageId) || [];
+
+  // Helper to find a symbol by name across all packages
+  async function findBaseSymbol(
+    simpleBaseName: string
+  ): Promise<{ symbol: SymbolRecord; packageId: string; packageName: string } | null> {
+    // First, try to find in current package
+    let baseSymbol =
+      currentPackageSymbols.find(
+        (s) =>
+          (s.kind === "class" || s.kind === "interface") &&
+          (s.name === simpleBaseName ||
+            s.qualifiedName === simpleBaseName ||
+            s.qualifiedName.endsWith(`.${simpleBaseName}`))
+      ) || null;
+
+    if (baseSymbol) {
+      const pkg = manifest?.packages.find((p) => p.packageId === currentPackageId);
+      return {
+        symbol: baseSymbol,
+        packageId: currentPackageId,
+        packageName: pkg?.publishedName || "",
+      };
+    }
+
+    // Search in other packages (like @langchain/core)
+    for (const pkgId of allPackageIds) {
+      if (pkgId === currentPackageId) continue;
+
+      const pkgSymbols = await getLocalPackageSymbols(buildId, pkgId);
+      if (!pkgSymbols?.symbols) continue;
+
+      baseSymbol =
+        pkgSymbols.symbols.find(
+          (s) =>
+            (s.kind === "class" || s.kind === "interface") &&
+            (s.name === simpleBaseName ||
+              s.qualifiedName === simpleBaseName ||
+              s.qualifiedName.endsWith(`.${simpleBaseName}`))
+        ) || null;
+
+      if (baseSymbol) {
+        const pkg = manifest?.packages.find((p) => p.packageId === pkgId);
+        return {
+          symbol: baseSymbol,
+          packageId: pkgId,
+          packageName: pkg?.publishedName || "",
+        };
+      }
+    }
+
+    return null;
+  }
+
+  // Helper to extract members from a base class
+  async function extractMembersFromBase(
+    baseSymbol: SymbolRecord,
+    basePackageId: string,
+    basePackageName: string,
+    simpleBaseName: string
+  ): Promise<void> {
+    if (!baseSymbol.members || baseSymbol.members.length === 0) return;
+
+    // Get the package's symbol list for resolving member details
+    const pkgSymbols =
+      basePackageId === currentPackageId
+        ? currentPackageSymbols
+        : (await getLocalPackageSymbols(buildId, basePackageId))?.symbols || [];
+
+    const symbolsById = new Map(pkgSymbols.map((s) => [s.id, s]));
+
+    // Filter out members that are already defined on the current class
+    const inheritedMembers: DisplayMember[] = [];
+
+    for (const member of baseSymbol.members) {
+      // Skip if already defined on the current class (overridden)
+      if (ownMemberSet.has(member.name)) continue;
+
+      // Skip constructors
+      if (member.kind === "constructor") continue;
+
+      // Skip private members
+      if (member.visibility === "private") continue;
+
+      // Resolve member details
+      const memberSymbol = symbolsById.get(member.refId);
+      const type = memberSymbol
+        ? extractTypeFromSignature(memberSymbol.signature, member.kind)
+        : undefined;
+
+      inheritedMembers.push({
+        name: member.name,
+        kind: member.kind,
+        refId: member.refId,
+        visibility: member.visibility,
+        type,
+        summary: memberSymbol?.docs?.summary || undefined,
+        signature: memberSymbol?.signature,
+      });
+    }
+
+    if (inheritedMembers.length > 0) {
+      inheritedGroups.push({
+        baseName: simpleBaseName,
+        basePackageId,
+        basePackageName,
+        members: inheritedMembers,
+      });
+    }
+  }
+
+  // Process each direct base class recursively
+  const toProcess = [...baseClassNames];
+
+  while (toProcess.length > 0) {
+    const baseName = toProcess.shift()!;
+
+    // Extract the simple class name from complex generics like "BaseChatModel<CallOptions, AIMessageChunk>"
+    const simpleBaseName = baseName.replace(/<.*$/, "").replace(/^.*\./, "");
+
+    // Skip if already processed
+    if (processedBases.has(simpleBaseName)) continue;
+    processedBases.add(simpleBaseName);
+
+    // Skip utility types and unresolved types
+    if (["Pick", "Partial", "Omit", "Record", "Exclude", "Extract", "unknown"].includes(simpleBaseName)) {
+      continue;
+    }
+
+    const found = await findBaseSymbol(simpleBaseName);
+
+    if (found) {
+      await extractMembersFromBase(
+        found.symbol,
+        found.packageId,
+        found.packageName,
+        simpleBaseName
+      );
+
+      // Add parent's bases to the processing queue (recursive inheritance)
+      if (found.symbol.relations?.extends) {
+        for (const parentBase of found.symbol.relations.extends) {
+          const parentSimpleName = parentBase.replace(/<.*$/, "").replace(/^.*\./, "");
+          if (!processedBases.has(parentSimpleName)) {
+            toProcess.push(parentBase);
+          }
+        }
+      }
+    }
+  }
+
+  return inheritedGroups;
+}
+
 export async function SymbolPage({ language, packageId, packageName, symbolPath }: SymbolPageProps) {
   const irLanguage = language === "python" ? "python" : "javascript";
   const buildId = await getLocalLatestBuildId(irLanguage);
@@ -329,7 +704,23 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
         }
       }
 
-      symbol = toDisplaySymbol(irSymbol, memberSymbols);
+      // Resolve inherited members from base classes
+      let inheritedMembers: InheritedMemberGroup[] | undefined;
+      if (
+        (irSymbol.kind === "class" || irSymbol.kind === "interface") &&
+        irSymbol.relations?.extends &&
+        irSymbol.relations.extends.length > 0
+      ) {
+        inheritedMembers = await resolveInheritedMembers(
+          buildId,
+          packageId,
+          irSymbol.relations.extends,
+          irSymbol.members?.map((m) => m.name) || [],
+          allSymbolsResult?.symbols || []
+        );
+      }
+
+      symbol = toDisplaySymbol(irSymbol, memberSymbols, inheritedMembers);
     }
   }
 
@@ -374,8 +765,13 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
         ? `https://github.com/${symbol.source.repo}/blob/${symbol.source.sha}/${symbol.source.path}`
         : null;
 
+  // Generate TOC data
+  const { topItems, sections, inheritedGroups } = generateTOCData(symbol);
+
   return (
-    <div className="space-y-8">
+    <div className="flex gap-8">
+      {/* Main content */}
+      <div className="flex-1 min-w-0 space-y-8">
       {/* Breadcrumbs */}
       <nav className="flex items-center gap-2 text-sm text-foreground-secondary flex-wrap">
         <Link
@@ -450,7 +846,7 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
         <CodeBlock
           code={getDisplayCode(symbol, packageName, language)}
           language={language === "python" ? "python" : "typescript"}
-          className="rounded-lg overflow-x-auto [&_pre]:p-4 [&_pre]:m-0 [&_pre]:text-sm [&_code]:text-sm"
+          className="rounded-lg [&_pre]:p-4 [&_pre]:m-0 [&_pre]:text-sm [&_code]:text-sm [&_pre]:overflow-x-auto"
         />
       )}
 
@@ -466,7 +862,12 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
                 key={base}
                 className="px-2 py-1 bg-background-secondary rounded text-sm font-mono text-foreground"
               >
-                {base}
+                <TypeReference
+                  typeStr={base}
+                  knownSymbols={knownSymbols}
+                  language={language}
+                  packageName={packageName}
+                />
               </code>
             ))}
           </div>
@@ -501,6 +902,15 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
         />
       )}
 
+      {/* Inherited members from base classes */}
+      {symbol.inheritedMembers && symbol.inheritedMembers.length > 0 && (
+        <InheritedMembersSection
+          inheritedGroups={symbol.inheritedMembers}
+          language={language}
+          packageName={packageName}
+        />
+      )}
+
       {/* Source link */}
       {sourceUrl && (
         <div className="pt-4 border-t border-border">
@@ -515,6 +925,10 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
           </a>
         </div>
       )}
+      </div>
+
+      {/* Table of Contents sidebar */}
+      <TableOfContents topItems={topItems} sections={sections} inheritedGroups={inheritedGroups} />
     </div>
   );
 }
@@ -599,7 +1013,7 @@ async function Section({
 }) {
   if (section.kind === "parameters" || section.kind === "attributes") {
     return (
-      <div>
+      <div id="parameters">
         <h2 className="text-xl font-heading font-semibold text-foreground mb-4">
           {section.title || "Parameters"}
         </h2>
@@ -658,7 +1072,7 @@ async function Section({
 
   if (section.kind === "example" && section.content) {
     return (
-      <div>
+      <div id="examples">
         <h2 className="text-xl font-heading font-semibold text-foreground mb-4">
           {section.title || "Example"}
         </h2>
@@ -668,7 +1082,7 @@ async function Section({
         <CodeBlock
           code={section.content}
           language={language === "python" ? "python" : "typescript"}
-          className="rounded-lg overflow-x-auto [&_pre]:p-4 [&_pre]:m-0 [&_pre]:text-sm [&_code]:text-sm"
+          className="rounded-lg [&_pre]:p-4 [&_pre]:m-0 [&_pre]:text-sm [&_code]:text-sm [&_pre]:overflow-x-auto"
         />
       </div>
     );
@@ -789,6 +1203,7 @@ function MemberCard({
 
   return (
     <Link
+      id={`member-${member.name}`}
       href={href}
       className="group flex items-start gap-3 p-3 rounded-lg border border-border bg-background-secondary hover:border-primary/50 hover:bg-background transition-colors"
       style={{ cursor: "pointer" }}
@@ -833,6 +1248,172 @@ function MemberCard({
 
       {/* Link indicator */}
       <ChevronRight className="h-4 w-4 text-foreground-muted group-hover:text-primary shrink-0 transition-colors" />
+    </Link>
+  );
+}
+
+/**
+ * Inherited members section - displays members inherited from base classes
+ */
+function InheritedMembersSection({
+  inheritedGroups,
+  language,
+  packageName,
+}: {
+  inheritedGroups: InheritedMemberGroup[];
+  language: UrlLanguage;
+  packageName: string;
+}) {
+  const kindOrder = [
+    "property",
+    "attribute",
+    "method",
+    "function",
+    "class",
+    "interface",
+    "typeAlias",
+    "enum",
+    "variable",
+  ];
+
+  const kindLabels: Record<string, string> = {
+    property: "Properties",
+    attribute: "Attributes",
+    method: "Methods",
+    function: "Functions",
+    class: "Classes",
+    interface: "Interfaces",
+    typeAlias: "Type Aliases",
+    enum: "Enums",
+    variable: "Variables",
+  };
+
+  return (
+    <div className="space-y-8">
+      {inheritedGroups.map((group) => {
+        // Group members by kind within each inheritance group
+        const groupedMembers = group.members.reduce(
+          (acc, member) => {
+            const kind = member.kind;
+            if (!Object.hasOwn(acc, kind)) {
+              acc[kind] = [];
+            }
+            acc[kind].push(member);
+            return acc;
+          },
+          Object.create(null) as Record<string, DisplayMember[]>
+        );
+
+        const orderedKinds = kindOrder.filter((k) => groupedMembers[k]);
+        const remainingKinds = Object.keys(groupedMembers).filter(
+          (k) => !kindOrder.includes(k)
+        );
+        const allKinds = [...orderedKinds, ...remainingKinds];
+
+        return (
+          <div key={group.baseName} className="border-t border-border pt-6">
+            <h2 className="text-lg font-heading font-semibold text-foreground-secondary mb-4 flex items-center gap-2">
+              <span>Inherited from</span>
+              {group.basePackageName && group.basePackageName !== packageName ? (
+                <Link
+                  href={`/${language === "python" ? "python" : "javascript"}/${slugifyPackageName(group.basePackageName)}/${group.baseName}`}
+                  className="font-mono text-primary hover:text-primary/80 underline decoration-dashed underline-offset-2"
+                >
+                  {group.baseName}
+                </Link>
+              ) : (
+                <code className="font-mono text-foreground">{group.baseName}</code>
+              )}
+              {group.basePackageName && group.basePackageName !== packageName && (
+                <span className="text-sm text-foreground-muted">
+                  ({group.basePackageName})
+                </span>
+              )}
+            </h2>
+
+            <div className="space-y-6">
+              {allKinds.map((kind) => (
+                <div key={kind}>
+                  <h3 className="text-sm font-semibold text-foreground-muted uppercase tracking-wider mb-3">
+                    {kindLabels[kind] || `${kind.charAt(0).toUpperCase()}${kind.slice(1)}s`}
+                  </h3>
+                  <div className="space-y-1">
+                    {groupedMembers[kind].map((member) => (
+                      <InheritedMemberRow
+                        key={member.name}
+                        member={member}
+                        language={language}
+                        basePackageName={group.basePackageName || packageName}
+                        baseClassName={group.baseName}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Compact row for inherited member display
+ */
+function InheritedMemberRow({
+  member,
+  language,
+  basePackageName,
+  baseClassName,
+}: {
+  member: DisplayMember;
+  language: UrlLanguage;
+  basePackageName: string;
+  baseClassName: string;
+}) {
+  const isMethodOrFunction =
+    member.kind === "method" ||
+    member.kind === "function";
+
+  // Link to the base class's member page
+  const langPath = language === "python" ? "python" : "javascript";
+  const packageSlug = slugifyPackageName(basePackageName);
+  const symbolPath = `${baseClassName}.${member.name}`;
+  const href = `/${langPath}/${packageSlug}/${symbolPath}`;
+
+  return (
+    <Link
+      id={`inherited-${baseClassName}-${member.name}`}
+      href={href}
+      className="group flex items-center gap-3 py-2 px-3 rounded-md hover:bg-background-secondary transition-colors"
+    >
+      <span
+        className={cn(
+          "px-1.5 py-0.5 text-xs font-medium rounded shrink-0",
+          getKindColor(member.kind as SymbolKind)
+        )}
+      >
+        {member.kind.charAt(0).toUpperCase()}
+      </span>
+
+      <span className="font-mono text-sm text-foreground group-hover:text-primary transition-colors">
+        {member.name}
+      </span>
+
+      {/* Show type/return type */}
+      {member.type && (
+        <span className="text-foreground-muted font-mono text-xs">
+          {isMethodOrFunction ? "→" : ":"} {member.type}
+        </span>
+      )}
+
+      {/* Show summary if available */}
+      {member.summary && (
+        <span className="text-xs text-foreground-muted truncate flex-1">
+          — {member.summary}
+        </span>
+      )}
     </Link>
   );
 }

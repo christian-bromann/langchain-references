@@ -114,6 +114,13 @@ code, pre {
 .shiki {
   border-radius: 1rem;
   border: 1px solid rgb(3 7 18 / 0.1);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.shiki code {
+  display: block;
+  line-height: 1.5;
 }
 
 .dark .shiki {

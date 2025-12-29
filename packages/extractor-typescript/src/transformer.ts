@@ -5,6 +5,9 @@
  * Intermediate Representation (IR) format.
  */
 
+import * as ts from "typescript";
+import * as fs from "fs";
+import * as path from "path";
 import type { JSONOutput } from "typedoc";
 import type {
   SymbolRecord,
@@ -53,6 +56,125 @@ const ReflectionKind = {
 } as const;
 
 /**
+ * Cache for parsed source files to extract extends clauses via TypeScript AST.
+ * Used when TypeDoc can't resolve external type names.
+ */
+const sourceFileCache = new Map<string, ts.SourceFile>();
+
+/**
+ * Parse a source file and extract extends/implements clauses for a symbol.
+ * This is used as a fallback when TypeDoc returns "unknown" for external types.
+ */
+function getExtendsFromSource(
+  filePath: string,
+  symbolName: string,
+  sourcePathPrefix: string,
+  packagePath?: string
+): { extends?: string[]; implements?: string[] } | null {
+  // Try multiple path combinations to find the source file
+  const pathsToTry: string[] = [];
+
+  // Try with the source path prefix first
+  if (sourcePathPrefix) {
+    pathsToTry.push(path.join(sourcePathPrefix, filePath));
+  }
+
+  // Try with package path + src directory (common convention)
+  if (packagePath) {
+    pathsToTry.push(path.join(packagePath, "src", filePath));
+    pathsToTry.push(path.join(packagePath, filePath));
+  }
+
+  // Try the file path as-is
+  pathsToTry.push(filePath);
+
+  let fullPath: string | null = null;
+  for (const tryPath of pathsToTry) {
+    try {
+      fs.accessSync(tryPath);
+      fullPath = tryPath;
+      break;
+    } catch {
+      // Try next path
+    }
+  }
+
+  if (!fullPath) {
+    return null;
+  }
+
+  // Check cache first
+  let sourceFile = sourceFileCache.get(fullPath);
+
+  if (!sourceFile) {
+    try {
+      const content = fs.readFileSync(fullPath, "utf-8");
+      sourceFile = ts.createSourceFile(fullPath, content, ts.ScriptTarget.Latest, true);
+      sourceFileCache.set(fullPath, sourceFile);
+    } catch {
+      // File not found or not readable
+      return null;
+    }
+  }
+
+  // Find the symbol in the source file
+  let result: { extends?: string[]; implements?: string[] } | null = null;
+
+  const visit = (node: ts.Node) => {
+    if (result) return; // Already found
+
+    // Check for interface declarations
+    if (ts.isInterfaceDeclaration(node) && node.name.text === symbolName) {
+      const extendsTypes: string[] = [];
+      if (node.heritageClauses) {
+        for (const clause of node.heritageClauses) {
+          if (clause.token === ts.SyntaxKind.ExtendsKeyword) {
+            for (const type of clause.types) {
+              extendsTypes.push(type.expression.getText(sourceFile));
+            }
+          }
+        }
+      }
+      if (extendsTypes.length > 0) {
+        result = { extends: extendsTypes };
+      }
+      return;
+    }
+
+    // Check for class declarations
+    if (ts.isClassDeclaration(node) && node.name?.text === symbolName) {
+      const extendsTypes: string[] = [];
+      const implementsTypes: string[] = [];
+      if (node.heritageClauses) {
+        for (const clause of node.heritageClauses) {
+          if (clause.token === ts.SyntaxKind.ExtendsKeyword) {
+            for (const type of clause.types) {
+              extendsTypes.push(type.expression.getText(sourceFile));
+            }
+          } else if (clause.token === ts.SyntaxKind.ImplementsKeyword) {
+            for (const type of clause.types) {
+              implementsTypes.push(type.expression.getText(sourceFile));
+            }
+          }
+        }
+      }
+      if (extendsTypes.length > 0 || implementsTypes.length > 0) {
+        result = {
+          ...(extendsTypes.length > 0 && { extends: extendsTypes }),
+          ...(implementsTypes.length > 0 && { implements: implementsTypes }),
+        };
+      }
+      return;
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  ts.forEachChild(sourceFile, visit);
+  return result;
+}
+
+/**
  * Transformer for TypeDoc JSON to IR format.
  */
 export class TypeDocTransformer {
@@ -62,6 +184,7 @@ export class TypeDocTransformer {
   private repo: string;
   private sha: string;
   private sourcePathPrefix: string;
+  private packagePath: string;
   private symbolIdMap: Map<number, string>;
 
   constructor(
@@ -69,7 +192,8 @@ export class TypeDocTransformer {
     packageName: string,
     repo: string,
     sha: string,
-    sourcePathPrefix?: string
+    sourcePathPrefix?: string,
+    packagePath?: string
   ) {
     this.project = project;
     this.packageName = packageName;
@@ -80,6 +204,7 @@ export class TypeDocTransformer {
     this.sourcePathPrefix = sourcePathPrefix
       ? sourcePathPrefix.replace(/\/?$/, "/")
       : "";
+    this.packagePath = packagePath || "";
     // Build a map from symbol IDs to their names for type resolution
     this.symbolIdMap = this.buildSymbolIdMap();
   }
@@ -289,6 +414,13 @@ export class TypeDocTransformer {
       return signature;
     }
 
+    // Handle accessor (getter) - TypeDoc puts getter info in getSignature, not signatures
+    if ("getSignature" in reflection && reflection.getSignature) {
+      const getSig = reflection.getSignature as JSONOutput.SignatureReflection;
+      const returnType = this.formatType(getSig.type);
+      return `${reflection.name}: ${returnType}`;
+    }
+
     // Handle type/variable with type annotation
     if ("type" in reflection && reflection.type) {
       return `${reflection.name}: ${this.formatType(reflection.type as TypeDocType)}`;
@@ -348,6 +480,10 @@ export class TypeDocTransformer {
       case "reference": {
         // Get the qualified name if available (for external types like OpenAIClient.Chat.X)
         const qualifiedName = (type as any).qualifiedName;
+        // Get the package name for external types (e.g., "@langchain/google-gauth")
+        const externalPackage = (type as any).package;
+        // TypeDoc may include reflection info for unresolved types
+        const reflection = (type as any).reflection;
 
         // Start with the type name
         let typeName = type.name;
@@ -389,11 +525,22 @@ export class TypeDocTransformer {
           typeName = qualifiedName || type.name;
         }
 
+        // For external types from other packages, try reflection name
+        if ((!typeName || typeName === "unknown") && reflection?.name) {
+          typeName = reflection.name;
+        }
+
+        // For unresolved external types, show package info if available
+        // This helps developers understand where the type comes from
+        if ((!typeName || typeName === "unknown") && externalPackage) {
+          typeName = `${externalPackage}.<unresolved>`;
+        }
+
         if (type.typeArguments && type.typeArguments.length > 0) {
           const args = type.typeArguments.map((t) => this.formatType(t)).join(", ");
           return `${typeName}<${args}>`;
         }
-        return typeName;
+        return typeName || "unknown";
       }
 
       case "array":
@@ -642,6 +789,7 @@ export class TypeDocTransformer {
 
   /**
    * Extract class/interface relations.
+   * Uses TypeScript AST as fallback when TypeDoc can't resolve external types.
    */
   private extractRelations(reflection: TypeDocReflection): { extends?: string[]; implements?: string[] } | undefined {
     const relations: { extends?: string[]; implements?: string[] } = {};
@@ -652,6 +800,31 @@ export class TypeDocTransformer {
 
     if ("implementedTypes" in reflection && reflection.implementedTypes) {
       relations.implements = (reflection.implementedTypes as TypeDocType[]).map((t) => this.formatType(t));
+    }
+
+    // If TypeDoc returned "unknown" for extends/implements, try to resolve from source using TS AST
+    // Check for "unknown", "unknown<...>" (with type params), or "<unresolved>"
+    const isUnknownType = (t: string) => t === "unknown" || t.startsWith("unknown<") || t.includes("<unresolved>");
+    const hasUnknownExtends = relations.extends?.some(isUnknownType);
+    const hasUnknownImplements = relations.implements?.some(isUnknownType);
+
+    if (hasUnknownExtends || hasUnknownImplements) {
+      // Get source file path from reflection
+      const sources = "sources" in reflection ? reflection.sources : null;
+      if (sources && Array.isArray(sources) && sources.length > 0) {
+        const sourceFile = sources[0].fileName;
+        const astRelations = getExtendsFromSource(sourceFile, reflection.name, this.sourcePathPrefix, this.packagePath);
+
+        if (astRelations) {
+          // Replace "unknown" entries with actual type names from AST
+          if (hasUnknownExtends && astRelations.extends) {
+            relations.extends = astRelations.extends;
+          }
+          if (hasUnknownImplements && astRelations.implements) {
+            relations.implements = astRelations.implements;
+          }
+        }
+      }
     }
 
     return relations.extends || relations.implements ? relations : undefined;

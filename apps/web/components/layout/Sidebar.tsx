@@ -56,9 +56,8 @@ export function Sidebar({ pythonPackages = [], javascriptPackages = [] }: Sideba
       }}
     >
       <div
-        className="flex-1 pr-5 pt-5 pb-4 overflow-y-auto"
+        className="flex-1 pr-5 pt-5 pb-4 overflow-y-auto scrollbar-hide"
         id="navigation-items"
-        style={{ scrollbarGutter: "stable" }}
       >
         <div className="text-sm relative">
           {/* Package navigation */}
