@@ -45,6 +45,7 @@ async function uploadFile(
   const blob = await put(blobPath, content, {
     access: "public",
     contentType: "application/json",
+    allowOverwrite: true,
   });
 
   return { url: blob.url, size };
