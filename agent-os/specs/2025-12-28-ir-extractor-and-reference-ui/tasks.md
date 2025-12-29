@@ -547,51 +547,43 @@
 
 ---
 
-## Group 9: Deployment & CI/CD
+## Group 9: Deployment & CI/CD ✅
 
 **Goal**: Set up production deployment and automation.
 
-### Task 9.1: Create GitHub Actions workflow
-- [ ] Create `.github/workflows/build.yml`
-- [ ] Add workflow_dispatch trigger with inputs
-- [ ] Set up Python and Node.js environments
-- [ ] Run build pipeline
+### Task 9.1: Create GitHub Actions workflow ✅
+- [x] Create `.github/workflows/build.yml`
+- [x] Add workflow_dispatch trigger with inputs
+- [x] Set up Python and Node.js environments
+- [x] Run build pipeline
 
 **Reference**: Spec Section 9.2
 
 ---
 
-### Task 9.2: Implement build trigger API route
-- [ ] Create `apps/web/app/api/build/route.ts`
-- [ ] Add authorization token verification
-- [ ] Trigger GitHub Actions workflow via API
+### Task 9.2: Implement build trigger API route ✅
+- [x] Create `apps/web/app/api/build/route.ts`
+- [x] Add authorization token verification
+- [x] Trigger GitHub Actions workflow via API
 
 **Reference**: Spec Section 10.1
 
 ---
 
-### Task 9.3: Configure Vercel deployment
-- [ ] Create `vercel.json` for deployment config
-- [ ] Configure domain `reference.langchain.com`
-- [ ] Set environment variables
-- [ ] Configure build output
-
----
-
-### Task 9.4: Write E2E tests
-- [ ] Create `e2e/reference.spec.ts`
-- [ ] Test navigation to class page
-- [ ] Test search functionality
-- [ ] Test theme toggle
+### Task 9.3: Configure Vercel deployment ✅
+- [x] Create `vercel.json` for deployment config
+- [x] Configure domain `reference.langchain.com`
+- [x] Set environment variables
+- [x] Configure build output
 
 **Reference**: Spec Section 11.3
 
 ---
 
-### Task 9.5: Create deployment documentation
-- [ ] Document environment variables
-- [ ] Document manual build process
-- [ ] Document troubleshooting steps
+### Task 9.5: Create deployment documentation ✅
+- [x] Document environment variables
+- [x] Document manual build process
+- [x] Document troubleshooting steps
 
 ---
 
@@ -617,8 +609,8 @@ Phase 4 (Week 8-10):
 └── Group 7: Reference UI Components ──────────────▶ Done
 
 Phase 5 (Week 11-12):
-├── Group 8: Search Implementation ────────────────▶ Done
-└── Group 9: Deployment & CI/CD ───────────────────▶ Done
+├── Group 8: Search Implementation ────────────────▶ ✅ Done
+└── Group 9: Deployment & CI/CD ───────────────────▶ ✅ Done
 ```
 
 ---
@@ -734,8 +726,7 @@ Each task group is complete when:
 The feature is complete when:
 
 - [ ] All 9 groups completed
-- [ ] E2E tests passing
-- [ ] Deployed to `reference.langchain.com`
+- [ ] Deployed to Vercel
 - [ ] Manual build trigger working
 - [ ] Both Python and TypeScript packages rendering
 

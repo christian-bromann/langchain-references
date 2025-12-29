@@ -1,0 +1,198 @@
+# Build IR Workflow
+#
+# This workflow builds the IR artifacts for Python and/or TypeScript packages.
+# It can be triggered manually via workflow_dispatch or called by other workflows.
+#
+# Environment variables required:
+# - GITHUB_TOKEN: For fetching source tarballs
+# - BLOB_READ_WRITE_TOKEN: For uploading to Vercel Blob
+# - KV_REST_API_URL: Vercel KV REST API URL
+# - KV_REST_API_TOKEN: Vercel KV REST API token
+
+name: Build IR
+
+on:
+  workflow_dispatch:
+    inputs:
+      language:
+        description: 'Language to build'
+        required: true
+        type: choice
+        options:
+          - python
+          - typescript
+          - both
+        default: 'both'
+      sha:
+        description: 'Git SHA to build (leave empty for latest main)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run (skip upload)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PYTHON_VERSION: '3.11'
+  PNPM_VERSION: '10'
+
+jobs:
+  build-python:
+    name: Build Python IR
+    if: ${{ github.event_name == 'schedule' || inputs.language == 'python' || inputs.language == 'both' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('packages/extractor-python/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          pip install griffe
+
+      - name: Build Python IR
+        run: |
+          pnpm build:ir --config configs/python.json ${{ inputs.sha && format('--sha {0}', inputs.sha) || '' }} ${{ inputs.dry_run && '--dry-run' || '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+
+      - name: Upload IR artifacts
+        if: ${{ inputs.dry_run }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ir-python-${{ github.run_id }}
+          path: ir-output/
+          retention-days: 7
+
+  build-typescript:
+    name: Build TypeScript IR
+    if: ${{ github.event_name == 'schedule' || inputs.language == 'typescript' || inputs.language == 'both' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build TypeScript IR
+        run: |
+          pnpm build:ir --config configs/typescript.json ${{ inputs.sha && format('--sha {0}', inputs.sha) || '' }} ${{ inputs.dry_run && '--dry-run' || '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+
+      - name: Upload IR artifacts
+        if: ${{ inputs.dry_run }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ir-typescript-${{ github.run_id }}
+          path: ir-output/
+          retention-days: 7
+
+  # Summary job that runs after both builds complete
+  summary:
+    name: Build Summary
+    needs: [build-python, build-typescript]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check build results
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Language | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.build-python.result }}" == "success" ]; then
+            echo "| Python | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.build-python.result }}" == "skipped" ]; then
+            echo "| Python | ⏭️ Skipped |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Python | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.build-typescript.result }}" == "success" ]; then
+            echo "| TypeScript | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.build-typescript.result }}" == "skipped" ]; then
+            echo "| TypeScript | ⏭️ Skipped |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| TypeScript | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Dry Run:** ${{ inputs.dry_run || 'false' }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail if any build failed
+        if: ${{ contains(needs.*.result, 'failure') }}
+        run: exit 1
+

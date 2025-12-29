@@ -2,7 +2,14 @@
   "name": "langchain-reference-docs",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "author": "LangChain",
   "description": "Unified API reference documentation platform for LangChain",
+  "homepage": "https://reference.langchain.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/langchain-ai/langchain-reference-docs.git"
+  },
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
@@ -22,7 +29,6 @@
   },
   "packageManager": "pnpm@10.26.2",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.0.0"
   }
 }
-
