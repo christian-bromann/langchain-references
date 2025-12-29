@@ -14,8 +14,13 @@ import fs from "fs/promises";
 import path from "path";
 import type { Manifest, SymbolRecord, RoutingMap, SearchIndex } from "@langchain/ir-schema";
 
-// Maximum concurrent uploads to avoid overwhelming the API
-const MAX_CONCURRENT_UPLOADS = 50;
+// Maximum concurrent uploads to avoid overwhelming the Vercel Blob API
+// Vercel Blob has rate limits, so we keep this conservative
+const MAX_CONCURRENT_UPLOADS = 10;
+
+// Retry configuration for rate limit errors
+const MAX_RETRIES = 5;
+const INITIAL_RETRY_DELAY_MS = 1000;
 
 export interface UploadOptions {
   buildId: string;
@@ -36,7 +41,14 @@ interface UploadTask {
 }
 
 /**
- * Upload a single file to Vercel Blob.
+ * Sleep for a given number of milliseconds.
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Upload a single file to Vercel Blob with retry logic for rate limits.
  */
 async function uploadFile(
   blobPath: string,
@@ -49,13 +61,43 @@ async function uploadFile(
     return { url: `https://blob.vercel-storage.com/${blobPath}`, size };
   }
 
-  const blob = await put(blobPath, content, {
-    access: "public",
-    contentType: "application/json",
-    allowOverwrite: true,
-  });
+  let lastError: Error | null = null;
 
-  return { url: blob.url, size };
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const blob = await put(blobPath, content, {
+        access: "public",
+        contentType: "application/json",
+        allowOverwrite: true,
+      });
+      return { url: blob.url, size };
+    } catch (error) {
+      lastError = error as Error;
+      const errorMessage = lastError.message || "";
+
+      // Check if it's a rate limit error
+      if (errorMessage.includes("Too many requests") || errorMessage.includes("rate limit")) {
+        // Extract wait time from error message if available (e.g., "try again in 42 seconds")
+        const waitMatch = errorMessage.match(/try again in (\d+) seconds/i);
+        const waitSeconds = waitMatch ? parseInt(waitMatch[1], 10) : null;
+
+        // Use exponential backoff, but respect the API's suggested wait time if provided
+        const backoffDelay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
+        const delay = waitSeconds ? (waitSeconds * 1000) + 1000 : backoffDelay;
+
+        if (attempt < MAX_RETRIES - 1) {
+          console.log(`   ⏳ Rate limited, waiting ${(delay / 1000).toFixed(0)}s before retry (attempt ${attempt + 1}/${MAX_RETRIES})...`);
+          await sleep(delay);
+          continue;
+        }
+      }
+
+      // For non-rate-limit errors, don't retry
+      throw error;
+    }
+  }
+
+  throw lastError || new Error(`Failed to upload ${blobPath} after ${MAX_RETRIES} attempts`);
 }
 
 /**
@@ -86,6 +128,11 @@ async function uploadFilesInParallel(
     for (const result of results) {
       filesUploaded++;
       totalSize += result.size;
+    }
+
+    // Small delay between batches to avoid rate limiting
+    if (i + MAX_CONCURRENT_UPLOADS < tasks.length && !dryRun) {
+      await sleep(100);
     }
   }
 
