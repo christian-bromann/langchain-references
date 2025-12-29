@@ -1,8 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm turbo build --filter=@langchain/reference-web",
-  "outputDirectory": "apps/web/.next",
-  "installCommand": "pnpm install",
+  "buildCommand": "cd ../.. && pnpm turbo build --filter=@langchain/reference-web",
+  "installCommand": "cd ../.. && pnpm install",
   "framework": "nextjs",
   "regions": ["iad1"],
   "headers": [
