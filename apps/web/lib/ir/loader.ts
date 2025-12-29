@@ -3,11 +3,10 @@
  *
  * This module provides unified functions that automatically choose the right
  * data source based on the environment:
- * - Production (Vercel): Fetches from Vercel Blob storage
+ * - Production (Vercel): Fetches from Vercel Blob storage (public blobs)
  * - Development: Reads from local ir-output directory
  */
 
-import { getDownloadUrl } from "@vercel/blob";
 import type { Manifest, Package, SymbolRecord, RoutingMap } from "./types";
 
 const IR_BASE_PATH = "ir";
@@ -18,6 +17,19 @@ const POINTERS_PATH = "pointers";
  */
 export function isProduction(): boolean {
   return process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+}
+
+/**
+ * Get the Vercel Blob store base URL.
+ * For public blobs, we access them directly via this URL.
+ */
+function getBlobUrl(path: string): string | null {
+  const baseUrl = process.env.BLOB_URL;
+  if (!baseUrl) {
+    console.error("BLOB_URL environment variable is not set");
+    return null;
+  }
+  return `${baseUrl}/${path}`;
 }
 
 /**
@@ -43,7 +55,7 @@ interface LatestLanguagePointer {
 }
 
 /**
- * Fetch a pointer JSON from Vercel Blob
+ * Fetch a pointer JSON from Vercel Blob (public access)
  */
 async function fetchPointer<T>(pointerName: string): Promise<T | null> {
   const cacheKey = `pointer:${pointerName}`;
@@ -52,18 +64,14 @@ async function fetchPointer<T>(pointerName: string): Promise<T | null> {
   }
 
   try {
-    const path = `${POINTERS_PATH}/${pointerName}.json`;
-    console.log("path", path);
-    const url = await getDownloadUrl(path);
-    if (!url) {
-      return null;
-    }
+    const url = getBlobUrl(`${POINTERS_PATH}/${pointerName}.json`);
+    if (!url) return null;
+
     const response = await fetch(url, {
       next: { revalidate: 60 }, // Cache for 1 minute (pointers update more frequently)
     });
-    if (!response.ok) {
-      return null;
-    }
+    if (!response.ok) return null;
+
     const data = await response.json();
     pointerCache.set(cacheKey, data);
     return data;
@@ -102,20 +110,18 @@ export async function getLatestBuildIdForLanguage(
 }
 
 /**
- * Fetch JSON from Vercel Blob
+ * Fetch JSON from Vercel Blob (public access)
  */
 async function fetchBlobJson<T>(path: string): Promise<T | null> {
   try {
-    const url = await getDownloadUrl(path);
-    if (!url) {
-      return null;
-    }
+    const url = getBlobUrl(path);
+    if (!url) return null;
+
     const response = await fetch(url, {
       next: { revalidate: 300 }, // Cache for 5 minutes
     });
-    if (!response.ok) {
-      return null;
-    }
+    if (!response.ok) return null;
+
     return response.json();
   } catch (error) {
     console.error(`Failed to fetch blob: ${path}`, error);

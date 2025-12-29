@@ -6,7 +6,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
-      "env": ["BLOB_READ_WRITE_TOKEN"]
+      "env": ["BLOB_READ_WRITE_TOKEN", "BLOB_URL"]
     },
     "dev": {
       "cache": false,
