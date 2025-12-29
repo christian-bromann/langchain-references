@@ -14,9 +14,10 @@ import {
   getLocalPackageSymbols,
 } from "@/lib/ir/loader";
 import type { SymbolRecord } from "@/lib/ir/types";
+import type { Language } from "@langchain/ir-schema";
 
 interface PackagePageProps {
-  language: UrlLanguage;
+  language: Language;
   packageId: string;
   packageName: string;
 }
@@ -49,8 +50,7 @@ function toDisplaySymbol(symbol: SymbolRecord): DisplaySymbol {
 
 export async function PackagePage({ language, packageId, packageName }: PackagePageProps) {
   // Load symbols from local IR
-  const irLanguage = language === "python" ? "python" : "javascript";
-  const buildId = await getLocalLatestBuildId(irLanguage);
+  const buildId = await getLocalLatestBuildId(language);
 
   let symbols: DisplaySymbol[] = [];
 

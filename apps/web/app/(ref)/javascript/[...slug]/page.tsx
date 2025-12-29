@@ -34,7 +34,7 @@ export default async function JavaScriptSymbolPage({ params }: Props) {
   if (parsed.symbolPath.length === 0) {
     return (
       <PackagePage
-        language="javascript"
+        language="typescript"
         packageId={parsed.packageId}
         packageName={parsed.packageName}
       />
@@ -44,7 +44,7 @@ export default async function JavaScriptSymbolPage({ params }: Props) {
   // Otherwise, show symbol page
   return (
     <SymbolPage
-      language="javascript"
+      language="typescript"
       packageId={parsed.packageId}
       packageName={parsed.packageName}
       symbolPath={parsed.fullPath}
