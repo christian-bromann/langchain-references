@@ -321,6 +321,12 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
 
     packageSymbolCounts.set(pkg.displayName, symbols.length);
 
+    // Add package-level symbols.json (used by getPackageSymbols and getSymbolByPath)
+    uploadTasks.push({
+      blobPath: `ir/${buildId}/packages/${pkg.packageId}/symbols.json`,
+      content: JSON.stringify({ symbols }, null, 2),
+    });
+
     // Add routing map task
     const routingMap = generateRoutingMap(
       pkg.packageId,
@@ -333,7 +339,7 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
       content: JSON.stringify(routingMap, null, 2),
     });
 
-    // Add symbol tasks
+    // Add individual symbol tasks (sharded for efficient single-symbol lookups)
     const shards = shardSymbols(symbols);
     for (const [shardKey, shardSymbols] of shards) {
       for (const symbol of shardSymbols) {

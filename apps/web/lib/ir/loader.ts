@@ -247,15 +247,12 @@ export async function getSymbolByPath(
 }
 
 /**
- * Get all symbols for a package (paginated)
+ * Get all symbols for a package
  */
 export async function getPackageSymbols(
   buildId: string,
-  packageId: string,
-  options: { offset?: number; limit?: number } = {}
+  packageId: string
 ): Promise<{ symbols: SymbolRecord[]; total: number } | null> {
-  const { offset = 0, limit = 100 } = options;
-
   const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/symbols.json`;
   const response = await fetchBlobJson<{ symbols: SymbolRecord[] }>(path);
 
@@ -263,10 +260,7 @@ export async function getPackageSymbols(
     return null;
   }
 
-  const total = response.symbols.length;
-  const symbols = response.symbols.slice(offset, offset + limit);
-
-  return { symbols, total };
+  return { symbols: response.symbols, total: response.symbols.length };
 }
 
 /**
