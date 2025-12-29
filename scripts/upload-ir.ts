@@ -218,7 +218,9 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
 
     try {
       const symbolsContent = await fs.readFile(symbolsPath, "utf-8");
-      symbols = JSON.parse(symbolsContent);
+      const parsed = JSON.parse(symbolsContent);
+      // Handle both formats: { symbols: [...] } or just [...]
+      symbols = Array.isArray(parsed) ? parsed : (parsed.symbols || []);
     } catch (error) {
       console.log(`   ⚠️  No symbols file found for ${pkg.packageId}`);
       continue;
@@ -262,17 +264,20 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
   console.log("\n🔍 Generating search indices...");
 
   for (const language of ["python", "typescript"] as const) {
-    const languageSymbols = manifest.packages
-      .filter((p) => p.language === language)
-      .flatMap((p) => {
-        try {
-          const symbolsPath = path.join(irOutputPath, "packages", p.packageId, "symbols.json");
-          const content = require(symbolsPath);
-          return content as SymbolRecord[];
-        } catch {
-          return [];
-        }
-      });
+    const languageSymbols: SymbolRecord[] = [];
+
+    for (const p of manifest.packages.filter((p) => p.language === language)) {
+      try {
+        const symbolsPath = path.join(irOutputPath, "packages", p.packageId, "symbols.json");
+        const content = await fs.readFile(symbolsPath, "utf-8");
+        const parsed = JSON.parse(content);
+        // Handle both formats: { symbols: [...] } or just [...]
+        const symbols = Array.isArray(parsed) ? parsed : (parsed.symbols || []);
+        languageSymbols.push(...symbols);
+      } catch {
+        // Skip packages without symbols
+      }
+    }
 
     if (languageSymbols.length === 0) continue;
 
