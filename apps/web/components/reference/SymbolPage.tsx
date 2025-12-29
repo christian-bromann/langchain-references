@@ -20,6 +20,8 @@ import type { Language } from "@langchain/ir-schema";
 import { CodeBlock } from "./CodeBlock";
 import { MarkdownContent } from "./MarkdownContent";
 import { TableOfContents, type TOCSection, type TOCItem, type TOCInheritedGroup } from "./TableOfContents";
+import { symbolToMarkdown } from "@/lib/ir/markdown-generator";
+import { getBaseUrl } from "@/lib/config/mcp";
 
 interface SymbolPageProps {
   language: "python" | "javascript";
@@ -668,6 +670,7 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
   const buildId = await getBuildIdForLanguage(irLanguage);
 
   let symbol: DisplaySymbol | null = null;
+  let irSymbolForMarkdown: SymbolRecord | null = null;
   let knownSymbols = new Set<string>();
 
   if (buildId) {
@@ -687,6 +690,9 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
 
     const irSymbol = await findSymbol(buildId, packageId, symbolPath);
     if (irSymbol) {
+      // Keep reference for markdown generation
+      irSymbolForMarkdown = irSymbol;
+
       // Fetch member symbols to get their types and descriptions
       let memberSymbols: Map<string, SymbolRecord> | undefined;
 
@@ -928,7 +934,13 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
       </div>
 
       {/* Table of Contents sidebar */}
-      <TableOfContents topItems={topItems} sections={sections} inheritedGroups={inheritedGroups} />
+      <TableOfContents
+        topItems={topItems}
+        sections={sections}
+        inheritedGroups={inheritedGroups}
+        markdown={irSymbolForMarkdown ? symbolToMarkdown(irSymbolForMarkdown, packageName) : undefined}
+        pageUrl={`${getBaseUrl()}/${language === "python" ? "python" : "javascript"}/${slugifyPackageName(packageName)}/${symbolPath}`}
+      />
     </div>
   );
 }

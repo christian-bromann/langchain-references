@@ -10,6 +10,8 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { CopyPageButton } from "./CopyPageButton";
+import { PageContextMenu } from "./PageContextMenu";
 
 export interface TOCItem {
   id: string;
@@ -37,6 +39,10 @@ export interface TableOfContentsProps {
   sections: TOCSection[];
   /** Inherited member groups with nested sections */
   inheritedGroups?: TOCInheritedGroup[];
+  /** Markdown content for AI copy functionality */
+  markdown?: string;
+  /** Page URL for AI context menu */
+  pageUrl?: string;
 }
 
 /**
@@ -284,6 +290,8 @@ export function TableOfContents({
   topItems,
   sections,
   inheritedGroups,
+  markdown,
+  pageUrl,
 }: TableOfContentsProps) {
   // Don't render if there's nothing to show
   const hasContent =
@@ -301,6 +309,14 @@ export function TableOfContents({
       aria-label="On this page"
     >
       <div className="pl-4 pb-8">
+        {/* AI Actions - Copy page button and context menu */}
+        {markdown && pageUrl && (
+          <div className="flex items-center mb-4">
+            <CopyPageButton markdown={markdown} />
+            <PageContextMenu pageUrl={pageUrl} markdown={markdown} />
+          </div>
+        )}
+
         <h3 className="text-sm font-semibold text-foreground mb-3">
           On This Page
         </h3>
