@@ -61,7 +61,7 @@ export function Sidebar({ pythonPackages = [], javascriptPackages = [] }: Sideba
         id="navigation-items"
       >
         {/* Language Dropdown */}
-        <div className="pl-4 mb-2">
+        <div className="pl-4 mb-10">
           <LanguageDropdown />
         </div>
 

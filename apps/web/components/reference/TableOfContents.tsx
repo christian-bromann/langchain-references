@@ -311,7 +311,7 @@ export function TableOfContents({
       <div className="pl-4 pb-8">
         {/* AI Actions - Copy page button and context menu */}
         {markdown && pageUrl && (
-          <div className="flex items-center mb-4">
+          <div className="flex items-center mb-8">
             <CopyPageButton markdown={markdown} />
             <PageContextMenu pageUrl={pageUrl} markdown={markdown} />
           </div>

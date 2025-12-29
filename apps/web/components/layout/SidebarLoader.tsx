@@ -99,8 +99,14 @@ async function loadSidebarPackages(
 
   for (const pkg of packages) {
     const slug = getPackageSlug(pkg, language);
-    const result = await getSymbols(buildId, pkg.packageId);
-    const items = result?.symbols ? buildNavItems(result.symbols, language, slug) : [];
+
+    // For Python, only show package names in sidebar (no sub-module listing)
+    // since Python packages have a different export structure with many modules
+    let items: SidebarPackage["items"] = [];
+    if (language === "javascript") {
+      const result = await getSymbols(buildId, pkg.packageId);
+      items = result?.symbols ? buildNavItems(result.symbols, language, slug) : [];
+    }
 
     sidebarPackages.push({
       id: pkg.packageId,
