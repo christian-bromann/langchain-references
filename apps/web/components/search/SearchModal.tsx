@@ -158,6 +158,8 @@ export function SearchModal({ open, onOpenChange }: SearchModalProps) {
                      animate-in fade-in-0 zoom-in-95 slide-in-from-top-2"
           onKeyDown={handleKeyDown}
         >
+          <Dialog.Title className="sr-only">Search documentation</Dialog.Title>
+
           {/* Search Input */}
           <div className="flex items-center gap-3 p-4 border-b border-border">
             <Search className="w-5 h-5 text-foreground-muted shrink-0" />
