@@ -456,6 +456,15 @@ export async function getSymbolData(
 // These functions help generate static params for Next.js static generation
 
 /**
+ * Symbol kinds to include in static generation.
+ * Limited to reduce build time on Vercel - other pages render on-demand.
+ * - Packages: always included (handled separately)
+ * - Modules: important for navigation and discovery
+ * - Functions: commonly accessed, standalone pages
+ */
+const STATIC_GENERATION_KINDS = new Set(["module", "function"]);
+
+/**
  * Slugify a package name for URLs
  * @example "@langchain/core" -> "langchain-core"
  * @example "langchain_core" -> "langchain-core"
@@ -470,7 +479,8 @@ function slugifyPackageName(packageName: string): string {
 
 /**
  * Get all static params for a language (for Next.js generateStaticParams)
- * Returns an array of slug arrays for all packages and symbols
+ * Returns an array of slug arrays for packages, modules, and functions only.
+ * Other symbol types (classes, methods, etc.) are rendered on-demand via dynamicParams.
  */
 export async function getStaticParamsForLanguage(
   language: "python" | "javascript"
@@ -503,10 +513,14 @@ export async function getStaticParamsForLanguage(
     const symbolsResult = await getSymbols(buildId, pkg.packageId);
     if (!symbolsResult?.symbols) continue;
 
-    // Add symbol routes for public symbols
+    // Add symbol routes for public symbols (modules and functions only)
     for (const symbol of symbolsResult.symbols) {
       // Only include public symbols
       if (symbol.tags?.visibility !== "public") continue;
+
+      // Only include modules and functions for static generation
+      // Classes, methods, properties, etc. are rendered on-demand
+      if (!STATIC_GENERATION_KINDS.has(symbol.kind)) continue;
 
       // Build the URL path from qualifiedName
       // For JavaScript: qualifiedName is usually just the symbol name (e.g., "ChatDeepSeek")
@@ -540,7 +554,7 @@ export async function getStaticParamsForLanguage(
     }
   }
 
-  console.log(`Generated ${params.length} static params for ${language}`);
+  console.log(`Generated ${params.length} static params for ${language} (packages, modules, functions only)`);
   return params;
 }
 
