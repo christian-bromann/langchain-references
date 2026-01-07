@@ -45,8 +45,11 @@ jobs:
           node-version-file: .nvmrc
           cache: 'pnpm'
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Install Vercel CLI
-        run: pnpm add -g vercel
+        run: npm install -g vercel
 
       - name: Pull Vercel Environment
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
@@ -55,6 +58,9 @@ jobs:
       - name: Build Project
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         working-directory: apps/web
+        env:
+          # Ensure pnpm is in PATH for Vercel's build process
+          PATH: ${{ github.workspace }}/node_modules/.bin:$PATH
 
       - name: Deploy to Vercel
         id: deploy
