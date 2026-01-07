@@ -140,7 +140,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ir-${{ matrix.project }}-${{ matrix.language }}
-          path: ir-output/
+          path: |
+            ir-output/
+            !ir-output/latest-*
           retention-days: 7
 
   # Update pointers after all builds complete
@@ -182,10 +184,25 @@ jobs:
 
       - name: Update pointers for each build
         run: |
+          # Find manifest files, but skip symlinked directories (like latest-*)
           for manifest in ir-output/*/reference.manifest.json; do
             if [ -f "$manifest" ]; then
               BUILD_DIR=$(dirname "$manifest")
+
+              # Skip if BUILD_DIR is a symlink (e.g., latest-langchain-python)
+              if [ -L "$BUILD_DIR" ]; then
+                echo "Skipping symlink: $BUILD_DIR"
+                continue
+              fi
+
               BUILD_ID=$(basename "$BUILD_DIR")
+
+              # Also skip if BUILD_ID starts with "latest-" (just in case)
+              if [[ "$BUILD_ID" == latest-* ]]; then
+                echo "Skipping latest pointer directory: $BUILD_ID"
+                continue
+              fi
+
               echo "Updating pointers for build: $BUILD_ID"
               npx tsx scripts/update-kv.ts "$BUILD_ID" "$manifest"
             fi
