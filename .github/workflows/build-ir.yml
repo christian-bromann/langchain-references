@@ -67,15 +67,8 @@ jobs:
           PROJECT="${{ github.event.inputs.project }}"
           LANGUAGE="${{ github.event.inputs.language }}"
 
-          # All possible configs
-          ALL_CONFIGS='[
-            {"project": "langchain", "language": "python", "config": "langchain-python.json"},
-            {"project": "langchain", "language": "typescript", "config": "langchain-typescript.json"},
-            {"project": "langgraph", "language": "python", "config": "langgraph-python.json"},
-            {"project": "langgraph", "language": "typescript", "config": "langgraph-typescript.json"},
-            {"project": "deepagent", "language": "python", "config": "deepagent-python.json"},
-            {"project": "deepagent", "language": "typescript", "config": "deepagent-typescript.json"}
-          ]'
+          # All possible configs (compact JSON on single line)
+          ALL_CONFIGS='[{"project":"langchain","language":"python","config":"langchain-python.json"},{"project":"langchain","language":"typescript","config":"langchain-typescript.json"},{"project":"langgraph","language":"python","config":"langgraph-python.json"},{"project":"langgraph","language":"typescript","config":"langgraph-typescript.json"},{"project":"deepagent","language":"python","config":"deepagent-python.json"},{"project":"deepagent","language":"typescript","config":"deepagent-typescript.json"}]'
 
           # Filter based on inputs
           if [ -n "$PROJECT" ] && [ -n "$LANGUAGE" ]; then
@@ -93,7 +86,8 @@ jobs:
           fi
 
           echo "configs=$CONFIGS" >> $GITHUB_OUTPUT
-          echo "Building configs: $CONFIGS"
+          echo "Building configs:"
+          echo "$CONFIGS" | jq .
 
   # Build each project+language in parallel
   build:
