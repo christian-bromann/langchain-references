@@ -31,11 +31,13 @@ function getBlobUrl(path: string): string | null {
   if (!baseUrl) {
     // Only log in production to avoid noise during development
     if (isProduction()) {
-      console.warn("BLOB_URL environment variable is not set - static generation will be skipped");
+      console.error("[getBlobUrl] BLOB_URL environment variable is not set - static generation will be skipped");
     }
     return null;
   }
-  return `${baseUrl}/${path}`;
+  const fullUrl = `${baseUrl}/${path}`;
+  console.error(`[getBlobUrl] Generated URL: ${fullUrl}`);
+  return fullUrl;
 }
 
 /**
@@ -69,17 +71,18 @@ interface LatestLanguagePointer {
 async function fetchPointer<T>(pointerName: string): Promise<T | null> {
   const cacheKey = `pointer:${pointerName}`;
   if (pointerCache.has(cacheKey)) {
+    console.error(`[fetchPointer] Cache hit for ${pointerName}`);
     return pointerCache.get(cacheKey) as T;
   }
 
   try {
     const url = getBlobUrl(`${POINTERS_PATH}/${pointerName}.json`);
     if (!url) {
-      console.warn(`[fetchPointer] No BLOB_URL configured for ${pointerName}`);
+      console.error(`[fetchPointer] No BLOB_URL configured for ${pointerName}`);
       return null;
     }
 
-    console.log(`[fetchPointer] Fetching: ${url}`);
+    console.error(`[fetchPointer] Fetching: ${url}`);
     const response = await fetch(url, {
       // Use force-cache to enable static generation
       // In-memory pointerCache handles deduplication during builds
@@ -87,12 +90,12 @@ async function fetchPointer<T>(pointerName: string): Promise<T | null> {
     });
 
     if (!response.ok) {
-      console.warn(`[fetchPointer] Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+      console.error(`[fetchPointer] Failed to fetch ${url}: ${response.status} ${response.statusText}`);
       return null;
     }
 
     const data = await response.json();
-    console.log(`[fetchPointer] Got data for ${pointerName}:`, JSON.stringify(data));
+    console.error(`[fetchPointer] Got data for ${pointerName}: ${JSON.stringify(data)}`);
     pointerCache.set(cacheKey, data);
     return data;
   } catch (error) {
@@ -123,13 +126,13 @@ export async function getLatestBuildIdForLanguage(
 ): Promise<string | null> {
   try {
     const pointerName = `latest-${project}-${language}`;
-    console.log(`[getLatestBuildIdForLanguage] Fetching pointer: ${pointerName}`);
+    console.error(`[getLatestBuildIdForLanguage] Fetching pointer: ${pointerName}`);
     const pointer = await fetchPointer<LatestLanguagePointer>(pointerName);
     const buildId = pointer?.buildId || null;
-    console.log(`[getLatestBuildIdForLanguage] ${pointerName} -> buildId: ${buildId}`);
+    console.error(`[getLatestBuildIdForLanguage] ${pointerName} -> buildId: ${buildId}`);
     return buildId;
   } catch (error) {
-    console.error(`Failed to get latest ${project} ${language} build ID:`, error);
+    console.error(`[getLatestBuildIdForLanguage] Failed to get latest ${project} ${language} build ID:`, error);
     return null;
   }
 }
@@ -645,17 +648,20 @@ export async function getStaticParamsForLanguage(
   language: "python" | "javascript",
   project: string = "langchain"
 ): Promise<{ slug: string[] }[]> {
+  console.error(`[getStaticParamsForLanguage] Starting for ${project} ${language}`);
   const buildId = await getBuildIdForLanguage(language, project);
   if (!buildId) {
-    console.warn(`No build ID found for ${project} ${language}`);
+    console.error(`[getStaticParamsForLanguage] No build ID found for ${project} ${language}`);
     return [];
   }
+  console.error(`[getStaticParamsForLanguage] Got buildId: ${buildId} for ${project} ${language}`);
 
   const manifest = await getManifestData(buildId);
   if (!manifest) {
-    console.warn(`No manifest found for build ${buildId}`);
+    console.error(`[getStaticParamsForLanguage] No manifest found for build ${buildId}`);
     return [];
   }
+  console.error(`[getStaticParamsForLanguage] Got manifest with ${manifest.packages.length} packages for ${project} ${language}`);
 
   const params: { slug: string[] }[] = [];
   const ecosystem = language === "python" ? "python" : "javascript";
