@@ -33,6 +33,13 @@ const MINIMAL_TSCONFIG = {
 };
 
 /**
+ * Check if a file path is a TypeScript source file (not a .d.ts declaration file)
+ */
+function isSourceTsFile(filePath: string): boolean {
+  return filePath.endsWith(".ts") && !filePath.endsWith(".d.ts");
+}
+
+/**
  * Extract entry points from package.json exports field.
  */
 async function discoverEntryPointsFromExports(
@@ -55,14 +62,14 @@ async function discoverEntryPointsFromExports(
           // Then try 'import' or 'require'
           if (typeof record.import === "object" && record.import !== null) {
             const importObj = record.import as Record<string, unknown>;
-            if (typeof importObj.default === "string" && importObj.default.endsWith(".ts")) {
+            if (typeof importObj.default === "string" && isSourceTsFile(importObj.default)) {
               return importObj.default;
             }
           }
           // Recursively check sub-objects
           for (const value of Object.values(record)) {
             const result = extractInput(value);
-            if (result && result.endsWith(".ts")) return result;
+            if (result && isSourceTsFile(result)) return result;
           }
         }
         return undefined;
@@ -70,7 +77,7 @@ async function discoverEntryPointsFromExports(
 
       for (const [, value] of Object.entries(packageJson.exports)) {
         const input = extractInput(value);
-        if (input && input.endsWith(".ts")) {
+        if (input && isSourceTsFile(input)) {
           // Normalize path (remove leading ./)
           const normalized = input.replace(/^\.\//, "");
           if (!entryPoints.includes(normalized)) {

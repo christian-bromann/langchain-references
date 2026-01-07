@@ -1,0 +1,64 @@
+{
+  "project": "langchain",
+  "language": "typescript",
+  "repo": "langchain-ai/langchainjs",
+  "lastSynced": "2026-01-07T19:29:53.580Z",
+  "packages": [
+    {
+      "packageName": "langchain",
+      "tagPattern": "langchain@*",
+      "versions": [
+        {
+          "version": "1.2.6",
+          "sha": "85820be04995b4047a798ec44da6077cd1908d7a",
+          "tag": "langchain@1.2.6",
+          "releaseDate": "2026-01-07T01:54:07Z"
+        },
+        {
+          "version": "1.1.6",
+          "sha": "1a8162c87a800eb329bd76f8a598e461690597a7",
+          "tag": "langchain@1.1.6",
+          "releaseDate": "2025-12-13T01:55:32Z"
+        },
+        {
+          "version": "1.0.6",
+          "sha": "70320b7843a5f01e3f0ba1452d38db24302edb8d",
+          "tag": "langchain@1.0.6",
+          "releaseDate": "2025-11-19T00:17:41Z"
+        },
+        {
+          "version": "0.3.35",
+          "sha": "23a92ed3fae05531193af80977019aaa82fe94df",
+          "tag": "langchain==0.3.35",
+          "releaseDate": "2025-09-29T22:59:30Z"
+        }
+      ],
+      "lastUpdated": "2026-01-07T19:29:53.344Z"
+    },
+    {
+      "packageName": "@langchain/core",
+      "tagPattern": "@langchain/core@*",
+      "versions": [
+        {
+          "version": "1.1.11",
+          "sha": "99dc656319fcb152a9a7ec0663344e30e9623da7",
+          "tag": "@langchain/core@1.1.11",
+          "releaseDate": "2026-01-07T19:27:34.688Z"
+        },
+        {
+          "version": "1.0.4",
+          "sha": "921a29d3501330ec59eee6168b6bda2b6e236ae2",
+          "tag": "@langchain/core==1.0.4",
+          "releaseDate": "2026-01-07T19:27:34.973Z"
+        },
+        {
+          "version": "0.3.79",
+          "sha": "bd67e6c421a19312ec54e1a47997f429f0b31e7f",
+          "tag": "@langchain/core==0.3.79",
+          "releaseDate": "2026-01-07T19:27:35.224Z"
+        }
+      ],
+      "lastUpdated": "2026-01-07T19:27:35.224Z"
+    }
+  ]
+}

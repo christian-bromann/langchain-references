@@ -15,6 +15,7 @@
     "build": "turbo build",
     "build:ir": "tsx scripts/build-ir.ts",
     "build:ir:local": "tsx scripts/build-ir.ts --local",
+    "sync-versions": "tsx scripts/sync-versions.ts",
     "lint": "turbo lint",
     "test": "turbo test",
     "typecheck": "turbo typecheck",

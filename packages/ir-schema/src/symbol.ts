@@ -93,6 +93,31 @@ export interface SymbolRecord {
 
   /** Metadata tags */
   tags: SymbolTags;
+
+  /** Version history information (optional, added during versioned builds) */
+  versionInfo?: SymbolVersionInfo;
+}
+
+/**
+ * Version information attached to a symbol.
+ * Re-exported from versioning.ts for convenience.
+ */
+export interface SymbolVersionInfo {
+  /** Version when this symbol was first introduced */
+  since: string;
+
+  /** Deprecation information (if deprecated) */
+  deprecation?: {
+    /** Version when deprecated */
+    since: string;
+    /** Deprecation message */
+    message?: string;
+    /** Suggested replacement */
+    replacement?: string;
+  };
+
+  /** List of versions where this symbol had notable changes */
+  modifiedIn?: string[];
 }
 
 /**

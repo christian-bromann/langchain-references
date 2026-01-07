@@ -31,8 +31,22 @@ on:
           - ''
           - python
           - typescript
+      with_versions:
+        description: 'Include version history tracking'
+        required: false
+        type: boolean
+        default: true
+      full_rebuild:
+        description: 'Force full rebuild (ignore existing changelogs)'
+        required: false
+        type: boolean
+        default: false
 
-  # Build on push to main (only workflow changes)
+  # Trigger on upstream releases (via repository_dispatch)
+  repository_dispatch:
+    types: [upstream-release]
+
+  # Build on push to main (workflow, extractor, or config changes)
   push:
     branches:
       - main
@@ -40,6 +54,8 @@ on:
       - '.github/workflows/build-ir.yml'
       - 'scripts/**'
       - 'configs/**'
+      - 'packages/extractor-*/**'
+      - 'packages/ir-schema/**'
 
 # Ensure only one build runs at a time per ref
 concurrency:
@@ -130,11 +146,25 @@ jobs:
 
       - name: Build IR
         run: |
+          FLAGS=""
+
+          # Add versioning flag if enabled (default: true)
+          if [ "${{ inputs.with_versions }}" != "false" ]; then
+            FLAGS="$FLAGS --with-versions"
+          fi
+
+          # Add full rebuild flag if requested
+          if [ "${{ inputs.full_rebuild }}" == "true" ]; then
+            FLAGS="$FLAGS --full"
+          fi
+
           npx tsx scripts/build-ir.ts \
             --config ./configs/${{ matrix.config }} \
-            --skip-pointers
+            --skip-pointers \
+            $FLAGS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BLOB_BASE_URL: ${{ vars.BLOB_BASE_URL }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

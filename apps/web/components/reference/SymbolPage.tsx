@@ -22,6 +22,8 @@ import { MarkdownContent } from "./MarkdownContent";
 import { TableOfContents, type TOCSection, type TOCItem, type TOCInheritedGroup } from "./TableOfContents";
 import { symbolToMarkdown } from "@/lib/ir/markdown-generator";
 import { getBaseUrl } from "@/lib/config/mcp";
+import { VersionBadge } from "./VersionBadge";
+import { VersionHistory } from "./VersionHistory";
 
 interface SymbolPageProps {
   language: "python" | "javascript";
@@ -145,6 +147,14 @@ interface DisplaySymbol {
   members?: DisplayMember[];
   bases?: string[];
   inheritedMembers?: InheritedMemberGroup[];
+  versionInfo?: {
+    since?: string;
+    deprecation?: {
+      since: string;
+      message?: string;
+      replacement?: string;
+    };
+  };
 }
 
 /**
@@ -291,6 +301,7 @@ function toDisplaySymbol(
     members,
     bases: symbol.relations?.extends,
     inheritedMembers,
+    versionInfo: symbol.versionInfo,
   };
 }
 
@@ -829,6 +840,9 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
           <span className={cn("px-2 py-1 text-sm font-medium rounded", getKindColor(symbol.kind))}>
             {getKindLabel(symbol.kind)}
           </span>
+          {symbol.versionInfo?.since && (
+            <VersionBadge since={symbol.versionInfo.since} />
+          )}
           {symbol.visibility === "private" && (
             <span className="px-2 py-1 text-sm font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
               Private
@@ -934,6 +948,15 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
           </a>
         </div>
       )}
+
+      {/* Version History */}
+      <VersionHistory
+        qualifiedName={symbol.qualifiedName}
+        project={project.id}
+        language={irLanguage}
+        packageId={packageId}
+        className="mt-6"
+      />
       </div>
 
       {/* Table of Contents sidebar */}

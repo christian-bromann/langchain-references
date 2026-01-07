@@ -32,7 +32,25 @@ import crypto from "crypto";
 import path from "path";
 import fs from "fs/promises";
 import { spawn } from "child_process";
-import type { Manifest, Package, SymbolRecord } from "@langchain/ir-schema";
+import semver from "semver";
+import type {
+  Manifest,
+  Package,
+  SymbolRecord,
+  VersioningConfig,
+  PackageVersionIndex,
+  PackageChangelog,
+  VersionDelta,
+  AddedSymbol,
+  RemovedSymbol,
+  ModifiedSymbol,
+  SymbolSnapshot,
+  MemberSnapshot,
+  ParamSnapshot,
+  TypeParamSnapshot,
+  ChangeRecord,
+  VersionStats,
+} from "@langchain/ir-schema";
 import { fetchTarball, getLatestSha, getCacheBaseDir, type FetchResult } from "./fetch-tarball.js";
 import { uploadIR } from "./upload-ir.js";
 import { updateKV } from "./update-kv.js";
@@ -86,6 +104,10 @@ interface PackageConfig {
   path: string;
   /** Entry points for TypeScript (optional) */
   entryPoints?: string[];
+  /** Display name for the package */
+  displayName?: string;
+  /** Version tracking configuration */
+  versioning?: VersioningConfig;
 }
 
 /**
@@ -336,6 +358,751 @@ function normalizePackageId(name: string, language: "python" | "typescript"): st
 }
 
 /**
+ * Cached version entry from *-versions.json files
+ */
+interface CachedVersionEntry {
+  version: string;
+  sha: string;
+  tag: string;
+  releaseDate: string;
+}
+
+interface CachedPackageVersions {
+  packageName: string;
+  tagPattern: string;
+  versions: CachedVersionEntry[];
+  lastUpdated: string;
+}
+
+interface CachedProjectVersions {
+  project: string;
+  language: string;
+  repo: string;
+  lastSynced: string;
+  packages: CachedPackageVersions[];
+}
+
+/**
+ * Extracted symbols cache - stores minimal symbol info per version
+ */
+interface ExtractedSymbolsCache {
+  [sha: string]: {
+    version: string;
+    extractedAt: string;
+    symbols: Set<string>; // Just qualified names for diffing
+    symbolsFile: string; // Path to full symbols JSON
+  };
+}
+
+/**
+ * Load cached versions from the *-versions.json file.
+ */
+async function loadCachedVersions(
+  project: string,
+  language: string
+): Promise<CachedProjectVersions | null> {
+  const versionsFile = path.resolve(
+    __dirname,
+    `../configs/${project}-${language}-versions.json`
+  );
+
+  try {
+    const content = await fs.readFile(versionsFile, "utf-8");
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get the package path for a specific version, handling pathOverrides.
+ */
+function getPackagePathForVersion(
+  pkgConfig: PackageConfig,
+  version: string
+): string {
+  // Access pathOverrides from the versioning config (may not be in types yet)
+  const pathOverrides = (pkgConfig.versioning as Record<string, unknown> | undefined)?.pathOverrides as Record<string, string> | undefined;
+  if (!pathOverrides) {
+    return pkgConfig.path;
+  }
+
+  // Check for matching override (e.g., "0.x" matches "0.3.79")
+  for (const [pattern, overridePath] of Object.entries(pathOverrides)) {
+    if (pattern.endsWith(".x")) {
+      // Match major.x or major.minor.x patterns
+      const prefix = pattern.slice(0, -1); // "0." from "0.x"
+      if (version.startsWith(prefix)) {
+        return overridePath;
+      }
+    } else if (version === pattern) {
+      return overridePath;
+    }
+  }
+
+  return pkgConfig.path;
+}
+
+/**
+ * Extract symbols for a specific package at a specific SHA.
+ * Returns the path to the extracted symbols.json file.
+ */
+async function extractHistoricalVersion(
+  config: BuildConfig,
+  pkgConfig: PackageConfig,
+  sha: string,
+  version: string,
+  cacheDir: string
+): Promise<{ symbolsPath: string; symbolCount: number } | null> {
+  const packageId = normalizePackageId(pkgConfig.name, config.language);
+  const versionCacheDir = path.join(cacheDir, "version-cache", packageId, sha);
+  const symbolsPath = path.join(versionCacheDir, "symbols.json");
+
+  // Check if already cached
+  try {
+    const existing = await fs.readFile(symbolsPath, "utf-8");
+    const data = JSON.parse(existing);
+    console.log(`      ✓ ${version} (cached, ${data.symbols?.length ?? 0} symbols)`);
+    return { symbolsPath, symbolCount: data.symbols?.length ?? 0 };
+  } catch {
+    // Not cached, need to extract
+  }
+
+  console.log(`      Extracting ${version} (${sha.slice(0, 7)})...`);
+
+  // Fetch tarball for this SHA
+  let fetchResult: FetchResult;
+  try {
+    fetchResult = await fetchTarball({
+      repo: config.repo,
+      sha,
+      output: cacheDir,
+    });
+  } catch (error) {
+    console.warn(`      ⚠️ Failed to fetch ${version}: ${error}`);
+    return null;
+  }
+
+  // Create output directory
+  await fs.mkdir(versionCacheDir, { recursive: true });
+
+  // Get version-specific path (handles pathOverrides for v0.x etc.)
+  const versionPath = getPackagePathForVersion(pkgConfig, version);
+  const packagePath = path.join(fetchResult.extractedPath, versionPath);
+
+  // Check if path exists
+  try {
+    await fs.access(packagePath);
+  } catch {
+    console.warn(`      ⚠️ Path not found for ${version}: ${versionPath}`);
+    return null;
+  }
+
+  try {
+    if (config.language === "python") {
+      await extractPython(packagePath, pkgConfig.name, symbolsPath, config.repo, sha);
+    } else {
+      await extractTypeScript(
+        packagePath,
+        pkgConfig.name,
+        symbolsPath,
+        config.repo,
+        sha,
+        pkgConfig.entryPoints,
+        fetchResult.extractedPath
+      );
+    }
+
+    const data = JSON.parse(await fs.readFile(symbolsPath, "utf-8"));
+    return { symbolsPath, symbolCount: data.symbols?.length ?? 0 };
+  } catch (error) {
+    console.warn(`      ⚠️ Failed to extract ${version}: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Load symbol names from a symbols.json file for diffing.
+ */
+async function loadSymbolNames(symbolsPath: string): Promise<Map<string, SymbolRecord>> {
+  const content = await fs.readFile(symbolsPath, "utf-8");
+  const data = JSON.parse(content);
+  const symbols = new Map<string, SymbolRecord>();
+
+  for (const sym of data.symbols || []) {
+    symbols.set(sym.qualifiedName, sym);
+  }
+
+  return symbols;
+}
+
+/**
+ * Compute when each symbol was introduced by comparing versions.
+ */
+function computeSymbolIntroductions(
+  versionSymbols: Map<string, Map<string, SymbolRecord>>, // version -> qualifiedName -> symbol
+  versions: CachedVersionEntry[] // newest first
+): Map<string, string> {
+  const introductions = new Map<string, string>(); // qualifiedName -> version introduced
+
+  // Process from oldest to newest
+  const reversedVersions = [...versions].reverse();
+
+  for (let i = 0; i < reversedVersions.length; i++) {
+    const version = reversedVersions[i].version;
+    const symbols = versionSymbols.get(version);
+    if (!symbols) continue;
+
+    for (const qualifiedName of symbols.keys()) {
+      // If we haven't seen this symbol yet, it was introduced in this version
+      if (!introductions.has(qualifiedName)) {
+        introductions.set(qualifiedName, version);
+      }
+    }
+  }
+
+  return introductions;
+}
+
+// =============================================================================
+// SNAPSHOT & DIFF FUNCTIONS
+// =============================================================================
+
+/**
+ * Normalize a source path by extracting the relative path within the package.
+ * Handles paths like:
+ * - `.../extracted/libs/langchain-core/src/caches/index.ts` → `src/caches/index.ts`
+ * - `.../extracted/langchain-core/src/caches/index.ts` → `src/caches/index.ts`
+ * - `.../extracted/langchain/src/agents/index.ts` → `src/agents/index.ts`
+ */
+function normalizeSourcePath(sourcePath: string): string {
+  if (!sourcePath) return "";
+
+  // Look for common patterns and extract relative path
+  // Pattern 1: /extracted/libs/{package}/src/...
+  // Pattern 2: /extracted/{package}/src/...
+  const srcMatch = sourcePath.match(/\/src\/(.+)$/);
+  if (srcMatch) {
+    return `src/${srcMatch[1]}`;
+  }
+
+  // If no src/ found, try to find the last meaningful path segment
+  const extractedMatch = sourcePath.match(/\/extracted\/(?:libs\/)?[^/]+\/(.+)$/);
+  if (extractedMatch) {
+    return extractedMatch[1];
+  }
+
+  // Fallback: return as-is if already looks relative
+  if (!sourcePath.startsWith("/") && !sourcePath.startsWith("..")) {
+    return sourcePath;
+  }
+
+  // Last resort: just use the filename
+  const lastSlash = sourcePath.lastIndexOf("/");
+  return lastSlash >= 0 ? sourcePath.slice(lastSlash + 1) : sourcePath;
+}
+
+/**
+ * Create a compact snapshot from a full SymbolRecord.
+ */
+function createSnapshot(symbol: SymbolRecord): SymbolSnapshot {
+  const snapshot: SymbolSnapshot = {
+    qualifiedName: symbol.qualifiedName,
+    kind: symbol.kind,
+    signature: symbol.signature,
+    sourcePath: normalizeSourcePath(symbol.source?.path || ""),
+    sourceLine: symbol.source?.line || 0,
+  };
+
+  // Add members for classes/interfaces (basic info only from MemberReference)
+  if (symbol.members && symbol.members.length > 0) {
+    snapshot.members = symbol.members
+      .filter((m) => m.visibility === "public")
+      .map((m): MemberSnapshot => ({
+        name: m.name,
+        kind: m.kind,
+        signature: m.name, // MemberReference doesn't have signature, use name
+        visibility: m.visibility || "public",
+      }));
+  }
+
+  // Add params for functions/methods
+  if (symbol.params && symbol.params.length > 0) {
+    snapshot.params = symbol.params.map((p): ParamSnapshot => ({
+      name: p.name,
+      type: p.type,
+      required: p.required !== false,
+      default: p.default,
+    }));
+  }
+
+  // Add return type
+  if (symbol.returns?.type) {
+    snapshot.returnType = symbol.returns.type;
+  }
+
+  // Add type parameters
+  if (symbol.typeParams && symbol.typeParams.length > 0) {
+    snapshot.typeParams = symbol.typeParams.map((tp): TypeParamSnapshot => ({
+      name: tp.name,
+      constraint: tp.constraint,
+      default: tp.default,
+    }));
+  }
+
+  // Add inheritance (relations.extends is string[])
+  if (symbol.relations?.extends && symbol.relations.extends.length > 0) {
+    snapshot.extends = symbol.relations.extends;
+  }
+
+  if (symbol.relations?.implements && symbol.relations.implements.length > 0) {
+    snapshot.implements = symbol.relations.implements;
+  }
+
+  return snapshot;
+}
+
+/**
+ * Compare two symbols and detect changes.
+ * Returns list of changes or empty array if identical.
+ */
+function compareSymbols(before: SymbolRecord, after: SymbolRecord): ChangeRecord[] {
+  const changes: ChangeRecord[] = [];
+
+  // Check signature change
+  if (before.signature !== after.signature) {
+    changes.push({
+      type: "signature-changed",
+      description: "Signature changed",
+      breaking: false, // Conservative - could analyze further
+      before: { signature: before.signature },
+      after: { signature: after.signature },
+    });
+  }
+
+  // Check return type change
+  if (before.returns?.type !== after.returns?.type) {
+    changes.push({
+      type: "return-type-changed",
+      description: `Return type changed from ${before.returns?.type || "void"} to ${after.returns?.type || "void"}`,
+      breaking: true, // Return type changes are often breaking
+      before: { type: before.returns?.type || "void" },
+      after: { type: after.returns?.type || "void" },
+    });
+  }
+
+  // Check extends changes (relations.extends is string[])
+  const beforeExtends = [...(before.relations?.extends || [])].sort();
+  const afterExtends = [...(after.relations?.extends || [])].sort();
+  if (JSON.stringify(beforeExtends) !== JSON.stringify(afterExtends)) {
+    changes.push({
+      type: "extends-changed",
+      description: "Inheritance changed",
+      breaking: true,
+      before: { types: beforeExtends },
+      after: { types: afterExtends },
+    });
+  }
+
+  // Check member changes for classes/interfaces (MemberReference has name, refId, kind, visibility)
+  if (before.members || after.members) {
+    const beforeMembers = new Map((before.members || []).map((m) => [m.name, m]));
+    const afterMembers = new Map((after.members || []).map((m) => [m.name, m]));
+
+    // Check for removed members
+    for (const [name, member] of beforeMembers) {
+      if (!afterMembers.has(name) && member.visibility === "public") {
+        changes.push({
+          type: "member-removed",
+          description: `Member '${name}' was removed`,
+          breaking: true,
+          memberName: name,
+        });
+      }
+    }
+
+    // Check for added members
+    for (const [name, member] of afterMembers) {
+      if (!beforeMembers.has(name) && member.visibility === "public") {
+        changes.push({
+          type: "member-added",
+          description: `Member '${name}' was added`,
+          breaking: false,
+          memberName: name,
+        });
+      }
+    }
+
+    // Check for modified members (kind or visibility changed)
+    for (const [name, afterMember] of afterMembers) {
+      const beforeMember = beforeMembers.get(name);
+      if (beforeMember && afterMember.visibility === "public") {
+        if (beforeMember.kind !== afterMember.kind) {
+          changes.push({
+            type: "member-type-changed",
+            description: `Member '${name}' kind changed from ${beforeMember.kind} to ${afterMember.kind}`,
+            breaking: true,
+            memberName: name,
+          });
+        }
+        if (beforeMember.visibility !== afterMember.visibility) {
+          changes.push({
+            type: "member-visibility-changed",
+            description: `Member '${name}' visibility changed`,
+            breaking: afterMember.visibility !== "public",
+            memberName: name,
+            before: { visibility: beforeMember.visibility },
+            after: { visibility: afterMember.visibility },
+          });
+        }
+      }
+    }
+  }
+
+  // Check parameter changes for functions
+  if (before.params || after.params) {
+    const beforeParams = before.params || [];
+    const afterParams = after.params || [];
+
+    // Simple comparison - parameter list changed
+    if (beforeParams.length !== afterParams.length) {
+      const addedCount = Math.max(0, afterParams.length - beforeParams.length);
+      const removedCount = Math.max(0, beforeParams.length - afterParams.length);
+      if (addedCount > 0) {
+        changes.push({
+          type: "param-added",
+          description: `${addedCount} parameter(s) added`,
+          breaking: false,
+        });
+      }
+      if (removedCount > 0) {
+        changes.push({
+          type: "param-removed",
+          description: `${removedCount} parameter(s) removed`,
+          breaking: true,
+        });
+      }
+    } else {
+      // Check individual param changes
+      for (let i = 0; i < beforeParams.length; i++) {
+        const bp = beforeParams[i];
+        const ap = afterParams[i];
+        if (bp.type !== ap.type) {
+          changes.push({
+            type: "param-type-changed",
+            description: `Parameter '${bp.name}' type changed from ${bp.type} to ${ap.type}`,
+            breaking: true,
+            memberName: bp.name,
+            before: { type: bp.type },
+            after: { type: ap.type },
+          });
+        }
+      }
+    }
+  }
+
+  return changes;
+}
+
+/**
+ * Compute version deltas (changelog) between consecutive versions.
+ */
+function computeVersionDeltas(
+  versionSymbols: Map<string, Map<string, SymbolRecord>>,
+  versions: CachedVersionEntry[]
+): { deltas: VersionDelta[]; versionStats: Map<string, VersionStats> } {
+  const deltas: VersionDelta[] = [];
+  const versionStats = new Map<string, VersionStats>();
+
+  // Process versions from newest to oldest (for history array)
+  for (let i = 0; i < versions.length; i++) {
+    const current = versions[i];
+    const previous = i < versions.length - 1 ? versions[i + 1] : null;
+
+    const currentSymbols = versionSymbols.get(current.version);
+    const previousSymbols = previous ? versionSymbols.get(previous.version) : null;
+
+    if (!currentSymbols) continue;
+
+    const added: AddedSymbol[] = [];
+    const removed: RemovedSymbol[] = [];
+    const modified: ModifiedSymbol[] = [];
+
+    if (previousSymbols) {
+      // Find added symbols (in current but not in previous)
+      for (const [name, symbol] of currentSymbols) {
+        if (!previousSymbols.has(name)) {
+          added.push({
+            qualifiedName: name,
+            snapshot: createSnapshot(symbol),
+          });
+        }
+      }
+
+      // Find removed symbols (in previous but not in current)
+      for (const [name, symbol] of previousSymbols) {
+        if (!currentSymbols.has(name)) {
+          removed.push({
+            qualifiedName: name,
+            kind: symbol.kind,
+          });
+        }
+      }
+
+      // Find modified symbols (in both, but changed)
+      for (const [name, currentSymbol] of currentSymbols) {
+        const previousSymbol = previousSymbols.get(name);
+        if (previousSymbol) {
+          const changes = compareSymbols(previousSymbol, currentSymbol);
+          if (changes.length > 0) {
+            modified.push({
+              qualifiedName: name,
+              changes,
+              snapshotBefore: createSnapshot(previousSymbol),
+              snapshotAfter: createSnapshot(currentSymbol),
+            });
+          }
+        }
+      }
+    } else {
+      // First version - all symbols are "added"
+      for (const [name, symbol] of currentSymbols) {
+        added.push({
+          qualifiedName: name,
+          snapshot: createSnapshot(symbol),
+        });
+      }
+    }
+
+    // Compute stats
+    const breakingCount = modified.reduce(
+      (count, m) => count + m.changes.filter((c) => c.breaking).length,
+      0
+    ) + removed.length;
+
+    const stats: VersionStats = {
+      added: added.length,
+      removed: removed.length,
+      modified: modified.length,
+      breaking: breakingCount,
+      totalSymbols: currentSymbols.size,
+    };
+
+    versionStats.set(current.version, stats);
+
+    // Only add delta if there are changes (or it's the first version for context)
+    if (added.length > 0 || removed.length > 0 || modified.length > 0 || !previous) {
+      deltas.push({
+        version: current.version,
+        previousVersion: previous?.version ?? null,
+        sha: current.sha,
+        releaseDate: current.releaseDate,
+        added,
+        removed,
+        modified,
+        deprecated: [], // TODO: track deprecations separately
+      });
+    }
+  }
+
+  return { deltas, versionStats };
+}
+
+/**
+ * Build version history for packages using cached version data.
+ * Extracts historical versions and computes actual changelog.
+ */
+async function buildVersionHistory(
+  config: BuildConfig,
+  fetchResult: FetchResult,
+  irOutputPath: string,
+  forceFullRebuild?: boolean
+): Promise<void> {
+  // Load cached versions
+  const cachedVersions = await loadCachedVersions(
+    config.project || "langchain",
+    config.language === "python" ? "python" : "typescript"
+  );
+
+  if (!cachedVersions) {
+    console.log(`   ⚠️  No cached versions found. Run 'pnpm sync-versions' first.`);
+    return;
+  }
+
+  console.log(`   Using cached versions from ${cachedVersions.lastSynced.split("T")[0]}`);
+
+  const cacheDir = getCacheBaseDir();
+
+  for (const pkgConfig of config.packages) {
+    if (!pkgConfig.versioning?.tagPattern) {
+      continue;
+    }
+
+    if (pkgConfig.versioning.enabled === false) {
+      continue;
+    }
+
+    // Find cached versions for this package
+    const cachedPkg = cachedVersions.packages.find(
+      (p) => p.packageName === pkgConfig.name
+    );
+
+    if (!cachedPkg || cachedPkg.versions.length === 0) {
+      console.log(`   ⚠️  ${pkgConfig.name}: No cached versions. Run 'pnpm sync-versions'.`);
+      continue;
+    }
+
+    // Filter versions by minVersion if specified
+    const minVersion = pkgConfig.versioning.minVersion;
+    const versions = minVersion
+      ? cachedPkg.versions.filter((v) => semver.gte(v.version, minVersion))
+      : cachedPkg.versions; // newest first
+
+    if (versions.length === 0) {
+      console.log(`   ⚠️  ${pkgConfig.name}: No versions >= ${minVersion}. Skipping.`);
+      continue;
+    }
+
+    console.log(`\n   📦 ${pkgConfig.name}: Processing ${versions.length} version(s)${minVersion ? ` (minVersion: ${minVersion})` : ""}`);
+
+    const packageId = normalizePackageId(pkgConfig.name, config.language);
+    const pkgOutputDir = path.join(irOutputPath, "packages", packageId);
+    const latestSymbolsPath = path.join(pkgOutputDir, "symbols.json");
+
+    // Collect symbols from each version
+    const versionSymbols = new Map<string, Map<string, SymbolRecord>>();
+
+    // Latest version - already extracted
+    console.log(`      ✓ ${versions[0].version} (latest, already extracted)`);
+    try {
+      const latestSymbols = await loadSymbolNames(latestSymbolsPath);
+      versionSymbols.set(versions[0].version, latestSymbols);
+    } catch (error) {
+      console.warn(`      ⚠️ Failed to load latest symbols: ${error}`);
+      continue;
+    }
+
+    // Historical versions - extract if needed
+    for (let i = 1; i < versions.length; i++) {
+      const v = versions[i];
+      const result = await extractHistoricalVersion(
+        config,
+        pkgConfig,
+        v.sha,
+        v.version,
+        cacheDir
+      );
+
+      if (result) {
+        console.log(`      ✓ ${v.version} (${result.symbolCount} symbols)`);
+        const symbols = await loadSymbolNames(result.symbolsPath);
+        versionSymbols.set(v.version, symbols);
+      }
+    }
+
+    // Compute when each symbol was introduced
+    const introductions = computeSymbolIntroductions(versionSymbols, versions);
+
+    // Compute version deltas (changelog) and stats
+    const { deltas, versionStats } = computeVersionDeltas(versionSymbols, versions);
+
+    // Update latest symbols with actual "since" version and modifiedIn info
+    try {
+      const symbolsContent = await fs.readFile(latestSymbolsPath, "utf-8");
+      const symbolsData = JSON.parse(symbolsContent);
+
+      // Build modifiedIn map from deltas
+      const modifiedInMap = new Map<string, string[]>();
+      for (const delta of deltas) {
+        for (const mod of delta.modified) {
+          const versions = modifiedInMap.get(mod.qualifiedName) || [];
+          versions.push(delta.version);
+          modifiedInMap.set(mod.qualifiedName, versions);
+        }
+      }
+
+      let annotatedCount = 0;
+      if (symbolsData.symbols && Array.isArray(symbolsData.symbols)) {
+        for (const symbol of symbolsData.symbols) {
+          const since = introductions.get(symbol.qualifiedName);
+          const modifiedIn = modifiedInMap.get(symbol.qualifiedName);
+
+          symbol.versionInfo = {
+            since: since || versions[0].version,
+            ...(modifiedIn && modifiedIn.length > 0 ? { modifiedIn } : {}),
+          };
+          annotatedCount++;
+        }
+
+        await fs.writeFile(latestSymbolsPath, JSON.stringify(symbolsData, null, 2));
+        console.log(`      ✓ Annotated ${annotatedCount} symbols with version info`);
+      }
+    } catch (error) {
+      console.warn(`      ⚠️ Failed to annotate symbols: ${error}`);
+    }
+
+    // Create changelog.json
+    const changelog: PackageChangelog = {
+      packageId,
+      packageName: pkgConfig.displayName || pkgConfig.name,
+      generatedAt: new Date().toISOString(),
+      history: deltas,
+    };
+
+    await fs.writeFile(
+      path.join(pkgOutputDir, "changelog.json"),
+      JSON.stringify(changelog, null, 2)
+    );
+
+    // Log changelog summary
+    const totalAdded = deltas.reduce((sum, d) => sum + d.added.length, 0);
+    const totalRemoved = deltas.reduce((sum, d) => sum + d.removed.length, 0);
+    const totalModified = deltas.reduce((sum, d) => sum + d.modified.length, 0);
+    console.log(`      ✓ Generated changelog: +${totalAdded} added, -${totalRemoved} removed, ~${totalModified} modified`);
+
+    // Create versions.json with real stats
+    const latestStats = versionStats.get(versions[0].version) || {
+      added: 0,
+      removed: 0,
+      modified: 0,
+      breaking: 0,
+      totalSymbols: versionSymbols.get(versions[0].version)?.size ?? 0,
+    };
+
+    const versionsIndex: PackageVersionIndex = {
+      packageId,
+      packageName: pkgConfig.displayName || pkgConfig.name,
+      latest: {
+        version: versions[0].version,
+        sha: versions[0].sha,
+        tag: versions[0].tag,
+        releaseDate: versions[0].releaseDate,
+        extractedAt: new Date().toISOString(),
+        stats: latestStats,
+      },
+      versions: versions.map((v) => ({
+        version: v.version,
+        sha: v.sha,
+        tag: v.tag,
+        releaseDate: v.releaseDate,
+        stats: versionStats.get(v.version) || {
+          added: 0,
+          removed: 0,
+          modified: 0,
+          breaking: 0,
+          totalSymbols: versionSymbols.get(v.version)?.size ?? 0,
+        },
+      })),
+    };
+
+    await fs.writeFile(
+      path.join(pkgOutputDir, "versions.json"),
+      JSON.stringify(versionsIndex, null, 2)
+    );
+  }
+}
+
+/**
  * Build a single configuration file.
  */
 async function buildConfig(
@@ -346,6 +1113,8 @@ async function buildConfig(
     cache?: string;
     skipUpload?: boolean;
     skipPointers?: boolean;
+    withVersions?: boolean;
+    fullRebuild?: boolean;
     verbose?: boolean;
   }
 ): Promise<{ buildId: string; success: boolean }> {
@@ -427,6 +1196,12 @@ async function buildConfig(
   await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
   console.log(`   ✓ ${manifest.packages.length} packages in manifest`);
 
+  // Build version history if enabled
+  if (opts.withVersions) {
+    console.log("\n📜 Building version history...");
+    await buildVersionHistory(config, fetchResult, irOutputPath, opts.fullRebuild);
+  }
+
   // Upload to Vercel Blob
   if (!opts.skipUpload) {
     console.log("\n☁️  Uploading to Vercel Blob...");
@@ -478,6 +1253,8 @@ async function main() {
     .option("--local", "Local-only mode (skip all cloud uploads)")
     .option("--skip-upload", "Skip upload to Vercel Blob")
     .option("--skip-pointers", "Skip updating build pointers")
+    .option("--with-versions", "Enable version history tracking (incremental by default)")
+    .option("--full", "Force full rebuild of version history (ignore existing changelogs)")
     .option("-v, --verbose", "Enable verbose output")
     .parse();
 
@@ -534,6 +1311,8 @@ async function main() {
       cache: opts.cache,
       skipUpload: opts.skipUpload,
       skipPointers: opts.skipPointers,
+      withVersions: opts.withVersions,
+      fullRebuild: opts.full,
       verbose: opts.verbose,
     });
     results.push({ config: path.basename(configPath), ...result });

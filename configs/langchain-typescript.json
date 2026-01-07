@@ -8,13 +8,27 @@
       "name": "langchain",
       "path": "libs/langchain",
       "entryPoints": ["auto"],
-      "displayName": "LangChain"
+      "displayName": "LangChain",
+      "versioning": {
+        "tagPattern": "langchain@*",
+        "maxVersions": 10,
+        "pathOverrides": {
+          "0.x": "langchain"
+        }
+      }
     },
     {
       "name": "@langchain/core",
       "path": "libs/langchain-core",
       "entryPoints": ["auto"],
-      "displayName": "LangChain Core"
+      "displayName": "LangChain Core",
+      "versioning": {
+        "tagPattern": "@langchain/core@*",
+        "maxVersions": 10,
+        "pathOverrides": {
+          "0.x": "langchain-core"
+        }
+      }
     },
     {
       "name": "@langchain/community",

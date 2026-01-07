@@ -44,6 +44,47 @@
               "type": "string"
             },
             "description": "Entry points for TypeScript extraction (relative to package path)"
+          },
+          "versioning": {
+            "type": "object",
+            "description": "Version tracking configuration for this package",
+            "properties": {
+              "tagPattern": {
+                "type": "string",
+                "description": "Git tag pattern for version discovery (e.g., '@langchain/core@*', 'v*')"
+              },
+              "maxVersions": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50,
+                "default": 10,
+                "description": "Maximum number of minor/major versions to track"
+              },
+              "alwaysInclude": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Version strings to always include regardless of maxVersions"
+              },
+              "minVersion": {
+                "type": "string",
+                "description": "Minimum version to start tracking (e.g., '0.1.0')"
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": true,
+                "description": "Whether to enable version tracking for this package"
+              },
+              "pathOverrides": {
+                "type": "object",
+                "description": "Version-specific path overrides (e.g., for v0.x with different directory structure)",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["tagPattern"]
           }
         }
       },

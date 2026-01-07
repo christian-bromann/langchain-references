@@ -166,6 +166,9 @@ importers:
       commander:
         specifier: ^14.0.2
         version: 14.0.2
+      semver:
+        specifier: ^7.6.0
+        version: 7.7.3
       tar:
         specifier: ^7.5.2
         version: 7.5.2
@@ -176,6 +179,9 @@ importers:
       '@types/node':
         specifier: ^25.0.3
         version: 25.0.3
+      '@types/semver':
+        specifier: ^7.5.0
+        version: 7.7.1
       '@types/tar':
         specifier: ^6.1.13
         version: 6.1.13
@@ -1201,6 +1207,9 @@ packages:
 
   '@types/react@19.2.7':
     resolution: {integrity: sha512-MWtvHrGZLFttgeEj28VXHxpmwYbor/ATPYbBfSFZEIRK0ecCFLl2Qo55z52Hss+UV9CRN7trSeq1zbgx7YDWWg==}
+
+  '@types/semver@7.7.1':
+    resolution: {integrity: sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA==}
 
   '@types/tar@6.1.13':
     resolution: {integrity: sha512-IznnlmU5f4WcGTh2ltRu/Ijpmk8wiWXfF0VA4s+HPjHZgvFggk1YaIkbo5krX/zUCzWF8N/l4+W/LNxnvAJ8nw==}
@@ -2894,6 +2903,8 @@ snapshots:
     dependencies:
       csstype: 3.2.3
 
+  '@types/semver@7.7.1': {}
+
   '@types/tar@6.1.13':
     dependencies:
       '@types/node': 25.0.3
@@ -3568,8 +3579,7 @@ snapshots:
 
   scheduler@0.27.0: {}
 
-  semver@7.7.3:
-    optional: true
+  semver@7.7.3: {}
 
   sharp@0.34.5:
     dependencies:
