@@ -1,0 +1,53 @@
+{
+  "name": "@langchain/build-pipeline",
+  "version": "0.1.0",
+  "description": "IR build pipeline for LangChain Reference Docs - extracts, transforms, and uploads API documentation",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "build-ir": "./bin/build-ir.js",
+    "sync-versions": "./bin/sync-versions.js",
+    "fetch-tarball": "./bin/fetch-tarball.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./commands/*": {
+      "types": "./dist/commands/*.d.ts",
+      "import": "./dist/commands/*.js"
+    }
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "build:ir": "tsx src/commands/build-ir.ts",
+    "sync-versions": "tsx src/commands/sync-versions.ts",
+    "fetch-tarball": "tsx src/commands/fetch-tarball.ts"
+  },
+  "dependencies": {
+    "@langchain/ir-schema": "workspace:*",
+    "@vercel/blob": "^2.0.0",
+    "commander": "^14.0.2",
+    "semver": "^7.6.0",
+    "tar": "^7.5.2",
+    "tinyglobby": "^0.2.14"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/semver": "^7.5.0",
+    "@types/tar": "^6.1.13",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
+

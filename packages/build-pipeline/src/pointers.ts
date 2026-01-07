@@ -1,14 +1,8 @@
-#!/usr/bin/env tsx
 /**
- * Update Pointers - Updates Vercel Blob pointers for the latest build
+ * Pointer Management
  *
- * This script updates pointer files in Vercel Blob:
- * - pointers/latest-build.json - Global latest build pointer
- * - pointers/latest-python.json - Latest Python build pointer
- * - pointers/latest-javascript.json - Latest JavaScript build pointer
- * - pointers/builds/{buildId}.json - Build metadata
- * - pointers/packages/{ecosystem}/{packageName}.json - Per-package latest
- * - pointers/build-history.json - Recent build history
+ * Manages build pointers in Vercel Blob for build tracking and discovery.
+ * Handles latest build pointers, build history, and package version tracking.
  */
 
 import { put } from "@vercel/blob";
@@ -231,44 +225,6 @@ export async function markBuildFailed(
   }
 }
 
-// Keep old function name as alias for backwards compatibility
+// Alias for backwards compatibility
 export const updateKV = updatePointers;
-
-// CLI entry point
-async function main() {
-  const args = process.argv.slice(2);
-  
-  if (args.length < 2) {
-    console.error("Usage: update-kv.ts <buildId> <manifestPath>");
-    console.error("");
-    console.error("Arguments:");
-    console.error("  buildId       The build ID to update pointers for");
-    console.error("  manifestPath  Path to the reference.manifest.json file");
-    process.exit(1);
-  }
-
-  const [buildId, manifestPath] = args;
-  
-  // Load manifest
-  const fs = await import("fs/promises");
-  const manifestContent = await fs.readFile(manifestPath, "utf-8");
-  const manifest = JSON.parse(manifestContent);
-  
-  console.log(`\n🔧 Updating pointers for build: ${buildId}`);
-  console.log(`   Manifest: ${manifestPath}`);
-  
-  await updatePointers({
-    buildId,
-    manifest,
-    dryRun: false,
-  });
-}
-
-// Run if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((error) => {
-    console.error("\n❌ Pointer update failed:", error);
-    process.exit(1);
-  });
-}
 

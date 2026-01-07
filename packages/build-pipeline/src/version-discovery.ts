@@ -241,7 +241,6 @@ export async function fetchGitTags(
         objectType: ref.object.type,
       });
     }
-    const foundThisPage = matchingRefs.length - beforeCount;
 
     // Show progress with matching count
     process.stdout.write(`\r   Scanning tags... page ${page}, found ${matchingRefs.length} matching "${pattern}"`);

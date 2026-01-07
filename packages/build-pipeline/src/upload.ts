@@ -1,12 +1,8 @@
-#!/usr/bin/env tsx
 /**
- * Upload IR - Uploads IR artifacts to Vercel Blob storage
+ * Upload Utilities
  *
- * This script uploads:
- * - reference.manifest.json
- * - Routing maps per package
- * - Symbol shards (partitioned by ID prefix)
- * - Search index per language
+ * Uploads IR artifacts to Vercel Blob storage.
+ * Handles sharding, routing maps, and search indices.
  */
 
 import { put, list, del } from "@vercel/blob";
@@ -464,6 +460,4 @@ export async function cleanupOldBuilds(
 
   return deletedCount;
 }
-
-
 

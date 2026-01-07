@@ -338,7 +338,8 @@ export type SymbolChangeType =
   | "return-type-changed"
   | "type-param-added"
   | "type-param-removed"
-  | "type-param-constraint-changed";
+  | "type-param-constraint-changed"
+  | "deprecated";
 
 /**
  * Types of changes specific to class/interface members.

@@ -67,8 +67,8 @@ export async function fetchDeployedChangelog(
       );
     }
 
-    const changelog: PackageChangelog = await changelogRes.json();
-    const versions: PackageVersionIndex = await versionsRes.json();
+    const changelog = await changelogRes.json() as PackageChangelog;
+    const versions = await versionsRes.json() as PackageVersionIndex;
 
     console.log(
       `Found existing changelog with ${changelog.history.length} version(s), ` +

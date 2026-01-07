@@ -13,9 +13,10 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "build:ir": "tsx scripts/build-ir.ts",
-    "build:ir:local": "tsx scripts/build-ir.ts --local",
-    "sync-versions": "tsx scripts/sync-versions.ts",
+    "build:ir": "pnpm --filter @langchain/build-pipeline build:ir",
+    "build:ir:local": "pnpm --filter @langchain/build-pipeline build:ir -- --local",
+    "sync-versions": "pnpm --filter @langchain/build-pipeline sync-versions",
+    "fetch-tarball": "pnpm --filter @langchain/build-pipeline fetch-tarball",
     "lint": "turbo lint",
     "test": "turbo test",
     "typecheck": "turbo typecheck",

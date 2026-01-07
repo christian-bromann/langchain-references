@@ -8,14 +8,9 @@
 
 import type {
   SymbolRecord,
-  SymbolKind,
-  Visibility,
   MemberReference,
   SymbolParam,
   TypeParam,
-} from "@langchain/ir-schema";
-
-import type {
   SymbolSnapshot,
   MemberSnapshot,
   ParamSnapshot,

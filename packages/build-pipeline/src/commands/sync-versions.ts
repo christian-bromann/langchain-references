@@ -23,9 +23,10 @@ import { program } from "commander";
 import path from "path";
 import fs from "fs/promises";
 import semver from "semver";
+import { fileURLToPath } from "url";
 
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
-const CONFIGS_DIR = path.resolve(__dirname, "../configs");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CONFIGS_DIR = path.resolve(__dirname, "../../../../configs");
 
 // =============================================================================
 // TYPES
@@ -484,7 +485,7 @@ async function checkRateLimit(githubToken?: string): Promise<void> {
   try {
     const response = await fetch("https://api.github.com/rate_limit", { headers });
     if (response.ok) {
-      const data = await response.json();
+      const data = await response.json() as { resources?: { core?: { remaining: number; limit: number; reset: number } } };
       const core = data.resources?.core;
       if (core) {
         const reset = new Date(core.reset * 1000);

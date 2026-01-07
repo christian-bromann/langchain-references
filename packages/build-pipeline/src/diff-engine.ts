@@ -7,18 +7,9 @@
 
 import type {
   SymbolRecord,
-  SymbolSnapshot,
   MemberSnapshot,
-  ParamSnapshot,
   ChangeRecord,
-  ChangeType,
-  ChangeValue,
   VersionDelta,
-  AddedSymbol,
-  RemovedSymbol,
-  ModifiedSymbol,
-  DeprecatedSymbol,
-  DiscoveredVersion,
 } from "@langchain/ir-schema";
 
 import { createSnapshot } from "./snapshot.js";
@@ -244,7 +235,7 @@ export function detectMemberChanges(
   const newerMap = new Map(newerMembers.map((m) => [m.name, m]));
 
   // Added members
-  for (const [name, member] of newerMap) {
+  for (const [name] of newerMap) {
     if (!olderMap.has(name)) {
       changes.push({
         type: "member-added",
@@ -257,7 +248,7 @@ export function detectMemberChanges(
   }
 
   // Removed members
-  for (const [name, member] of olderMap) {
+  for (const [name] of olderMap) {
     if (!newerMap.has(name)) {
       changes.push({
         type: "member-removed",
@@ -281,8 +272,8 @@ export function detectMemberChanges(
           newerMember.visibility
         ),
         memberName: name,
-        before: { visibility: olderMember.visibility as any },
-        after: { visibility: newerMember.visibility as any },
+        before: { visibility: olderMember.visibility as "public" | "protected" | "private" },
+        after: { visibility: newerMember.visibility as "public" | "protected" | "private" },
       });
     }
   }
@@ -349,7 +340,7 @@ export function detectMemberSnapshotChanges(
         changes.push({
           type: "member-optionality-changed",
           description: `'${name}' ${becameRequired ? "became required" : "became optional"}`,
-          breaking: becameRequired,
+          breaking: becameRequired ?? false,
           memberName: name,
           before: { required: !olderMember.optional },
           after: { required: !newerMember.optional },
@@ -503,7 +494,7 @@ function findPotentialReplacement(
   // Simple heuristic: look for similar names
   const baseName = removedName.split(".").pop() ?? removedName;
 
-  for (const [name, symbol] of newerSymbols) {
+  for (const [name] of newerSymbols) {
     const otherBaseName = name.split(".").pop() ?? name;
     if (
       otherBaseName.toLowerCase().includes(baseName.toLowerCase()) ||

@@ -8,7 +8,6 @@ import type {
   PackageChangelog,
   PackageVersionIndex,
   VersionDelta,
-  VersionInfo,
   VersionStats,
   DiscoveredVersion,
   VersioningConfig,
@@ -22,6 +21,7 @@ import {
   discoverVersions,
   createDiscoveryOptions,
 } from "./version-discovery.js";
+import { createSnapshot } from "./snapshot.js";
 
 // =============================================================================
 // TYPES
@@ -435,8 +435,6 @@ export function annotateLatestIR(
  * Create an initial delta for the first version (all symbols are "added").
  */
 function createInitialDelta(ir: MinimalIR): VersionDelta {
-  const { createSnapshot } = require("./snapshot.js");
-
   return {
     version: ir.version,
     previousVersion: null,

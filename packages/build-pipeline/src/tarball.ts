@@ -1,15 +1,10 @@
-#!/usr/bin/env tsx
 /**
- * Fetch Tarball - Downloads source tarballs from GitHub
+ * Tarball Utilities
  *
- * Usage:
- *   tsx fetch-tarball.ts --repo langchain-ai/langchain --sha abc123
- *
- * Tarballs are extracted to a system temp directory to avoid polluting
- * the main project and to prevent PATH/dependency conflicts.
+ * Downloads and extracts source tarballs from GitHub.
+ * Handles caching, dependency installation, and type building.
  */
 
-import { program } from "commander";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
@@ -238,8 +233,9 @@ async function installDependencies(extractedPath: string): Promise<void> {
     // Create marker file to skip future installs
     await fs.writeFile(installMarkerPath, new Date().toISOString());
     console.log(`   ✅ Dependencies installed with ${pmInfo.name}`);
-  } catch (error: any) {
-    console.warn(`   ⚠️  Could not install dependencies: ${error.message?.slice(0, 100)}`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn(`   ⚠️  Could not install dependencies: ${errorMessage.slice(0, 100)}`);
     console.warn("   ⚠️  External types may show as 'any'");
   }
 
@@ -310,9 +306,10 @@ async function buildTypeDeclarations(
 
       await fs.writeFile(buildMarkerPath, new Date().toISOString());
       console.log("   ✅ Type declarations built");
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Building is optional - extraction will still work but with some "unknown" types
-      console.warn(`   ⚠️  Could not build types: ${error.message?.slice(0, 100)}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.warn(`   ⚠️  Could not build types: ${errorMessage.slice(0, 100)}`);
       console.warn("   ⚠️  Some external type references may show as 'unknown'");
     }
   } catch {
@@ -381,7 +378,7 @@ export async function fetchTarball(options: FetchOptions): Promise<FetchResult> 
   }
 
   await pipeline(
-    Readable.fromWeb(body as any),
+    Readable.fromWeb(body as Parameters<typeof Readable.fromWeb>[0]),
     createWriteStream(tarballPath)
   );
 
@@ -437,37 +434,3 @@ export async function fetchMultiple(
   return results;
 }
 
-// CLI entry point
-async function main() {
-  program
-    .name("fetch-tarball")
-    .description("Download and extract source tarballs from GitHub")
-    .requiredOption("--repo <repo>", "GitHub repository (owner/repo)")
-    .option("--sha <sha>", "Git commit SHA (defaults to latest main)")
-    .option("--output <path>", "Output directory (defaults to system temp)")
-    .parse();
-
-  const opts = program.opts();
-
-  // Resolve SHA if not provided
-  const sha = opts.sha || (await getLatestSha(opts.repo));
-
-  const result = await fetchTarball({
-    repo: opts.repo,
-    sha,
-    output: opts.output || getCacheBaseDir(),
-  });
-
-  console.log(`\n📁 Source available at: ${result.extractedPath}`);
-  console.log(`   SHA: ${result.sha}`);
-  console.log(`   Fetched: ${result.fetchedAt}`);
-}
-
-// Only run main if this is the entry point
-const isMainModule = process.argv[1]?.includes("fetch-tarball");
-if (isMainModule) {
-  main().catch((error) => {
-    console.error("Fetch failed:", error);
-    process.exit(1);
-  });
-}
