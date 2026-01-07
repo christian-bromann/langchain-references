@@ -8,10 +8,6 @@
 #   - VERCEL_TOKEN: Your Vercel API token (Account Settings > Tokens)
 #   - VERCEL_ORG_ID: Your Vercel team/org ID (Project Settings > General)
 #   - VERCEL_PROJECT_ID: Your Vercel project ID (Project Settings > General)
-#
-# - Add the following environment variables in Vercel project settings:
-#   - BLOB_URL: Your Vercel Blob store URL (e.g., https://xxx.public.blob.vercel-storage.com)
-#     This is required for fetching IR manifests during static generation.
 
 name: Deploy
 

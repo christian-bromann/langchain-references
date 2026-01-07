@@ -1,12 +1,12 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["**/.env.*local"],
-  "globalEnv": ["NODE_ENV", "VERCEL"],
+  "globalEnv": ["NODE_ENV", "VERCEL", "CACHE_BUST"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
-      "env": ["BLOB_READ_WRITE_TOKEN", "BLOB_URL"]
+      "env": ["BLOB_READ_WRITE_TOKEN", "BLOB_URL", "CACHE_BUST"]
     },
     "dev": {
       "cache": false,
