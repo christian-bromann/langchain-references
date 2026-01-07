@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+// Cache bust: 2026-01-06-v2
 // Log environment variables at build time for debugging
 console.log("[next.config] Build-time environment check:");
 console.log("[next.config] BLOB_URL:", process.env.BLOB_URL ? "SET" : "NOT SET");

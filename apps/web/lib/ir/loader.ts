@@ -5,6 +5,8 @@
  * data source based on the environment:
  * - Production (Vercel): Fetches from Vercel Blob storage (public blobs)
  * - Development: Reads from local ir-output directory
+ *
+ * Cache bust: 2026-01-06-v2
  */
 
 import type { Manifest, Package, SymbolRecord, RoutingMap } from "./types";
