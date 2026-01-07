@@ -15,6 +15,9 @@ export interface Manifest {
   /** Build metadata */
   build: BuildInfo;
 
+  /** Project identifier (optional for backwards compatibility) */
+  project?: string;
+
   /** Source repositories used in this build */
   sources: SourceInfo[];
 
@@ -140,6 +143,7 @@ export interface PackageStats {
   /** Total symbol count */
   total: number;
 }
+
 
 
 

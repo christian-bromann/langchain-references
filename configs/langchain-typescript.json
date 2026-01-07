@@ -1,62 +1,76 @@
 {
   "$schema": "./config-schema.json",
+  "project": "langchain",
   "language": "typescript",
   "repo": "langchain-ai/langchainjs",
   "packages": [
     {
       "name": "langchain",
       "path": "libs/langchain",
-      "entryPoints": ["auto"]
+      "entryPoints": ["auto"],
+      "displayName": "LangChain"
     },
     {
       "name": "@langchain/core",
       "path": "libs/langchain-core",
-      "entryPoints": ["auto"]
+      "entryPoints": ["auto"],
+      "displayName": "LangChain Core"
     },
     {
       "name": "@langchain/community",
       "path": "libs/langchain-community",
-      "entryPoints": ["auto"]
+      "entryPoints": ["auto"],
+      "displayName": "LangChain Community"
     },
     {
       "name": "@langchain/anthropic",
       "path": "libs/providers/langchain-anthropic",
-      "entryPoints": ["auto"]
+      "entryPoints": ["auto"],
+      "displayName": "Anthropic"
     },
     {
       "name": "@langchain/aws",
       "path": "libs/providers/langchain-aws",
-      "entryPoints": ["auto"]
+      "entryPoints": ["auto"],
+      "displayName": "AWS"
     },
     {
       "name": "@langchain/deepseek",
       "path": "libs/providers/langchain-deepseek",
-      "entryPoints": ["auto"]
+      "entryPoints": ["auto"],
+      "displayName": "DeepSeek"
     },
     {
       "name": "@langchain/google-genai",
       "path": "libs/providers/langchain-google-genai",
-      "entryPoints": ["auto"]
+      "entryPoints": ["auto"],
+      "displayName": "Google GenAI"
     },
     {
       "name": "@langchain/google-vertexai",
       "path": "libs/providers/langchain-google-vertexai",
-      "entryPoints": ["auto"]
+      "entryPoints": ["auto"],
+      "displayName": "Google Vertex AI"
     },
     {
       "name": "@langchain/google-vertexai-web",
       "path": "libs/providers/langchain-google-vertexai-web",
-      "entryPoints": ["auto"]
+      "entryPoints": ["auto"],
+      "displayName": "Google Vertex AI Web"
     },
     {
       "name": "@langchain/groq",
       "path": "libs/providers/langchain-groq",
-      "entryPoints": ["auto"]
+      "entryPoints": ["auto"],
+      "displayName": "Groq"
     },
     {
       "name": "@langchain/openai",
       "path": "libs/providers/langchain-openai",
-      "entryPoints": ["auto"]
+      "entryPoints": ["auto"],
+      "displayName": "OpenAI"
     }
   ]
 }
+
+

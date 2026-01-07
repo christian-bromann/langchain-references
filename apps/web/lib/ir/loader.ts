@@ -100,16 +100,17 @@ export async function getLatestBuildId(): Promise<string | null> {
 }
 
 /**
- * Get the latest build ID for a specific language
+ * Get the latest build ID for a specific language and project
  */
 export async function getLatestBuildIdForLanguage(
-  language: "python" | "javascript"
+  language: "python" | "javascript",
+  project: string = "langchain"
 ): Promise<string | null> {
   try {
-    const pointer = await fetchPointer<LatestLanguagePointer>(`latest-${language}`);
+    const pointer = await fetchPointer<LatestLanguagePointer>(`latest-${project}-${language}`);
     return pointer?.buildId || null;
   } catch (error) {
-    console.error(`Failed to get latest ${language} build ID:`, error);
+    console.error(`Failed to get latest ${project} ${language} build ID:`, error);
     return null;
   }
 }
@@ -161,11 +162,14 @@ export async function getManifest(buildId: string): Promise<Manifest | null> {
 }
 
 /**
- * Get the routing map for a package
+ * Get the routing map for a package from Vercel Blob.
+ * Routing maps are much smaller than full symbols and contain only
+ * the slug → kind mapping needed for static generation.
  */
 export async function getRoutingMap(
   buildId: string,
-  packageId: string
+  packageId: string,
+  language: "python" | "typescript"
 ): Promise<RoutingMap | null> {
   const cacheKey = `${buildId}:${packageId}`;
 
@@ -173,7 +177,8 @@ export async function getRoutingMap(
     return routingCache.get(cacheKey)!;
   }
 
-  const path = `${IR_BASE_PATH}/${buildId}/routing/${packageId}.json`;
+  // Routing maps are stored at ir/{buildId}/routing/{language}/{packageId}.json
+  const path = `${IR_BASE_PATH}/${buildId}/routing/${language}/${packageId}.json`;
   const routingMap = await fetchBlobJson<RoutingMap>(path);
 
   if (routingMap) {
@@ -240,16 +245,17 @@ export async function getSymbol(
 
 /**
  * Get a symbol by its path (e.g., "langchain_core.messages.BaseMessage")
+ *
+ * OPTIMIZATION: Uses getPackageSymbols which has in-memory caching
+ * to prevent duplicate fetches of large symbol files.
  */
 export async function getSymbolByPath(
   buildId: string,
   packageId: string,
   symbolPath: string
 ): Promise<SymbolRecord | null> {
-  // For now, we need to load all symbols for the package
-  // In production, this would use a routing map or index
-  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/symbols.json`;
-  const response = await fetchBlobJson<{ symbols: SymbolRecord[] }>(path);
+  // Use cached getPackageSymbols instead of direct fetch
+  const response = await getPackageSymbols(buildId, packageId);
 
   if (!response?.symbols) {
     return null;
@@ -259,12 +265,29 @@ export async function getSymbolByPath(
 }
 
 /**
+ * Cache for package symbols (in-memory for the build lifecycle)
+ * This prevents duplicate fetches within the same worker process.
+ */
+const packageSymbolsCache = new Map<string, { symbols: SymbolRecord[]; total: number }>();
+
+/**
  * Get all symbols for a package (paginated)
+ *
+ * OPTIMIZATION: Uses in-memory cache to prevent duplicate fetches within
+ * the same worker. Since these files are >2MB, Next.js can't cache them,
+ * so this is critical for build performance.
  */
 export async function getPackageSymbols(
   buildId: string,
   packageId: string
 ): Promise<{ symbols: SymbolRecord[]; total: number } | null> {
+  const cacheKey = `${buildId}:${packageId}`;
+
+  // Check in-memory cache first
+  if (packageSymbolsCache.has(cacheKey)) {
+    return packageSymbolsCache.get(cacheKey)!;
+  }
+
   const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/symbols.json`;
   const response = await fetchBlobJson<{ symbols: SymbolRecord[] }>(path);
 
@@ -272,7 +295,9 @@ export async function getPackageSymbols(
     return null;
   }
 
-  return { symbols: response.symbols, total: response.symbols.length };
+  const result = { symbols: response.symbols, total: response.symbols.length };
+  packageSymbolsCache.set(cacheKey, result);
+  return result;
 }
 
 /**
@@ -317,22 +342,20 @@ function getLocalIrBasePath(): string {
 }
 
 /**
- * Get the latest build ID for a language from local symlinks
+ * Get the latest build ID for a language and project from local symlinks
  */
 export async function getLocalLatestBuildId(
-  language: "python" | "javascript"
+  language: "python" | "javascript",
+  project: string = "langchain"
 ): Promise<string | null> {
   try {
     const fs = await import("fs/promises");
     const path = await import("path");
     const basePath = getLocalIrBasePath();
-    const latestLink = path.join(
-      basePath,
-      language === "python" ? "latest-python" : "latest-javascript"
-    );
+    const languageId = language === "python" ? "python" : "javascript";
 
-    // Read the symlink target to get the build ID
-    const target = await fs.readlink(latestLink);
+    const symlink = path.join(basePath, `latest-${project}-${languageId}`);
+    const target = await fs.readlink(symlink);
     return target;
   } catch {
     return null;
@@ -360,12 +383,26 @@ export async function getLocalManifest(buildId: string): Promise<Manifest | null
 }
 
 /**
+ * Cache for local package symbols (in-memory for the dev server lifecycle)
+ */
+const localPackageSymbolsCache = new Map<string, { symbols: SymbolRecord[]; total: number }>();
+
+/**
  * Get local symbols for development
+ *
+ * OPTIMIZATION: Uses in-memory cache to prevent duplicate file reads.
  */
 export async function getLocalPackageSymbols(
   buildId: string,
   packageId: string
 ): Promise<{ symbols: SymbolRecord[]; total: number } | null> {
+  const cacheKey = `local:${buildId}:${packageId}`;
+
+  // Check cache first
+  if (localPackageSymbolsCache.has(cacheKey)) {
+    return localPackageSymbolsCache.get(cacheKey)!;
+  }
+
   try {
     const fs = await import("fs/promises");
     const path = await import("path");
@@ -379,7 +416,9 @@ export async function getLocalPackageSymbols(
     const content = await fs.readFile(symbolsPath, "utf-8");
     const data = JSON.parse(content);
     const symbols = data.symbols || data;
-    return { symbols, total: symbols.length };
+    const result = { symbols, total: symbols.length };
+    localPackageSymbolsCache.set(cacheKey, result);
+    return result;
   } catch {
     return null;
   }
@@ -400,20 +439,96 @@ export async function getLocalSymbolByPath(
   return result.symbols.find((s) => s.qualifiedName === symbolPath) || null;
 }
 
+/**
+ * Generate a lightweight routing map from local symbols for development.
+ * This mimics what upload-ir.ts generates for production.
+ */
+export async function getLocalRoutingMap(
+  buildId: string,
+  packageId: string,
+  displayName: string,
+  language: "python" | "typescript"
+): Promise<RoutingMap | null> {
+  const cacheKey = `local:${buildId}:${packageId}`;
+  if (routingCache.has(cacheKey)) {
+    return routingCache.get(cacheKey)!;
+  }
+
+  const result = await getLocalPackageSymbols(buildId, packageId);
+  if (!result?.symbols) {
+    return null;
+  }
+
+  // Generate routing map from symbols (same logic as upload-ir.ts)
+  const slugs: RoutingMap["slugs"] = {};
+  for (const symbol of result.symbols) {
+    // Only include routable symbol kinds
+    if (!["class", "function", "interface", "module", "typeAlias", "enum", "method"].includes(symbol.kind)) {
+      continue;
+    }
+
+    // Only include public symbols
+    if (symbol.tags?.visibility !== "public") {
+      continue;
+    }
+
+    slugs[symbol.qualifiedName] = {
+      refId: symbol.id,
+      kind: symbol.kind,
+      pageType: mapKindToPageType(symbol.kind),
+      title: symbol.name,
+    };
+  }
+
+  const routingMap: RoutingMap = {
+    packageId,
+    displayName,
+    language,
+    slugs,
+  };
+
+  routingCache.set(cacheKey, routingMap);
+  return routingMap;
+}
+
+/**
+ * Map symbol kind to page type for routing.
+ */
+function mapKindToPageType(kind: string): RoutingMap["slugs"][string]["pageType"] {
+  switch (kind) {
+    case "class":
+      return "class";
+    case "function":
+    case "method":
+      return "function";
+    case "interface":
+      return "interface";
+    case "typeAlias":
+      return "type";
+    case "enum":
+      return "enum";
+    case "variable":
+      return "variable";
+    default:
+      return "module";
+  }
+}
+
 // =============================================================================
 // Unified Environment-Aware Functions
 // =============================================================================
 // These functions automatically choose the right data source based on environment
 
 /**
- * Get the latest build ID for a language (unified - works in prod and dev)
+ * Get the latest build ID for a language and project (unified - works in prod and dev)
  */
 export async function getBuildIdForLanguage(
-  language: "python" | "javascript"
+  language: "python" | "javascript",
+  project: string = "langchain"
 ): Promise<string | null> {
   return isProduction()
-    ? getLatestBuildIdForLanguage(language)
-    : getLocalLatestBuildId(language);
+    ? getLatestBuildIdForLanguage(language, project)
+    : getLocalLatestBuildId(language, project);
 }
 
 /**
@@ -450,6 +565,22 @@ export async function getSymbolData(
     : getLocalSymbolByPath(buildId, packageId, symbolPath);
 }
 
+/**
+ * Get routing map for a package (unified - works in prod and dev)
+ * Uses lightweight routing maps (~100KB) instead of full symbols (~14MB)
+ * for efficient static generation.
+ */
+export async function getRoutingMapData(
+  buildId: string,
+  packageId: string,
+  displayName: string,
+  language: "python" | "typescript"
+): Promise<RoutingMap | null> {
+  return isProduction()
+    ? getRoutingMap(buildId, packageId, language)
+    : getLocalRoutingMap(buildId, packageId, displayName, language);
+}
+
 // =============================================================================
 // Static Generation Helpers
 // =============================================================================
@@ -480,16 +611,22 @@ function slugifyPackageName(packageName: string): string {
 }
 
 /**
- * Get all static params for a language (for Next.js generateStaticParams)
- * Returns an array of slug arrays for packages, modules, and functions only.
- * Other symbol types (classes, methods, etc.) are rendered on-demand via dynamicParams.
+ * Get all static params for a language and project (for Next.js generateStaticParams)
+ *
+ * OPTIMIZATION: Uses lightweight routing maps (~100KB each) instead of full
+ * symbol files (~14MB each). Routing maps contain only the slug → kind mapping
+ * needed for static generation, and are small enough to be cached by Next.js.
+ *
+ * Returns an array of slug arrays for packages and selected symbol types.
+ * Other symbol types are rendered on-demand via dynamicParams.
  */
 export async function getStaticParamsForLanguage(
-  language: "python" | "javascript"
+  language: "python" | "javascript",
+  project: string = "langchain"
 ): Promise<{ slug: string[] }[]> {
-  const buildId = await getBuildIdForLanguage(language);
+  const buildId = await getBuildIdForLanguage(language, project);
   if (!buildId) {
-    console.warn(`No build ID found for ${language}`);
+    console.warn(`No build ID found for ${project} ${language}`);
     return [];
   }
 
@@ -501,6 +638,7 @@ export async function getStaticParamsForLanguage(
 
   const params: { slug: string[] }[] = [];
   const ecosystem = language === "python" ? "python" : "javascript";
+  const irLanguage = language === "python" ? "python" : "typescript";
 
   // Filter packages by ecosystem
   const packages = manifest.packages.filter((p) => p.ecosystem === ecosystem);
@@ -511,23 +649,15 @@ export async function getStaticParamsForLanguage(
     // Add package-level route (e.g., /javascript/langchain-core)
     params.push({ slug: [packageSlug] });
 
-    // Get all symbols for this package
-    const symbolsResult = await getSymbols(buildId, pkg.packageId);
-    if (!symbolsResult?.symbols) continue;
+    // Use routing map instead of full symbols (~100KB vs ~14MB)
+    // Routing maps are small enough to be cached by Next.js data cache
+    const routingMap = await getRoutingMapData(buildId, pkg.packageId, pkg.displayName, irLanguage);
+    if (!routingMap?.slugs) continue;
 
-    // Add symbol routes for public symbols (modules and functions only)
-    for (const symbol of symbolsResult.symbols) {
-      // Only include public symbols
-      if (symbol.tags?.visibility !== "public") continue;
-
-      // Only include modules and functions for static generation
-      // Classes, methods, properties, etc. are rendered on-demand
-      if (!STATIC_GENERATION_KINDS.has(symbol.kind)) continue;
-
-      // Build the URL path from qualifiedName
-      // For JavaScript: qualifiedName is usually just the symbol name (e.g., "ChatDeepSeek")
-      // For Python: qualifiedName includes module path (e.g., "langchain_core.messages.BaseMessage")
-      const symbolPath = symbol.qualifiedName;
+    // Add symbol routes from routing map
+    for (const [symbolPath, entry] of Object.entries(routingMap.slugs)) {
+      // Only include selected kinds for static generation
+      if (!STATIC_GENERATION_KINDS.has(entry.kind)) continue;
 
       // Convert to URL path segments
       // For Python: "langchain_core.messages.BaseMessage" -> ["langchain-core", "messages", "BaseMessage"]
@@ -556,7 +686,7 @@ export async function getStaticParamsForLanguage(
     }
   }
 
-  console.log(`Generated ${params.length} static params for ${language} (packages, modules, functions only)`);
+  console.log(`Generated ${params.length} static params for ${project} ${language} (using routing maps)`);
   return params;
 }
 

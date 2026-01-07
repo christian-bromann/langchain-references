@@ -42,7 +42,7 @@ const config: Config = {
       spacing: {
         sidebar: "18rem", // 288px - matches Mintlify
         toc: "240px",
-        header: "64px",
+        header: "96px", // 56px main header + 40px project tabs
       },
       maxWidth: {
         content: "768px",

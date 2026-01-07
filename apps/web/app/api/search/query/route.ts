@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from "next/server";
 import MiniSearch from "minisearch";
 import type { SearchRecord, SearchResult, Language } from "@langchain/ir-schema";
 import { getBuildIdForLanguage, getManifestData, getSymbols } from "@/lib/ir/loader";
+import { getEnabledProjects } from "@/lib/config/projects";
+import { slugifyPackageName } from "@/lib/utils/url";
 
 // Cache the MiniSearch indices per language to avoid rebuilding on every request
 const indexCache = new Map<string, { index: MiniSearch<SearchRecord>; buildId: string }>();
@@ -45,11 +47,14 @@ function symbolToSearchRecord(
   const parts = symbol.qualifiedName.split(/[./]/);
   const breadcrumbs = [packageName, ...parts.slice(0, -1)];
 
-  // Build URL - use canonical if available, otherwise construct
+  // Build URL - always construct it ourselves as canonical URLs from TypeDoc
+  // have incorrect format (e.g., /functions/useStream instead of /react/useStream)
   const langPath = language === "python" ? "python" : "javascript";
-  const url =
-    symbol.urls?.canonical ||
-    `/${langPath}/${packageName.replace(/@/g, "").replace(/\//g, "-")}/${symbol.name}`;
+  const packageSlug = slugifyPackageName(packageName);
+  // Use qualified name to preserve module path (e.g., react.useStream -> react/useStream)
+  // Convert dots to slashes for URL path
+  const symbolPath = symbol.qualifiedName.replace(/\./g, "/");
+  const url = `/${langPath}/${packageSlug}/${symbolPath}`;
 
   // Extract excerpt from summary
   const excerpt = symbol.docs?.summary?.slice(0, 150) || "";
@@ -76,31 +81,30 @@ function symbolToSearchRecord(
 }
 
 /**
- * Build or get cached MiniSearch index for a language
+ * Build or get cached MiniSearch index for a language.
+ * Searches across ALL enabled projects (langchain, langgraph, deepagent).
  */
 async function getSearchIndex(
   language: Language
 ): Promise<MiniSearch<SearchRecord> | null> {
   const irLanguage = language === "python" ? "python" : "javascript";
-  const buildId = await getBuildIdForLanguage(irLanguage);
+  const projects = getEnabledProjects();
+  
+  // Collect all build IDs for cache key
+  const buildIds: string[] = [];
+  for (const project of projects) {
+    const buildId = await getBuildIdForLanguage(irLanguage, project.id);
+    if (buildId) {
+      buildIds.push(buildId);
+    }
+  }
 
-  if (!buildId) return null;
+  if (buildIds.length === 0) return null;
 
-  // Check cache
-  const cacheKey = `${language}:${buildId}`;
+  // Check cache using combined build IDs
+  const cacheKey = `${language}:${buildIds.sort().join(",")}`;
   const cached = indexCache.get(cacheKey);
-  if (cached?.buildId === buildId) return cached.index;
-
-  // Build new index
-  const manifest = await getManifestData(buildId);
-  if (!manifest) return null;
-
-  // Filter packages by language
-  const packages = manifest.packages.filter((p) =>
-    language === "python"
-      ? p.language === "python"
-      : p.language === "typescript" || p.ecosystem === "javascript"
-  );
+  if (cached) return cached.index;
 
   // Create MiniSearch index
   const index = new MiniSearch<SearchRecord>({
@@ -122,22 +126,37 @@ async function getSearchIndex(
     },
   });
 
-  // Build records from all symbols, deduplicating by ID
+  // Build records from all symbols across all projects, deduplicating by ID
   const recordsMap = new Map<string, SearchRecord>();
 
-  for (const pkg of packages) {
-    const result = await getSymbols(buildId, pkg.packageId);
+  for (const project of projects) {
+    const buildId = await getBuildIdForLanguage(irLanguage, project.id);
+    if (!buildId) continue;
 
-    if (result?.symbols) {
-      for (const symbol of result.symbols) {
-        const record = symbolToSearchRecord(
-          symbol,
-          pkg.packageId,
-          pkg.displayName,
-          language
-        );
-        if (record && !recordsMap.has(record.id)) {
-          recordsMap.set(record.id, record);
+    const manifest = await getManifestData(buildId);
+    if (!manifest) continue;
+
+    // Filter packages by language
+    const packages = manifest.packages.filter((p) =>
+      language === "python"
+        ? p.language === "python"
+        : p.language === "typescript" || p.ecosystem === "javascript"
+    );
+
+    for (const pkg of packages) {
+      const result = await getSymbols(buildId, pkg.packageId);
+
+      if (result?.symbols) {
+        for (const symbol of result.symbols) {
+          const record = symbolToSearchRecord(
+            symbol,
+            pkg.packageId,
+            pkg.displayName,
+            language
+          );
+          if (record && !recordsMap.has(record.id)) {
+            recordsMap.set(record.id, record);
+          }
         }
       }
     }
@@ -148,7 +167,7 @@ async function getSearchIndex(
   index.addAll(records);
 
   // Cache the index
-  indexCache.set(cacheKey, { index, buildId });
+  indexCache.set(cacheKey, { index, buildId: buildIds.join(",") });
 
   return index;
 }

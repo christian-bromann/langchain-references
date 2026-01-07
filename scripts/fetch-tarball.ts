@@ -3,16 +3,28 @@
  * Fetch Tarball - Downloads source tarballs from GitHub
  *
  * Usage:
- *   tsx fetch-tarball.ts --repo langchain-ai/langchain --sha abc123 --output ./cache
+ *   tsx fetch-tarball.ts --repo langchain-ai/langchain --sha abc123
+ *
+ * Tarballs are extracted to a system temp directory to avoid polluting
+ * the main project and to prevent PATH/dependency conflicts.
  */
 
 import { program } from "commander";
 import fs from "fs/promises";
 import path from "path";
+import os from "os";
 import { pipeline } from "stream/promises";
 import { createWriteStream } from "fs";
 import { Readable } from "stream";
 import * as tar from "tar";
+
+/**
+ * Get the base cache directory for all LangChain reference builds.
+ * Uses system temp directory to isolate from the main project.
+ */
+export function getCacheBaseDir(): string {
+  return path.join(os.tmpdir(), "langchain-reference-build-cache");
+}
 
 export interface FetchOptions {
   repo: string;
@@ -97,29 +109,88 @@ export async function getLatestSha(repo: string): Promise<string> {
 }
 
 /**
+ * Check if the project uses Yarn Berry (v2+) by checking packageManager field.
+ */
+async function isYarnBerry(dir: string): Promise<boolean> {
+  try {
+    const packageJsonPath = path.join(dir, "package.json");
+    const content = await fs.readFile(packageJsonPath, "utf-8");
+    const packageJson = JSON.parse(content);
+    const pm = packageJson.packageManager;
+    if (pm && pm.startsWith("yarn@")) {
+      const version = pm.replace("yarn@", "").split(".")[0];
+      return parseInt(version, 10) >= 2;
+    }
+  } catch {
+    // Ignore errors
+  }
+  return false;
+}
+
+/**
  * Detect the package manager used in a directory by checking for lock files.
  */
 async function detectPackageManager(
   dir: string
-): Promise<{ name: "pnpm" | "yarn" | "npm"; installCmd: string }> {
+): Promise<{ name: "pnpm" | "yarn" | "npm"; installCmd: string; buildCmd: string }> {
   // Check for lock files in order of preference
   const lockFiles = [
-    { file: "pnpm-lock.yaml", name: "pnpm" as const, cmd: "pnpm install --ignore-scripts --no-optional" },
-    { file: "yarn.lock", name: "yarn" as const, cmd: "yarn install --ignore-scripts --ignore-optional" },
-    { file: "package-lock.json", name: "npm" as const, cmd: "npm install --ignore-scripts --no-optional --legacy-peer-deps" },
+    { file: "pnpm-lock.yaml", name: "pnpm" as const },
+    { file: "yarn.lock", name: "yarn" as const },
+    { file: "package-lock.json", name: "npm" as const },
   ];
 
-  for (const { file, name, cmd } of lockFiles) {
+  for (const { file, name } of lockFiles) {
     try {
       await fs.access(path.join(dir, file));
-      return { name, installCmd: cmd };
+
+      if (name === "yarn") {
+        // Check if it's Yarn Berry (v2+) which has different flags
+        const isBerry = await isYarnBerry(dir);
+        if (isBerry) {
+          return {
+            name: "yarn",
+            // Yarn Berry: use --mode=skip-build to skip postinstall scripts
+            installCmd: "corepack enable && yarn install --mode=skip-build",
+            buildCmd: "yarn run build",
+          };
+        }
+        // Yarn Classic (v1)
+        return {
+          name: "yarn",
+          installCmd: "yarn install --ignore-scripts --ignore-optional",
+          buildCmd: "yarn run build",
+        };
+      }
+
+      if (name === "pnpm") {
+        return {
+          name: "pnpm",
+          // --config.engine-strict=false: ignore engine requirements (e.g., Node >= 24)
+          // Note: don't use --no-optional as it breaks esbuild (needs platform binaries)
+          installCmd: "pnpm install --ignore-scripts --config.engine-strict=false",
+          buildCmd: "pnpm run build",
+        };
+      }
+
+      // npm
+      // Note: don't use --no-optional as it breaks esbuild (needs platform binaries)
+      return {
+        name: "npm",
+        installCmd: "npm install --ignore-scripts --legacy-peer-deps",
+        buildCmd: "npm run build",
+      };
     } catch {
       // Lock file not found, try next
     }
   }
 
   // Default to npm if no lock file found
-  return { name: "npm", installCmd: "npm install --ignore-scripts --no-optional --legacy-peer-deps" };
+  return {
+    name: "npm",
+    installCmd: "npm install --ignore-scripts --no-optional --legacy-peer-deps",
+    buildCmd: "npm run build",
+  };
 }
 
 /**
@@ -149,19 +220,24 @@ async function installDependencies(extractedPath: string): Promise<void> {
   }
 
   // Detect package manager from lock files
-  const { name: pm, installCmd } = await detectPackageManager(extractedPath);
-  console.log(`   📦 Installing dependencies with ${pm}...`);
+  const pmInfo = await detectPackageManager(extractedPath);
+  console.log(`   📦 Installing dependencies with ${pmInfo.name}...`);
 
   try {
-    execSync(installCmd, {
+    execSync(pmInfo.installCmd, {
       cwd: extractedPath,
-      stdio: "pipe",
+      stdio: "pipe" as const,
       timeout: 600000, // 10 minute timeout for large monorepos
+      shell: "/bin/bash", // Required for corepack enable && yarn install
+      env: {
+        ...process.env,
+        CI: "true", // Required for non-interactive pnpm/yarn
+      },
     });
 
     // Create marker file to skip future installs
     await fs.writeFile(installMarkerPath, new Date().toISOString());
-    console.log(`   ✅ Dependencies installed with ${pm}`);
+    console.log(`   ✅ Dependencies installed with ${pmInfo.name}`);
   } catch (error: any) {
     console.warn(`   ⚠️  Could not install dependencies: ${error.message?.slice(0, 100)}`);
     console.warn("   ⚠️  External types may show as 'any'");
@@ -169,7 +245,7 @@ async function installDependencies(extractedPath: string): Promise<void> {
 
   // For TypeScript projects, try to build to generate type declarations
   // This enables TypeDoc to resolve types from workspace dependencies
-  await buildTypeDeclarations(extractedPath, pm);
+  await buildTypeDeclarations(extractedPath, pmInfo);
 }
 
 /**
@@ -178,7 +254,7 @@ async function installDependencies(extractedPath: string): Promise<void> {
  */
 async function buildTypeDeclarations(
   extractedPath: string,
-  packageManager: "pnpm" | "yarn" | "npm"
+  pmInfo: { name: string; buildCmd: string }
 ): Promise<void> {
   const { execSync } = await import("child_process");
 
@@ -210,16 +286,23 @@ async function buildTypeDeclarations(
 
     // Try build:types first, then fall back to build
     const buildCmd = scripts["build:types"]
-      ? `${packageManager} run build:types`
-      : `${packageManager} run build`;
+      ? `${pmInfo.name} run build:types`
+      : pmInfo.buildCmd;
 
     try {
+      // Add node_modules/.bin to PATH so binaries like tsdown are found
+      const binPath = path.join(extractedPath, "node_modules", ".bin");
+      const pathSep = process.platform === "win32" ? ";" : ":";
+      const enhancedPath = `${binPath}${pathSep}${process.env.PATH}`;
+
       execSync(buildCmd, {
         cwd: extractedPath,
-        stdio: "pipe",
+        stdio: "pipe" as const,
         timeout: 900000, // 15 minute timeout for builds
+        shell: "/bin/bash",
         env: {
           ...process.env,
+          PATH: enhancedPath,
           // Skip tests and linting during build
           CI: "true",
         },
@@ -361,7 +444,7 @@ async function main() {
     .description("Download and extract source tarballs from GitHub")
     .requiredOption("--repo <repo>", "GitHub repository (owner/repo)")
     .option("--sha <sha>", "Git commit SHA (defaults to latest main)")
-    .option("--output <path>", "Output directory", "./cache")
+    .option("--output <path>", "Output directory (defaults to system temp)")
     .parse();
 
   const opts = program.opts();
@@ -372,7 +455,7 @@ async function main() {
   const result = await fetchTarball({
     repo: opts.repo,
     sha,
-    output: opts.output,
+    output: opts.output || getCacheBaseDir(),
   });
 
   console.log(`\n📁 Source available at: ${result.extractedPath}`);

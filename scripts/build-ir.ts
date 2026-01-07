@@ -17,7 +17,7 @@ import path from "path";
 import fs from "fs/promises";
 import { spawn } from "child_process";
 import type { Manifest, Package, SymbolRecord } from "@langchain/ir-schema";
-import { fetchTarball, getLatestSha, type FetchResult } from "./fetch-tarball.js";
+import { fetchTarball, getLatestSha, getCacheBaseDir, type FetchResult } from "./fetch-tarball.js";
 import { uploadIR } from "./upload-ir.js";
 import { updateKV } from "./update-kv.js";
 
@@ -39,6 +39,8 @@ interface PackageConfig {
  * Build configuration loaded from JSON file.
  */
 interface BuildConfig {
+  /** Project identifier (langchain, langgraph, deepagent) */
+  project?: string;
   /** Language to extract */
   language: "python" | "typescript";
   /** GitHub repository */
@@ -256,6 +258,7 @@ async function createManifest(
       createdAt: new Date().toISOString(),
       baseUrl: "https://reference.langchain.com",
     },
+    project: config.project || "langchain",
     sources: [
       {
         repo: config.repo,
@@ -289,7 +292,7 @@ async function main() {
     .requiredOption("--config <path>", "Build configuration file path")
     .option("--sha <sha>", "Git SHA to use (defaults to latest main)")
     .option("--output <path>", "Output directory for IR artifacts", "./ir-output")
-    .option("--cache <path>", "Cache directory for tarballs", "./cache")
+    .option("--cache <path>", "Cache directory for tarballs (defaults to system temp)")
     .option("--dry-run", "Generate locally without uploading")
     .option("--local", "Local-only mode (skip all cloud uploads)")
     .option("--skip-upload", "Skip upload to Vercel Blob")
@@ -315,6 +318,7 @@ async function main() {
   const configContent = await fs.readFile(configPath, "utf-8");
   const config: BuildConfig = JSON.parse(configContent);
 
+  console.log(`   Project: ${config.project || "langchain"}`);
   console.log(`   Language: ${config.language}`);
   console.log(`   Repository: ${config.repo}`);
   console.log(`   Packages: ${config.packages.map((p) => p.name).join(", ")}`);
@@ -335,12 +339,13 @@ async function main() {
   await fs.mkdir(irOutputPath, { recursive: true });
   await fs.mkdir(path.join(irOutputPath, "packages"), { recursive: true });
 
-  // Fetch source tarball
-  console.log("\n📥 Fetching source...");
+  // Fetch source tarball (use system temp dir by default to isolate from main project)
+  const cacheDir = opts.cache || getCacheBaseDir();
+  console.log(`\n📥 Fetching source to: ${cacheDir}`);
   const fetchResult = await fetchTarball({
     repo: config.repo,
     sha,
-    output: opts.cache,
+    output: cacheDir,
   });
 
   // Extract each package
@@ -419,8 +424,10 @@ async function main() {
     console.log("\n⏭️  Skipping pointer update (--skip-pointers)");
   }
 
-  // Create language-specific "latest" symlink
-  const latestLinkName = config.language === "python" ? "latest-python" : "latest-javascript";
+  // Create project + language specific "latest" symlink
+  const projectId = config.project || "langchain";
+  const languageId = config.language === "python" ? "python" : "javascript";
+  const latestLinkName = `latest-${projectId}-${languageId}`;
   const latestLinkPath = path.resolve(opts.output, latestLinkName);
   try {
     // Remove existing symlink if it exists

@@ -39,7 +39,7 @@
   --sidebar-width: 18rem; /* 288px - matches Mintlify */
   --toc-width: 240px;
   --content-max-width: 768px;
-  --header-height: 64px;
+  --header-height: 96px; /* 56px main header + 40px project tabs */
 }
 
 [data-theme="dark"],

@@ -1,0 +1,35 @@
+{
+  "$schema": "./config-schema.json",
+  "project": "langgraph",
+  "language": "python",
+  "repo": "langchain-ai/langgraph",
+  "packages": [
+    {
+      "name": "langgraph",
+      "path": "libs/langgraph",
+      "displayName": "LangGraph"
+    },
+    {
+      "name": "langgraph_sdk",
+      "path": "libs/sdk-py",
+      "displayName": "LangGraph SDK"
+    },
+    {
+      "name": "langgraph_checkpoint",
+      "path": "libs/checkpoint",
+      "displayName": "LangGraph Checkpoint"
+    },
+    {
+      "name": "langgraph_checkpoint_sqlite",
+      "path": "libs/checkpoint-sqlite",
+      "displayName": "Checkpoint SQLite"
+    },
+    {
+      "name": "langgraph_checkpoint_postgres",
+      "path": "libs/checkpoint-postgres",
+      "displayName": "Checkpoint Postgres"
+    }
+  ]
+}
+
+

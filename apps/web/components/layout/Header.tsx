@@ -10,14 +10,25 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Search, MessageCircle, Github, Moon, Sun, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { SearchModal, useSearchShortcut } from "@/components/search/SearchModal";
+import { ProjectTabs, getCurrentProject, getCurrentLanguage } from "./ProjectTabs";
+import { MobileProjectMenu } from "./MobileProjectMenu";
+import { getEnabledProjects } from "@/lib/config/projects";
 
 export function Header() {
   const { theme, setTheme } = useTheme();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Get projects and current context
+  const projects = getEnabledProjects();
+  const currentProject = getCurrentProject(pathname, projects);
+  const currentLanguage = getCurrentLanguage(pathname);
 
   // Enable ⌘K shortcut to open search
   useSearchShortcut(() => setSearchOpen(true));
@@ -175,17 +186,33 @@ export function Header() {
               <Search className="h-4 w-4" />
             </button>
             <button
-              aria-label="More actions"
+              aria-label="Open project menu"
               className="h-7 w-5 flex items-center justify-end"
+              onClick={() => setMobileMenuOpen(true)}
             >
               <MoreVertical className="h-4 w-4 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
             </button>
           </div>
         </div>
+        {/* Project Navigation Tabs */}
+        <ProjectTabs
+          projects={projects}
+          currentProject={currentProject}
+          currentLanguage={currentLanguage}
+        />
       </div>
 
       {/* Search Modal */}
       <SearchModal open={searchOpen} onOpenChange={setSearchOpen} />
+
+      {/* Mobile Project Menu */}
+      <MobileProjectMenu
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        projects={projects}
+        currentProject={currentProject}
+        currentLanguage={currentLanguage}
+      />
     </header>
   );
 }

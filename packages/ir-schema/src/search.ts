@@ -75,6 +75,9 @@ export interface SearchOptions {
   /** Filter by package ID */
   packageId?: string;
 
+  /** Filter by project ID (langchain, langgraph, deepagent) */
+  project?: string;
+
   /** Enable fuzzy matching */
   fuzzy?: boolean;
 
@@ -92,6 +95,7 @@ export interface SearchResult extends SearchRecord {
   /** Matched terms */
   matches?: string[];
 }
+
 
 
 

@@ -12,6 +12,7 @@ import { parseSlugWithLanguage } from "@/lib/utils/url";
 import { SymbolPage } from "@/components/reference/SymbolPage";
 import { PackagePage } from "@/components/reference/PackagePage";
 import { getStaticParamsForLanguage } from "@/lib/ir/loader";
+import { getEnabledProjects } from "@/lib/config/projects";
 
 interface Props {
   params: Promise<{
@@ -22,9 +23,22 @@ interface Props {
 /**
  * Generate static params for all JavaScript packages and symbols.
  * This enables static generation (SSG) for all pages at build time.
+ * Generates params for ALL enabled projects (langchain, langgraph, deepagent).
  */
 export async function generateStaticParams(): Promise<{ slug: string[] }[]> {
-  return getStaticParamsForLanguage("javascript");
+  const projects = getEnabledProjects();
+  const allParams: { slug: string[] }[] = [];
+  
+  // Generate params for all projects in parallel
+  const projectParams = await Promise.all(
+    projects.map((project) => getStaticParamsForLanguage("javascript", project.id))
+  );
+  
+  for (const params of projectParams) {
+    allParams.push(...params);
+  }
+  
+  return allParams;
 }
 
 /**

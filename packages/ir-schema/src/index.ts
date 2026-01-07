@@ -10,6 +10,8 @@ export * from "./manifest.js";
 export * from "./symbol.js";
 export * from "./search.js";
 export * from "./routing.js";
+export * from "./project.js";
+
 
 
 

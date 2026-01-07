@@ -89,6 +89,23 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Handle backwards compatibility redirects for legacy URLs
+  // Legacy URLs: /python/classes/... or /python/functions/...
+  // New URLs: /python/langchain/classes/... or /python/langchain/functions/...
+  const legacyPatterns = [
+    /^\/(python|javascript)\/(classes|functions|modules|interfaces)\//,
+  ];
+
+  for (const pattern of legacyPatterns) {
+    if (pattern.test(pathname)) {
+      const newPath = pathname.replace(
+        /^\/(python|javascript)\//,
+        "/$1/langchain/"
+      );
+      return NextResponse.redirect(new URL(newPath, request.url), 301);
+    }
+  }
+
   // Check if this request wants an alternate format
   const wantedFormat = wantsAlternateFormat(request);
 
@@ -122,4 +139,5 @@ export const config = {
     "/javascript/:path*",
   ],
 };
+
 

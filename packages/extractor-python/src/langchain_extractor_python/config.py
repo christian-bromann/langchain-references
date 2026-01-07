@@ -44,6 +44,3 @@ class ExtractionConfig:
                 f"docstring_style must be one of {valid_styles}, "
                 f"got '{self.docstring_style}'"
             )
-
-
-

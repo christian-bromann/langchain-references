@@ -1,0 +1,86 @@
+{
+  "$schema": "./config-schema.json",
+  "project": "langgraph",
+  "language": "typescript",
+  "repo": "langchain-ai/langgraphjs",
+  "packages": [
+    {
+      "name": "@langchain/langgraph",
+      "path": "libs/langgraph-core",
+      "entryPoints": ["auto"],
+      "displayName": "LangGraph"
+    },
+    {
+      "name": "@langchain/langgraph-sdk",
+      "path": "libs/sdk",
+      "entryPoints": ["auto"],
+      "displayName": "LangGraph SDK"
+    },
+    {
+      "name": "@langchain/langgraph-checkpoint",
+      "path": "libs/checkpoint",
+      "entryPoints": ["auto"],
+      "displayName": "LangGraph Checkpoint"
+    },
+    {
+      "name": "@langchain/langgraph-checkpoint-mongodb",
+      "path": "libs/checkpoint-mongodb",
+      "entryPoints": ["auto"],
+      "displayName": "LangGraph Checkpoint MongoDB"
+    },
+    {
+      "name": "@langchain/langgraph-checkpoint-postgres",
+      "path": "libs/checkpoint-postgres",
+      "entryPoints": ["auto"],
+      "displayName": "LangGraph Checkpoint Postgres"
+    },
+    {
+      "name": "@langchain/langgraph-checkpoint-redis",
+      "path": "libs/checkpoint-redis",
+      "entryPoints": ["auto"],
+      "displayName": "LangGraph Checkpoint Redis"
+    },
+    {
+      "name": "@langchain/langgraph-checkpoint-sqlite",
+      "path": "libs/checkpoint-sqlite",
+      "entryPoints": ["auto"],
+      "displayName": "LangGraph Checkpoint SQLite"
+    },
+    {
+      "name": "@langchain/langgraph-checkpoint-validation",
+      "path": "libs/checkpoint-validation",
+      "entryPoints": ["auto"],
+      "displayName": "LangGraph Checkpoint Validation"
+    },
+    {
+      "name": "@langchain/langgraph-api",
+      "path": "libs/langgraph-api",
+      "entryPoints": ["auto"],
+      "displayName": "LangGraph API"
+    },
+    {
+      "name": "@langchain/langgraph-cli",
+      "path": "libs/langgraph-cli",
+      "entryPoints": ["auto"],
+      "displayName": "LangGraph CLI"
+    },
+    {
+      "name": "@langchain/langgraph-cua",
+      "path": "libs/langgraph-cua",
+      "entryPoints": ["auto"],
+      "displayName": "LangGraph CUA"
+    },
+    {
+      "name": "@langchain/langgraph-supervisor",
+      "path": "libs/langgraph-supervisor",
+      "entryPoints": ["auto"],
+      "displayName": "LangGraph Supervisor"
+    },
+    {
+      "name": "@langchain/langgraph-swarm",
+      "path": "libs/langgraph-swarm",
+      "entryPoints": ["auto"],
+      "displayName": "LangGraph Swarm"
+    }
+  ]
+}

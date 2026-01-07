@@ -291,4 +291,3 @@ class IRTransformer:
             return "beta"
 
         return "stable"
-

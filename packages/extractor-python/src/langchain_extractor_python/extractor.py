@@ -392,4 +392,3 @@ class PythonExtractor:
         except Exception:
             pass
         return "unknown"
-

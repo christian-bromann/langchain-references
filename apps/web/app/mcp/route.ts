@@ -17,6 +17,7 @@ import {
 } from "@/lib/ir/loader";
 import { symbolToMarkdown } from "@/lib/ir/markdown-generator";
 import { getBaseUrl } from "@/lib/config/mcp";
+import { getEnabledProjects } from "@/lib/config/projects";
 import { slugifyPackageName, unslugifyPackageName } from "@/lib/utils/url";
 import type { SymbolRecord, Package } from "@langchain/ir-schema";
 
@@ -339,58 +340,65 @@ async function searchSymbols(
   const results: SearchResult[] = [];
   const queryLower = query.toLowerCase();
   const baseUrl = getBaseUrl();
+  const projects = getEnabledProjects();
 
   // Search both languages if not specified
   const languages: Array<"python" | "javascript"> = language
     ? [language]
     : ["python", "javascript"];
 
-  for (const lang of languages) {
-    const buildId = await getBuildIdForLanguage(lang);
-    if (!buildId) continue;
+  // Search across all projects
+  for (const project of projects) {
+    for (const lang of languages) {
+      const buildId = await getBuildIdForLanguage(lang, project.id);
+      if (!buildId) continue;
 
-    const manifest = await getManifestData(buildId);
-    if (!manifest) continue;
+      const manifest = await getManifestData(buildId);
+      if (!manifest) continue;
 
-    const targetLang = lang === "python" ? "python" : "typescript";
-    const packages = manifest.packages.filter((p) => p.language === targetLang);
+      const targetLang = lang === "python" ? "python" : "typescript";
+      const packages = manifest.packages.filter((p) => p.language === targetLang);
 
-    for (const pkg of packages) {
-      const symbolsData = await getSymbols(buildId, pkg.packageId);
-      if (!symbolsData?.symbols) continue;
+      for (const pkg of packages) {
+        const symbolsData = await getSymbols(buildId, pkg.packageId);
+        if (!symbolsData?.symbols) continue;
 
-      for (const symbol of symbolsData.symbols) {
-        // Match by name or qualified name
-        const nameMatch = symbol.name.toLowerCase().includes(queryLower);
-        const qualifiedMatch = symbol.qualifiedName
-          .toLowerCase()
-          .includes(queryLower);
+        for (const symbol of symbolsData.symbols) {
+          // Match by name or qualified name
+          const nameMatch = symbol.name.toLowerCase().includes(queryLower);
+          const qualifiedMatch = symbol.qualifiedName
+            .toLowerCase()
+            .includes(queryLower);
 
-        if (nameMatch || qualifiedMatch) {
-          const pkgSlug = slugifyPackageName(pkg.publishedName);
-          const langPath = lang === "python" ? "python" : "javascript";
-          const symbolPath = symbol.name;
+          if (nameMatch || qualifiedMatch) {
+            const pkgSlug = slugifyPackageName(pkg.publishedName);
+            const langPath = lang === "python" ? "python" : "javascript";
+            // Use qualified name to preserve module path (e.g., react.useStream -> react/useStream)
+            const symbolPath = symbol.qualifiedName.replace(/\./g, "/");
 
-          results.push({
-            name: symbol.name,
-            qualifiedName: symbol.qualifiedName,
-            kind: symbol.kind,
-            package: pkg.publishedName,
-            language: lang === "python" ? "python" : "typescript",
-            summary: symbol.docs?.summary || "",
-            url: `${baseUrl}/${langPath}/${pkgSlug}/${symbolPath}`,
-          });
+            results.push({
+              name: symbol.name,
+              qualifiedName: symbol.qualifiedName,
+              kind: symbol.kind,
+              package: pkg.publishedName,
+              language: lang === "python" ? "python" : "typescript",
+              summary: symbol.docs?.summary || "",
+              url: `${baseUrl}/${langPath}/${pkgSlug}/${symbolPath}`,
+            });
 
-          if (results.length >= limit * 2) {
-            // Collect extra for sorting
-            break;
+            if (results.length >= limit * 2) {
+              // Collect extra for sorting
+              break;
+            }
           }
         }
+
+        if (results.length >= limit * 2) break;
       }
 
       if (results.length >= limit * 2) break;
     }
-
+    
     if (results.length >= limit * 2) break;
   }
 

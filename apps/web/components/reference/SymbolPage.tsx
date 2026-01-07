@@ -16,7 +16,7 @@ import {
   getSymbols,
   getSymbolData,
 } from "@/lib/ir/loader";
-import type { Language } from "@langchain/ir-schema";
+import { getProjectForPackage } from "@/lib/config/projects";
 import { CodeBlock } from "./CodeBlock";
 import { MarkdownContent } from "./MarkdownContent";
 import { TableOfContents, type TOCSection, type TOCItem, type TOCInheritedGroup } from "./TableOfContents";
@@ -667,7 +667,10 @@ async function resolveInheritedMembers(
 
 export async function SymbolPage({ language, packageId, packageName, symbolPath }: SymbolPageProps) {
   const irLanguage = language === "python" ? "python" : "javascript";
-  const buildId = await getBuildIdForLanguage(irLanguage);
+
+  // Determine which project this package belongs to
+  const project = getProjectForPackage(packageName);
+  const buildId = await getBuildIdForLanguage(irLanguage, project.id);
 
   let symbol: DisplaySymbol | null = null;
   let irSymbolForMarkdown: SymbolRecord | null = null;

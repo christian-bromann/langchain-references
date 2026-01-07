@@ -1,0 +1,15 @@
+{
+  "$schema": "./config-schema.json",
+  "project": "deepagent",
+  "language": "python",
+  "repo": "langchain-ai/deepagents",
+  "packages": [
+    {
+      "name": "deepagents",
+      "path": "libs/deepagents",
+      "displayName": "Deep Agents"
+    }
+  ]
+}
+
+

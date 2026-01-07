@@ -7,13 +7,14 @@
  * Follows Mintlify design patterns with collapsible sections.
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { SymbolKind } from "@/lib/ir/types";
 import { LanguageDropdown } from "./LanguageDropdown";
+import { getProjectFromPathname, packageBelongsToProject } from "@/lib/config/projects";
 
 /**
  * Navigation item structure
@@ -45,7 +46,20 @@ export function Sidebar({ pythonPackages = [], javascriptPackages = [] }: Sideba
   const isPython = pathname.startsWith("/python");
   const isJavaScript = pathname.startsWith("/javascript");
 
-  const packages = isPython ? pythonPackages : isJavaScript ? javascriptPackages : [];
+  // Get current project from URL
+  const currentProject = useMemo(() => getProjectFromPathname(pathname), [pathname]);
+
+  // Filter packages by language first
+  const languagePackages = isPython ? pythonPackages : isJavaScript ? javascriptPackages : [];
+
+  // Then filter by project
+  const packages = useMemo(() => {
+    if (!currentProject) return languagePackages;
+    
+    return languagePackages.filter((pkg) => 
+      packageBelongsToProject(pkg.name, currentProject.id)
+    );
+  }, [languagePackages, currentProject]);
 
   return (
     <aside
@@ -61,9 +75,21 @@ export function Sidebar({ pythonPackages = [], javascriptPackages = [] }: Sideba
         id="navigation-items"
       >
         {/* Language Dropdown */}
-        <div className="pl-4 mb-10">
+        <div className="pl-4 mb-6">
           <LanguageDropdown />
         </div>
+
+        {/* Project Title */}
+        {currentProject && (
+          <div className="pl-4 mb-6">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {currentProject.displayName}
+            </h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              API Reference
+            </p>
+          </div>
+        )}
 
         <div className="text-sm relative">
           {/* Package navigation */}
@@ -74,7 +100,14 @@ export function Sidebar({ pythonPackages = [], javascriptPackages = [] }: Sideba
             </div>
           ))}
 
-          {packages.length === 0 && (
+          {packages.length === 0 && currentProject && (
+            <div className="text-gray-500 dark:text-gray-400 text-sm py-8 text-center px-4">
+              <p>No packages available for {currentProject.displayName} yet.</p>
+              <p className="mt-2 text-xs">Reference docs are coming soon.</p>
+            </div>
+          )}
+
+          {packages.length === 0 && !currentProject && (
             <div className="text-gray-500 dark:text-gray-400 text-sm py-8 text-center pl-4">
               Select a language to view packages
             </div>

@@ -34,7 +34,7 @@ export async function search(
   language: SearchLanguage,
   options: SearchOptions = {}
 ): Promise<SearchResult[]> {
-  const { limit = 20, kind, packageId } = options;
+  const { limit = 20, kind, packageId, project } = options;
 
   if (!query.trim()) {
     return [];
@@ -53,6 +53,10 @@ export async function search(
 
   if (packageId) {
     params.set("packageId", packageId);
+  }
+
+  if (project) {
+    params.set("project", project);
   }
 
   try {

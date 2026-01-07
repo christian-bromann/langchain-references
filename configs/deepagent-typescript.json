@@ -1,0 +1,14 @@
+{
+  "$schema": "./config-schema.json",
+  "project": "deepagent",
+  "language": "typescript",
+  "repo": "langchain-ai/deepagentsjs",
+  "packages": [
+    {
+      "name": "deepagents",
+      "path": ".",
+      "entryPoints": ["src/index.ts"],
+      "displayName": "Deep Agents"
+    }
+  ]
+}

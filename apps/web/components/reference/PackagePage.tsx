@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
 import { buildSymbolUrl, getKindColor, getKindLabel } from "@/lib/utils/url";
 import { getBuildIdForLanguage, getSymbols } from "@/lib/ir/loader";
+import { getProjectForPackage } from "@/lib/config/projects";
 import type { SymbolRecord } from "@/lib/ir/types";
 
 interface PackagePageProps {
@@ -46,7 +47,10 @@ function toDisplaySymbol(symbol: SymbolRecord): DisplaySymbol {
 
 export async function PackagePage({ language, packageId, packageName }: PackagePageProps) {
   const irLanguage = language === "python" ? "python" : "javascript";
-  const buildId = await getBuildIdForLanguage(irLanguage);
+  
+  // Determine which project this package belongs to
+  const project = getProjectForPackage(packageName);
+  const buildId = await getBuildIdForLanguage(irLanguage, project.id);
   const result = buildId ? await getSymbols(buildId, packageId) : null;
 
   const symbols: DisplaySymbol[] = result?.symbols

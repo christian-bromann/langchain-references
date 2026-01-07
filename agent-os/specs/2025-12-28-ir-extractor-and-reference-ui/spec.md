@@ -2365,56 +2365,6 @@ describe("PythonReferencePage", () => {
 });
 ```
 
-### 11.3 E2E Tests
-
-```typescript
-// e2e/reference.spec.ts
-
-import { test, expect } from "@playwright/test";
-
-test.describe("Reference Documentation", () => {
-  test("should navigate to a Python class page", async ({ page }) => {
-    await page.goto("/python/langchain");
-    
-    // Click on a class link
-    await page.click('text=ChatOpenAI');
-    
-    // Verify page loaded
-    await expect(page).toHaveURL(/\/python\/langchain\/classes\/ChatOpenAI/);
-    await expect(page.locator("h1")).toContainText("ChatOpenAI");
-  });
-  
-  test("should search for a symbol", async ({ page }) => {
-    await page.goto("/python/langchain");
-    
-    // Open search modal
-    await page.keyboard.press("Meta+k");
-    
-    // Type search query
-    await page.fill('input[placeholder*="Search"]', "invoke");
-    
-    // Wait for results
-    await expect(page.locator('[role="listbox"]')).toBeVisible();
-    
-    // Click first result
-    await page.click('[role="option"]:first-child');
-    
-    // Verify navigation
-    await expect(page.locator("h1")).toContainText("invoke");
-  });
-  
-  test("should toggle dark mode", async ({ page }) => {
-    await page.goto("/python/langchain");
-    
-    // Click theme toggle
-    await page.click('[aria-label="Toggle theme"]');
-    
-    // Verify dark mode applied
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  });
-});
-```
-
 ---
 
 ## 12. Acceptance Criteria
@@ -2507,6 +2457,7 @@ Key design elements to match:
 ---
 
 *End of Specification*
+
 
 
 

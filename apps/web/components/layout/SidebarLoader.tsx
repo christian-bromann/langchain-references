@@ -2,11 +2,16 @@
  * Sidebar Loader - Server Component
  *
  * Loads package data from IR and passes it to the client Sidebar component.
+ * Loads packages from ALL enabled projects (langchain, langgraph, deepagent).
+ *
+ * OPTIMIZATION: Uses lightweight routing maps (~100KB) instead of full symbol
+ * files (~14MB) to build navigation. This dramatically reduces build times.
  */
 
 import { Sidebar, type SidebarPackage } from "./Sidebar";
-import { getBuildIdForLanguage, getManifestData, getSymbols } from "@/lib/ir/loader";
-import type { Package, SymbolRecord } from "@/lib/ir/types";
+import { getBuildIdForLanguage, getManifestData, getRoutingMapData } from "@/lib/ir/loader";
+import { getEnabledProjects } from "@/lib/config/projects";
+import type { Package, RoutingMap, SymbolKind } from "@/lib/ir/types";
 
 /**
  * Get package URL slug from display name
@@ -21,40 +26,42 @@ function getPackageSlug(pkg: Package, language: "python" | "javascript"): string
 }
 
 /**
- * Build navigation items from symbols
+ * Build navigation items from routing map.
  *
- * Strategy:
- * - If a package has named exports (sub-modules like `hub`, `chat_models/universal`),
- *   list them in the sidebar with `index` first.
- * - If a package doesn't have named exports (just exports classes/functions from a
- *   single entry point), return empty items - users click the package name to explore.
- * - Hide `index` modules that don't have any exports (no members).
+ * Uses the lightweight routing map instead of full symbols.
+ * Only extracts module names for sidebar navigation.
  */
-function buildNavItems(
-  symbols: SymbolRecord[],
+function buildNavItemsFromRouting(
+  routingMap: RoutingMap,
   language: "python" | "javascript",
   packageSlug: string
 ): SidebarPackage["items"] {
-  // Get top-level modules (named exports / sub-modules)
-  const modules = symbols
-    .filter(
-      (s) =>
-        s.kind === "module" &&
-        s.tags?.visibility === "public" &&
-        // Only show top-level modules (no nested slashes for JS, no nested dots for Python)
-        !s.name.includes("/") &&
-        !s.name.slice(s.name.indexOf(".") + 1).includes(".") &&
-        // Hide `index` modules without exports (no members)
-        !(s.name === "index" && (!s.members || s.members.length === 0))
-    )
-    .map((s) => ({
-      name: s.name,
-      path: `/${language}/${packageSlug}/${s.name}`,
-      kind: s.kind,
-    }));
+  const modules: { name: string; path: string; kind: SymbolKind }[] = [];
 
-  // If no modules (named exports), return empty - the package link itself is enough
-  // Users can click the package name to explore its exports
+  // Extract top-level modules from routing map slugs
+  for (const [slug, entry] of Object.entries(routingMap.slugs)) {
+    if (entry.kind !== "module") continue;
+
+    // Get the module name from the slug
+    // For JS: slug is usually the module name directly
+    // For Python: slug might be qualified like "langchain_core.messages"
+    const name = slug.includes(".") ? slug.split(".").pop()! : slug;
+
+    // Only show top-level modules (no nested slashes or dots)
+    if (name.includes("/")) continue;
+    if (name.includes(".")) continue;
+
+    // Skip index modules for now (we can't tell if they have exports without full data)
+    // Users can click the package name to explore
+    if (name === "index") continue;
+
+    modules.push({
+      name,
+      path: `/${language}/${packageSlug}/${name}`,
+      kind: entry.kind,
+    });
+  }
+
   if (modules.length === 0) {
     return [];
   }
@@ -67,23 +74,20 @@ function buildNavItems(
     return true;
   });
 
-  // Sort: `index` first, then alphabetically
-  uniqueModules.sort((a, b) => {
-    if (a.name === "index") return -1;
-    if (b.name === "index") return 1;
-    return a.name.localeCompare(b.name);
-  });
+  // Sort alphabetically
+  uniqueModules.sort((a, b) => a.name.localeCompare(b.name));
 
   return uniqueModules;
 }
 
 /**
- * Load sidebar data for a language
+ * Load sidebar data for a language from a specific project
  */
-async function loadSidebarPackages(
-  language: "python" | "javascript"
+async function loadSidebarPackagesForProject(
+  language: "python" | "javascript",
+  projectId: string
 ): Promise<SidebarPackage[]> {
-  const buildId = await getBuildIdForLanguage(language);
+  const buildId = await getBuildIdForLanguage(language, projectId);
   if (!buildId) return [];
 
   const manifest = await getManifestData(buildId);
@@ -95,6 +99,7 @@ async function loadSidebarPackages(
       : p.language === "typescript" || p.ecosystem === "javascript"
   );
 
+  const irLanguage = language === "python" ? "python" : "typescript";
   const sidebarPackages: SidebarPackage[] = [];
 
   for (const pkg of packages) {
@@ -104,8 +109,9 @@ async function loadSidebarPackages(
     // since Python packages have a different export structure with many modules
     let items: SidebarPackage["items"] = [];
     if (language === "javascript") {
-      const result = await getSymbols(buildId, pkg.packageId);
-      items = result?.symbols ? buildNavItems(result.symbols, language, slug) : [];
+      // Use routing map instead of full symbols (~100KB vs ~14MB)
+      const routingMap = await getRoutingMapData(buildId, pkg.packageId, pkg.displayName, irLanguage);
+      items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
     }
 
     sidebarPackages.push({
@@ -117,6 +123,27 @@ async function loadSidebarPackages(
   }
 
   return sidebarPackages;
+}
+
+/**
+ * Load sidebar data for a language from ALL enabled projects
+ */
+async function loadSidebarPackages(
+  language: "python" | "javascript"
+): Promise<SidebarPackage[]> {
+  const projects = getEnabledProjects();
+  const allPackages: SidebarPackage[] = [];
+
+  // Load packages from all projects in parallel
+  const projectPackages = await Promise.all(
+    projects.map((project) => loadSidebarPackagesForProject(language, project.id))
+  );
+
+  for (const packages of projectPackages) {
+    allPackages.push(...packages);
+  }
+
+  return allPackages;
 }
 
 export async function SidebarLoader() {

@@ -207,7 +207,6 @@ pnpm --filter @langchain/reference-web test
 ```txt
 packages/*/src/__tests__/     # Unit tests
 apps/web/app/**/__tests__/    # Page tests
-e2e/                          # End-to-end tests (Playwright)
 ```
 
 ### Writing Tests

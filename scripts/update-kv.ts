@@ -138,18 +138,19 @@ export async function updatePointers(options: PointerUpdateOptions): Promise<voi
     console.log(`   ✓ Uploaded packages/${ecosystem}/${pkg.publishedName}.json → ${pkg.version}`);
   }
 
-  // 3. Update per-language latest pointers
+  // 3. Update per-project + language latest pointers
+  const projectId = manifest.project || "langchain";
   const pythonPackages = manifest.packages.filter((p) => p.language === "python");
   const jsPackages = manifest.packages.filter((p) => p.language === "typescript");
 
   if (pythonPackages.length > 0) {
-    await uploadPointer(`${POINTERS_PATH}/latest-python.json`, { buildId, updatedAt: now }, dryRun);
-    console.log(`   ✓ Uploaded latest-python.json`);
+    await uploadPointer(`${POINTERS_PATH}/latest-${projectId}-python.json`, { buildId, updatedAt: now }, dryRun);
+    console.log(`   ✓ Uploaded latest-${projectId}-python.json`);
   }
 
   if (jsPackages.length > 0) {
-    await uploadPointer(`${POINTERS_PATH}/latest-javascript.json`, { buildId, updatedAt: now }, dryRun);
-    console.log(`   ✓ Uploaded latest-javascript.json`);
+    await uploadPointer(`${POINTERS_PATH}/latest-${projectId}-javascript.json`, { buildId, updatedAt: now }, dryRun);
+    console.log(`   ✓ Uploaded latest-${projectId}-javascript.json`);
   }
 
   // 4. Update global latest pointer
