@@ -22,11 +22,17 @@ export function isProduction(): boolean {
 /**
  * Get the Vercel Blob store base URL.
  * For public blobs, we access them directly via this URL.
+ *
+ * The BLOB_URL can be set explicitly, or derived from NEXT_PUBLIC_BLOB_URL.
+ * Example: https://xxxxxx.public.blob.vercel-storage.com
  */
 function getBlobUrl(path: string): string | null {
-  const baseUrl = process.env.BLOB_URL;
+  const baseUrl = process.env.BLOB_URL || process.env.NEXT_PUBLIC_BLOB_URL;
   if (!baseUrl) {
-    console.error("BLOB_URL environment variable is not set");
+    // Only log in production to avoid noise during development
+    if (isProduction()) {
+      console.warn("BLOB_URL environment variable is not set - static generation will be skipped");
+    }
     return null;
   }
   return `${baseUrl}/${path}`;
@@ -68,16 +74,25 @@ async function fetchPointer<T>(pointerName: string): Promise<T | null> {
 
   try {
     const url = getBlobUrl(`${POINTERS_PATH}/${pointerName}.json`);
-    if (!url) return null;
+    if (!url) {
+      console.warn(`[fetchPointer] No BLOB_URL configured for ${pointerName}`);
+      return null;
+    }
 
+    console.log(`[fetchPointer] Fetching: ${url}`);
     const response = await fetch(url, {
       // Use force-cache to enable static generation
       // In-memory pointerCache handles deduplication during builds
       cache: "force-cache",
     });
-    if (!response.ok) return null;
+
+    if (!response.ok) {
+      console.warn(`[fetchPointer] Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+      return null;
+    }
 
     const data = await response.json();
+    console.log(`[fetchPointer] Got data for ${pointerName}:`, JSON.stringify(data));
     pointerCache.set(cacheKey, data);
     return data;
   } catch (error) {
@@ -107,8 +122,12 @@ export async function getLatestBuildIdForLanguage(
   project: string = "langchain"
 ): Promise<string | null> {
   try {
-    const pointer = await fetchPointer<LatestLanguagePointer>(`latest-${project}-${language}`);
-    return pointer?.buildId || null;
+    const pointerName = `latest-${project}-${language}`;
+    console.log(`[getLatestBuildIdForLanguage] Fetching pointer: ${pointerName}`);
+    const pointer = await fetchPointer<LatestLanguagePointer>(pointerName);
+    const buildId = pointer?.buildId || null;
+    console.log(`[getLatestBuildIdForLanguage] ${pointerName} -> buildId: ${buildId}`);
+    return buildId;
   } catch (error) {
     console.error(`Failed to get latest ${project} ${language} build ID:`, error);
     return null;
@@ -526,7 +545,9 @@ export async function getBuildIdForLanguage(
   language: "python" | "javascript",
   project: string = "langchain"
 ): Promise<string | null> {
-  return isProduction()
+  const isProd = isProduction();
+  console.log(`[getBuildIdForLanguage] isProduction=${isProd}, NODE_ENV=${process.env.NODE_ENV}, VERCEL=${process.env.VERCEL}`);
+  return isProd
     ? getLatestBuildIdForLanguage(language, project)
     : getLocalLatestBuildId(language, project);
 }
