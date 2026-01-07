@@ -9,6 +9,22 @@
  * 4. Transforms output to IR format
  * 5. Uploads to Vercel Blob
  * 6. Updates build pointers in Vercel Blob
+ *
+ * Usage:
+ *   # Build a specific config file
+ *   npx tsx scripts/build-ir.ts --config ./configs/langchain-python.json
+ *
+ *   # Build all configs for a project
+ *   npx tsx scripts/build-ir.ts --project langchain
+ *
+ *   # Build all configs for a language
+ *   npx tsx scripts/build-ir.ts --language typescript
+ *
+ *   # Build a specific project+language combination
+ *   npx tsx scripts/build-ir.ts --project langgraph --language typescript
+ *
+ *   # Build everything
+ *   npx tsx scripts/build-ir.ts --all
  */
 
 import { program } from "commander";
@@ -22,6 +38,43 @@ import { uploadIR } from "./upload-ir.js";
 import { updateKV } from "./update-kv.js";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
+
+/** Available projects */
+const PROJECTS = ["langchain", "langgraph", "deepagent"] as const;
+
+/** Available languages */
+const LANGUAGES = ["python", "typescript"] as const;
+
+/**
+ * Find config files matching the given project and/or language filters.
+ */
+async function findConfigFiles(
+  projectFilter?: string,
+  languageFilter?: string
+): Promise<string[]> {
+  const configDir = path.resolve(__dirname, "../configs");
+  const files = await fs.readdir(configDir);
+
+  const configs: string[] = [];
+
+  for (const file of files) {
+    if (!file.endsWith(".json") || file === "config-schema.json") continue;
+
+    // Parse project and language from filename (e.g., "langchain-python.json")
+    const match = file.match(/^(\w+)-(python|typescript)\.json$/);
+    if (!match) continue;
+
+    const [, project, language] = match;
+
+    // Apply filters
+    if (projectFilter && project !== projectFilter) continue;
+    if (languageFilter && language !== languageFilter) continue;
+
+    configs.push(path.join(configDir, file));
+  }
+
+  return configs.sort();
+}
 
 /**
  * Package configuration for extraction.
@@ -283,37 +336,20 @@ function normalizePackageId(name: string, language: "python" | "typescript"): st
 }
 
 /**
- * Main build pipeline.
+ * Build a single configuration file.
  */
-async function main() {
-  program
-    .name("build-ir")
-    .description("Build IR artifacts from source repositories")
-    .requiredOption("--config <path>", "Build configuration file path")
-    .option("--sha <sha>", "Git SHA to use (defaults to latest main)")
-    .option("--output <path>", "Output directory for IR artifacts", "./ir-output")
-    .option("--cache <path>", "Cache directory for tarballs (defaults to system temp)")
-    .option("--dry-run", "Generate locally without uploading")
-    .option("--local", "Local-only mode (skip all cloud uploads)")
-    .option("--skip-upload", "Skip upload to Vercel Blob")
-    .option("--skip-pointers", "Skip updating build pointers")
-    .option("-v, --verbose", "Enable verbose output")
-    .parse();
-
-  const opts = program.opts();
-
-  // --local is a convenience flag that sets both --skip-upload and --skip-pointers
-  if (opts.local) {
-    opts.skipUpload = true;
-    opts.skipPointers = true;
+async function buildConfig(
+  configPath: string,
+  opts: {
+    sha?: string;
+    output: string;
+    cache?: string;
+    skipUpload?: boolean;
+    skipPointers?: boolean;
+    verbose?: boolean;
   }
-
-  console.log("🔧 LangChain Reference Docs - IR Build Pipeline");
-  console.log("================================================\n");
-
-  // Load configuration
-  const configPath = path.resolve(opts.config);
-  console.log(`📄 Loading config: ${configPath}`);
+): Promise<{ buildId: string; success: boolean }> {
+  console.log(`\n📄 Loading config: ${configPath}`);
 
   const configContent = await fs.readFile(configPath, "utf-8");
   const config: BuildConfig = JSON.parse(configContent);
@@ -342,11 +378,18 @@ async function main() {
   // Fetch source tarball (use system temp dir by default to isolate from main project)
   const cacheDir = opts.cache || getCacheBaseDir();
   console.log(`\n📥 Fetching source to: ${cacheDir}`);
-  const fetchResult = await fetchTarball({
-    repo: config.repo,
-    sha,
-    output: cacheDir,
-  });
+
+  let fetchResult: FetchResult;
+  try {
+    fetchResult = await fetchTarball({
+      repo: config.repo,
+      sha,
+      output: cacheDir,
+    });
+  } catch (error) {
+    console.error(`\n❌ Failed to fetch source: ${error}`);
+    return { buildId, success: false };
+  }
 
   // Extract each package
   console.log("\n🔍 Extracting APIs...");
@@ -368,7 +411,7 @@ async function main() {
           config.repo,
           sha,
           pkgConfig.entryPoints,
-          fetchResult.extractedPath
+          fetchResult.extractedPath  // Pass monorepo root for workspace resolution
         );
       }
       console.log(`   ✓ ${pkgConfig.name}`);
@@ -380,54 +423,28 @@ async function main() {
   // Create manifest
   console.log("\n📋 Creating manifest...");
   const manifest = await createManifest(buildId, config, fetchResult, irOutputPath);
-
   const manifestPath = path.join(irOutputPath, "reference.manifest.json");
   await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
   console.log(`   ✓ ${manifest.packages.length} packages in manifest`);
 
   // Upload to Vercel Blob
-  if (!opts.dryRun && !opts.skipUpload) {
-    try {
-      await uploadIR({
-        buildId,
-        irOutputPath,
-        dryRun: opts.dryRun,
-      });
-    } catch (error) {
-      console.error(`\n❌ Upload failed: ${error}`);
-      if (!opts.skipPointers) {
-        console.log("   Skipping pointer update due to upload failure");
-      }
-      process.exit(1);
-    }
-  } else if (opts.dryRun) {
-    console.log("\n🔍 Dry run mode - skipping upload");
+  if (!opts.skipUpload) {
+    console.log("\n☁️  Uploading to Vercel Blob...");
+    await uploadIR({ buildId, irOutputPath, dryRun: false });
   } else {
     console.log("\n⏭️  Skipping upload (--skip-upload)");
   }
 
   // Update build pointers
-  if (!opts.dryRun && !opts.skipPointers) {
-    try {
-      await updateKV({
-        buildId,
-        manifest,
-        dryRun: opts.dryRun,
-      });
-    } catch (error) {
-      console.error(`\n❌ Pointer update failed: ${error}`);
-      process.exit(1);
-    }
-  } else if (opts.dryRun) {
-    console.log("\n🔍 Dry run mode - skipping pointer update");
+  if (!opts.skipPointers) {
+    console.log("\n🔄 Updating build pointers...");
+    await updateKV({ buildId, manifest, dryRun: false });
   } else {
     console.log("\n⏭️  Skipping pointer update (--skip-pointers)");
   }
 
-  // Create project + language specific "latest" symlink
-  const projectId = config.project || "langchain";
-  const languageId = config.language === "python" ? "python" : "javascript";
-  const latestLinkName = `latest-${projectId}-${languageId}`;
+  // Create language-specific "latest" symlink for local development
+  const latestLinkName = `latest-${config.project || "langchain"}-${config.language === "python" ? "python" : "javascript"}`;
   const latestLinkPath = path.resolve(opts.output, latestLinkName);
   try {
     // Remove existing symlink if it exists
@@ -439,15 +456,111 @@ async function main() {
     console.warn(`   ⚠️  Failed to create symlink: ${error}`);
   }
 
-  // Summary
-  console.log("\n" + "=".repeat(50));
-  console.log("✅ Build complete!");
-  console.log(`   Build ID: ${buildId}`);
-  console.log(`   Output: ${irOutputPath}`);
-  console.log(`   Packages: ${manifest.packages.length}`);
-  console.log(
-    `   Total symbols: ${manifest.packages.reduce((acc, p) => acc + p.stats.total, 0)}`
-  );
+  console.log(`\n✅ Build complete: ${buildId}`);
+  return { buildId, success: true };
+}
+
+/**
+ * Main build pipeline.
+ */
+async function main() {
+  program
+    .name("build-ir")
+    .description("Build IR artifacts from source repositories")
+    .option("--config <path>", "Build a specific configuration file")
+    .option("--project <name>", `Build all configs for a project (${PROJECTS.join(", ")})`)
+    .option("--language <lang>", `Build all configs for a language (${LANGUAGES.join(", ")})`)
+    .option("--all", "Build all project/language combinations")
+    .option("--sha <sha>", "Git SHA to use (defaults to latest main)")
+    .option("--output <path>", "Output directory for IR artifacts", "./ir-output")
+    .option("--cache <path>", "Cache directory for tarballs (defaults to system temp)")
+    .option("--dry-run", "Generate locally without uploading")
+    .option("--local", "Local-only mode (skip all cloud uploads)")
+    .option("--skip-upload", "Skip upload to Vercel Blob")
+    .option("--skip-pointers", "Skip updating build pointers")
+    .option("-v, --verbose", "Enable verbose output")
+    .parse();
+
+  const opts = program.opts();
+
+  // --local is a convenience flag that sets both --skip-upload and --skip-pointers
+  if (opts.local) {
+    opts.skipUpload = true;
+    opts.skipPointers = true;
+  }
+
+  console.log("🔧 LangChain Reference Docs - IR Build Pipeline");
+  console.log("================================================");
+
+  // Determine which configs to build
+  let configPaths: string[];
+
+  if (opts.config) {
+    // Single config file specified
+    configPaths = [path.resolve(opts.config)];
+  } else if (opts.all || opts.project || opts.language) {
+    // Find configs matching filters
+    configPaths = await findConfigFiles(opts.project, opts.language);
+
+    if (configPaths.length === 0) {
+      console.error("\n❌ No matching configuration files found.");
+      console.error(`   Project filter: ${opts.project || "(none)"}`);
+      console.error(`   Language filter: ${opts.language || "(none)"}`);
+      process.exit(1);
+    }
+
+    console.log(`\n📦 Found ${configPaths.length} configuration(s) to build:`);
+    for (const p of configPaths) {
+      console.log(`   - ${path.basename(p)}`);
+    }
+  } else {
+    console.error("\n❌ No build target specified.");
+    console.error("   Use one of:");
+    console.error("     --config <path>     Build a specific config file");
+    console.error("     --project <name>    Build all configs for a project");
+    console.error("     --language <lang>   Build all configs for a language");
+    console.error("     --all               Build all configurations");
+    process.exit(1);
+  }
+
+  // Build each config
+  const results: { config: string; buildId: string; success: boolean }[] = [];
+
+  for (const configPath of configPaths) {
+    console.log("\n" + "=".repeat(60));
+    const result = await buildConfig(configPath, {
+      sha: opts.sha,
+      output: opts.output,
+      cache: opts.cache,
+      skipUpload: opts.skipUpload,
+      skipPointers: opts.skipPointers,
+      verbose: opts.verbose,
+    });
+    results.push({ config: path.basename(configPath), ...result });
+  }
+
+  // Print summary
+  console.log("\n" + "=".repeat(60));
+  console.log("\n📊 Build Summary:");
+  console.log("─".repeat(40));
+
+  let totalSuccess = 0;
+  let totalFailed = 0;
+
+  for (const result of results) {
+    const status = result.success ? "✅" : "❌";
+    console.log(`   ${status} ${result.config}`);
+    console.log(`      Build ID: ${result.buildId}`);
+    if (result.success) totalSuccess++;
+    else totalFailed++;
+  }
+
+  console.log("─".repeat(40));
+  console.log(`   Total: ${results.length} | Success: ${totalSuccess} | Failed: ${totalFailed}`);
+
+  if (totalFailed > 0) {
+    process.exit(1);
+  }
 }
 
 main().catch((error) => {
