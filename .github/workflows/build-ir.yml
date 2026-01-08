@@ -52,8 +52,8 @@ on:
       - main
     paths:
       - '.github/workflows/build-ir.yml'
-      - 'scripts/**'
       - 'configs/**'
+      - 'packages/build-pipeline/**'
       - 'packages/extractor-*/**'
       - 'packages/ir-schema/**'
 
@@ -158,7 +158,7 @@ jobs:
             FLAGS="$FLAGS --full"
           fi
 
-          npx tsx scripts/build-ir.ts \
+          pnpm build:ir -- \
             --config ./configs/${{ matrix.config }} \
             --skip-pointers \
             $FLAGS
@@ -234,7 +234,7 @@ jobs:
               fi
 
               echo "Updating pointers for build: $BUILD_ID"
-              npx tsx scripts/update-kv.ts "$BUILD_ID" "$manifest"
+              pnpm update-pointers -- "$BUILD_ID" "$manifest"
             fi
           done
 

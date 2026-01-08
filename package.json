@@ -17,6 +17,7 @@
     "build:ir:local": "pnpm --filter @langchain/build-pipeline build:ir -- --local",
     "sync-versions": "pnpm --filter @langchain/build-pipeline sync-versions",
     "fetch-tarball": "pnpm --filter @langchain/build-pipeline fetch-tarball",
+    "update-pointers": "pnpm --filter @langchain/build-pipeline update-pointers",
     "lint": "turbo lint",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
