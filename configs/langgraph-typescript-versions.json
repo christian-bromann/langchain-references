@@ -2,7 +2,7 @@
   "project": "langgraph",
   "language": "typescript",
   "repo": "langchain-ai/langgraphjs",
-  "lastSynced": "2026-01-08T03:48:30.656Z",
+  "lastSynced": "2026-01-08T21:17:16.463Z",
   "packages": [
     {
       "packageName": "@langchain/langgraph",

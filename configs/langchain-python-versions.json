@@ -2,17 +2,17 @@
   "project": "langchain",
   "language": "python",
   "repo": "langchain-ai/langchain",
-  "lastSynced": "2026-01-08T03:48:00.902Z",
+  "lastSynced": "2026-01-08T21:17:10.796Z",
   "packages": [
     {
       "packageName": "langchain",
       "tagPattern": "langchain==*",
       "versions": [
         {
-          "version": "1.2.2",
-          "sha": "ceca38d3fe8c69da216f4214cfb38bd924cb3098",
-          "tag": "langchain==1.2.2",
-          "releaseDate": "2026-01-07T22:36:10Z"
+          "version": "1.2.3",
+          "sha": "76da99e022652684c7ea28bbf74220b0955a5287",
+          "tag": "langchain==1.2.3",
+          "releaseDate": "2026-01-08T20:24:32Z"
         },
         {
           "version": "1.1.3",
@@ -45,17 +45,17 @@
           "releaseDate": "2024-05-10T21:15:56Z"
         }
       ],
-      "lastUpdated": "2026-01-08T03:47:49.617Z"
+      "lastUpdated": "2026-01-08T21:17:10.568Z"
     },
     {
       "packageName": "langchain_classic",
       "tagPattern": "langchain==*",
       "versions": [
         {
-          "version": "1.2.2",
-          "sha": "ceca38d3fe8c69da216f4214cfb38bd924cb3098",
-          "tag": "langchain==1.2.2",
-          "releaseDate": "2026-01-07T22:36:10Z"
+          "version": "1.2.3",
+          "sha": "76da99e022652684c7ea28bbf74220b0955a5287",
+          "tag": "langchain==1.2.3",
+          "releaseDate": "2026-01-08T20:24:32Z"
         },
         {
           "version": "1.1.3",
@@ -88,7 +88,7 @@
           "releaseDate": "2024-05-10T21:15:56Z"
         }
       ],
-      "lastUpdated": "2026-01-08T03:47:51.368Z"
+      "lastUpdated": "2026-01-08T21:17:10.791Z"
     },
     {
       "packageName": "langchain_core",

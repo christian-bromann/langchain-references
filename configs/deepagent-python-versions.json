@@ -2,17 +2,17 @@
   "project": "deepagent",
   "language": "python",
   "repo": "langchain-ai/deepagents",
-  "lastSynced": "2026-01-08T03:47:43.529Z",
+  "lastSynced": "2026-01-08T21:17:07.226Z",
   "packages": [
     {
       "packageName": "deepagents",
       "tagPattern": "deepagents==*",
       "versions": [
         {
-          "version": "0.3.1",
-          "sha": "4f8bada55020b47e4aa3f728ef16b82e1a3d87c6",
-          "tag": "deepagents==0.3.1",
-          "releaseDate": "2025-12-23T18:47:26Z"
+          "version": "0.3.3",
+          "sha": "16ffc423aa008b375640a7a1527272457eee3fda",
+          "tag": "deepagents==0.3.3",
+          "releaseDate": "2026-01-08T18:16:58Z"
         },
         {
           "version": "0.2.8",
@@ -21,7 +21,7 @@
           "releaseDate": "2025-11-24T04:04:37Z"
         }
       ],
-      "lastUpdated": "2026-01-08T03:47:43.226Z"
+      "lastUpdated": "2026-01-08T21:17:07.226Z"
     },
     {
       "packageName": "deepagents_cli",
