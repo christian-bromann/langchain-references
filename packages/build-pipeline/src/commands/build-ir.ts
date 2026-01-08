@@ -546,10 +546,35 @@ async function extractHistoricalVersion(
     }
 
     const data = JSON.parse(await fs.readFile(symbolsPath, "utf-8"));
+
+    // Clean up extracted tarball to save disk space (especially in CI)
+    // Keep only the small symbols.json in version-cache
+    if (process.env.CI) {
+      await cleanupExtractedRepo(fetchResult.extractedPath);
+    }
+
     return { symbolsPath, symbolCount: data.symbols?.length ?? 0 };
   } catch (error) {
     console.warn(`      ⚠️ Failed to extract ${version}: ${error}`);
+    // Still try to clean up on failure
+    if (process.env.CI) {
+      await cleanupExtractedRepo(fetchResult.extractedPath).catch(() => {});
+    }
     return null;
+  }
+}
+
+/**
+ * Clean up an extracted repository directory to save disk space.
+ * Removes the entire extracted directory including node_modules.
+ */
+async function cleanupExtractedRepo(extractedPath: string): Promise<void> {
+  try {
+    // Get the parent directory (which contains both extracted/ and source.tar.gz)
+    const parentDir = path.dirname(extractedPath);
+    await fs.rm(parentDir, { recursive: true, force: true });
+  } catch {
+    // Ignore cleanup errors
   }
 }
 
@@ -1201,6 +1226,12 @@ async function buildConfig(
   if (opts.withVersions) {
     console.log("\n📜 Building version history...");
     await buildVersionHistory(config, fetchResult, irOutputPath, opts.fullRebuild);
+  }
+
+  // Clean up main extracted repository to save disk space in CI
+  if (process.env.CI) {
+    console.log("\n🧹 Cleaning up extracted sources...");
+    await cleanupExtractedRepo(fetchResult.extractedPath);
   }
 
   if (!opts.skipUpload) {
