@@ -129,13 +129,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build packages
-        run: |
-          # Only build packages needed for IR generation (skip web app)
-          pnpm --filter @langchain/ir-schema build
-          pnpm --filter @langchain/build-pipeline build
-          pnpm --filter @langchain/extractor-typescript build
-
       - name: Setup Python (for Python builds)
         if: matrix.language == 'python'
         uses: actions/setup-python@v5
@@ -162,8 +155,8 @@ jobs:
             FLAGS="$FLAGS --full"
           fi
 
-          # Run the CLI directly via node (avoids pnpm script passthrough issues)
-          node packages/build-pipeline/bin/build-ir.js \
+          # Run via tsx directly (no build step required for internal packages)
+          npx tsx packages/build-pipeline/src/commands/build-ir.ts \
             --config ./configs/${{ matrix.config }} \
             --skip-pointers \
             $FLAGS
@@ -205,12 +198,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build packages
-        run: |
-          # Only build packages needed for pointer updates (skip web app)
-          pnpm --filter @langchain/ir-schema build
-          pnpm --filter @langchain/build-pipeline build
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -242,7 +229,7 @@ jobs:
               fi
 
               echo "Updating pointers for build: $BUILD_ID"
-              node packages/build-pipeline/bin/update-pointers.js "$BUILD_ID" "$manifest"
+              npx tsx packages/build-pipeline/src/commands/update-pointers.ts "$BUILD_ID" "$manifest"
             fi
           done
 

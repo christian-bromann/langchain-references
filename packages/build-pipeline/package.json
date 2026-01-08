@@ -4,33 +4,23 @@
   "description": "IR build pipeline for LangChain Reference Docs - extracts, transforms, and uploads API documentation",
   "private": true,
   "type": "module",
-  "bin": {
-    "build-ir": "./bin/build-ir.js",
-    "sync-versions": "./bin/sync-versions.js",
-    "fetch-tarball": "./bin/fetch-tarball.js",
-    "update-pointers": "./bin/update-pointers.js"
-  },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
     },
     "./commands/*": {
-      "types": "./dist/commands/*.d.ts",
-      "import": "./dist/commands/*.js"
+      "types": "./src/commands/*.ts",
+      "import": "./src/commands/*.ts"
     }
   },
   "files": [
-    "dist",
-    "bin"
+    "src"
   ],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist",
     "build:ir": "tsx src/commands/build-ir.ts",
     "sync-versions": "tsx src/commands/sync-versions.ts",
     "fetch-tarball": "tsx src/commands/fetch-tarball.ts",
