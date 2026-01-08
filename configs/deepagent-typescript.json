@@ -8,7 +8,11 @@
       "name": "deepagents",
       "path": ".",
       "entryPoints": ["src/index.ts"],
-      "displayName": "Deep Agents"
+      "displayName": "Deep Agents",
+      "versioning": {
+        "tagPattern": "v*",
+        "maxVersions": 10
+      }
     }
   ]
 }

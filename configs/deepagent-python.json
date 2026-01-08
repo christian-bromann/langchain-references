@@ -7,7 +7,20 @@
     {
       "name": "deepagents",
       "path": "libs/deepagents",
-      "displayName": "Deep Agents"
+      "displayName": "Deep Agents",
+      "versioning": {
+        "tagPattern": "deepagents==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "deepagents_cli",
+      "path": "libs/deepagents-cli",
+      "displayName": "Deep Agents CLI",
+      "versioning": {
+        "tagPattern": "deepagents-cli==*",
+        "maxVersions": 10
+      }
     }
   ]
 }

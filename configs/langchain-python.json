@@ -5,24 +5,76 @@
   "repo": "langchain-ai/langchain",
   "packages": [
     {
+      "name": "langchain",
+      "path": "libs/langchain_v1",
+      "displayName": "LangChain",
+      "versioning": {
+        "tagPattern": "langchain==*",
+        "maxVersions": 10
+      }
+    },
+    {
       "name": "langchain_classic",
       "path": "libs/langchain",
-      "displayName": "LangChain Classic"
+      "displayName": "LangChain Classic",
+      "versioning": {
+        "tagPattern": "langchain==*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "langchain_core",
       "path": "libs/core",
-      "displayName": "LangChain Core"
+      "displayName": "LangChain Core",
+      "versioning": {
+        "tagPattern": "langchain-core==*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "langchain_text_splitters",
       "path": "libs/text-splitters",
-      "displayName": "Text Splitters"
+      "displayName": "Text Splitters",
+      "versioning": {
+        "tagPattern": "langchain-text-splitters==*",
+        "maxVersions": 10
+      }
     },
     {
-      "name": "langchain_tests",
-      "path": "libs/standard-tests",
-      "displayName": "LangChain Tests"
+      "name": "langchain_anthropic",
+      "path": "libs/partners/anthropic",
+      "displayName": "Anthropic",
+      "versioning": {
+        "tagPattern": "langchain-anthropic==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_deepseek",
+      "path": "libs/partners/deepseek",
+      "displayName": "DeepSeek",
+      "versioning": {
+        "tagPattern": "langchain-deepseek==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_groq",
+      "path": "libs/partners/groq",
+      "displayName": "Groq",
+      "versioning": {
+        "tagPattern": "langchain-groq==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_openai",
+      "path": "libs/partners/openai",
+      "displayName": "OpenAI",
+      "versioning": {
+        "tagPattern": "langchain-openai==*",
+        "maxVersions": 10
+      }
     }
   ]
 }

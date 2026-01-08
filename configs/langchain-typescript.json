@@ -34,55 +34,118 @@
       "name": "@langchain/community",
       "path": "libs/langchain-community",
       "entryPoints": ["auto"],
-      "displayName": "LangChain Community"
+      "displayName": "LangChain Community",
+      "versioning": {
+        "tagPattern": "@langchain/community@*",
+        "maxVersions": 10,
+        "pathOverrides": {
+          "0.x": "langchain-community"
+        }
+      }
     },
     {
       "name": "@langchain/anthropic",
       "path": "libs/providers/langchain-anthropic",
       "entryPoints": ["auto"],
-      "displayName": "Anthropic"
+      "displayName": "Anthropic",
+      "versioning": {
+        "tagPattern": "@langchain/anthropic@*",
+        "maxVersions": 10,
+        "pathOverrides": {
+          "0.x": "libs/langchain-anthropic"
+        }
+      }
     },
     {
       "name": "@langchain/aws",
       "path": "libs/providers/langchain-aws",
       "entryPoints": ["auto"],
-      "displayName": "AWS"
+      "displayName": "AWS",
+      "versioning": {
+        "tagPattern": "@langchain/aws@*",
+        "maxVersions": 10,
+        "pathOverrides": {
+          "0.x": "libs/langchain-aws"
+        }
+      }
     },
     {
       "name": "@langchain/deepseek",
       "path": "libs/providers/langchain-deepseek",
       "entryPoints": ["auto"],
-      "displayName": "DeepSeek"
+      "displayName": "DeepSeek",
+      "versioning": {
+        "tagPattern": "@langchain/deepseek@*",
+        "maxVersions": 10,
+        "pathOverrides": {
+          "0.x": "libs/langchain-deepseek"
+        }
+      }
     },
     {
       "name": "@langchain/google-genai",
       "path": "libs/providers/langchain-google-genai",
       "entryPoints": ["auto"],
-      "displayName": "Google GenAI"
+      "displayName": "Google GenAI",
+      "versioning": {
+        "tagPattern": "@langchain/google-genai@*",
+        "maxVersions": 10,
+        "pathOverrides": {
+          "0.x": "libs/langchain-google-genai"
+        }
+      }
     },
     {
       "name": "@langchain/google-vertexai",
       "path": "libs/providers/langchain-google-vertexai",
       "entryPoints": ["auto"],
-      "displayName": "Google Vertex AI"
+      "displayName": "Google Vertex AI",
+      "versioning": {
+        "tagPattern": "@langchain/google-vertexai@*",
+        "maxVersions": 10,
+        "pathOverrides": {
+          "0.x": "libs/langchain-google-vertexai"
+        }
+      }
     },
     {
       "name": "@langchain/google-vertexai-web",
       "path": "libs/providers/langchain-google-vertexai-web",
       "entryPoints": ["auto"],
-      "displayName": "Google Vertex AI Web"
+      "displayName": "Google Vertex AI Web",
+      "versioning": {
+        "tagPattern": "@langchain/google-vertexai-web@*",
+        "maxVersions": 10,
+        "pathOverrides": {
+          "0.x": "libs/langchain-google-vertexai-web"
+        }
+      }
     },
     {
       "name": "@langchain/groq",
       "path": "libs/providers/langchain-groq",
       "entryPoints": ["auto"],
-      "displayName": "Groq"
+      "displayName": "Groq",
+      "versioning": {
+        "tagPattern": "@langchain/groq@*",
+        "maxVersions": 10,
+        "pathOverrides": {
+          "0.x": "libs/langchain-groq"
+        }
+      }
     },
     {
       "name": "@langchain/openai",
       "path": "libs/providers/langchain-openai",
       "entryPoints": ["auto"],
-      "displayName": "OpenAI"
+      "displayName": "OpenAI",
+      "versioning": {
+        "tagPattern": "@langchain/openai@*",
+        "maxVersions": 10,
+        "pathOverrides": {
+          "0.x": "libs/langchain-openai"
+        }
+      }
     }
   ]
 }

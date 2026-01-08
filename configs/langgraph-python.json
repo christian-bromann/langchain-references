@@ -7,27 +7,65 @@
     {
       "name": "langgraph",
       "path": "libs/langgraph",
-      "displayName": "LangGraph"
+      "displayName": "LangGraph",
+      "versioning": {
+        "tagPattern": "*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "langgraph_sdk",
       "path": "libs/sdk-py",
-      "displayName": "LangGraph SDK"
+      "displayName": "LangGraph SDK",
+      "versioning": {
+        "tagPattern": "sdk==*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "langgraph_checkpoint",
       "path": "libs/checkpoint",
-      "displayName": "LangGraph Checkpoint"
+      "displayName": "LangGraph Checkpoint",
+      "versioning": {
+        "tagPattern": "checkpoint==*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "langgraph_checkpoint_sqlite",
       "path": "libs/checkpoint-sqlite",
-      "displayName": "Checkpoint SQLite"
+      "displayName": "Checkpoint SQLite",
+      "versioning": {
+        "tagPattern": "checkpointsqlite==*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "langgraph_checkpoint_postgres",
       "path": "libs/checkpoint-postgres",
-      "displayName": "Checkpoint Postgres"
+      "displayName": "Checkpoint Postgres",
+      "versioning": {
+        "tagPattern": "checkpointpostgres==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langgraph_cli",
+      "path": "libs/cli",
+      "displayName": "LangGraph CLI",
+      "versioning": {
+        "tagPattern": "cli==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langgraph_prebuilt",
+      "path": "libs/prebuilt",
+      "displayName": "LangGraph Prebuilt",
+      "versioning": {
+        "tagPattern": "prebuilt==*",
+        "maxVersions": 10
+      }
     }
   ]
 }

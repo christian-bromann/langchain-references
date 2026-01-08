@@ -8,31 +8,51 @@
       "name": "@langchain/langgraph",
       "path": "libs/langgraph-core",
       "entryPoints": ["auto"],
-      "displayName": "LangGraph"
+      "displayName": "LangGraph",
+      "versioning": {
+        "tagPattern": "*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "@langchain/langgraph-sdk",
       "path": "libs/sdk",
       "entryPoints": ["auto"],
-      "displayName": "LangGraph SDK"
+      "displayName": "LangGraph SDK",
+      "versioning": {
+        "tagPattern": "@langchain/langgraph-sdk@*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "@langchain/langgraph-checkpoint",
       "path": "libs/checkpoint",
       "entryPoints": ["auto"],
-      "displayName": "LangGraph Checkpoint"
+      "displayName": "LangGraph Checkpoint",
+      "versioning": {
+        "tagPattern": "checkpoint==*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "@langchain/langgraph-checkpoint-mongodb",
       "path": "libs/checkpoint-mongodb",
       "entryPoints": ["auto"],
-      "displayName": "LangGraph Checkpoint MongoDB"
+      "displayName": "LangGraph Checkpoint MongoDB",
+      "versioning": {
+        "tagPattern": "checkpoint-mongodb==*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "@langchain/langgraph-checkpoint-postgres",
       "path": "libs/checkpoint-postgres",
       "entryPoints": ["auto"],
-      "displayName": "LangGraph Checkpoint Postgres"
+      "displayName": "LangGraph Checkpoint Postgres",
+      "versioning": {
+        "tagPattern": "checkpoint-postgres==*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "@langchain/langgraph-checkpoint-redis",
@@ -44,7 +64,11 @@
       "name": "@langchain/langgraph-checkpoint-sqlite",
       "path": "libs/checkpoint-sqlite",
       "entryPoints": ["auto"],
-      "displayName": "LangGraph Checkpoint SQLite"
+      "displayName": "LangGraph Checkpoint SQLite",
+      "versioning": {
+        "tagPattern": "checkpoint-sqlite==*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "@langchain/langgraph-checkpoint-validation",
@@ -56,31 +80,51 @@
       "name": "@langchain/langgraph-api",
       "path": "libs/langgraph-api",
       "entryPoints": ["auto"],
-      "displayName": "LangGraph API"
+      "displayName": "LangGraph API",
+      "versioning": {
+        "tagPattern": "@langchain/langgraph-api@*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "@langchain/langgraph-cli",
       "path": "libs/langgraph-cli",
       "entryPoints": ["auto"],
-      "displayName": "LangGraph CLI"
+      "displayName": "LangGraph CLI",
+      "versioning": {
+        "tagPattern": "@langchain/langgraph-cli@*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "@langchain/langgraph-cua",
       "path": "libs/langgraph-cua",
       "entryPoints": ["auto"],
-      "displayName": "LangGraph CUA"
+      "displayName": "LangGraph CUA",
+      "versioning": {
+        "tagPattern": "cua==*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "@langchain/langgraph-supervisor",
       "path": "libs/langgraph-supervisor",
       "entryPoints": ["auto"],
-      "displayName": "LangGraph Supervisor"
+      "displayName": "LangGraph Supervisor",
+      "versioning": {
+        "tagPattern": "supervisor==*",
+        "maxVersions": 10
+      }
     },
     {
       "name": "@langchain/langgraph-swarm",
       "path": "libs/langgraph-swarm",
       "entryPoints": ["auto"],
-      "displayName": "LangGraph Swarm"
+      "displayName": "LangGraph Swarm",
+      "versioning": {
+        "tagPattern": "swarm==*",
+        "maxVersions": 10
+      }
     }
   ]
 }

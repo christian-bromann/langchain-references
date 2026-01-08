@@ -101,10 +101,14 @@ interface GitHubCommit {
 /**
  * Extract the tag prefix from a pattern for GitHub API filtering.
  * e.g., "@langchain/core@*" -> "@langchain/core"
+ * e.g., "langchain-core==*" -> "langchain-core"
  */
 function getTagPrefixFromPattern(pattern: string): string | null {
   if (pattern.endsWith("@*")) {
     return pattern.slice(0, -2); // Remove @*
+  }
+  if (pattern.endsWith("==*")) {
+    return pattern.slice(0, -3); // Remove ==*
   }
   if (pattern.endsWith("-v*")) {
     return pattern.slice(0, -2); // Remove v*
@@ -112,47 +116,123 @@ function getTagPrefixFromPattern(pattern: string): string | null {
   if (pattern === "v*") {
     return "v";
   }
+  // Pattern: * (bare version tags) - no prefix, matches all
+  if (pattern === "*") {
+    return "";
+  }
   return null;
 }
 
 /**
- * Fetch tags matching a specific prefix from GitHub.
- * Much more efficient than fetching all tags.
+ * Cached repository tags to avoid redundant API calls.
  */
-async function fetchTagsForPackage(
-  repo: string,
-  pattern: string,
-  headers: Record<string, string>
-): Promise<{ tag: string; version: string; sha: string }[]> {
-  const prefix = getTagPrefixFromPattern(pattern);
-  if (!prefix) {
-    console.warn(`   Cannot determine prefix from pattern: ${pattern}`);
-    return [];
+interface RepoTagCache {
+  repo: string;
+  tags: { name: string; sha: string; objectType: string; objectUrl?: string }[];
+  fetchedAt: string;
+}
+
+const repoTagCache = new Map<string, RepoTagCache>();
+
+/**
+ * Fetch with retries and exponential backoff for transient network errors.
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 3,
+  baseDelayMs = 1000
+): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fetch(url, options);
+    } catch (error) {
+      lastError = error as Error;
+
+      // Don't retry on the last attempt
+      if (attempt === maxRetries) break;
+
+      // Exponential backoff: 1s, 2s, 4s
+      const delay = baseDelayMs * Math.pow(2, attempt);
+      const errorMsg = lastError.message || "Unknown error";
+      process.stdout.write(`\r   ⚠️  Network error (${errorMsg}), retrying in ${delay / 1000}s... (${attempt + 1}/${maxRetries})`);
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
   }
 
-  const tags: { tag: string; version: string; sha: string }[] = [];
-  let page = 1;
-  const perPage = 100;
+  throw lastError ?? new Error("Fetch failed after retries");
+}
 
-  // URL-encode the prefix for the API (@ needs encoding)
-  const encodedPrefix = encodeURIComponent(prefix);
+/**
+ * Response from /repos/{owner}/{repo}/tags endpoint.
+ * This endpoint properly supports page-based pagination.
+ */
+interface GitHubTag {
+  name: string;
+  zipball_url: string;
+  tarball_url: string;
+  commit: {
+    sha: string;
+    url: string;
+  };
+  node_id: string;
+}
 
-  while (true) {
-    // Use the matching parameter to filter by prefix
-    const url = `https://api.github.com/repos/${repo}/git/matching-refs/tags/${encodedPrefix}?per_page=${perPage}&page=${page}`;
-    const response = await fetch(url, { headers });
+/**
+ * Parse the Link header to extract the next page URL.
+ * Format: <url>; rel="next", <url>; rel="last"
+ */
+function getNextPageUrl(linkHeader: string | null): string | null {
+  if (!linkHeader) return null;
+
+  const links = linkHeader.split(",");
+  for (const link of links) {
+    const match = link.match(/<([^>]+)>;\s*rel="next"/);
+    if (match) {
+      return match[1];
+    }
+  }
+  return null;
+}
+
+/**
+ * Fetch all tags from a repository (cached).
+ * Uses /repos/{owner}/{repo}/tags with Link header pagination.
+ * This is more efficient when processing multiple packages from the same repo.
+ */
+async function fetchAllRepoTags(
+  repo: string,
+  headers: Record<string, string>
+): Promise<{ name: string; sha: string; objectType: string; objectUrl?: string }[]> {
+  // Check cache first
+  const cached = repoTagCache.get(repo);
+  if (cached) {
+    console.log(`   Using cached tags for ${repo} (${cached.tags.length} tags)`);
+    return cached.tags;
+  }
+
+  console.log(`   Fetching all tags from ${repo}...`);
+  const allTags: { name: string; sha: string; objectType: string; objectUrl?: string }[] = [];
+  let nextUrl: string | null = `https://api.github.com/repos/${repo}/tags?per_page=100`;
+  let pageCount = 0;
+
+  while (nextUrl) {
+    pageCount++;
+    const response = await fetchWithRetry(nextUrl, { headers });
 
     if (!response.ok) {
       if (response.status === 404) {
-        // No tags match this prefix
+        console.warn(`   Repository ${repo} not found or no tags exist`);
         break;
       }
       if (response.status === 403) {
-        // Rate limited - show helpful info
         const remaining = response.headers.get("x-ratelimit-remaining");
         const reset = response.headers.get("x-ratelimit-reset");
         const resetDate = reset ? new Date(parseInt(reset) * 1000) : null;
-        
+
         console.error(`\n   ⚠️  Rate limited by GitHub API`);
         console.error(`      Remaining: ${remaining ?? "unknown"}`);
         if (resetDate) {
@@ -165,29 +245,70 @@ async function fetchTagsForPackage(
       throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
     }
 
-    const refs = (await response.json()) as GitHubTagRef[];
-    if (refs.length === 0) break;
+    const tags = (await response.json()) as GitHubTag[];
 
-    for (const ref of refs) {
-      const tagName = ref.ref.replace("refs/tags/", "");
-      const version = parseVersionFromTag(tagName, pattern);
-      if (version) {
-        tags.push({
-          tag: tagName,
-          version,
-          sha: ref.object.sha,
-        });
-      }
+    for (const tag of tags) {
+      allTags.push({
+        name: tag.name,
+        // /tags endpoint already dereferences to commit SHA
+        sha: tag.commit.sha,
+        // We know it's a commit since /tags dereferences annotated tags
+        objectType: "commit",
+        objectUrl: tag.commit.url,
+      });
     }
 
-    process.stdout.write(`\r      Fetching tags... ${tags.length} found (page ${page})`);
+    process.stdout.write(`\r   Fetching tags... ${allTags.length} found (page ${pageCount})`);
 
-    if (refs.length < perPage) break;
-    page++;
+    // Follow Link header for next page
+    nextUrl = getNextPageUrl(response.headers.get("link"));
   }
 
   process.stdout.write("\r" + " ".repeat(60) + "\r");
-  return tags;
+  console.log(`   Found ${allTags.length} total tags in ${repo}`);
+
+  // Cache the result
+  repoTagCache.set(repo, {
+    repo,
+    tags: allTags,
+    fetchedAt: new Date().toISOString(),
+  });
+
+  return allTags;
+}
+
+/**
+ * Filter cached tags for a specific package pattern.
+ */
+function filterTagsForPattern(
+  allTags: { name: string; sha: string; objectType: string; objectUrl?: string }[],
+  pattern: string
+): { tag: string; version: string; sha: string; objectType: string; objectUrl?: string }[] {
+  const prefix = getTagPrefixFromPattern(pattern);
+  if (prefix === null) {
+    console.warn(`      Cannot determine prefix from pattern: ${pattern}`);
+    return [];
+  }
+
+  const matchingTags: { tag: string; version: string; sha: string; objectType: string; objectUrl?: string }[] = [];
+
+  for (const tag of allTags) {
+    // Quick prefix check before expensive parsing (empty prefix means match all)
+    if (prefix && !tag.name.startsWith(prefix)) continue;
+
+    const version = parseVersionFromTag(tag.name, pattern);
+    if (version) {
+      matchingTags.push({
+        tag: tag.name,
+        version,
+        sha: tag.sha,
+        objectType: tag.objectType,
+        objectUrl: tag.objectUrl,
+      });
+    }
+  }
+
+  return matchingTags;
 }
 
 interface TagObjectResponse {
@@ -203,32 +324,53 @@ interface TagObjectResponse {
 /**
  * Fetch the commit date for a tag.
  * Handles both annotated tags (need to dereference) and lightweight tags.
+ * When objectType is provided from the refs API, we can skip unnecessary calls.
  */
 async function fetchCommitDate(
   repo: string,
   tagSha: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  objectType?: string,
+  objectUrl?: string
 ): Promise<{ date: string; commitSha: string }> {
   try {
-    // First, try to get the tag object (for annotated tags)
-    const tagResponse = await fetch(
-      `https://api.github.com/repos/${repo}/git/tags/${tagSha}`,
-      { headers }
-    );
+    // If we know it's a commit, fetch commit directly (skip tag object lookup)
+    if (objectType === "commit") {
+      const commitResponse = await fetchWithRetry(
+        `https://api.github.com/repos/${repo}/commits/${tagSha}`,
+        { headers }
+      );
 
-    if (tagResponse.ok) {
-      const tagData = (await tagResponse.json()) as TagObjectResponse;
-      // Annotated tag - use tagger date and dereference to commit
-      if (tagData.tagger?.date) {
+      if (commitResponse.ok) {
+        const commitData = (await commitResponse.json()) as GitHubCommit;
         return {
-          date: tagData.tagger.date,
-          commitSha: tagData.object?.sha ?? tagSha,
+          date: commitData.commit.committer.date,
+          commitSha: tagSha,
         };
       }
     }
 
-    // Not an annotated tag or failed - try as commit directly
-    const commitResponse = await fetch(
+    // For annotated tags or unknown types, try to get the tag object
+    if (objectType === "tag" || !objectType) {
+      const tagResponse = await fetchWithRetry(
+        objectUrl ?? `https://api.github.com/repos/${repo}/git/tags/${tagSha}`,
+        { headers }
+      );
+
+      if (tagResponse.ok) {
+        const tagData = (await tagResponse.json()) as TagObjectResponse;
+        // Annotated tag - use tagger date and dereference to commit
+        if (tagData.tagger?.date) {
+          return {
+            date: tagData.tagger.date,
+            commitSha: tagData.object?.sha ?? tagSha,
+          };
+        }
+      }
+    }
+
+    // Fallback: try as commit directly
+    const commitResponse = await fetchWithRetry(
       `https://api.github.com/repos/${repo}/commits/${tagSha}`,
       { headers }
     );
@@ -270,6 +412,17 @@ function parseVersionFromTag(tagName: string, pattern: string): string | null {
     return null;
   }
 
+  // Pattern: package==* (Python style)
+  if (pattern.endsWith("==*")) {
+    const packageName = pattern.slice(0, -3);
+    const prefix = packageName + "==";
+    if (tagName.startsWith(prefix)) {
+      const version = tagName.slice(prefix.length);
+      return semver.valid(version) ? version : null;
+    }
+    return null;
+  }
+
   // Pattern: package-v* (prefix style)
   if (pattern.endsWith("-v*")) {
     const prefix = pattern.slice(0, -1);
@@ -287,6 +440,12 @@ function parseVersionFromTag(tagName: string, pattern: string): string | null {
       return semver.valid(version) ? version : null;
     }
     return null;
+  }
+
+  // Pattern: * (bare version tags like "0.6.11", "1.0.5")
+  if (pattern === "*") {
+    // Only match if it's a valid semver (not prefixed with anything)
+    return semver.valid(tagName);
   }
 
   return null;
@@ -329,7 +488,10 @@ async function syncProject(
     headers.Authorization = getAuthHeader(githubToken);
   }
 
-  // Process each package - fetch only tags for that package
+  // Fetch all tags from the repo once (cached for efficiency)
+  const allRepoTags = await fetchAllRepoTags(config.repo, headers);
+
+  // Process each package using cached tags
   const packages: PackageVersions[] = [];
 
   for (const pkg of versionedPackages) {
@@ -343,8 +505,8 @@ async function syncProject(
       (p) => p.packageName === pkg.name
     );
 
-    // Fetch matching tags for this specific package
-    const matchingVersions = await fetchTagsForPackage(config.repo, pattern, headers);
+    // Filter cached tags for this package's pattern
+    const matchingVersions = filterTagsForPattern(allRepoTags, pattern);
 
     console.log(`      Found ${matchingVersions.length} matching tags`);
 
@@ -424,7 +586,13 @@ async function syncProject(
       fetchCount++;
       process.stdout.write(`\r      Fetching dates... ${fetchCount}/${versionsToFetch.length}`);
 
-      const { date, commitSha } = await fetchCommitDate(config.repo, v.sha, headers);
+      const { date, commitSha } = await fetchCommitDate(
+        config.repo,
+        v.sha,
+        headers,
+        v.objectType,
+        v.objectUrl
+      );
       versionEntries.push({
         version: v.version,
         sha: commitSha, // Use the actual commit SHA, not tag object SHA

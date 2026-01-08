@@ -1,0 +1,169 @@
+{
+  "project": "langgraph",
+  "language": "typescript",
+  "repo": "langchain-ai/langgraphjs",
+  "lastSynced": "2026-01-08T03:48:30.656Z",
+  "packages": [
+    {
+      "packageName": "@langchain/langgraph",
+      "tagPattern": "*",
+      "versions": [
+        {
+          "version": "0.3.6",
+          "sha": "e521f5f35f6452466ea7cc8053626a03197cbf1f",
+          "tag": "0.3.6",
+          "releaseDate": "2025-07-01T12:45:05Z"
+        },
+        {
+          "version": "0.2.74",
+          "sha": "c9e96aa500ac6c6c3410dd45bdf02bc9c1738503",
+          "tag": "0.2.74",
+          "releaseDate": "2025-05-28T21:30:48Z"
+        },
+        {
+          "version": "0.1.9",
+          "sha": "437a5122c61fa10fdabd09fcd5f32347f3edbda2",
+          "tag": "0.1.9",
+          "releaseDate": "2024-08-29T08:01:30Z"
+        },
+        {
+          "version": "0.0.34",
+          "sha": "aab2af0eca3fc3b74b55c49ab84882c5eaf92d4f",
+          "tag": "0.0.34",
+          "releaseDate": "2024-08-12T13:03:55Z"
+        }
+      ],
+      "lastUpdated": "2026-01-08T03:48:26.985Z"
+    },
+    {
+      "packageName": "@langchain/langgraph-sdk",
+      "tagPattern": "@langchain/langgraph-sdk@*",
+      "versions": [
+        {
+          "version": "0.0.90",
+          "sha": "f01f84ed3eab123e6c8b6caa631fe88c34adbd90",
+          "tag": "@langchain/langgraph-sdk@0.0.90",
+          "releaseDate": "2025-07-07T12:53:46Z"
+        }
+      ],
+      "lastUpdated": "2026-01-08T03:48:27.275Z"
+    },
+    {
+      "packageName": "@langchain/langgraph-checkpoint",
+      "tagPattern": "checkpoint==*",
+      "versions": [
+        {
+          "version": "0.0.18",
+          "sha": "5088f34a7430c3747043b158caace8d62b22b39d",
+          "tag": "checkpoint==0.0.18",
+          "releaseDate": "2025-06-02T00:26:56Z"
+        }
+      ],
+      "lastUpdated": "2026-01-08T03:48:27.555Z"
+    },
+    {
+      "packageName": "@langchain/langgraph-checkpoint-mongodb",
+      "tagPattern": "checkpoint-mongodb==*",
+      "versions": [
+        {
+          "version": "0.0.6",
+          "sha": "f935b59d8fd6d570cd3317c697ea77c249ef111a",
+          "tag": "checkpoint-mongodb==0.0.6",
+          "releaseDate": "2025-02-21T08:37:48Z"
+        }
+      ],
+      "lastUpdated": "2026-01-08T03:48:27.845Z"
+    },
+    {
+      "packageName": "@langchain/langgraph-checkpoint-postgres",
+      "tagPattern": "checkpoint-postgres==*",
+      "versions": [
+        {
+          "version": "0.0.5",
+          "sha": "94f1aa714ee2419f05e4cd7fba9af42aad41ee30",
+          "tag": "checkpoint-postgres==0.0.5",
+          "releaseDate": "2025-05-07T03:58:42Z"
+        }
+      ],
+      "lastUpdated": "2026-01-08T03:48:28.683Z"
+    },
+    {
+      "packageName": "@langchain/langgraph-checkpoint-sqlite",
+      "tagPattern": "checkpoint-sqlite==*",
+      "versions": [
+        {
+          "version": "0.1.5",
+          "sha": "824f41738ba67f1c8325ce65ae04e7385076b543",
+          "tag": "checkpoint-sqlite==0.1.5",
+          "releaseDate": "2025-05-13T22:44:37Z"
+        }
+      ],
+      "lastUpdated": "2026-01-08T03:48:29.015Z"
+    },
+    {
+      "packageName": "@langchain/langgraph-api",
+      "tagPattern": "@langchain/langgraph-api@*",
+      "versions": [
+        {
+          "version": "0.0.43",
+          "sha": "4acdd4757c8e975d9a84c7f614e2ff2ef17850ad",
+          "tag": "@langchain/langgraph-api@0.0.43",
+          "releaseDate": "2025-07-07T15:18:56Z"
+        }
+      ],
+      "lastUpdated": "2026-01-08T03:48:29.336Z"
+    },
+    {
+      "packageName": "@langchain/langgraph-cli",
+      "tagPattern": "@langchain/langgraph-cli@*",
+      "versions": [
+        {
+          "version": "0.0.43",
+          "sha": "4acdd4757c8e975d9a84c7f614e2ff2ef17850ad",
+          "tag": "@langchain/langgraph-cli@0.0.43",
+          "releaseDate": "2025-07-07T15:18:56Z"
+        }
+      ],
+      "lastUpdated": "2026-01-08T03:48:29.709Z"
+    },
+    {
+      "packageName": "@langchain/langgraph-cua",
+      "tagPattern": "cua==*",
+      "versions": [
+        {
+          "version": "0.0.6",
+          "sha": "fd9fe56a48704804a1b7d3bdc6746134bdd5cc15",
+          "tag": "cua==0.0.6",
+          "releaseDate": "2025-05-31T00:14:00Z"
+        }
+      ],
+      "lastUpdated": "2026-01-08T03:48:30.047Z"
+    },
+    {
+      "packageName": "@langchain/langgraph-supervisor",
+      "tagPattern": "supervisor==*",
+      "versions": [
+        {
+          "version": "0.0.14",
+          "sha": "7127b3af5150f41e6a7b6b40352042069c77cb78",
+          "tag": "supervisor==0.0.14",
+          "releaseDate": "2025-06-13T17:49:12Z"
+        }
+      ],
+      "lastUpdated": "2026-01-08T03:48:30.301Z"
+    },
+    {
+      "packageName": "@langchain/langgraph-swarm",
+      "tagPattern": "swarm==*",
+      "versions": [
+        {
+          "version": "0.0.4",
+          "sha": "6d28118c86ea331ae3ace9f9117fff91f17be7de",
+          "tag": "swarm==0.0.4",
+          "releaseDate": "2025-05-31T00:23:23Z"
+        }
+      ],
+      "lastUpdated": "2026-01-08T03:48:30.656Z"
+    }
+  ]
+}
