@@ -206,14 +206,8 @@ async function extractTypeScript(
 ): Promise<void> {
   console.log(`   📘 Extracting: ${packageName}`);
 
-  // Use tsx to run TypeScript directly instead of requiring a build step
-  const extractorPath = path.resolve(
-    __dirname,
-    "../../../../packages/extractor-typescript/src/cli.ts"
-  );
-
+  // Use the extractor CLI (installed as a dependency)
   const args = [
-    extractorPath,
     "--package",
     packageName,
     "--path",
@@ -235,7 +229,7 @@ async function extractTypeScript(
     args.push("--source-path-prefix", sourcePathPrefix);
   }
 
-  await runCommand("tsx", args);
+  await runCommand("extract-typescript", args);
 }
 
 /**
@@ -246,12 +240,27 @@ interface RunCommandOptions {
   cwd?: string;
 }
 
+/**
+ * Get the path to node_modules/.bin for the build-pipeline package.
+ * This allows us to spawn bin commands from dependencies.
+ */
+function getNodeModulesBinPath(): string {
+  // __dirname is packages/build-pipeline/dist/commands when compiled
+  // node_modules/.bin is at packages/build-pipeline/node_modules/.bin
+  return path.resolve(__dirname, "../../node_modules/.bin");
+}
+
 function runCommand(
   command: string,
   args: string[],
   options: RunCommandOptions = {}
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    // Add node_modules/.bin to PATH so we can run bin commands from dependencies
+    const binPath = getNodeModulesBinPath();
+    const currentPath = process.env.PATH || "";
+    const enhancedPath = `${binPath}${path.delimiter}${currentPath}`;
+
     const proc = spawn(command, args, {
       stdio: "inherit",
       shell: false,
@@ -259,6 +268,7 @@ function runCommand(
       env: {
         ...process.env,
         ...options.env,
+        PATH: enhancedPath,
       },
     });
 

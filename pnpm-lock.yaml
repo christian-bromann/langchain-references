@@ -126,6 +126,9 @@ importers:
 
   packages/build-pipeline:
     dependencies:
+      '@langchain/extractor-typescript':
+        specifier: workspace:*
+        version: link:../extractor-typescript
       '@langchain/ir-schema':
         specifier: workspace:*
         version: link:../ir-schema
