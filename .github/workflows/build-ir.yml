@@ -162,8 +162,8 @@ jobs:
             FLAGS="$FLAGS --full"
           fi
 
-          # Use pnpm exec to directly invoke the CLI (avoids -- passthrough issues)
-          pnpm --filter @langchain/build-pipeline exec build-ir \
+          # Run the CLI directly via node (avoids pnpm script passthrough issues)
+          node packages/build-pipeline/bin/build-ir.js \
             --config ./configs/${{ matrix.config }} \
             --skip-pointers \
             $FLAGS
@@ -242,7 +242,7 @@ jobs:
               fi
 
               echo "Updating pointers for build: $BUILD_ID"
-              pnpm --filter @langchain/build-pipeline exec update-pointers "$BUILD_ID" "$manifest"
+              node packages/build-pipeline/bin/update-pointers.js "$BUILD_ID" "$manifest"
             fi
           done
 
