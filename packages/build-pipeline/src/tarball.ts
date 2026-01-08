@@ -223,6 +223,7 @@ async function installDependencies(extractedPath: string): Promise<void> {
       cwd: extractedPath,
       stdio: "pipe" as const,
       timeout: 600000, // 10 minute timeout for large monorepos
+      maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large monorepos
       shell: "/bin/bash", // Required for corepack enable && yarn install
       env: {
         ...process.env,
@@ -295,6 +296,7 @@ async function buildTypeDeclarations(
         cwd: extractedPath,
         stdio: "pipe" as const,
         timeout: 900000, // 15 minute timeout for builds
+        maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large monorepos
         shell: "/bin/bash",
         env: {
           ...process.env,

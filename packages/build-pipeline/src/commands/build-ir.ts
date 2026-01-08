@@ -263,7 +263,7 @@ function runCommand(
 
     const proc = spawn(command, args, {
       stdio: "inherit",
-      shell: false,
+      shell: true, // Use shell to properly resolve commands in PATH
       cwd: options.cwd,
       env: {
         ...process.env,
@@ -936,6 +936,14 @@ async function buildVersionHistory(
     const pkgOutputDir = path.join(irOutputPath, "packages", packageId);
     const latestSymbolsPath = path.join(pkgOutputDir, "symbols.json");
 
+    // Check if latest extraction succeeded before trying to build version history
+    try {
+      await fs.access(latestSymbolsPath);
+    } catch {
+      console.log(`      ⚠️ Skipping (latest extraction failed or package path not found)`);
+      continue;
+    }
+
     const versionSymbols = new Map<string, Map<string, SymbolRecord>>();
 
     console.log(`      ✓ ${versions[0].version} (latest, already extracted)`);
@@ -1114,11 +1122,22 @@ async function buildConfig(
 
   console.log("\n🔍 Extracting APIs...");
 
+  const failedPackages = new Set<string>();
+
   for (const pkgConfig of config.packages) {
     const packagePath = path.join(fetchResult.extractedPath, pkgConfig.path);
     const pkgOutputDir = path.join(irOutputPath, "packages", normalizePackageId(pkgConfig.name, config.language));
     await fs.mkdir(pkgOutputDir, { recursive: true });
     const outputPath = path.join(pkgOutputDir, "symbols.json");
+
+    // Check if package path exists before extraction
+    try {
+      await fs.access(packagePath);
+    } catch {
+      console.error(`   ✗ ${pkgConfig.name}: Package path not found: ${pkgConfig.path}`);
+      failedPackages.add(pkgConfig.name);
+      continue;
+    }
 
     try {
       if (config.language === "python") {
@@ -1137,7 +1156,12 @@ async function buildConfig(
       console.log(`   ✓ ${pkgConfig.name}`);
     } catch (error) {
       console.error(`   ✗ ${pkgConfig.name}: ${error}`);
+      failedPackages.add(pkgConfig.name);
     }
+  }
+
+  if (failedPackages.size > 0) {
+    console.warn(`\n   ⚠️  ${failedPackages.size} package(s) failed extraction`);
   }
 
   console.log("\n📋 Creating manifest...");
