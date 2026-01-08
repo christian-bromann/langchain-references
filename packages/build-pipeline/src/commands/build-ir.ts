@@ -26,14 +26,14 @@
  *   # Build everything
  *   pnpm build:ir --all
  */
+import crypto from "node:crypto";
+import path from "node:path";
+import fs from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 import { program } from "commander";
-import crypto from "crypto";
-import path from "path";
-import fs from "fs/promises";
-import { spawn } from "child_process";
 import semver from "semver";
-import { fileURLToPath } from "url";
 import type {
   Manifest,
   Package,
@@ -52,6 +52,13 @@ import type {
   ChangeRecord,
   VersionStats,
 } from "@langchain/ir-schema";
+import {
+  TypeScriptExtractor,
+  TypeDocTransformer,
+  createConfig,
+  type TypeDocProject
+} from "@langchain/extractor-typescript";
+
 import {
   fetchTarball,
   getLatestSha,
@@ -194,6 +201,7 @@ async function extractPython(
 
 /**
  * Run the TypeScript extractor on a package.
+ * Uses the extractor as a library for reliability (no subprocess spawning).
  */
 async function extractTypeScript(
   packagePath: string,
@@ -206,30 +214,62 @@ async function extractTypeScript(
 ): Promise<void> {
   console.log(`   📘 Extracting: ${packageName}`);
 
-  // Use the extractor CLI (installed as a dependency)
-  const args = [
-    "--package",
+  // Create configuration
+  const config = createConfig({
     packageName,
-    "--path",
     packagePath,
-    "--output",
-    outputPath,
-    "--repo",
+    entryPoints: entryPoints || ["auto"],
     repo,
-    "--sha",
     sha,
-    "--verbose",
-  ];
+    excludePrivate: true,
+    excludeInternal: true,
+    excludeExternals: false,
+  });
 
-  if (entryPoints && entryPoints.length > 0) {
-    args.push("--entry-points", ...entryPoints);
-  }
+  // Run extraction
+  const extractor = new TypeScriptExtractor(config);
+  const packageInfo = await extractor.getPackageInfo();
+  const rawJson = await extractor.extractToJson() as TypeDocProject;
 
-  if (sourcePathPrefix) {
-    args.push("--source-path-prefix", sourcePathPrefix);
-  }
+  // Transform to IR format
+  // TypeDocTransformer expects the raw JSON object from extractToJson
+  const transformer = new TypeDocTransformer(
+    rawJson,
+    packageName,
+    repo,
+    sha,
+    sourcePathPrefix,
+    packagePath
+  );
 
-  await runCommand("extract-typescript", args);
+  const symbols = transformer.transform();
+
+  // Build output data
+  const outputData = {
+    package: {
+      packageId: `pkg_js_${packageName.replace(/^@/, "").replace(/\//g, "_")}`,
+      displayName: packageName,
+      publishedName: packageName,
+      language: "typescript",
+      ecosystem: "javascript",
+      version: packageInfo.version,
+      repo: {
+        owner: repo.split("/")[0] || "",
+        name: repo.split("/")[1] || "",
+        sha,
+        path: packagePath,
+      },
+    },
+    symbols,
+  };
+
+  // Ensure output directory exists
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+
+  // Write output
+  await fs.writeFile(outputPath, JSON.stringify(outputData, null, 2), "utf-8");
+
+  console.log(`   ✅ Extracted ${symbols.length} symbols`);
 }
 
 /**
@@ -241,34 +281,22 @@ interface RunCommandOptions {
 }
 
 /**
- * Get the path to node_modules/.bin for the build-pipeline package.
- * This allows us to spawn bin commands from dependencies.
+ * Run a shell command and wait for completion.
+ * Used for running the Python extractor.
  */
-function getNodeModulesBinPath(): string {
-  // __dirname is packages/build-pipeline/dist/commands when compiled
-  // node_modules/.bin is at packages/build-pipeline/node_modules/.bin
-  return path.resolve(__dirname, "../../node_modules/.bin");
-}
-
 function runCommand(
   command: string,
   args: string[],
   options: RunCommandOptions = {}
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Add node_modules/.bin to PATH so we can run bin commands from dependencies
-    const binPath = getNodeModulesBinPath();
-    const currentPath = process.env.PATH || "";
-    const enhancedPath = `${binPath}${path.delimiter}${currentPath}`;
-
     const proc = spawn(command, args, {
       stdio: "inherit",
-      shell: true, // Use shell to properly resolve commands in PATH
+      shell: false,
       cwd: options.cwd,
       env: {
         ...process.env,
         ...options.env,
-        PATH: enhancedPath,
       },
     });
 

@@ -21,10 +21,10 @@ import type {
   MemberReference,
 } from "@langchain/ir-schema";
 
-type TypeDocReflection = JSONOutput.Reflection;
-type TypeDocProject = JSONOutput.ProjectReflection;
-type TypeDocComment = JSONOutput.Comment;
-type TypeDocType = JSONOutput.SomeType;
+export type TypeDocReflection = JSONOutput.Reflection;
+export type TypeDocProject = JSONOutput.ProjectReflection;
+export type TypeDocComment = JSONOutput.Comment;
+export type TypeDocType = JSONOutput.SomeType;
 
 /**
  * TypeDoc reflection kind values.
