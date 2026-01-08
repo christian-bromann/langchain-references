@@ -145,15 +145,15 @@ async function detectPackageManager(
         if (isBerry) {
           return {
             name: "yarn",
-            // Yarn Berry: use --mode=skip-build to skip postinstall scripts
-            installCmd: "corepack enable && yarn install --mode=skip-build",
+            // Yarn Berry: use --immutable for frozen lockfile, --mode=skip-build to skip postinstall
+            installCmd: "corepack enable && yarn install --immutable --mode=skip-build",
             buildCmd: "yarn run build",
           };
         }
-        // Yarn Classic (v1)
+        // Yarn Classic (v1): use --frozen-lockfile
         return {
           name: "yarn",
-          installCmd: "yarn install --ignore-scripts --ignore-optional",
+          installCmd: "yarn install --frozen-lockfile --ignore-scripts --ignore-optional",
           buildCmd: "yarn run build",
         };
       }
@@ -161,18 +161,19 @@ async function detectPackageManager(
       if (name === "pnpm") {
         return {
           name: "pnpm",
+          // --frozen-lockfile: don't update lockfile
           // --config.engine-strict=false: ignore engine requirements (e.g., Node >= 24)
           // Note: don't use --no-optional as it breaks esbuild (needs platform binaries)
-          installCmd: "pnpm install --ignore-scripts --config.engine-strict=false",
+          installCmd: "pnpm install --frozen-lockfile --ignore-scripts --config.engine-strict=false",
           buildCmd: "pnpm run build",
         };
       }
 
-      // npm
+      // npm: use --package-lock=false to avoid lockfile updates (npm ci requires exact lockfile)
       // Note: don't use --no-optional as it breaks esbuild (needs platform binaries)
       return {
         name: "npm",
-        installCmd: "npm install --ignore-scripts --legacy-peer-deps",
+        installCmd: "npm ci --ignore-scripts --legacy-peer-deps",
         buildCmd: "npm run build",
       };
     } catch {
@@ -181,9 +182,10 @@ async function detectPackageManager(
   }
 
   // Default to npm if no lock file found
+  // Note: npm ci requires a lockfile, so we use npm install here
   return {
     name: "npm",
-    installCmd: "npm install --ignore-scripts --no-optional --legacy-peer-deps",
+    installCmd: "npm install --ignore-scripts --legacy-peer-deps",
     buildCmd: "npm run build",
   };
 }
