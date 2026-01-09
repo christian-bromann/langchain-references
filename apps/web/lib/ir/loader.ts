@@ -29,10 +29,17 @@ export function isProduction(): boolean {
 function getBlobUrl(path: string): string | null {
   const baseUrl = process.env.BLOB_URL || process.env.NEXT_PUBLIC_BLOB_URL;
   if (!baseUrl) {
+    // Only warn once per build to avoid spam
+    if (!getBlobUrl._warned) {
+      getBlobUrl._warned = true;
+      console.warn("[IR Loader] BLOB_URL not set - static generation will be skipped");
+    }
     return null;
   }
   return `${baseUrl}/${path}`;
 }
+// Track if we've already warned about missing BLOB_URL
+getBlobUrl._warned = false;
 
 /**
  * Cache for manifest data (in-memory for the request lifecycle)
@@ -634,11 +641,13 @@ export async function getStaticParamsForLanguage(
 ): Promise<{ slug: string[] }[]> {
   const buildId = await getBuildIdForLanguage(language, project);
   if (!buildId) {
+    console.warn(`[IR Loader] No build ID for ${project}/${language} - skipping static generation`);
     return [];
   }
 
   const manifest = await getManifestData(buildId);
   if (!manifest) {
+    console.warn(`[IR Loader] No manifest for build ${buildId} - skipping static generation`);
     return [];
   }
 
