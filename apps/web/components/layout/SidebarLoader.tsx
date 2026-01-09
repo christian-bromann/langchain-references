@@ -37,17 +37,7 @@ function buildNavItemsFromRouting(
   packageSlug: string
 ): SidebarPackage["items"] {
   const modules: { name: string; path: string; kind: SymbolKind }[] = [];
-  
   const slugEntries = Object.entries(routingMap.slugs || {});
-  const kindCounts: Record<string, number> = {};
-  for (const [, entry] of slugEntries) {
-    kindCounts[entry.kind] = (kindCounts[entry.kind] || 0) + 1;
-  }
-  console.log(`[buildNavItemsFromRouting] ${packageSlug}: ${slugEntries.length} total slugs, kinds: ${JSON.stringify(kindCounts)}`);
-
-  // Log first few module slugs for debugging
-  const moduleSlugs = slugEntries.filter(([, e]) => e.kind === "module").map(([s]) => s);
-  console.log(`[buildNavItemsFromRouting] ${packageSlug} module slugs: ${JSON.stringify(moduleSlugs.slice(0, 10))}`);
 
   // Extract modules from routing map slugs
   // Slugs are formatted as "{kindPlural}/{symbolName}" (e.g., "modules/hub", "classes/ChatModel")
@@ -111,16 +101,10 @@ async function loadSidebarPackagesForProject(
   projectId: string
 ): Promise<SidebarPackage[]> {
   const buildId = await getBuildIdForLanguage(language, projectId);
-  if (!buildId) {
-    console.log(`[SidebarLoader] No buildId for ${language}/${projectId}`);
-    return [];
-  }
+  if (!buildId) return [];
 
   const manifest = await getManifestData(buildId);
-  if (!manifest) {
-    console.log(`[SidebarLoader] No manifest for buildId ${buildId}`);
-    return [];
-  }
+  if (!manifest) return [];
 
   const packages = manifest.packages.filter((p) =>
     language === "python"
@@ -140,11 +124,7 @@ async function loadSidebarPackagesForProject(
     if (language === "javascript") {
       // Use routing map instead of full symbols (~100KB vs ~14MB)
       const routingMap = await getRoutingMapData(buildId, pkg.packageId, pkg.displayName, irLanguage);
-      if (!routingMap) {
-        console.log(`[SidebarLoader] No routing map for ${pkg.packageId} (buildId: ${buildId})`);
-      }
       items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
-      console.log(`[SidebarLoader] ${pkg.displayName}: ${items.length} nav items`);
     }
 
     sidebarPackages.push({

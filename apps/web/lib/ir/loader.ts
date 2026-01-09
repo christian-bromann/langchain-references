@@ -134,24 +134,18 @@ export async function getLatestBuildIdForLanguage(
 async function fetchBlobJson<T>(path: string): Promise<T | null> {
   try {
     const url = getBlobUrl(path);
-    if (!url) {
-      console.log(`[fetchBlobJson] No URL for ${path} (BLOB_URL not set)`);
-      return null;
-    }
+    if (!url) return null;
 
     const response = await fetch(url, {
       // Use force-cache to enable static generation
       // Large files (>2MB) will show cache warnings but still work
       cache: "force-cache",
     });
-    if (!response.ok) {
-      console.log(`[fetchBlobJson] Fetch failed for ${path}: ${response.status}`);
-      return null;
-    }
+    if (!response.ok) return null;
 
     return response.json();
   } catch (error) {
-    console.error(`[fetchBlobJson] Error fetching ${path}:`, error);
+    console.error(`Failed to fetch blob: ${path}`, error);
     return null;
   }
 }
@@ -188,20 +182,15 @@ export async function getRoutingMap(
   const cacheKey = `${buildId}:${packageId}`;
 
   if (routingCache.has(cacheKey)) {
-    console.log(`[getRoutingMap] Cache hit for ${packageId}`);
     return routingCache.get(cacheKey)!;
   }
 
   // Routing maps are stored at ir/{buildId}/routing/{language}/{packageId}.json
   const path = `${IR_BASE_PATH}/${buildId}/routing/${language}/${packageId}.json`;
-  console.log(`[getRoutingMap] Fetching ${path}`);
   const routingMap = await fetchBlobJson<RoutingMap>(path);
 
   if (routingMap) {
-    console.log(`[getRoutingMap] Got routing map for ${packageId}: ${Object.keys(routingMap.slugs || {}).length} slugs`);
     routingCache.set(cacheKey, routingMap);
-  } else {
-    console.log(`[getRoutingMap] No routing map returned for ${packageId}`);
   }
 
   return routingMap;
