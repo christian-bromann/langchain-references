@@ -27,38 +27,18 @@ interface Props {
  * Generates params for ALL enabled projects (langchain, langgraph, deepagent).
  */
 export async function generateStaticParams(): Promise<{ slug: string[] }[]> {
-  console.log("[generateStaticParams:python] Starting static param generation");
-  console.log("[generateStaticParams:python] BLOB_URL set:", !!process.env.BLOB_URL);
-  console.log("[generateStaticParams:python] NODE_ENV:", process.env.NODE_ENV);
-  
   const projects = getEnabledProjects();
-  console.log("[generateStaticParams:python] Enabled projects:", projects.map(p => p.id).join(", "));
-  
   const allParams: { slug: string[] }[] = [];
-  
+
   // Generate params for all projects in parallel
   const projectParams = await Promise.all(
-    projects.map(async (project) => {
-      console.log(`[generateStaticParams:python] Getting params for project: ${project.id}`);
-      const params = await getStaticParamsForLanguage("python", project.id);
-      console.log(`[generateStaticParams:python] Project ${project.id} returned ${params.length} params`);
-      return params;
-    })
+    projects.map((project) => getStaticParamsForLanguage("python", project.id))
   );
-  
+
   for (const params of projectParams) {
     allParams.push(...params);
   }
-  
-  console.log(`[generateStaticParams:python] Total params: ${allParams.length}`);
-  
-  // Log first few params for debugging
-  if (allParams.length > 0) {
-    console.log("[generateStaticParams:python] Sample params:", JSON.stringify(allParams.slice(0, 3)));
-  } else {
-    console.log("[generateStaticParams:python] WARNING: No params generated!");
-  }
-  
+
   return allParams;
 }
 

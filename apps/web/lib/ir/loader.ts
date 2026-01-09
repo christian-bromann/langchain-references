@@ -5,8 +5,6 @@
  * data source based on the environment:
  * - Production (Vercel): Fetches from Vercel Blob storage (public blobs)
  * - Development: Reads from local ir-output directory
- *
- * Cache bust: 2026-01-06-v2
  */
 
 import type { Manifest, Package, SymbolRecord, RoutingMap } from "./types";
@@ -31,15 +29,9 @@ export function isProduction(): boolean {
 function getBlobUrl(path: string): string | null {
   const baseUrl = process.env.BLOB_URL || process.env.NEXT_PUBLIC_BLOB_URL;
   if (!baseUrl) {
-    // Only log in production to avoid noise during development
-    if (isProduction()) {
-      console.error("[getBlobUrl] BLOB_URL environment variable is not set - static generation will be skipped");
-    }
     return null;
   }
-  const fullUrl = `${baseUrl}/${path}`;
-  console.error(`[getBlobUrl] Generated URL: ${fullUrl}`);
-  return fullUrl;
+  return `${baseUrl}/${path}`;
 }
 
 /**
@@ -73,18 +65,15 @@ interface LatestLanguagePointer {
 async function fetchPointer<T>(pointerName: string): Promise<T | null> {
   const cacheKey = `pointer:${pointerName}`;
   if (pointerCache.has(cacheKey)) {
-    console.error(`[fetchPointer] Cache hit for ${pointerName}`);
     return pointerCache.get(cacheKey) as T;
   }
 
   try {
     const url = getBlobUrl(`${POINTERS_PATH}/${pointerName}.json`);
     if (!url) {
-      console.error(`[fetchPointer] No BLOB_URL configured for ${pointerName}`);
       return null;
     }
 
-    console.error(`[fetchPointer] Fetching: ${url}`);
     const response = await fetch(url, {
       // Use force-cache to enable static generation
       // In-memory pointerCache handles deduplication during builds
@@ -92,12 +81,10 @@ async function fetchPointer<T>(pointerName: string): Promise<T | null> {
     });
 
     if (!response.ok) {
-      console.error(`[fetchPointer] Failed to fetch ${url}: ${response.status} ${response.statusText}`);
       return null;
     }
 
     const data = await response.json();
-    console.error(`[fetchPointer] Got data for ${pointerName}: ${JSON.stringify(data)}`);
     pointerCache.set(cacheKey, data);
     return data;
   } catch (error) {
@@ -128,13 +115,10 @@ export async function getLatestBuildIdForLanguage(
 ): Promise<string | null> {
   try {
     const pointerName = `latest-${project}-${language}`;
-    console.error(`[getLatestBuildIdForLanguage] Fetching pointer: ${pointerName}`);
     const pointer = await fetchPointer<LatestLanguagePointer>(pointerName);
-    const buildId = pointer?.buildId || null;
-    console.error(`[getLatestBuildIdForLanguage] ${pointerName} -> buildId: ${buildId}`);
-    return buildId;
+    return pointer?.buildId || null;
   } catch (error) {
-    console.error(`[getLatestBuildIdForLanguage] Failed to get latest ${project} ${language} build ID:`, error);
+    console.error(`Failed to get latest ${project} ${language} build ID:`, error);
     return null;
   }
 }
@@ -550,9 +534,7 @@ export async function getBuildIdForLanguage(
   language: "python" | "javascript",
   project: string = "langchain"
 ): Promise<string | null> {
-  const isProd = isProduction();
-  console.log(`[getBuildIdForLanguage] isProduction=${isProd}, NODE_ENV=${process.env.NODE_ENV}, VERCEL=${process.env.VERCEL}`);
-  return isProd
+  return isProduction()
     ? getLatestBuildIdForLanguage(language, project)
     : getLocalLatestBuildId(language, project);
 }
@@ -650,20 +632,15 @@ export async function getStaticParamsForLanguage(
   language: "python" | "javascript",
   project: string = "langchain"
 ): Promise<{ slug: string[] }[]> {
-  console.error(`[getStaticParamsForLanguage] Starting for ${project} ${language}`);
   const buildId = await getBuildIdForLanguage(language, project);
   if (!buildId) {
-    console.error(`[getStaticParamsForLanguage] No build ID found for ${project} ${language}`);
     return [];
   }
-  console.error(`[getStaticParamsForLanguage] Got buildId: ${buildId} for ${project} ${language}`);
 
   const manifest = await getManifestData(buildId);
   if (!manifest) {
-    console.error(`[getStaticParamsForLanguage] No manifest found for build ${buildId}`);
     return [];
   }
-  console.error(`[getStaticParamsForLanguage] Got manifest with ${manifest.packages.length} packages for ${project} ${language}`);
 
   const params: { slug: string[] }[] = [];
   const ecosystem = language === "python" ? "python" : "javascript";
@@ -715,7 +692,6 @@ export async function getStaticParamsForLanguage(
     }
   }
 
-  console.log(`Generated ${params.length} static params for ${project} ${language} (using routing maps)`);
   return params;
 }
 
