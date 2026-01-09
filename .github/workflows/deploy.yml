@@ -41,8 +41,8 @@ jobs:
       - name: Deploy to Vercel
         id: deploy
         run: |
-          # Deploy and let Vercel handle the build on their infrastructure
-          DEPLOYMENT_URL=$(vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} 2>&1 | tail -n 1)
+          # Deploy with --force to skip build cache and ensure fresh build
+          DEPLOYMENT_URL=$(vercel deploy --prod --force --token=${{ secrets.VERCEL_TOKEN }} 2>&1 | tail -n 1)
           echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
           echo "✅ Deployed to: $DEPLOYMENT_URL"
 
