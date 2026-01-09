@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Inter, Manrope, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { NavigationProgress } from "@/components/layout/NavigationProgress";
 import "./globals.css";
 
 const inter = Inter({
@@ -58,6 +60,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <Suspense fallback={null}>
+            <NavigationProgress />
+          </Suspense>
           {children}
         </ThemeProvider>
       </body>
