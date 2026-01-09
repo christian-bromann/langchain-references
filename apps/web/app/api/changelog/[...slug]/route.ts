@@ -13,11 +13,42 @@ interface VersionChange {
 }
 
 /**
+ * Pointer type for latest builds.
+ * Matches LatestBuildPointer from @langchain/build-pipeline/pointers
+ * and LatestLanguagePointer from lib/ir/loader.ts
+ */
+interface LatestPointer {
+  buildId: string;
+  updatedAt: string;
+}
+
+/**
  * Map project+language to the local IR output symlink name.
  */
 function getLocalIrPath(project: string, language: string): string {
   const langSuffix = language === "python" ? "python" : "javascript";
   return `latest-${project}-${langSuffix}`;
+}
+
+/**
+ * Fetch the latest build pointer for a project+language from Vercel Blob.
+ */
+async function fetchLatestBuildId(
+  blobBaseUrl: string,
+  project: string,
+  language: string
+): Promise<string | null> {
+  const langSuffix = language === "python" ? "python" : "javascript";
+  const pointerUrl = `${blobBaseUrl}/pointers/latest-${project}-${langSuffix}.json`;
+
+  try {
+    const response = await fetch(pointerUrl, { cache: "no-store" });
+    if (!response.ok) return null;
+    const pointer = (await response.json()) as LatestPointer;
+    return pointer.buildId;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -74,17 +105,21 @@ export async function GET(
       // Local file not found, try blob storage
     }
 
-    // Fallback to blob storage
+    // Fallback to blob storage - use buildId-based path
     if (!changelog) {
-      const blobBaseUrl = process.env.BLOB_BASE_URL;
+      const blobBaseUrl = process.env.BLOB_BASE_URL || process.env.BLOB_URL;
       if (blobBaseUrl) {
-        const changelogUrl = `${blobBaseUrl}/ir/${project}/${language}/${packageId}/changelog.json`;
-        const response = await fetch(changelogUrl, {
-          next: { revalidate: 3600 },
-        });
+        // First, get the latest buildId for this project+language
+        const buildId = await fetchLatestBuildId(blobBaseUrl, project, language);
+        if (buildId) {
+          const changelogUrl = `${blobBaseUrl}/ir/${buildId}/packages/${packageId}/changelog.json`;
+          const response = await fetch(changelogUrl, {
+            next: { revalidate: 3600 },
+          });
 
-        if (response.ok) {
-          changelog = await response.json();
+          if (response.ok) {
+            changelog = await response.json();
+          }
         }
       }
     }

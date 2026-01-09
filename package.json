@@ -15,6 +15,8 @@
     "build": "turbo build",
     "build:ir": "pnpm --filter @langchain/build-pipeline build:ir",
     "build:ir:local": "pnpm --filter @langchain/build-pipeline build:ir -- --local",
+    "pull-ir": "pnpm --filter @langchain/build-pipeline pull-ir",
+    "check-updates": "pnpm --filter @langchain/build-pipeline check-updates",
     "sync-versions": "pnpm --filter @langchain/build-pipeline sync-versions",
     "fetch-tarball": "pnpm --filter @langchain/build-pipeline fetch-tarball",
     "update-pointers": "pnpm --filter @langchain/build-pipeline update-pointers",

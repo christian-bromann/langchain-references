@@ -22,6 +22,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build:ir": "tsx src/commands/build-ir.ts",
+    "pull-ir": "tsx src/commands/pull-ir.ts",
+    "check-updates": "tsx src/commands/check-updates.ts",
     "sync-versions": "tsx src/commands/sync-versions.ts",
     "fetch-tarball": "tsx src/commands/fetch-tarball.ts",
     "update-pointers": "tsx src/commands/update-pointers.ts"

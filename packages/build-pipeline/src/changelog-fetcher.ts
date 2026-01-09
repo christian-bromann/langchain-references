@@ -9,6 +9,7 @@ import type {
   PackageChangelog,
   PackageVersionIndex,
 } from "@langchain/ir-schema";
+import type { LatestBuildPointer } from "./pointers.js";
 
 // =============================================================================
 // TYPES
@@ -22,6 +23,27 @@ export interface DeployedChangelog {
 // =============================================================================
 // FETCH DEPLOYED CHANGELOG
 // =============================================================================
+
+/**
+ * Fetch the latest buildId for a project+language from blob storage.
+ */
+async function fetchLatestBuildId(
+  blobBaseUrl: string,
+  project: string,
+  language: string
+): Promise<string | null> {
+  const langSuffix = language === "python" ? "python" : "javascript";
+  const pointerUrl = `${blobBaseUrl}/pointers/latest-${project}-${langSuffix}.json`;
+
+  try {
+    const response = await fetchWithRetry(pointerUrl);
+    if (!response.ok) return null;
+    const pointer = (await response.json()) as LatestBuildPointer;
+    return pointer.buildId;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Fetch the currently deployed changelog for a package.
@@ -47,8 +69,15 @@ export async function fetchDeployedChangelog(
   }
 
   try {
-    const changelogUrl = `${blobBaseUrl}/ir/${project}/${language}/${packageId}/changelog.json`;
-    const versionsUrl = `${blobBaseUrl}/ir/${project}/${language}/${packageId}/versions.json`;
+    // First, get the latest buildId for this project+language
+    const buildId = await fetchLatestBuildId(blobBaseUrl, project, language);
+    if (!buildId) {
+      console.log(`No build pointer found for ${project}/${language} - will do full build`);
+      return null;
+    }
+
+    const changelogUrl = `${blobBaseUrl}/ir/${buildId}/packages/${packageId}/changelog.json`;
+    const versionsUrl = `${blobBaseUrl}/ir/${buildId}/packages/${packageId}/versions.json`;
 
     console.log(`Fetching existing changelog from ${changelogUrl}...`);
 

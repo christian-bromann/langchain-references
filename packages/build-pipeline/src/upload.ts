@@ -345,6 +345,30 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
         });
       }
     }
+
+    // Add changelog.json if it exists (generated with --with-versions)
+    const changelogPath = path.join(irOutputPath, "packages", pkg.packageId, "changelog.json");
+    try {
+      const changelogContent = await fs.readFile(changelogPath, "utf-8");
+      uploadTasks.push({
+        blobPath: `ir/${buildId}/packages/${pkg.packageId}/changelog.json`,
+        content: changelogContent,
+      });
+    } catch {
+      // No changelog file - skip
+    }
+
+    // Add versions.json if it exists (generated with --with-versions)
+    const versionsPath = path.join(irOutputPath, "packages", pkg.packageId, "versions.json");
+    try {
+      const versionsContent = await fs.readFile(versionsPath, "utf-8");
+      uploadTasks.push({
+        blobPath: `ir/${buildId}/packages/${pkg.packageId}/versions.json`,
+        content: versionsContent,
+      });
+    } catch {
+      // No versions file - skip
+    }
   }
 
   // Add search index tasks
