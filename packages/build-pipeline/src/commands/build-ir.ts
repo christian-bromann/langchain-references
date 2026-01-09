@@ -628,24 +628,46 @@ function computeSymbolIntroductions(
 
 /**
  * Normalize a source path by extracting the relative path within the package.
+ * Handles various path formats from TypeDoc including:
+ * - Absolute paths: /tmp/.../extracted/libs/pkg/src/file.ts
+ * - Relative paths: ../../../../../tmp/.../extracted/libs/pkg/src/file.ts
+ * - Already normalized: src/file.ts
  */
 function normalizeSourcePath(sourcePath: string): string {
   if (!sourcePath) return "";
 
-  const srcMatch = sourcePath.match(/\/src\/(.+)$/);
+  // Handle paths that contain the build cache directory (relative or absolute)
+  // Match pattern: .../extracted/libs/{package-dir}/{path} or .../extracted/{path}
+  const extractedMatch = sourcePath.match(/\/extracted\/(?:libs\/)?([^/]+)\/(.+)$/);
+  if (extractedMatch) {
+    // Return the path within the package (e.g., "src/documents/document.ts")
+    return extractedMatch[2];
+  }
+
+  // Handle paths that go through tmp directory with ../
+  const tmpMatch = sourcePath.match(/(?:^|\/|\.\.\/)tmp\/.*?\/extracted\/(?:libs\/)?([^/]+)\/(.+)$/);
+  if (tmpMatch) {
+    return tmpMatch[2];
+  }
+
+  // Handle paths that already start with src/
+  const srcMatch = sourcePath.match(/^(?:\.\.\/)*src\/(.+)$/);
   if (srcMatch) {
     return `src/${srcMatch[1]}`;
   }
 
-  const extractedMatch = sourcePath.match(/\/extracted\/(?:libs\/)?[^/]+\/(.+)$/);
-  if (extractedMatch) {
-    return extractedMatch[1];
+  // Handle simple src/ paths within the file
+  const srcInPathMatch = sourcePath.match(/\/src\/(.+)$/);
+  if (srcInPathMatch) {
+    return `src/${srcInPathMatch[1]}`;
   }
 
+  // If path doesn't start with / or .., assume it's already normalized
   if (!sourcePath.startsWith("/") && !sourcePath.startsWith("..")) {
     return sourcePath;
   }
 
+  // Last resort: just take the filename
   const lastSlash = sourcePath.lastIndexOf("/");
   return lastSlash >= 0 ? sourcePath.slice(lastSlash + 1) : sourcePath;
 }

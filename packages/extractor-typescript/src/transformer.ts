@@ -849,8 +849,32 @@ export class TypeDocTransformer {
     // Strip the cache/extraction path prefix from file paths
     // TypeDoc includes the full path from extraction, but we only want the repo-relative path
     let filePath = source.fileName;
+
+    // Handle absolute paths
     if (this.sourcePathPrefix && filePath.startsWith(this.sourcePathPrefix)) {
       filePath = filePath.slice(this.sourcePathPrefix.length);
+    }
+
+    // Handle relative paths with ../ that escape to tmp directory
+    // Match pattern: ../../../.../extracted/libs/{package}/{path} or .../extracted/{path}
+    const extractedMatch = filePath.match(/\/extracted\/(?:libs\/)?([^/]+)\/(.+)$/);
+    if (extractedMatch) {
+      filePath = extractedMatch[2];
+    }
+
+    // Handle paths containing /tmp/ or similar cache directories
+    const tmpMatch = filePath.match(/(?:^|\/|\.\.\/)tmp\/.*?\/extracted\/(?:libs\/)?([^/]+)\/(.+)$/);
+    if (tmpMatch) {
+      filePath = tmpMatch[2];
+    }
+
+    // Ensure the path doesn't start with ../ or /
+    if (filePath.startsWith("../") || filePath.startsWith("/")) {
+      // Try to find src/ in the path and extract from there
+      const srcMatch = filePath.match(/\/src\/(.+)$/);
+      if (srcMatch) {
+        filePath = `src/${srcMatch[1]}`;
+      }
     }
 
     return {
