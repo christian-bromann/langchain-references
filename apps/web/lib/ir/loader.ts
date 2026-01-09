@@ -26,17 +26,9 @@ export function isProduction(): boolean {
  * The BLOB_URL can be set explicitly, or derived from NEXT_PUBLIC_BLOB_URL.
  * Example: https://xxxxxx.public.blob.vercel-storage.com
  */
-// Track if we've already warned about missing BLOB_URL
-let blobUrlWarned = false;
-
 function getBlobUrl(path: string): string | null {
   const baseUrl = process.env.BLOB_URL || process.env.NEXT_PUBLIC_BLOB_URL;
   if (!baseUrl) {
-    // Only warn once per build to avoid spam
-    if (!blobUrlWarned) {
-      blobUrlWarned = true;
-      console.log("[IR Loader] ❌ BLOB_URL not set - static generation will be skipped");
-    }
     return null;
   }
   return `${baseUrl}/${path}`;
@@ -640,21 +632,15 @@ export async function getStaticParamsForLanguage(
   language: "python" | "javascript",
   project: string = "langchain"
 ): Promise<{ slug: string[] }[]> {
-  console.log(`[IR Loader] getStaticParamsForLanguage(${language}, ${project}) - BLOB_URL=${process.env.BLOB_URL ? "SET" : "NOT SET"}`);
-  
   const buildId = await getBuildIdForLanguage(language, project);
   if (!buildId) {
-    console.log(`[IR Loader] ❌ No build ID for ${project}/${language} - skipping static generation`);
     return [];
   }
-  console.log(`[IR Loader] ✓ Got build ID: ${buildId} for ${project}/${language}`);
 
   const manifest = await getManifestData(buildId);
   if (!manifest) {
-    console.log(`[IR Loader] ❌ No manifest for build ${buildId} - skipping static generation`);
     return [];
   }
-  console.log(`[IR Loader] ✓ Got manifest with ${manifest.packages.length} packages`);
 
   const params: { slug: string[] }[] = [];
   const ecosystem = language === "python" ? "python" : "javascript";
@@ -706,7 +692,6 @@ export async function getStaticParamsForLanguage(
     }
   }
 
-  console.log(`[IR Loader] ✓ Generated ${params.length} static params for ${project}/${language}`);
   return params;
 }
 
