@@ -18,6 +18,7 @@ import {
   getBuildIdForLanguage,
   getSymbols,
   getManifestData,
+  getSymbolOptimized,
 } from "@/lib/ir/loader";
 import {
   symbolToMarkdown,
@@ -131,17 +132,16 @@ export async function GET(
     );
   }
 
-  // Get all symbols for the package
-  const symbolsResult = await getSymbols(buildId, parsed.packageId);
-  if (!symbolsResult?.symbols) {
-    return NextResponse.json(
-      { error: "Failed to load symbols" },
-      { status: 500 }
-    );
-  }
-
-  // If no symbol path, return package overview
+  // If no symbol path, return package overview (needs all symbols)
   if (parsed.symbolPath.length === 0) {
+    const symbolsResult = await getSymbols(buildId, parsed.packageId);
+    if (!symbolsResult?.symbols) {
+      return NextResponse.json(
+        { error: "Failed to load symbols" },
+        { status: 500 }
+      );
+    }
+
     if (wantsJson) {
       return NextResponse.json(
         {
@@ -172,12 +172,16 @@ export async function GET(
     });
   }
 
-  // Find the specific symbol
-  const symbol = findSymbolByPath(
-    symbolsResult.symbols,
-    parsed.fullPath,
-    language
-  );
+  // OPTIMIZATION: Use optimized lookup for single symbol (~1-5KB instead of 11MB)
+  let symbol = await getSymbolOptimized(buildId, parsed.packageId, parsed.fullPath);
+
+  // Fall back to full symbol search if optimized lookup fails
+  if (!symbol) {
+    const symbolsResult = await getSymbols(buildId, parsed.packageId);
+    if (symbolsResult?.symbols) {
+      symbol = findSymbolByPath(symbolsResult.symbols, parsed.fullPath, language);
+    }
+  }
 
   if (!symbol) {
     return NextResponse.json(

@@ -16,6 +16,10 @@ import {
   getManifestData,
   getSymbols,
   getSymbolData,
+  getKnownSymbolNamesData,
+  getSymbolOptimized,
+  getIndividualSymbol,
+  isProduction,
 } from "@/lib/ir/loader";
 import { getProjectForPackage } from "@/lib/config/projects";
 import { CodeBlock } from "./CodeBlock";
@@ -664,6 +668,43 @@ async function findSymbol(
 }
 
 /**
+ * OPTIMIZED: Find a symbol by path using the lookup index and individual symbol files.
+ * This fetches only the specific symbol (~1-5KB) instead of all symbols (11MB+).
+ * Falls back to full symbol search only if optimized lookup fails.
+ */
+async function findSymbolOptimized(
+  buildId: string,
+  packageId: string,
+  symbolPath: string
+): Promise<SymbolRecord | null> {
+  // Generate variations of the path to try
+  const pathVariations: string[] = [symbolPath];
+
+  // Strip kind prefix if present
+  for (const prefix of KIND_PREFIXES) {
+    if (symbolPath.startsWith(`${prefix}.`)) {
+      const withoutPrefix = symbolPath.slice(prefix.length + 1);
+      pathVariations.push(withoutPrefix);
+      pathVariations.push(withoutPrefix.replace(/\./g, "/"));
+    }
+  }
+
+  // Add common variations
+  pathVariations.push(symbolPath.replace(/\./g, "/"));
+  pathVariations.push(symbolPath.replace(/\./g, "_"));
+
+  // Try optimized lookup for each variation
+  for (const path of pathVariations) {
+    const symbol = await getSymbolOptimized(buildId, packageId, path);
+    if (symbol) return symbol;
+  }
+
+  // If optimized lookup failed, fall back to the original method
+  // This handles edge cases and ensures backward compatibility
+  return findSymbol(buildId, packageId, symbolPath);
+}
+
+/**
  * Resolve inherited members from base classes.
  * Searches for base class symbols in the current package and other packages.
  * Recursively follows the inheritance chain.
@@ -847,76 +888,81 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
   let knownSymbols = new Set<string>();
 
   if (buildId) {
-    // Load all package symbols for linking and member resolution
-    const allSymbolsResult = await getSymbols(buildId, packageId);
-
-    if (allSymbolsResult?.symbols) {
-      // Build a set of known symbol names for type linking
-      // Include classes, interfaces, type aliases, and enums
-      const linkableKinds = ["class", "interface", "typeAlias", "enum"];
-      for (const s of allSymbolsResult.symbols) {
-        if (linkableKinds.includes(s.kind)) {
-          knownSymbols.add(s.name);
-        }
-      }
-    }
+    // OPTIMIZATION: Use lightweight lookup index for type linking (~50KB instead of 11MB)
+    const knownSymbolNames = await getKnownSymbolNamesData(buildId, packageId);
+    knownSymbols = new Set(knownSymbolNames);
 
     // If a specific version is requested, try to load the historical snapshot
     if (version) {
-      const irSymbol = await findSymbol(buildId, packageId, symbolPath);
-      const historicalData = await getHistoricalSnapshot(
-        project.id,
-        irLanguage,
-        packageId,
-        irSymbol?.qualifiedName || symbolPath,
-        version
-      );
+      // For versioned symbols, we need to find the symbol first
+      const irSymbol = await findSymbolOptimized(buildId, packageId, symbolPath);
+      if (irSymbol) {
+        const historicalData = await getHistoricalSnapshot(
+          project.id,
+          irLanguage,
+          packageId,
+          irSymbol.qualifiedName,
+          version
+        );
 
-      if (historicalData) {
-        symbol = snapshotToDisplaySymbol(historicalData.snapshot, {
-          since: version,
-        });
+        if (historicalData) {
+          symbol = snapshotToDisplaySymbol(historicalData.snapshot, {
+            since: version,
+          });
+        }
       }
     }
 
     // If no historical snapshot (or no version requested), load current symbol
     if (!symbol) {
-      const irSymbol = await findSymbol(buildId, packageId, symbolPath);
+      // OPTIMIZATION: Use optimized symbol loading (~1-5KB instead of 11MB)
+      const irSymbol = await findSymbolOptimized(buildId, packageId, symbolPath);
       if (irSymbol) {
         // Keep reference for markdown generation
         irSymbolForMarkdown = irSymbol;
 
-        // Fetch member symbols to get their types and descriptions
+        // Fetch member symbols individually (instead of loading all 11MB)
         let memberSymbols: Map<string, SymbolRecord> | undefined;
 
-        if (irSymbol.members && irSymbol.members.length > 0 && allSymbolsResult?.symbols) {
+        if (irSymbol.members && irSymbol.members.length > 0) {
           memberSymbols = new Map();
-          // Build a lookup map of all symbols by ID
-          const symbolsById = new Map(allSymbolsResult.symbols.map((s) => [s.id, s]));
-
-          // Resolve each member
-          for (const member of irSymbol.members) {
-            const memberSymbol = symbolsById.get(member.refId);
+          // Fetch each member symbol individually in parallel
+          const memberPromises = irSymbol.members.map(async (member) => {
+            const memberSymbol = await getIndividualSymbol(buildId, member.refId);
             if (memberSymbol) {
-              memberSymbols.set(member.refId, memberSymbol);
+              return { refId: member.refId, symbol: memberSymbol };
+            }
+            return null;
+          });
+
+          const memberResults = await Promise.all(memberPromises);
+          for (const result of memberResults) {
+            if (result) {
+              memberSymbols.set(result.refId, result.symbol);
             }
           }
         }
 
-        // Resolve inherited members from base classes
+        // For inherited members, we still need the full symbols (but only if class has extends)
+        // This is a rare case and the data is cached, so it's acceptable
         let inheritedMembers: InheritedMemberGroup[] | undefined;
         if (
           (irSymbol.kind === "class" || irSymbol.kind === "interface") &&
           irSymbol.relations?.extends &&
           irSymbol.relations.extends.length > 0
         ) {
-          inheritedMembers = await resolveInheritedMembers(
-            buildId,
-            packageId,
-            irSymbol.relations.extends,
-            irSymbol.members?.map((m) => m.name) || [],
-            allSymbolsResult?.symbols || []
-          );
+          // For inherited members, we need the full package symbols
+          // This is cached in-memory, so subsequent loads are fast
+          const allSymbolsResult = await getSymbols(buildId, packageId);
+          if (allSymbolsResult?.symbols) {
+            inheritedMembers = await resolveInheritedMembers(
+              buildId,
+              packageId,
+              irSymbol.relations.extends,
+              irSymbol.members?.map((m) => m.name) || [],
+              allSymbolsResult.symbols
+            );
+          }
         }
 
         symbol = toDisplaySymbol(irSymbol, memberSymbols, inheritedMembers);

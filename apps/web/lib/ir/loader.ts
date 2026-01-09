@@ -35,12 +35,33 @@ function getBlobUrl(path: string): string | null {
 }
 
 /**
+ * Symbol lookup index entry
+ */
+interface SymbolLookupEntry {
+  id: string;
+  kind: string;
+  name: string;
+}
+
+/**
+ * Symbol lookup index - maps qualifiedName to symbol info for efficient lookups
+ */
+interface SymbolLookupIndex {
+  packageId: string;
+  symbolCount: number;
+  symbols: Record<string, SymbolLookupEntry>;
+  knownSymbols: string[];
+}
+
+/**
  * Cache for manifest data (in-memory for the request lifecycle)
  */
 const manifestCache = new Map<string, Manifest>();
 const routingCache = new Map<string, RoutingMap>();
 const symbolShardCache = new Map<string, SymbolRecord[]>();
 const pointerCache = new Map<string, unknown>();
+const lookupIndexCache = new Map<string, SymbolLookupIndex>();
+const individualSymbolCache = new Map<string, SymbolRecord>();
 
 /**
  * Pointer types stored in Blob
@@ -308,6 +329,111 @@ export async function getPackageSymbols(
   return result;
 }
 
+// =============================================================================
+// Optimized Symbol Loading (for fast page renders)
+// =============================================================================
+
+/**
+ * Get the symbol lookup index for a package.
+ * This is a small file (~50-100KB) that maps qualifiedName -> symbolId.
+ * Much faster than loading the full symbols.json (11MB+).
+ */
+export async function getSymbolLookupIndex(
+  buildId: string,
+  packageId: string
+): Promise<SymbolLookupIndex | null> {
+  const cacheKey = `${buildId}:${packageId}`;
+
+  if (lookupIndexCache.has(cacheKey)) {
+    return lookupIndexCache.get(cacheKey)!;
+  }
+
+  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/lookup.json`;
+  const index = await fetchBlobJson<SymbolLookupIndex>(path);
+
+  if (index) {
+    lookupIndexCache.set(cacheKey, index);
+  }
+
+  return index;
+}
+
+/**
+ * Get list of known symbol names for type linking.
+ * Uses the lightweight lookup index instead of full symbols.
+ */
+export async function getKnownSymbolNames(
+  buildId: string,
+  packageId: string
+): Promise<string[]> {
+  const index = await getSymbolLookupIndex(buildId, packageId);
+  return index?.knownSymbols || [];
+}
+
+/**
+ * Fetch an individual symbol by ID from blob storage.
+ * Individual symbol files are stored at ir/{buildId}/symbols/{shardKey}/{symbolId}.json
+ */
+export async function getIndividualSymbol(
+  buildId: string,
+  symbolId: string
+): Promise<SymbolRecord | null> {
+  const cacheKey = `${buildId}:${symbolId}`;
+
+  if (individualSymbolCache.has(cacheKey)) {
+    return individualSymbolCache.get(cacheKey)!;
+  }
+
+  // Shard key is first 2 characters of symbol ID
+  const shardKey = symbolId.substring(0, 2);
+  const path = `${IR_BASE_PATH}/${buildId}/symbols/${shardKey}/${symbolId}.json`;
+  const symbol = await fetchBlobJson<SymbolRecord>(path);
+
+  if (symbol) {
+    individualSymbolCache.set(cacheKey, symbol);
+  }
+
+  return symbol;
+}
+
+/**
+ * Get a symbol by its qualified name using the optimized lookup index.
+ * This fetches only the specific symbol (~1-5KB) instead of all symbols (11MB+).
+ */
+export async function getSymbolByQualifiedName(
+  buildId: string,
+  packageId: string,
+  qualifiedName: string
+): Promise<SymbolRecord | null> {
+  // First, get the lookup index
+  const index = await getSymbolLookupIndex(buildId, packageId);
+  if (!index) {
+    return null;
+  }
+
+  // Look up the symbol ID
+  const entry = index.symbols[qualifiedName];
+  if (!entry) {
+    // Try some variations
+    const variations = [
+      qualifiedName,
+      qualifiedName.replace(/\//g, "."),
+      qualifiedName.replace(/\./g, "/"),
+    ];
+    
+    for (const variation of variations) {
+      const found = index.symbols[variation];
+      if (found) {
+        return getIndividualSymbol(buildId, found.id);
+      }
+    }
+    return null;
+  }
+
+  // Fetch the individual symbol
+  return getIndividualSymbol(buildId, entry.id);
+}
+
 /**
  * Get package info from manifest
  */
@@ -445,6 +571,93 @@ export async function getLocalSymbolByPath(
     return null;
   }
   return result.symbols.find((s) => s.qualifiedName === symbolPath) || null;
+}
+
+/**
+ * Get local symbol lookup index (generates from symbols for development)
+ */
+export async function getLocalSymbolLookupIndex(
+  buildId: string,
+  packageId: string
+): Promise<SymbolLookupIndex | null> {
+  const result = await getLocalPackageSymbols(buildId, packageId);
+  if (!result?.symbols) {
+    return null;
+  }
+
+  const symbolMap: Record<string, SymbolLookupEntry> = {};
+  const knownSymbols: string[] = [];
+  const linkableKinds = ["class", "interface", "typeAlias", "enum"];
+
+  for (const symbol of result.symbols) {
+    symbolMap[symbol.qualifiedName] = {
+      id: symbol.id,
+      kind: symbol.kind,
+      name: symbol.name,
+    };
+
+    if (linkableKinds.includes(symbol.kind)) {
+      knownSymbols.push(symbol.name);
+    }
+  }
+
+  return {
+    packageId,
+    symbolCount: result.symbols.length,
+    symbols: symbolMap,
+    knownSymbols: [...new Set(knownSymbols)],
+  };
+}
+
+/**
+ * Get local known symbol names for type linking
+ */
+export async function getLocalKnownSymbolNames(
+  buildId: string,
+  packageId: string
+): Promise<string[]> {
+  const result = await getLocalPackageSymbols(buildId, packageId);
+  if (!result?.symbols) {
+    return [];
+  }
+
+  const linkableKinds = ["class", "interface", "typeAlias", "enum"];
+  const names = result.symbols
+    .filter((s) => linkableKinds.includes(s.kind))
+    .map((s) => s.name);
+
+  return [...new Set(names)];
+}
+
+/**
+ * Get local symbol by qualified name (for development)
+ */
+export async function getLocalSymbolByQualifiedName(
+  buildId: string,
+  packageId: string,
+  qualifiedName: string
+): Promise<SymbolRecord | null> {
+  const result = await getLocalPackageSymbols(buildId, packageId);
+  if (!result?.symbols) {
+    return null;
+  }
+
+  // Try exact match
+  let symbol = result.symbols.find((s) => s.qualifiedName === qualifiedName);
+  if (symbol) return symbol;
+
+  // Try variations
+  const variations = [
+    qualifiedName.replace(/\//g, "."),
+    qualifiedName.replace(/\./g, "/"),
+  ];
+
+  for (const variation of variations) {
+    symbol = result.symbols.find((s) => s.qualifiedName === variation);
+    if (symbol) return symbol;
+  }
+
+  return null;
 }
 
 /**
@@ -587,6 +800,33 @@ export async function getRoutingMapData(
   return isProduction()
     ? getRoutingMap(buildId, packageId, language)
     : getLocalRoutingMap(buildId, packageId, displayName, language);
+}
+
+/**
+ * Get known symbol names for type linking (unified - works in prod and dev)
+ * Uses lightweight lookup index (~50KB) instead of full symbols (~14MB)
+ */
+export async function getKnownSymbolNamesData(
+  buildId: string,
+  packageId: string
+): Promise<string[]> {
+  return isProduction()
+    ? getKnownSymbolNames(buildId, packageId)
+    : getLocalKnownSymbolNames(buildId, packageId);
+}
+
+/**
+ * Get a symbol by qualified name using optimized lookup (unified - works in prod and dev)
+ * Fetches only the specific symbol (~1-5KB) instead of all symbols (~14MB)
+ */
+export async function getSymbolOptimized(
+  buildId: string,
+  packageId: string,
+  qualifiedName: string
+): Promise<SymbolRecord | null> {
+  return isProduction()
+    ? getSymbolByQualifiedName(buildId, packageId, qualifiedName)
+    : getLocalSymbolByQualifiedName(buildId, packageId, qualifiedName);
 }
 
 // =============================================================================

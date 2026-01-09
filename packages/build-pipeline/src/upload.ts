@@ -153,6 +153,60 @@ function shardSymbols(symbols: SymbolRecord[]): Map<string, SymbolRecord[]> {
 }
 
 /**
+ * Symbol lookup index entry
+ */
+interface SymbolLookupEntry {
+  id: string;
+  kind: string;
+  name: string;
+}
+
+/**
+ * Symbol lookup index - maps qualifiedName to symbol info for efficient lookups
+ */
+interface SymbolLookupIndex {
+  packageId: string;
+  symbolCount: number;
+  // Map of qualifiedName -> { id, kind, name }
+  symbols: Record<string, SymbolLookupEntry>;
+  // List of linkable symbol names (for type linking in UI)
+  knownSymbols: string[];
+}
+
+/**
+ * Generate a symbol lookup index for efficient single-symbol fetching.
+ * This is a small file (~50-100KB) that maps qualifiedName -> symbolId.
+ */
+function generateSymbolLookupIndex(
+  packageId: string,
+  symbols: SymbolRecord[]
+): SymbolLookupIndex {
+  const symbolMap: Record<string, SymbolLookupEntry> = {};
+  const knownSymbols: string[] = [];
+  const linkableKinds = ["class", "interface", "typeAlias", "enum"];
+
+  for (const symbol of symbols) {
+    symbolMap[symbol.qualifiedName] = {
+      id: symbol.id,
+      kind: symbol.kind,
+      name: symbol.name,
+    };
+
+    // Track linkable symbol names for type linking
+    if (linkableKinds.includes(symbol.kind)) {
+      knownSymbols.push(symbol.name);
+    }
+  }
+
+  return {
+    packageId,
+    symbolCount: symbols.length,
+    symbols: symbolMap,
+    knownSymbols: [...new Set(knownSymbols)], // Dedupe
+  };
+}
+
+/**
  * Generate routing map from symbols.
  */
 function generateRoutingMap(
@@ -333,6 +387,13 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
     uploadTasks.push({
       blobPath: `ir/${buildId}/routing/${pkg.language}/${pkg.packageId}.json`,
       content: JSON.stringify(routingMap, null, 2),
+    });
+
+    // Add symbol lookup index (small file for efficient qualifiedName -> symbolId lookups)
+    const lookupIndex = generateSymbolLookupIndex(pkg.packageId, symbols);
+    uploadTasks.push({
+      blobPath: `ir/${buildId}/packages/${pkg.packageId}/lookup.json`,
+      content: JSON.stringify(lookupIndex),
     });
 
     // Add individual symbol tasks (sharded for efficient single-symbol lookups)
