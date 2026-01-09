@@ -49,17 +49,22 @@ function buildNavItemsFromRouting(
   for (const [slug, entry] of slugEntries) {
     if (entry.kind !== "module") continue;
 
-    // Get the module name from the slug
-    // For JS: slug is usually the module name directly
-    // For Python: slug might be qualified like "langchain_core.messages"
-    const name = slug.includes(".") ? slug.split(".").pop()! : slug;
+    // Get the top-level module name from the slug
+    // For JS: slugs can be paths like "agents" or "agents/toolkits" - take the first segment
+    // For Python: slug might be qualified like "langchain_core.messages" - take the last segment
+    let name: string;
+    if (language === "javascript") {
+      // For JavaScript, take the first path segment (top-level module)
+      name = slug.includes("/") ? slug.split("/")[0] : slug;
+    } else {
+      // For Python, take the last part after the dot
+      name = slug.includes(".") ? slug.split(".").pop()! : slug;
+    }
 
-    // Only show top-level modules (no nested slashes or dots)
-    if (name.includes("/")) continue;
-    if (name.includes(".")) continue;
+    // Skip if name still contains path separators (shouldn't happen after above logic)
+    if (name.includes("/") || name.includes(".")) continue;
 
-    // Skip index modules for now (we can't tell if they have exports without full data)
-    // Users can click the package name to explore
+    // Skip index modules
     if (name === "index") continue;
 
     modules.push({
