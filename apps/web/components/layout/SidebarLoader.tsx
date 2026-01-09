@@ -88,10 +88,16 @@ async function loadSidebarPackagesForProject(
   projectId: string
 ): Promise<SidebarPackage[]> {
   const buildId = await getBuildIdForLanguage(language, projectId);
-  if (!buildId) return [];
+  if (!buildId) {
+    console.log(`[SidebarLoader] No buildId for ${language}/${projectId}`);
+    return [];
+  }
 
   const manifest = await getManifestData(buildId);
-  if (!manifest) return [];
+  if (!manifest) {
+    console.log(`[SidebarLoader] No manifest for buildId ${buildId}`);
+    return [];
+  }
 
   const packages = manifest.packages.filter((p) =>
     language === "python"
@@ -111,7 +117,11 @@ async function loadSidebarPackagesForProject(
     if (language === "javascript") {
       // Use routing map instead of full symbols (~100KB vs ~14MB)
       const routingMap = await getRoutingMapData(buildId, pkg.packageId, pkg.displayName, irLanguage);
+      if (!routingMap) {
+        console.log(`[SidebarLoader] No routing map for ${pkg.packageId} (buildId: ${buildId})`);
+      }
       items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
+      console.log(`[SidebarLoader] ${pkg.displayName}: ${items.length} nav items`);
     }
 
     sidebarPackages.push({
