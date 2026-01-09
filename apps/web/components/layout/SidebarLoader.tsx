@@ -37,9 +37,16 @@ function buildNavItemsFromRouting(
   packageSlug: string
 ): SidebarPackage["items"] {
   const modules: { name: string; path: string; kind: SymbolKind }[] = [];
+  
+  const slugEntries = Object.entries(routingMap.slugs || {});
+  const kindCounts: Record<string, number> = {};
+  for (const [, entry] of slugEntries) {
+    kindCounts[entry.kind] = (kindCounts[entry.kind] || 0) + 1;
+  }
+  console.log(`[buildNavItemsFromRouting] ${packageSlug}: ${slugEntries.length} total slugs, kinds: ${JSON.stringify(kindCounts)}`);
 
   // Extract top-level modules from routing map slugs
-  for (const [slug, entry] of Object.entries(routingMap.slugs)) {
+  for (const [slug, entry] of slugEntries) {
     if (entry.kind !== "module") continue;
 
     // Get the module name from the slug
