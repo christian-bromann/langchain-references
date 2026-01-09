@@ -49,6 +49,12 @@ export async function generateStaticParams(): Promise<{ slug: string[] }[]> {
  */
 export const dynamicParams = true;
 
+/**
+ * Revalidate pages every hour to keep content fresh while benefiting from caching.
+ * This enables ISR (Incremental Static Regeneration) for dynamic pages.
+ */
+export const revalidate = 3600;
+
 export default async function JavaScriptSymbolPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;

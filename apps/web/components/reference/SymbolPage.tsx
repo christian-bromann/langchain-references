@@ -888,38 +888,35 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
   let knownSymbols = new Set<string>();
 
   if (buildId) {
-    // OPTIMIZATION: Use lightweight lookup index for type linking (~50KB instead of 11MB)
-    const knownSymbolNames = await getKnownSymbolNamesData(buildId, packageId);
+    // OPTIMIZATION: Fetch known symbols and main symbol in parallel
+    const [knownSymbolNames, irSymbol] = await Promise.all([
+      getKnownSymbolNamesData(buildId, packageId),
+      findSymbolOptimized(buildId, packageId, symbolPath),
+    ]);
+    
     knownSymbols = new Set(knownSymbolNames);
 
     // If a specific version is requested, try to load the historical snapshot
-    if (version) {
-      // For versioned symbols, we need to find the symbol first
-      const irSymbol = await findSymbolOptimized(buildId, packageId, symbolPath);
-      if (irSymbol) {
-        const historicalData = await getHistoricalSnapshot(
-          project.id,
-          irLanguage,
-          packageId,
-          irSymbol.qualifiedName,
-          version
-        );
+    if (version && irSymbol) {
+      const historicalData = await getHistoricalSnapshot(
+        project.id,
+        irLanguage,
+        packageId,
+        irSymbol.qualifiedName,
+        version
+      );
 
-        if (historicalData) {
-          symbol = snapshotToDisplaySymbol(historicalData.snapshot, {
-            since: version,
-          });
-        }
+      if (historicalData) {
+        symbol = snapshotToDisplaySymbol(historicalData.snapshot, {
+          since: version,
+        });
       }
     }
 
-    // If no historical snapshot (or no version requested), load current symbol
-    if (!symbol) {
-      // OPTIMIZATION: Use optimized symbol loading (~1-5KB instead of 11MB)
-      const irSymbol = await findSymbolOptimized(buildId, packageId, symbolPath);
-      if (irSymbol) {
-        // Keep reference for markdown generation
-        irSymbolForMarkdown = irSymbol;
+    // If no historical snapshot (or no version requested), use the fetched symbol
+    if (!symbol && irSymbol) {
+      // Keep reference for markdown generation
+      irSymbolForMarkdown = irSymbol;
 
         // Fetch member symbols individually (instead of loading all 11MB)
         let memberSymbols: Map<string, SymbolRecord> | undefined;
@@ -965,8 +962,7 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
           }
         }
 
-        symbol = toDisplaySymbol(irSymbol, memberSymbols, inheritedMembers);
-      }
+      symbol = toDisplaySymbol(irSymbol, memberSymbols, inheritedMembers);
     }
   }
 
