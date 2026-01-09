@@ -136,10 +136,13 @@ class IRTransformer:
 
             # Build source info
             source_info = raw.get("source", {})
+            raw_path = source_info.get("file", "") or ""
+            # Normalize the path to remove temp/cache directory prefixes
+            normalized_path = self._normalize_source_path(raw_path)
             source = {
                 "repo": self.config.repo,
                 "sha": self.config.sha,
-                "path": source_info.get("file", ""),
+                "path": normalized_path,
                 "line": source_info.get("line", 0),
             }
             if source_info.get("end_line"):
@@ -291,3 +294,46 @@ class IRTransformer:
             return "beta"
 
         return "stable"
+
+    def _normalize_source_path(self, file_path: str) -> str:
+        """
+        Normalize source path by removing temp/cache directory prefixes.
+        
+        Handles paths like:
+        - /tmp/langchain-reference-build-cache/.../extracted/libs/pkg/file.py
+        - ../../../tmp/langchain-reference-build-cache/.../extracted/libs/pkg/file.py
+        
+        Returns a clean path like:
+        - libs/pkg/file.py
+        """
+        import re
+        
+        if not file_path:
+            return ""
+        
+        # Handle paths with the extracted directory pattern
+        # Match: .../extracted/libs/{package}/{rest} or .../extracted/{rest}
+        extracted_match = re.search(r'/extracted/(libs/[^/]+/.*|[^/].*)$', file_path)
+        if extracted_match:
+            return extracted_match.group(1)
+        
+        # Handle paths with tmp directory
+        tmp_match = re.search(r'(?:^|/)tmp/.*?/extracted/(libs/[^/]+/.*|[^/].*)$', file_path)
+        if tmp_match:
+            return tmp_match.group(1)
+        
+        # Handle paths that are already relative (don't start with / or ..)
+        if not file_path.startswith('/') and not file_path.startswith('..'):
+            return file_path
+        
+        # Handle paths that start with libs/
+        libs_match = re.search(r'(libs/[^/]+/.*)$', file_path)
+        if libs_match:
+            return libs_match.group(1)
+        
+        # Last resort: just return the filename with parent directory
+        parts = file_path.split('/')
+        if len(parts) >= 2:
+            return '/'.join(parts[-2:])
+        
+        return file_path.split('/')[-1] if '/' in file_path else file_path
