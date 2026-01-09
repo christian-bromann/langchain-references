@@ -67,6 +67,7 @@ import {
 } from "../tarball.js";
 import { uploadIR } from "../upload.js";
 import { updatePointers } from "../pointers.js";
+import { checkForUpdates, type UpdateCheckResult } from "./check-updates.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -1132,13 +1133,41 @@ async function buildConfig(
     skipPointers?: boolean;
     withVersions?: boolean;
     fullRebuild?: boolean;
+    force?: boolean;
     verbose?: boolean;
   }
-): Promise<{ buildId: string; success: boolean }> {
+): Promise<{ buildId: string; success: boolean; skipped?: boolean }> {
   console.log(`\n📄 Loading config: ${configPath}`);
 
   const configContent = await fs.readFile(configPath, "utf-8");
   const config: BuildConfig = JSON.parse(configContent);
+
+  // Check if update is needed (unless --force is specified)
+  // We can check updates even in local mode - we just need read access to blob storage
+  const hasBlobAccess = process.env.BLOB_BASE_URL || process.env.BLOB_URL || process.env.BLOB_READ_WRITE_TOKEN;
+
+  if (!opts.force && hasBlobAccess) {
+    console.log(`\n🔍 Checking for updates...`);
+    try {
+      const updateCheck = await checkForUpdates(configPath, opts.verbose);
+
+      if (!updateCheck.needsUpdate) {
+        console.log(`\n⏭️  Skipping build: ${updateCheck.reason}`);
+        if (opts.verbose && updateCheck.source.latestReleaseDate && updateCheck.source.buildCreatedAt) {
+          console.log(`   Latest release: ${updateCheck.source.latestReleaseDate.split("T")[0]}`);
+          console.log(`   Build created:  ${updateCheck.source.buildCreatedAt.split("T")[0]}`);
+        }
+        return { buildId: "(skipped)", success: true, skipped: true };
+      }
+
+      console.log(`   📦 ${updateCheck.reason}`);
+    } catch (error) {
+      // If update check fails, continue with the build
+      console.log(`   ⚠️  Update check failed: ${error}. Proceeding with build.`);
+    }
+  } else if (opts.force) {
+    console.log(`\n🔨 Force build requested - skipping update check`);
+  }
 
   console.log(`   Project: ${config.project || "langchain"}`);
   console.log(`   Language: ${config.language}`);
@@ -1282,6 +1311,7 @@ async function main() {
     .option("--skip-pointers", "Skip updating build pointers")
     .option("--with-versions", "Enable version history tracking (incremental by default)")
     .option("--full", "Force full rebuild of version history (ignore existing changelogs)")
+    .option("--force", "Force build even if no new releases detected")
     .option("-v, --verbose", "Enable verbose output")
     .parse();
 
@@ -1323,7 +1353,7 @@ async function main() {
     process.exit(1);
   }
 
-  const results: { config: string; buildId: string; success: boolean }[] = [];
+  const results: { config: string; buildId: string; success: boolean; skipped?: boolean }[] = [];
 
   for (const configPath of configPaths) {
     console.log("\n" + "=".repeat(60));
@@ -1335,6 +1365,7 @@ async function main() {
       skipPointers: opts.skipPointers,
       withVersions: opts.withVersions,
       fullRebuild: opts.full,
+      force: opts.force,
       verbose: opts.verbose,
     });
     results.push({ config: path.basename(configPath), ...result });
@@ -1346,17 +1377,25 @@ async function main() {
 
   let totalSuccess = 0;
   let totalFailed = 0;
+  let totalSkipped = 0;
 
   for (const result of results) {
-    const status = result.success ? "✅" : "❌";
-    console.log(`   ${status} ${result.config}`);
-    console.log(`      Build ID: ${result.buildId}`);
-    if (result.success) totalSuccess++;
-    else totalFailed++;
+    if (result.skipped) {
+      console.log(`   ⏭️  ${result.config} (skipped - up to date)`);
+      totalSkipped++;
+    } else if (result.success) {
+      console.log(`   ✅ ${result.config}`);
+      console.log(`      Build ID: ${result.buildId}`);
+      totalSuccess++;
+    } else {
+      console.log(`   ❌ ${result.config}`);
+      console.log(`      Build ID: ${result.buildId}`);
+      totalFailed++;
+    }
   }
 
   console.log("─".repeat(40));
-  console.log(`   Total: ${results.length} | Success: ${totalSuccess} | Failed: ${totalFailed}`);
+  console.log(`   Total: ${results.length} | Built: ${totalSuccess} | Skipped: ${totalSkipped} | Failed: ${totalFailed}`);
 
   if (totalFailed > 0) {
     process.exit(1);

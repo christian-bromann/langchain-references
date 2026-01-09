@@ -3,6 +3,11 @@
 # Builds IR artifacts for all LangChain ecosystem projects.
 # Uses a matrix strategy to build each project+language combination in parallel.
 #
+# The workflow is optimized to skip builds when no new releases exist:
+# - Compares build creation date against manually-configured version metadata
+# - Only builds packages that have new versions available
+# - Use `pnpm sync-versions` locally to update version metadata when needed
+#
 # Triggers:
 # - Manual dispatch with optional project/language filters
 # - Scheduled daily builds
@@ -38,6 +43,11 @@ on:
         default: true
       full_rebuild:
         description: 'Force full rebuild (ignore existing changelogs)'
+        required: false
+        type: boolean
+        default: false
+      force_build:
+        description: 'Force build even if no new releases detected'
         required: false
         type: boolean
         default: false
@@ -115,18 +125,6 @@ jobs:
       BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
 
     steps:
-      - name: Free disk space
-        run: |
-          echo "Before cleanup:"
-          df -h /
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo rm -rf /usr/local/share/boost
-          echo "After cleanup:"
-          df -h /
-
       - uses: actions/checkout@v4
 
       - name: Setup pnpm
@@ -141,6 +139,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Free disk space
+        run: |
+          echo "Before cleanup:"
+          df -h /
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/local/share/boost
+          echo "After cleanup:"
+          df -h /
+
       - name: Setup Python (for Python builds)
         if: matrix.language == 'python'
         uses: actions/setup-python@v5
@@ -154,6 +164,7 @@ jobs:
           pip install -e .
 
       - name: Build IR
+        id: build
         run: |
           FLAGS=""
 
@@ -167,7 +178,13 @@ jobs:
             FLAGS="$FLAGS --full"
           fi
 
+          # Force build for push events (code changes) or when force_build is set
+          if [ "${{ github.event_name }}" == "push" ] || [ "${{ inputs.force_build }}" == "true" ]; then
+            FLAGS="$FLAGS --force"
+          fi
+
           # Run via tsx directly (no build step required for internal packages)
+          # The command will automatically check for updates and skip if not needed
           npx tsx packages/build-pipeline/src/commands/build-ir.ts \
             --config ./configs/${{ matrix.config }} \
             --skip-pointers \
@@ -184,12 +201,14 @@ jobs:
             ir-output/
             !ir-output/latest-*
           retention-days: 7
+          if-no-files-found: ignore
 
   # Update pointers after all builds complete
   update-pointers:
     name: Update Build Pointers
     needs: build
     runs-on: ubuntu-latest
+    # Run if build succeeded (even if some were skipped)
     if: ${{ !cancelled() && needs.build.result == 'success' }}
 
     env:
@@ -211,15 +230,27 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Download all artifacts
+        id: download
         uses: actions/download-artifact@v4
         with:
           path: ir-output/
           merge-multiple: true
+        continue-on-error: true
 
-      - name: List downloaded artifacts
-        run: ls -la ir-output/
+      - name: Check for artifacts
+        id: check-artifacts
+        run: |
+          if [ -d "ir-output" ] && [ "$(ls -A ir-output 2>/dev/null)" ]; then
+            echo "has_artifacts=true" >> $GITHUB_OUTPUT
+            echo "Found artifacts to process"
+            ls -la ir-output/
+          else
+            echo "has_artifacts=false" >> $GITHUB_OUTPUT
+            echo "No artifacts found - all builds were skipped"
+          fi
 
       - name: Update pointers for each build
+        if: steps.check-artifacts.outputs.has_artifacts == 'true'
         run: |
           # Find manifest files, but skip symlinked directories (like latest-*)
           for manifest in ir-output/*/reference.manifest.json; do
@@ -245,6 +276,13 @@ jobs:
             fi
           done
 
+      - name: Report skipped
+        if: steps.check-artifacts.outputs.has_artifacts == 'false'
+        run: |
+          echo "## Pointer Update Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No new builds were created - all packages are already up to date." >> $GITHUB_STEP_SUMMARY
+
   # Summary job
   summary:
     name: Build Summary
@@ -265,8 +303,9 @@ jobs:
 
           if [ "${{ needs.build.result }}" == "success" ]; then
             echo "✅ All builds completed successfully!" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.build.result }}" == "skipped" ]; then
+            echo "⏭️ Builds were skipped (no updates needed)" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ Some builds failed. Check the logs for details." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-
