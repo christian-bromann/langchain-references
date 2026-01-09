@@ -31,7 +31,7 @@ export function VersionBadge({ since, className }: VersionBadgeProps) {
       title={`Introduced in version ${version}`}
     >
       <span className="text-[0.65rem]">●</span>
-      Since {version}
+      Since {version.split(".").slice(0, 2).join(".")}
     </span>
   );
 }

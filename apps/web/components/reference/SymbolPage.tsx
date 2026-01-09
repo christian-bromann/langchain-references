@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
 import { buildPackageUrl, getKindColor, getKindLabel, slugifyPackageName } from "@/lib/utils/url";
 import type { SymbolKind, Visibility, Stability, SymbolRecord } from "@/lib/ir/types";
+import type { PackageChangelog, SymbolSnapshot } from "@langchain/ir-schema";
 import {
   getBuildIdForLanguage,
   getManifestData,
@@ -24,12 +25,17 @@ import { symbolToMarkdown } from "@/lib/ir/markdown-generator";
 import { getBaseUrl } from "@/lib/config/mcp";
 import { VersionBadge } from "./VersionBadge";
 import { VersionHistory } from "./VersionHistory";
+import { VersionSwitcher } from "./VersionSwitcher";
+import fs from "fs/promises";
+import path from "path";
 
 interface SymbolPageProps {
   language: "python" | "javascript";
   packageId: string;
   packageName: string;
   symbolPath: string;
+  /** Optional version to display (from URL query param) */
+  version?: string;
 }
 
 /**
@@ -309,6 +315,159 @@ function toDisplaySymbol(
  * Kind prefixes used in URLs that should be stripped when looking up symbols
  */
 const KIND_PREFIXES = ["modules", "classes", "functions", "interfaces", "types", "enums", "variables", "methods", "propertys", "namespaces"];
+
+/**
+ * Pointer type for latest builds.
+ */
+interface LatestPointer {
+  buildId: string;
+  updatedAt: string;
+}
+
+/**
+ * Get the local IR path for a project+language.
+ */
+function getLocalIrPath(project: string, language: string): string {
+  const langSuffix = language === "python" ? "python" : "javascript";
+  return `latest-${project}-${langSuffix}`;
+}
+
+/**
+ * Fetch the latest build pointer for a project+language from Vercel Blob.
+ */
+async function fetchLatestBuildId(
+  blobBaseUrl: string,
+  project: string,
+  language: string
+): Promise<string | null> {
+  const langSuffix = language === "python" ? "python" : "javascript";
+  const pointerUrl = `${blobBaseUrl}/pointers/latest-${project}-${langSuffix}.json`;
+
+  try {
+    const response = await fetch(pointerUrl, { cache: "no-store" });
+    if (!response.ok) return null;
+    const pointer = (await response.json()) as LatestPointer;
+    return pointer.buildId;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Load the changelog for a package.
+ */
+async function loadChangelog(
+  project: string,
+  language: string,
+  packageId: string
+): Promise<PackageChangelog | null> {
+  // Try local IR output first (for development)
+  const localIrPath = getLocalIrPath(project, language);
+  const localChangelogPath = path.join(
+    process.cwd(),
+    "..",
+    "..",
+    "ir-output",
+    localIrPath,
+    "packages",
+    packageId,
+    "changelog.json"
+  );
+
+  try {
+    const localContent = await fs.readFile(localChangelogPath, "utf-8");
+    return JSON.parse(localContent);
+  } catch {
+    // Local file not found, try blob storage
+  }
+
+  // Fallback to blob storage
+  const blobBaseUrl = process.env.BLOB_BASE_URL || process.env.BLOB_URL;
+  if (blobBaseUrl) {
+    const buildId = await fetchLatestBuildId(blobBaseUrl, project, language);
+    if (buildId) {
+      const changelogUrl = `${blobBaseUrl}/ir/${buildId}/packages/${packageId}/changelog.json`;
+      try {
+        const response = await fetch(changelogUrl, {
+          next: { revalidate: 3600 },
+        });
+        if (response.ok) {
+          return await response.json();
+        }
+      } catch {
+        // Failed to fetch from blob
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Get the historical snapshot of a symbol at a specific version.
+ */
+async function getHistoricalSnapshot(
+  project: string,
+  language: string,
+  packageId: string,
+  symbolName: string,
+  targetVersion: string
+): Promise<{ snapshot: SymbolSnapshot; changeType: "added" | "modified" } | null> {
+  const changelog = await loadChangelog(project, language, packageId);
+  if (!changelog) return null;
+
+  for (const delta of changelog.history) {
+    if (delta.version !== targetVersion) continue;
+
+    // Check if symbol was added in this version
+    const added = delta.added.find((a) => a.qualifiedName === symbolName);
+    if (added) {
+      return { snapshot: added.snapshot, changeType: "added" };
+    }
+
+    // Check if symbol was modified in this version - use snapshotAfter
+    const modified = delta.modified.find((m) => m.qualifiedName === symbolName);
+    if (modified && modified.snapshotAfter) {
+      return { snapshot: modified.snapshotAfter, changeType: "modified" };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Convert a SymbolSnapshot to a DisplaySymbol for rendering.
+ */
+function snapshotToDisplaySymbol(snapshot: SymbolSnapshot, versionInfo?: DisplaySymbol["versionInfo"]): DisplaySymbol {
+  // Convert members from snapshot format to display format
+  const members: DisplayMember[] | undefined = snapshot.members?.map((m) => ({
+    name: m.name,
+    kind: m.kind,
+    visibility: m.visibility,
+    type: extractTypeFromSignature(m.signature, m.kind),
+    signature: m.signature,
+  }));
+
+  return {
+    id: `snapshot_${snapshot.qualifiedName}`,
+    kind: snapshot.kind,
+    name: snapshot.qualifiedName.split(".").pop() || snapshot.qualifiedName,
+    qualifiedName: snapshot.qualifiedName,
+    signature: snapshot.signature,
+    docs: {
+      summary: "", // Snapshots don't include documentation
+    },
+    source: {
+      repo: "",
+      sha: "",
+      path: snapshot.sourcePath,
+      line: snapshot.sourceLine,
+    },
+    members,
+    bases: snapshot.extends,
+    versionInfo,
+  };
+}
 
 /**
  * Generate Table of Contents data from a symbol
@@ -676,7 +835,7 @@ async function resolveInheritedMembers(
   return inheritedGroups;
 }
 
-export async function SymbolPage({ language, packageId, packageName, symbolPath }: SymbolPageProps) {
+export async function SymbolPage({ language, packageId, packageName, symbolPath, version }: SymbolPageProps) {
   const irLanguage = language === "python" ? "python" : "javascript";
 
   // Determine which project this package belongs to
@@ -702,45 +861,66 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
       }
     }
 
-    const irSymbol = await findSymbol(buildId, packageId, symbolPath);
-    if (irSymbol) {
-      // Keep reference for markdown generation
-      irSymbolForMarkdown = irSymbol;
+    // If a specific version is requested, try to load the historical snapshot
+    if (version) {
+      const irSymbol = await findSymbol(buildId, packageId, symbolPath);
+      const historicalData = await getHistoricalSnapshot(
+        project.id,
+        irLanguage,
+        packageId,
+        irSymbol?.qualifiedName || symbolPath,
+        version
+      );
 
-      // Fetch member symbols to get their types and descriptions
-      let memberSymbols: Map<string, SymbolRecord> | undefined;
+      if (historicalData) {
+        symbol = snapshotToDisplaySymbol(historicalData.snapshot, {
+          since: version,
+        });
+      }
+    }
 
-      if (irSymbol.members && irSymbol.members.length > 0 && allSymbolsResult?.symbols) {
-        memberSymbols = new Map();
-        // Build a lookup map of all symbols by ID
-        const symbolsById = new Map(allSymbolsResult.symbols.map((s) => [s.id, s]));
+    // If no historical snapshot (or no version requested), load current symbol
+    if (!symbol) {
+      const irSymbol = await findSymbol(buildId, packageId, symbolPath);
+      if (irSymbol) {
+        // Keep reference for markdown generation
+        irSymbolForMarkdown = irSymbol;
 
-        // Resolve each member
-        for (const member of irSymbol.members) {
-          const memberSymbol = symbolsById.get(member.refId);
-          if (memberSymbol) {
-            memberSymbols.set(member.refId, memberSymbol);
+        // Fetch member symbols to get their types and descriptions
+        let memberSymbols: Map<string, SymbolRecord> | undefined;
+
+        if (irSymbol.members && irSymbol.members.length > 0 && allSymbolsResult?.symbols) {
+          memberSymbols = new Map();
+          // Build a lookup map of all symbols by ID
+          const symbolsById = new Map(allSymbolsResult.symbols.map((s) => [s.id, s]));
+
+          // Resolve each member
+          for (const member of irSymbol.members) {
+            const memberSymbol = symbolsById.get(member.refId);
+            if (memberSymbol) {
+              memberSymbols.set(member.refId, memberSymbol);
+            }
           }
         }
-      }
 
-      // Resolve inherited members from base classes
-      let inheritedMembers: InheritedMemberGroup[] | undefined;
-      if (
-        (irSymbol.kind === "class" || irSymbol.kind === "interface") &&
-        irSymbol.relations?.extends &&
-        irSymbol.relations.extends.length > 0
-      ) {
-        inheritedMembers = await resolveInheritedMembers(
-          buildId,
-          packageId,
-          irSymbol.relations.extends,
-          irSymbol.members?.map((m) => m.name) || [],
-          allSymbolsResult?.symbols || []
-        );
-      }
+        // Resolve inherited members from base classes
+        let inheritedMembers: InheritedMemberGroup[] | undefined;
+        if (
+          (irSymbol.kind === "class" || irSymbol.kind === "interface") &&
+          irSymbol.relations?.extends &&
+          irSymbol.relations.extends.length > 0
+        ) {
+          inheritedMembers = await resolveInheritedMembers(
+            buildId,
+            packageId,
+            irSymbol.relations.extends,
+            irSymbol.members?.map((m) => m.name) || [],
+            allSymbolsResult?.symbols || []
+          );
+        }
 
-      symbol = toDisplaySymbol(irSymbol, memberSymbols, inheritedMembers);
+        symbol = toDisplaySymbol(irSymbol, memberSymbols, inheritedMembers);
+      }
     }
   }
 
@@ -836,10 +1016,17 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
 
       {/* Header */}
       <div>
-        <div className="flex items-center gap-3 mb-2">
+        <div className="flex items-center gap-3 mb-2 flex-wrap">
           <span className={cn("px-2 py-1 text-sm font-medium rounded", getKindColor(symbol.kind))}>
             {getKindLabel(symbol.kind)}
           </span>
+          <VersionSwitcher
+            qualifiedName={symbol.qualifiedName}
+            project={project.id}
+            language={irLanguage}
+            packageId={packageId}
+            currentVersion={version}
+          />
           {symbol.versionInfo?.since && (
             <VersionBadge since={symbol.versionInfo.since} />
           )}
@@ -851,6 +1038,12 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath 
           {symbol.stability === "deprecated" && (
             <span className="px-2 py-1 text-sm font-medium rounded bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
               Deprecated
+            </span>
+          )}
+          {/* Show banner when viewing historical version */}
+          {version && (
+            <span className="px-2 py-1 text-sm font-medium rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+              Viewing v{version}
             </span>
           )}
         </div>

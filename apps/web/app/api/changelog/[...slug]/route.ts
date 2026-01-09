@@ -10,6 +10,8 @@ interface VersionChange {
   changes?: ChangeRecord[];
   snapshotBefore?: string;
   snapshotAfter?: string;
+  /** If this change is from a member/child symbol, this contains the member name */
+  affectedMember?: string;
 }
 
 /**
@@ -147,13 +149,32 @@ export async function GET(
 }
 
 /**
+ * Check if a qualified name is a member/child of a parent symbol.
+ * e.g., "CreateAgentParams.systemPrompt" is a member of "CreateAgentParams"
+ */
+function isMemberOf(qualifiedName: string, parentName: string): boolean {
+  return qualifiedName.startsWith(parentName + ".");
+}
+
+/**
+ * Extract the member name from a qualified name relative to a parent.
+ * e.g., getMemberName("CreateAgentParams.systemPrompt", "CreateAgentParams") => "systemPrompt"
+ */
+function getMemberName(qualifiedName: string, parentName: string): string {
+  return qualifiedName.slice(parentName.length + 1);
+}
+
+/**
  * Extract changes relevant to a specific symbol from the full changelog.
+ * Also includes changes to member/child symbols (e.g., properties of an interface).
  */
 function extractSymbolChanges(
   changelog: PackageChangelog,
   symbolName: string
 ): VersionChange[] {
   const changes: VersionChange[] = [];
+  // Track which versions we've already added to avoid duplicates
+  const addedVersions = new Set<string>();
 
   for (const delta of changelog.history) {
     // Check if symbol was added in this version
@@ -164,6 +185,7 @@ function extractSymbolChanges(
         releaseDate: delta.releaseDate,
         type: "added",
       });
+      addedVersions.add(delta.version);
       continue;
     }
 
@@ -182,6 +204,7 @@ function extractSymbolChanges(
           ? renderSnapshot(modified.snapshotAfter)
           : undefined,
       });
+      addedVersions.add(delta.version);
       continue;
     }
 
@@ -202,6 +225,7 @@ function extractSymbolChanges(
             ]
           : undefined,
       });
+      addedVersions.add(delta.version);
       continue;
     }
 
@@ -213,6 +237,78 @@ function extractSymbolChanges(
         releaseDate: delta.releaseDate,
         type: "removed",
       });
+      addedVersions.add(delta.version);
+      continue;
+    }
+
+    // If we haven't found a direct change, check for member/child changes
+    // This allows parent symbols (like interfaces) to show changes to their properties
+    if (!addedVersions.has(delta.version)) {
+      const memberChanges: { memberName: string; type: VersionChange["type"]; changes?: ChangeRecord[] }[] = [];
+
+      // Check for added members
+      for (const a of delta.added) {
+        if (isMemberOf(a.qualifiedName, symbolName)) {
+          memberChanges.push({
+            memberName: getMemberName(a.qualifiedName, symbolName),
+            type: "added",
+          });
+        }
+      }
+
+      // Check for modified members
+      for (const m of delta.modified) {
+        if (isMemberOf(m.qualifiedName, symbolName)) {
+          memberChanges.push({
+            memberName: getMemberName(m.qualifiedName, symbolName),
+            type: "modified",
+            changes: m.changes,
+          });
+        }
+      }
+
+      // Check for deprecated members
+      for (const d of delta.deprecated) {
+        if (isMemberOf(d.qualifiedName, symbolName)) {
+          memberChanges.push({
+            memberName: getMemberName(d.qualifiedName, symbolName),
+            type: "deprecated",
+          });
+        }
+      }
+
+      // Check for removed members
+      for (const r of delta.removed) {
+        if (isMemberOf(r.qualifiedName, symbolName)) {
+          memberChanges.push({
+            memberName: getMemberName(r.qualifiedName, symbolName),
+            type: "removed",
+          });
+        }
+      }
+
+      // If we found member changes, add a "modified" entry for the parent
+      if (memberChanges.length > 0) {
+        // Create aggregated change records for the member changes
+        const aggregatedChanges: ChangeRecord[] = memberChanges.map((mc) => ({
+          type: mc.type === "added" ? "member-added" as const :
+                mc.type === "removed" ? "member-removed" as const :
+                mc.type === "deprecated" ? "deprecated" as const :
+                "member-type-changed" as const,
+          description: `${mc.memberName} was ${mc.type}`,
+          breaking: mc.changes?.some(c => c.breaking) || mc.type === "removed",
+          memberName: mc.memberName,
+        }));
+
+        changes.push({
+          version: delta.version,
+          releaseDate: delta.releaseDate,
+          type: "modified",
+          changes: aggregatedChanges,
+          affectedMember: memberChanges.map(mc => mc.memberName).join(", "),
+        });
+        addedVersions.add(delta.version);
+      }
     }
   }
 

@@ -18,6 +18,7 @@ interface Props {
   params: Promise<{
     slug: string[];
   }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 /**
@@ -68,8 +69,9 @@ export async function generateStaticParams(): Promise<{ slug: string[] }[]> {
  */
 export const dynamicParams = true;
 
-export default async function JavaScriptSymbolPage({ params }: Props) {
+export default async function JavaScriptSymbolPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const resolvedSearchParams = await searchParams;
 
   if (!slug || slug.length === 0) {
     notFound();
@@ -81,6 +83,9 @@ export default async function JavaScriptSymbolPage({ params }: Props) {
   if (!parsed) {
     notFound();
   }
+
+  // Get version from search params (e.g., ?v=1.1.6)
+  const version = typeof resolvedSearchParams.v === "string" ? resolvedSearchParams.v : undefined;
 
   // If only package name, show package overview
   if (parsed.symbolPath.length === 0) {
@@ -100,6 +105,7 @@ export default async function JavaScriptSymbolPage({ params }: Props) {
       packageId={parsed.packageId}
       packageName={parsed.packageName}
       symbolPath={parsed.fullPath}
+      version={version}
     />
   );
 }

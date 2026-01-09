@@ -151,6 +151,8 @@ interface VersionChange {
   changes?: ChangeRecord[];
   snapshotBefore?: string;
   snapshotAfter?: string;
+  /** If this change is from a member/child symbol, this contains the member name(s) */
+  affectedMember?: string;
 }
 
 function VersionChangeEntry({ change }: { change: VersionChange }) {
@@ -188,7 +190,7 @@ function VersionChangeEntry({ change }: { change: VersionChange }) {
       <div className="absolute -left-[5px] top-0 w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
 
       {/* Version header */}
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
         <span className="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">
           v{change.version}
         </span>
@@ -203,6 +205,11 @@ function VersionChangeEntry({ change }: { change: VersionChange }) {
         <span className="text-xs text-slate-500 dark:text-slate-400">
           {formatDate(change.releaseDate)}
         </span>
+        {change.affectedMember && (
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+            ({change.affectedMember})
+          </span>
+        )}
       </div>
 
       {/* Change details */}
@@ -211,7 +218,7 @@ function VersionChangeEntry({ change }: { change: VersionChange }) {
           {change.changes.map((c, idx) => (
             <li key={idx} className="flex items-start gap-2">
               {c.breaking && (
-                <span className="flex-shrink-0 px-1 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded">
+                <span className="shrink-0 px-1 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded">
                   BREAKING
                 </span>
               )}
