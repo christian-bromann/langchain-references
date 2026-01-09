@@ -49,18 +49,24 @@ function buildNavItemsFromRouting(
   const moduleSlugs = slugEntries.filter(([, e]) => e.kind === "module").map(([s]) => s);
   console.log(`[buildNavItemsFromRouting] ${packageSlug} module slugs: ${JSON.stringify(moduleSlugs.slice(0, 10))}`);
 
-  // Extract top-level modules from routing map slugs
+  // Extract modules from routing map slugs
+  // Slugs are formatted as "{kindPlural}/{symbolName}" (e.g., "modules/hub", "classes/ChatModel")
   for (const [slug, entry] of slugEntries) {
     if (entry.kind !== "module") continue;
 
-    // For JavaScript modules, the slug IS the module path (e.g., "hub", "load", "agents")
-    // We want to show only top-level modules (no nested paths with /)
-    // For Python, slug might be qualified like "langchain_core.messages" - take the last segment
+    // The slug format is "modules/{moduleName}" for JavaScript
+    // For Python, slug might be "langchain_core.messages" (qualified name)
     let name: string;
     if (language === "javascript") {
-      // Skip nested modules (paths with /)
-      if (slug.includes("/")) continue;
-      name = slug;
+      // Extract module name from slug like "modules/hub" -> "hub"
+      if (slug.startsWith("modules/")) {
+        name = slug.slice("modules/".length);
+      } else {
+        // Fallback: use slug as-is if it doesn't match expected format
+        name = slug;
+      }
+      // Skip nested modules (e.g., "modules/agents/toolkits" -> "agents/toolkits" still has /)
+      if (name.includes("/")) continue;
     } else {
       // For Python, take the last part after the dot
       name = slug.includes(".") ? slug.split(".").pop()! : slug;
