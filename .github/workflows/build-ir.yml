@@ -3,10 +3,11 @@
 # Builds IR artifacts for all LangChain ecosystem projects.
 # Uses a matrix strategy to build each package in parallel for maximum speed.
 #
-# The workflow is optimized to skip builds when no new releases exist:
-# - Compares build creation date against manually-configured version metadata
-# - Only builds packages that have new versions available
-# - Use `pnpm sync-versions` locally to update version metadata when needed
+# Workflow steps:
+# 1. Download existing blob storage content (skip if full_rebuild)
+# 2. Build matrix - compile packages, checking if version/sha already exists
+# 3. Upload only newly compiled packages to Vercel Blob
+# 4. Update pointers only if new versions were compiled
 #
 # Triggers:
 # - Manual dispatch with optional project/language filters
@@ -42,7 +43,7 @@ on:
         type: boolean
         default: true
       full_rebuild:
-        description: 'Force full rebuild (ignore existing changelogs)'
+        description: 'Force full rebuild (skip blob download, recompile everything)'
         required: false
         type: boolean
         default: false
@@ -73,8 +74,134 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Determine which packages to build based on inputs
-  # Each package gets its own parallel runner for maximum speed
+  # ============================================================================
+  # Step 1: Download existing blob storage content
+  # ============================================================================
+  # Skip this step if full_rebuild is enabled to force recompilation
+  download-blob:
+    name: Download Existing Blob Data
+    runs-on: ubuntu-latest
+    # Skip download if full_rebuild is true - this forces recompilation of everything
+    if: ${{ github.event.inputs.full_rebuild != 'true' }}
+    outputs:
+      has_blob_data: ${{ steps.download.outputs.has_data }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download blob storage content
+        id: download
+        run: |
+          echo "📥 Downloading existing IR data from blob storage..."
+          mkdir -p blob-cache
+
+          BLOB_URL="${BLOB_BASE_URL:-}"
+          if [ -z "$BLOB_URL" ]; then
+            echo "No BLOB_BASE_URL set, skipping download"
+            echo "has_data=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Download all project pointers and manifests
+          PROJECTS=("langchain" "langgraph" "deepagent")
+          LANGUAGES=("python" "javascript")
+          DOWNLOADED=0
+
+          for project in "${PROJECTS[@]}"; do
+            for lang in "${LANGUAGES[@]}"; do
+              pointer_file="pointers/latest-${project}-${lang}.json"
+              pointer_url="${BLOB_URL}/${pointer_file}"
+
+              echo "  Checking ${project}-${lang}..."
+              pointer=$(curl -sf "$pointer_url" 2>/dev/null || echo '{}')
+              build_id=$(echo "$pointer" | jq -r '.buildId // empty')
+
+              if [ -n "$build_id" ]; then
+                echo "    Found build: $build_id"
+
+                # Create directory structure
+                mkdir -p "blob-cache/pointers"
+                mkdir -p "blob-cache/ir/${build_id}/packages"
+
+                # Save pointer
+                echo "$pointer" > "blob-cache/${pointer_file}"
+
+                # Download manifest
+                manifest_url="${BLOB_URL}/ir/${build_id}/reference.manifest.json"
+                if curl -sf "$manifest_url" -o "blob-cache/ir/${build_id}/reference.manifest.json" 2>/dev/null; then
+                  echo "    ✓ Downloaded manifest"
+
+                  # Extract package IDs and download their data
+                  package_ids=$(jq -r '.packages[].packageId' "blob-cache/ir/${build_id}/reference.manifest.json" 2>/dev/null || echo "")
+
+                  for pkg_id in $package_ids; do
+                    [ -z "$pkg_id" ] && continue
+                    pkg_dir="blob-cache/ir/${build_id}/packages/${pkg_id}"
+                    mkdir -p "$pkg_dir"
+
+                    # Download symbols.json
+                    symbols_url="${BLOB_URL}/ir/${build_id}/packages/${pkg_id}/symbols.json"
+                    if curl -sf "$symbols_url" -o "${pkg_dir}/symbols.json" 2>/dev/null; then
+                      DOWNLOADED=$((DOWNLOADED + 1))
+                      echo "    ✓ ${pkg_id}/symbols.json"
+                    fi
+
+                    # Download changelog.json (optional)
+                    changelog_url="${BLOB_URL}/ir/${build_id}/packages/${pkg_id}/changelog.json"
+                    curl -sf "$changelog_url" -o "${pkg_dir}/changelog.json" 2>/dev/null || true
+
+                    # Download versions.json (optional)
+                    versions_url="${BLOB_URL}/ir/${build_id}/packages/${pkg_id}/versions.json"
+                    curl -sf "$versions_url" -o "${pkg_dir}/versions.json" 2>/dev/null || true
+
+                    # Download lookup.json (optional)
+                    lookup_url="${BLOB_URL}/ir/${build_id}/packages/${pkg_id}/lookup.json"
+                    curl -sf "$lookup_url" -o "${pkg_dir}/lookup.json" 2>/dev/null || true
+                  done
+                fi
+              else
+                echo "    No existing build found"
+              fi
+            done
+          done
+
+          echo ""
+          echo "📊 Downloaded $DOWNLOADED package(s) from blob storage"
+
+          if [ "$DOWNLOADED" -gt 0 ]; then
+            echo "has_data=true" >> $GITHUB_OUTPUT
+            # Show what we have
+            echo "Blob cache structure:"
+            find blob-cache -type f -name "*.json" | head -50
+          else
+            echo "has_data=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          BLOB_BASE_URL: ${{ vars.BLOB_BASE_URL }}
+
+      - name: Upload blob cache artifact
+        if: steps.download.outputs.has_data == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-cache
+          path: blob-cache/
+          retention-days: 1
+
+  # ============================================================================
+  # Step 2: Generate build matrix
+  # ============================================================================
   matrix:
     name: Generate Build Matrix
     runs-on: ubuntu-latest
@@ -97,8 +224,9 @@ jobs:
             # Skip if no files match
             [ -f "$config_file" ] || continue
 
-            # Skip schema file
+            # Skip schema file and version files
             [[ "$config_file" == *"config-schema"* ]] && continue
+            [[ "$config_file" == *"-versions.json" ]] && continue
 
             config_name=$(basename "$config_file")
             file_project=$(echo "$config_name" | sed 's/-\(python\|typescript\)\.json$//')
@@ -132,18 +260,23 @@ jobs:
           echo "Building $(echo "$PACKAGES" | jq length) packages in parallel:"
           echo "$PACKAGES" | jq -r '.[] | "  - \(.project)/\(.language)/\(.package)"'
 
-  # Build each package in parallel for maximum speed
+  # ============================================================================
+  # Step 3: Build each package (check if version/sha already exists)
+  # ============================================================================
   build:
     name: ${{ matrix.package }} (${{ matrix.language }})
-    needs: matrix
+    needs: [download-blob, matrix]
+    # Run even if download-blob was skipped (full_rebuild mode)
+    if: ${{ always() && needs.matrix.outputs.packages != '[]' && needs.matrix.result == 'success' }}
     runs-on: ubuntu-latest
-    # Skip if no packages to build (e.g., bad filter)
-    if: ${{ needs.matrix.outputs.packages != '[]' }}
     strategy:
       fail-fast: false
-      max-parallel: 20  # GitHub allows up to 256 concurrent jobs
+      max-parallel: 20
       matrix:
         include: ${{ fromJson(needs.matrix.outputs.packages) }}
+
+    outputs:
+      compiled: ${{ steps.check-result.outputs.compiled }}
 
     env:
       BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
@@ -163,7 +296,90 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Download blob cache
+        # Only download if not in full_rebuild mode and blob data exists
+        if: ${{ github.event.inputs.full_rebuild != 'true' && needs.download-blob.outputs.has_blob_data == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: blob-cache
+          path: blob-cache/
+        continue-on-error: true
+
+      - name: Check if version/sha already exists in blob
+        id: check-existing
+        run: |
+          # If full_rebuild, always compile
+          if [ "${{ github.event.inputs.full_rebuild }}" == "true" ]; then
+            echo "Full rebuild requested - will compile"
+            echo "needs_compile=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Check if we have blob cache
+          if [ ! -d "blob-cache" ]; then
+            echo "No blob cache - will compile"
+            echo "needs_compile=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Load the versions config to get the latest SHA for this package
+          VERSIONS_FILE="configs/${{ matrix.project }}-${{ matrix.language }}-versions.json"
+          if [ ! -f "$VERSIONS_FILE" ]; then
+            echo "No versions file found - will compile"
+            echo "needs_compile=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Get the latest version info for this package
+          PACKAGE_NAME="${{ matrix.package }}"
+          LATEST_SHA=$(jq -r --arg pkg "$PACKAGE_NAME" \
+            '.packages[] | select(.packageName == $pkg) | .versions[0].sha // empty' \
+            "$VERSIONS_FILE")
+          LATEST_VERSION=$(jq -r --arg pkg "$PACKAGE_NAME" \
+            '.packages[] | select(.packageName == $pkg) | .versions[0].version // empty' \
+            "$VERSIONS_FILE")
+
+          if [ -z "$LATEST_SHA" ]; then
+            echo "No version info for $PACKAGE_NAME - will compile"
+            echo "needs_compile=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Latest version for $PACKAGE_NAME: $LATEST_VERSION (SHA: ${LATEST_SHA:0:7})"
+
+          # Check if this SHA exists in the blob cache
+          # Look for this package's symbols.json and check if the SHA matches
+          if [ "${{ matrix.language }}" == "python" ]; then
+            ECOSYSTEM="py"
+          else
+            ECOSYSTEM="js"
+          fi
+          PKG_ID="pkg_${ECOSYSTEM}_$(echo "$PACKAGE_NAME" | sed 's/@//g' | sed 's/\//_/g' | sed 's/-/_/g' | tr '[:upper:]' '[:lower:]')"
+
+          # Search for existing symbols.json in any build
+          FOUND_SHA=""
+          for symbols_file in blob-cache/ir/*/packages/${PKG_ID}/symbols.json; do
+            [ -f "$symbols_file" ] || continue
+            # Extract SHA from the symbols.json package info
+            FILE_SHA=$(jq -r '.package.repo.sha // empty' "$symbols_file" 2>/dev/null)
+            if [ -n "$FILE_SHA" ]; then
+              echo "Found existing build with SHA: ${FILE_SHA:0:7}"
+              FOUND_SHA="$FILE_SHA"
+              break
+            fi
+          done
+
+          if [ "$FOUND_SHA" == "$LATEST_SHA" ]; then
+            echo "✓ Package already built with latest SHA - skipping compile"
+            echo "needs_compile=false" >> $GITHUB_OUTPUT
+            echo "existing_sha=$FOUND_SHA" >> $GITHUB_OUTPUT
+          else
+            echo "Package needs recompilation (existing: ${FOUND_SHA:0:7}, latest: ${LATEST_SHA:0:7})"
+            echo "needs_compile=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Free disk space
+        if: steps.check-existing.outputs.needs_compile == 'true'
         run: |
           echo "Before cleanup:"
           df -h /
@@ -176,19 +392,20 @@ jobs:
           df -h /
 
       - name: Setup Python (for Python builds)
-        if: matrix.language == 'python'
+        if: steps.check-existing.outputs.needs_compile == 'true' && matrix.language == 'python'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install Python extractor (for Python builds)
-        if: matrix.language == 'python'
+        if: steps.check-existing.outputs.needs_compile == 'true' && matrix.language == 'python'
         run: |
           cd packages/extractor-python
           pip install -e .
 
       - name: Build IR for ${{ matrix.package }}
         id: build
+        if: steps.check-existing.outputs.needs_compile == 'true'
         run: |
           FLAGS=""
 
@@ -208,25 +425,37 @@ jobs:
           fi
 
           # Run via tsx directly with package filter for parallel execution
-          # Each runner builds only ONE package for maximum parallelization
+          # Skip upload here - we'll do a combined upload later
           npx tsx packages/build-pipeline/src/commands/build-ir.ts \
             --config ./configs/${{ matrix.config }} \
             --package "${{ matrix.package }}" \
             --skip-pointers \
+            --skip-upload \
             $FLAGS
+
+          echo "compiled=true" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BLOB_BASE_URL: ${{ vars.BLOB_BASE_URL }}
 
+      - name: Check result
+        id: check-result
+        run: |
+          if [ "${{ steps.build.outputs.compiled }}" == "true" ]; then
+            echo "compiled=true" >> $GITHUB_OUTPUT
+          else
+            echo "compiled=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Prepare artifact name
+        if: steps.build.outputs.compiled == 'true'
         id: artifact
         run: |
-          # Sanitize package name for artifact (replace @ and / with safe characters)
-          # e.g., @langchain/core -> langchain-core
           SAFE_NAME=$(echo "${{ matrix.package }}" | sed 's/@//g' | sed 's/\//-/g' | sed 's/\./-/g')
           echo "name=ir-${{ matrix.project }}-${{ matrix.language }}-${SAFE_NAME}" >> $GITHUB_OUTPUT
 
       - name: Upload build artifacts
+        if: steps.build.outputs.compiled == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.artifact.outputs.name }}
@@ -236,11 +465,12 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # Update pointers after all builds complete
-  # This job merges package artifacts and updates build pointers
-  update-pointers:
-    name: Update Build Pointers
-    needs: [matrix, build]
+  # ============================================================================
+  # Step 4: Upload and update pointers (only if something was compiled)
+  # ============================================================================
+  upload-and-update:
+    name: Upload & Update Pointers
+    needs: [download-blob, matrix, build]
     runs-on: ubuntu-latest
     # Run if build succeeded (even if some were skipped)
     if: ${{ !cancelled() && needs.build.result == 'success' }}
@@ -263,85 +493,66 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Download all artifacts
+      - name: Download blob cache
+        if: ${{ github.event.inputs.full_rebuild != 'true' && needs.download-blob.outputs.has_blob_data == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: blob-cache
+          path: blob-cache/
+        continue-on-error: true
+
+      - name: Download build artifacts
         id: download
         uses: actions/download-artifact@v4
         with:
           path: artifacts/
+          pattern: ir-*
           merge-multiple: true
         continue-on-error: true
 
-      - name: Check for artifacts
-        id: check-artifacts
+      - name: Check for new compilations
+        id: check-new
         run: |
-          # Artifacts are uploaded as ir-output/{buildId}/...
-          # When merged, they become artifacts/ir-output/{buildId}/...
-          # OR artifacts/{buildId}/... depending on how they were uploaded
-
-          # Check both possible structures
-          if [ -d "artifacts/ir-output" ]; then
-            IR_PATH="artifacts/ir-output"
-          elif [ -d "artifacts" ] && [ "$(ls -A artifacts 2>/dev/null)" ]; then
-            IR_PATH="artifacts"
+          # Check if we have any newly compiled packages
+          if [ -d "artifacts" ] && [ "$(find artifacts -name 'symbols.json' 2>/dev/null | wc -l)" -gt 0 ]; then
+            echo "has_new_builds=true" >> $GITHUB_OUTPUT
+            echo "Found newly compiled packages:"
+            find artifacts -name "symbols.json" | head -20
           else
-            echo "has_artifacts=false" >> $GITHUB_OUTPUT
-            echo "No artifacts found - all builds were skipped"
-            exit 0
+            echo "has_new_builds=false" >> $GITHUB_OUTPUT
+            echo "No new compilations - nothing to upload"
           fi
 
-          echo "ir_path=$IR_PATH" >> $GITHUB_OUTPUT
-          echo "has_artifacts=true" >> $GITHUB_OUTPUT
-          echo "Found artifacts in $IR_PATH:"
-          find "$IR_PATH" -name "reference.manifest.json" | head -20
-
-      - name: Merge manifests and update pointers
-        if: steps.check-artifacts.outputs.has_artifacts == 'true'
+      - name: Merge and prepare upload
+        if: steps.check-new.outputs.has_new_builds == 'true'
+        id: merge
         run: |
-          # With package-level parallelization and incremental builds, we need to:
-          # 1. For each build, collect packages from the artifacts
-          # 2. MERGE with existing packages from blob storage (for packages that weren't rebuilt)
-          # 3. Update pointers with the complete manifest
-          #
-          # This is critical because incremental builds only include packages that had updates,
-          # but the manifest needs ALL packages for the web app to work correctly.
+          echo "📦 Merging new builds with existing blob data..."
 
-          IR_PATH="${{ steps.check-artifacts.outputs.ir_path }}"
-          BLOB_URL="${BLOB_BASE_URL:-}"
+          # Determine IR path from artifacts
+          if [ -d "artifacts/ir-output" ]; then
+            IR_PATH="artifacts/ir-output"
+          else
+            IR_PATH="artifacts"
+          fi
 
-          # Find all unique build directories
+          # Process each build directory
           for build_dir in "$IR_PATH"/*/; do
             [ -d "$build_dir" ] || continue
 
             BUILD_ID=$(basename "$build_dir")
-
-            # Skip symlinks and latest-* directories
-            if [ -L "$build_dir" ] || [[ "$BUILD_ID" == latest-* ]]; then
-              continue
-            fi
+            [[ "$BUILD_ID" == latest-* ]] && continue
+            [ -L "$build_dir" ] && continue
 
             manifest="$build_dir/reference.manifest.json"
-            if [ ! -f "$manifest" ]; then
-              echo "No manifest in $build_dir, skipping"
-              continue
-            fi
+            [ -f "$manifest" ] || continue
 
-            # The merged artifact combines all packages with the same buildId
-            # Each package's symbols are in packages/{packageId}/ subdirectories
-            # Count how many packages are in this build
-            pkg_count=$(find "$build_dir/packages" -name "symbols.json" 2>/dev/null | wc -l | tr -d ' ')
+            echo ""
+            echo "Processing build: $BUILD_ID"
 
-            echo "Build $BUILD_ID has $pkg_count new/updated package(s)"
-
-            if [ "$pkg_count" -eq 0 ]; then
-              echo "  No packages found, skipping"
-              continue
-            fi
-
-            # Get base manifest info (irVersion, build, project, sources)
+            # Get project and language from manifest
             base_manifest=$(cat "$manifest")
             project=$(echo "$base_manifest" | jq -r '.project // "langchain"')
-
-            # Determine language from the first package
             first_pkg_lang=$(echo "$base_manifest" | jq -r '.packages[0].language // "typescript"')
             if [ "$first_pkg_lang" == "python" ]; then
               ecosystem="python"
@@ -351,49 +562,21 @@ jobs:
 
             echo "  Project: $project, Language: $ecosystem"
 
-            # Try to fetch existing manifest from blob storage to merge with
-            existing_packages="[]"
-            if [ -n "$BLOB_URL" ]; then
-              echo "  Fetching existing manifest from blob storage..."
-              pointer_url="$BLOB_URL/pointers/latest-${project}-${ecosystem}.json"
-              existing_pointer=$(curl -sf "$pointer_url" 2>/dev/null || echo '{}')
-              existing_build_id=$(echo "$existing_pointer" | jq -r '.buildId // empty')
-
-              if [ -n "$existing_build_id" ] && [ "$existing_build_id" != "$BUILD_ID" ]; then
-                # Fetch the existing manifest
-                existing_manifest_url="$BLOB_URL/ir/${existing_build_id}/reference.manifest.json"
-                existing_manifest=$(curl -sf "$existing_manifest_url" 2>/dev/null || echo '{}')
-                existing_packages=$(echo "$existing_manifest" | jq -c '.packages // []')
-                existing_count=$(echo "$existing_packages" | jq 'length')
-                echo "  Found $existing_count existing package(s) in blob storage (build: $existing_build_id)"
-              else
-                echo "  No existing build found or same build ID, starting fresh"
-              fi
-            else
-              echo "  No BLOB_URL set, cannot fetch existing manifest"
-            fi
-
-            # Build new packages array from all symbols.json files in artifacts
-            echo "  Processing new/updated packages from artifacts..."
+            # Collect new packages from this build
             new_packages="[]"
             new_package_ids="[]"
             for symbols_file in "$build_dir"/packages/*/symbols.json; do
               [ -f "$symbols_file" ] || continue
+              pkg_id=$(basename "$(dirname "$symbols_file")")
 
-              pkg_dir=$(dirname "$symbols_file")
-              pkg_id=$(basename "$pkg_dir")
-
-              # Extract package info from symbols.json
               pkg_info=$(jq -c '.package' "$symbols_file" 2>/dev/null || echo '{}')
               if [ "$pkg_info" != '{}' ] && [ "$pkg_info" != 'null' ]; then
-                # Count symbols
                 total=$(jq '.symbols | length' "$symbols_file")
                 classes=$(jq '[.symbols[] | select(.kind == "class")] | length' "$symbols_file")
                 functions=$(jq '[.symbols[] | select(.kind == "function")] | length' "$symbols_file")
                 modules=$(jq '[.symbols[] | select(.kind == "module")] | length' "$symbols_file")
                 types=$(jq '[.symbols[] | select(.kind == "interface" or .kind == "typeAlias" or .kind == "enum")] | length' "$symbols_file")
 
-                # Build package entry (simplified - uses existing package info)
                 pkg_entry=$(echo "$pkg_info" | jq -c --arg pid "$pkg_id" \
                   --argjson total "$total" --argjson classes "$classes" \
                   --argjson functions "$functions" --argjson modules "$modules" \
@@ -406,52 +589,130 @@ jobs:
                   }')
                 new_packages=$(echo "$new_packages" | jq -c ". + [$pkg_entry]")
                 new_package_ids=$(echo "$new_package_ids" | jq -c ". + [\"$pkg_id\"]")
-                echo "    + $pkg_id ($total symbols)"
-              else
-                echo "    Warning: Could not extract package info from $symbols_file"
+                echo "  + NEW: $pkg_id ($total symbols)"
               fi
             done
 
-            # Merge: Start with new packages, then add existing packages that weren't updated
+            # Merge with existing packages from blob cache
             merged_packages="$new_packages"
-            if [ "$existing_packages" != "[]" ]; then
-              echo "  Merging with existing packages..."
-              # Add existing packages that aren't in the new set
-              while IFS= read -r existing_pkg; do
-                [ -z "$existing_pkg" ] && continue
-                existing_id=$(echo "$existing_pkg" | jq -r '.packageId')
-                # Check if this package was updated (is in new_package_ids)
-                is_updated=$(echo "$new_package_ids" | jq --arg id "$existing_id" 'any(. == $id)')
-                if [ "$is_updated" == "false" ]; then
-                  merged_packages=$(echo "$merged_packages" | jq -c ". + [$existing_pkg]")
-                  echo "    = $existing_id (kept from existing)"
+            if [ -d "blob-cache" ]; then
+              # Find existing build for this project/language
+              pointer_file="blob-cache/pointers/latest-${project}-${ecosystem}.json"
+              if [ -f "$pointer_file" ]; then
+                existing_build_id=$(jq -r '.buildId // empty' "$pointer_file")
+                existing_manifest="blob-cache/ir/${existing_build_id}/reference.manifest.json"
+
+                if [ -f "$existing_manifest" ]; then
+                  existing_packages=$(jq -c '.packages // []' "$existing_manifest")
+
+                  # Add existing packages that weren't recompiled
+                  while IFS= read -r existing_pkg; do
+                    [ -z "$existing_pkg" ] && continue
+                    existing_id=$(echo "$existing_pkg" | jq -r '.packageId')
+                    is_updated=$(echo "$new_package_ids" | jq --arg id "$existing_id" 'any(. == $id)')
+
+                    if [ "$is_updated" == "false" ]; then
+                      merged_packages=$(echo "$merged_packages" | jq -c ". + [$existing_pkg]")
+
+                      # Also copy the existing package data to the new build directory
+                      existing_pkg_dir="blob-cache/ir/${existing_build_id}/packages/${existing_id}"
+                      new_pkg_dir="$build_dir/packages/${existing_id}"
+                      if [ -d "$existing_pkg_dir" ] && [ ! -d "$new_pkg_dir" ]; then
+                        mkdir -p "$new_pkg_dir"
+                        cp -r "$existing_pkg_dir"/* "$new_pkg_dir"/ 2>/dev/null || true
+                        echo "  = KEPT: $existing_id (from existing)"
+                      fi
+                    fi
+                  done < <(echo "$existing_packages" | jq -c '.[]')
                 fi
-              done < <(echo "$existing_packages" | jq -c '.[]')
+              fi
             fi
 
+            # Update manifest with merged packages
             merged_count=$(echo "$merged_packages" | jq 'length')
-            echo "  Final manifest has $merged_count package(s)"
-
-            # Update manifest with merged packages array
+            echo "  Final manifest: $merged_count package(s)"
             echo "$base_manifest" | jq --argjson pkgs "$merged_packages" '.packages = $pkgs' > "$manifest"
+          done
 
-            echo "Updating pointers for build: $BUILD_ID"
+          echo "prepared=true" >> $GITHUB_OUTPUT
+
+      - name: Upload to Vercel Blob
+        if: steps.check-new.outputs.has_new_builds == 'true'
+        run: |
+          echo "☁️ Uploading to Vercel Blob..."
+
+          # Determine IR path
+          if [ -d "artifacts/ir-output" ]; then
+            IR_PATH="artifacts/ir-output"
+          else
+            IR_PATH="artifacts"
+          fi
+
+          # Upload each build
+          for build_dir in "$IR_PATH"/*/; do
+            [ -d "$build_dir" ] || continue
+
+            BUILD_ID=$(basename "$build_dir")
+            [[ "$BUILD_ID" == latest-* ]] && continue
+            [ -L "$build_dir" ] && continue
+
+            manifest="$build_dir/reference.manifest.json"
+            [ -f "$manifest" ] || continue
+
+            echo ""
+            echo "Uploading build: $BUILD_ID"
+
+            # Use the upload command from build-pipeline
+            npx tsx packages/build-pipeline/src/commands/upload-ir.ts \
+              --build-id "$BUILD_ID" \
+              --ir-path "$build_dir"
+          done
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+
+      - name: Update pointers
+        if: steps.check-new.outputs.has_new_builds == 'true'
+        run: |
+          echo "🔗 Updating build pointers..."
+
+          # Determine IR path
+          if [ -d "artifacts/ir-output" ]; then
+            IR_PATH="artifacts/ir-output"
+          else
+            IR_PATH="artifacts"
+          fi
+
+          # Update pointers for each build
+          for build_dir in "$IR_PATH"/*/; do
+            [ -d "$build_dir" ] || continue
+
+            BUILD_ID=$(basename "$build_dir")
+            [[ "$BUILD_ID" == latest-* ]] && continue
+            [ -L "$build_dir" ] && continue
+
+            manifest="$build_dir/reference.manifest.json"
+            [ -f "$manifest" ] || continue
+
+            echo "Updating pointers for: $BUILD_ID"
             npx tsx packages/build-pipeline/src/commands/update-pointers.ts "$BUILD_ID" "$manifest"
           done
         env:
-          BLOB_BASE_URL: ${{ vars.BLOB_BASE_URL }}
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
 
-      - name: Report skipped
-        if: steps.check-artifacts.outputs.has_artifacts == 'false'
+      - name: Report no updates
+        if: steps.check-new.outputs.has_new_builds == 'false'
         run: |
-          echo "## Pointer Update Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "## No Updates Required" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "No new builds were created - all packages are already up to date." >> $GITHUB_STEP_SUMMARY
+          echo "All packages are already up to date in blob storage." >> $GITHUB_STEP_SUMMARY
+          echo "No new compilations or uploads were needed." >> $GITHUB_STEP_SUMMARY
 
+  # ============================================================================
   # Summary job
+  # ============================================================================
   summary:
     name: Build Summary
-    needs: [matrix, build, update-pointers]
+    needs: [download-blob, matrix, build, upload-and-update]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -461,10 +722,17 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Download Blob | ${{ needs.download-blob.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Matrix | ${{ needs.matrix.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Update Pointers | ${{ needs.update-pointers.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Upload & Update | ${{ needs.upload-and-update.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check for full rebuild mode
+          if [ "${{ github.event.inputs.full_rebuild }}" == "true" ]; then
+            echo "🔄 **Full rebuild mode** - blob download was skipped" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
 
           if [ "${{ needs.build.result }}" == "success" ]; then
             echo "✅ All builds completed successfully!" >> $GITHUB_STEP_SUMMARY
