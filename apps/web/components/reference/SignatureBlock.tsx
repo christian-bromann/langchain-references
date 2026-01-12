@@ -83,8 +83,8 @@ function tokenizeSignature(
   const pkgSlug = slugifyPackageName(packageName);
 
   // Regex patterns for different token types
-  // Match: identifiers, operators, punctuation (including angle brackets for generics), strings, numbers
-  const tokenPattern = /([A-Za-z_][A-Za-z0-9_]*)|(\*\*|\*|->|:|\||=|,|\(|\)|\[|\]|\{|\}|<|>)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\d+(?:\.\d+)?)|(\s+)/g;
+  // Match: identifiers, operators, punctuation (including angle brackets for generics, dots for member access), strings, numbers
+  const tokenPattern = /([A-Za-z_][A-Za-z0-9_]*)|(\*\*|\*|->|:|\||=|,|\(|\)|\[|\]|\{|\}|<|>|\.)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\d+(?:\.\d+)?)|(\s+)/g;
 
   let match: RegExpExecArray | null;
 

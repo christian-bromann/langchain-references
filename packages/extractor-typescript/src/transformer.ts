@@ -19,6 +19,7 @@ import type {
   SymbolDocs,
   SymbolSource,
   MemberReference,
+  TypeReference,
 } from "@langchain/ir-schema";
 
 export type TypeDocReflection = JSONOutput.Reflection;
@@ -314,6 +315,8 @@ export class TypeDocTransformer {
     const id = this.generateSymbolId(kind, path);
     const qualifiedName = path.join(".");
 
+    const typeRefs = this.extractTypeRefs(reflection);
+
     return {
       id,
       packageId: this.packageId,
@@ -336,6 +339,7 @@ export class TypeDocTransformer {
         canonical: this.generateUrl(kind, path),
       },
       tags: this.extractTags(reflection),
+      ...(typeRefs.length > 0 ? { typeRefs } : {}),
     };
   }
 
@@ -514,10 +518,15 @@ export class TypeDocTransformer {
           return "object";
         }
 
-        // Prefer qualified name for external types (when name is generic like "any")
-        // or when we have a dotted qualified name (e.g., "OpenAIClient.Chat.X")
-        if (qualifiedName && (typeName === "any" || qualifiedName.includes("."))) {
-          typeName = qualifiedName;
+        // Only use qualified name when typeName is unhelpful (like "any")
+        // Do NOT use dotted qualified names as they break tokenization
+        // (e.g., "Runnable.CallOptions" would be split into "Runnable" and "CallOptions")
+        if (qualifiedName && typeName === "any") {
+          // For qualified names with dots, only use them if the type name is completely unhelpful
+          // Otherwise prefer the simple type name for proper linking
+          if (!qualifiedName.includes(".")) {
+            typeName = qualifiedName;
+          }
         }
 
         // Fall back to qualified name if type name is unhelpful
@@ -715,6 +724,230 @@ export class TypeDocTransformer {
       code: rawText.trim(),
       language: "typescript",
     };
+  }
+
+  /**
+   * Built-in types that should not be included in typeRefs (primitives, common JS types)
+   */
+  private static BUILTIN_TYPES = new Set([
+    // Primitives
+    "string", "number", "boolean", "undefined", "null", "void", "never", "unknown", "any", "object", "symbol", "bigint",
+    // Common built-in types
+    "Object", "String", "Number", "Boolean", "Array", "Function", "Symbol", "BigInt",
+    "Date", "RegExp", "Error", "Map", "Set", "WeakMap", "WeakSet", "Promise",
+    "ArrayBuffer", "DataView", "JSON", "Math", "Reflect", "Proxy",
+    "Int8Array", "Uint8Array", "Int16Array", "Uint16Array", "Int32Array", "Uint32Array",
+    "Float32Array", "Float64Array", "BigInt64Array", "BigUint64Array",
+    // TypeScript utility types
+    "Record", "Partial", "Required", "Readonly", "Pick", "Omit", "Exclude", "Extract",
+    "NonNullable", "ReturnType", "Parameters", "ConstructorParameters", "InstanceType", "Awaited",
+    "ThisType", "Uppercase", "Lowercase", "Capitalize", "Uncapitalize",
+    // Web APIs
+    "URL", "URLSearchParams", "FormData", "Blob", "File", "Headers", "Request", "Response",
+    "ReadableStream", "WritableStream", "AbortController", "AbortSignal",
+  ]);
+
+  /**
+   * Extract type references from a reflection for cross-linking.
+   * Collects all referenced types from parameters, return types, and base classes.
+   */
+  private extractTypeRefs(reflection: TypeDocReflection): TypeReference[] {
+    const refs = new Map<string, TypeReference>();
+
+    // Helper to add a type reference
+    const addTypeRef = (type: TypeDocType | undefined) => {
+      if (!type) return;
+      this.collectTypeRefsFromType(type, refs);
+    };
+
+    // Extract from function signatures
+    if ("signatures" in reflection && Array.isArray(reflection.signatures)) {
+      for (const sig of reflection.signatures as JSONOutput.SignatureReflection[]) {
+        // Parameters
+        if (sig.parameters) {
+          for (const param of sig.parameters) {
+            addTypeRef(param.type);
+          }
+        }
+        // Return type
+        addTypeRef(sig.type);
+        // Type parameters (generics)
+        if (sig.typeParameters) {
+          for (const tp of sig.typeParameters) {
+            addTypeRef(tp.type);
+            addTypeRef(tp.default);
+          }
+        }
+      }
+    }
+
+    // Extract from type (for variables, type aliases, properties)
+    if ("type" in reflection && reflection.type) {
+      addTypeRef(reflection.type as TypeDocType);
+    }
+
+    // Extract from extended types
+    if ("extendedTypes" in reflection && Array.isArray(reflection.extendedTypes)) {
+      for (const ext of reflection.extendedTypes as TypeDocType[]) {
+        addTypeRef(ext);
+      }
+    }
+
+    // Extract from implemented types
+    if ("implementedTypes" in reflection && Array.isArray(reflection.implementedTypes)) {
+      for (const impl of reflection.implementedTypes as TypeDocType[]) {
+        addTypeRef(impl);
+      }
+    }
+
+    // Extract from type parameters on classes/interfaces
+    if ("typeParameters" in reflection && Array.isArray(reflection.typeParameters)) {
+      for (const tp of reflection.typeParameters as JSONOutput.TypeParameterReflection[]) {
+        addTypeRef(tp.type);
+        addTypeRef(tp.default);
+      }
+    }
+
+    return Array.from(refs.values());
+  }
+
+  /**
+   * Recursively collect type references from a TypeDoc type.
+   */
+  private collectTypeRefsFromType(
+    type: TypeDocType,
+    refs: Map<string, TypeReference>
+  ): void {
+    switch (type.type) {
+      case "reference": {
+        const name = type.name;
+        // Skip built-in types
+        if (TypeDocTransformer.BUILTIN_TYPES.has(name)) return;
+        // Skip types that look like internal (__type, etc.)
+        if (name.startsWith("__") || name.startsWith("_")) return;
+
+        // Get qualified name and package info from TypeDoc
+        const qualifiedName = (type as any).qualifiedName;
+        const externalPackage = (type as any).package;
+
+        const ref: TypeReference = { name };
+        
+        // Add qualified name if available
+        if (qualifiedName && qualifiedName !== name) {
+          ref.qualifiedName = qualifiedName;
+        }
+        
+        // For external packages, include package info in qualifiedName
+        if (externalPackage && !ref.qualifiedName) {
+          ref.qualifiedName = `${externalPackage}.${name}`;
+        }
+
+        // Use name as key to avoid duplicates
+        if (!refs.has(name)) {
+          refs.set(name, ref);
+        }
+
+        // Recurse into type arguments
+        if ("typeArguments" in type && Array.isArray(type.typeArguments)) {
+          for (const arg of type.typeArguments as TypeDocType[]) {
+            this.collectTypeRefsFromType(arg, refs);
+          }
+        }
+        break;
+      }
+
+      case "union":
+      case "intersection": {
+        if ("types" in type && Array.isArray(type.types)) {
+          for (const t of type.types as TypeDocType[]) {
+            this.collectTypeRefsFromType(t, refs);
+          }
+        }
+        break;
+      }
+
+      case "array": {
+        if ("elementType" in type && type.elementType) {
+          this.collectTypeRefsFromType(type.elementType as TypeDocType, refs);
+        }
+        break;
+      }
+
+      case "tuple": {
+        if ("elements" in type && Array.isArray(type.elements)) {
+          for (const el of type.elements as TypeDocType[]) {
+            this.collectTypeRefsFromType(el, refs);
+          }
+        }
+        break;
+      }
+
+      case "conditional": {
+        const cond = type as any;
+        if (cond.checkType) this.collectTypeRefsFromType(cond.checkType, refs);
+        if (cond.extendsType) this.collectTypeRefsFromType(cond.extendsType, refs);
+        if (cond.trueType) this.collectTypeRefsFromType(cond.trueType, refs);
+        if (cond.falseType) this.collectTypeRefsFromType(cond.falseType, refs);
+        break;
+      }
+
+      case "mapped": {
+        const mapped = type as any;
+        if (mapped.templateType) this.collectTypeRefsFromType(mapped.templateType, refs);
+        if (mapped.nameType) this.collectTypeRefsFromType(mapped.nameType, refs);
+        break;
+      }
+
+      case "indexedAccess": {
+        const indexed = type as any;
+        if (indexed.objectType) this.collectTypeRefsFromType(indexed.objectType, refs);
+        if (indexed.indexType) this.collectTypeRefsFromType(indexed.indexType, refs);
+        break;
+      }
+
+      case "typeOperator": {
+        const typeOp = type as any;
+        if (typeOp.target) this.collectTypeRefsFromType(typeOp.target, refs);
+        break;
+      }
+
+      case "reflection": {
+        // Handle inline type literals
+        const refl = type as any;
+        if (refl.declaration?.signatures) {
+          for (const sig of refl.declaration.signatures) {
+            if (sig.parameters) {
+              for (const param of sig.parameters) {
+                if (param.type) this.collectTypeRefsFromType(param.type, refs);
+              }
+            }
+            if (sig.type) this.collectTypeRefsFromType(sig.type, refs);
+          }
+        }
+        if (refl.declaration?.children) {
+          for (const child of refl.declaration.children) {
+            if (child.type) this.collectTypeRefsFromType(child.type, refs);
+          }
+        }
+        break;
+      }
+
+      // Intrinsic types (string, number, etc.) are skipped
+      case "intrinsic":
+      case "literal":
+      case "templateLiteral":
+      case "predicate":
+      case "query":
+      case "inferred":
+      case "optional":
+      case "rest":
+      case "unknown":
+        break;
+
+      default:
+        // Unknown type (including named-tuple-member), skip
+        break;
+    }
   }
 
   /**

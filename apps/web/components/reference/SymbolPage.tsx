@@ -1070,36 +1070,26 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
   }
 
   // Build typeUrlMap for cross-project type linking
+  // Pre-populate with ALL known symbols from ALL cross-project packages
+  // This ensures any type that exists can be linked, not just those in typeRefs
   const typeUrlMap = new Map<string, string>();
-  if (symbol.typeRefs && symbol.typeRefs.length > 0) {
-    const irLanguage = language === "python" ? "python" : "javascript";
-    const crossProjectPackages = await getCrossProjectPackages(irLanguage);
-    const langPath = language === "python" ? "python" : "javascript";
-    const currentPkgSlug = slugifyPackageName(packageName);
+  const crossProjectPackages = await getCrossProjectPackages(irLanguage);
+  const langPath = language === "python" ? "python" : "javascript";
+  const currentPkgSlug = slugifyPackageName(packageName);
 
-    for (const ref of symbol.typeRefs) {
-      // Skip if already in current package's known symbols
-      if (knownSymbols.has(ref.name)) {
-        continue;
-      }
-
-      // Try to resolve from qualified name
-      if (ref.qualifiedName) {
-        const parts = ref.qualifiedName.split(".");
-        // Try progressively longer prefixes to find the package
-        for (let i = 1; i <= Math.min(parts.length - 1, 3); i++) {
-          const prefix = parts.slice(0, i).join("_");
-          const pkg = crossProjectPackages.get(prefix);
-
-          if (pkg && pkg.knownSymbols.has(ref.name)) {
-            // Don't link to the same package we're on
-            if (pkg.slug !== currentPkgSlug) {
-              typeUrlMap.set(ref.name, `/${langPath}/${pkg.slug}/${ref.name}`);
-            }
-            break;
-          }
-        }
-      }
+  // Add all symbols from cross-project packages to typeUrlMap
+  for (const [, pkg] of crossProjectPackages) {
+    // Skip the current package
+    if (pkg.slug === currentPkgSlug) continue;
+    
+    for (const symbolName of pkg.knownSymbols) {
+      // Skip if already in current package's known symbols (local takes precedence)
+      if (knownSymbols.has(symbolName)) continue;
+      
+      // Skip if already mapped (first package wins for same symbol name)
+      if (typeUrlMap.has(symbolName)) continue;
+      
+      typeUrlMap.set(symbolName, `/${langPath}/${pkg.slug}/${symbolName}`);
     }
   }
 
