@@ -25,6 +25,12 @@ export interface FetchOptions {
   repo: string;
   sha: string;
   output: string;
+  /**
+   * Target package name(s) for filtered builds.
+   * When provided, only builds these packages and their dependencies
+   * instead of the entire monorepo.
+   */
+  targetPackages?: string[];
 }
 
 export interface FetchResult {
@@ -193,8 +199,10 @@ async function detectPackageManager(
 /**
  * Install dependencies in the extracted directory for proper type resolution.
  * Detects the package manager from lock files and installs dependencies.
+ * @param extractedPath - Path to the extracted repository
+ * @param targetPackages - Optional list of packages to filter (builds only these + deps)
  */
-async function installDependencies(extractedPath: string): Promise<void> {
+async function installDependencies(extractedPath: string, targetPackages?: string[]): Promise<void> {
   const { execSync } = await import("child_process");
 
   // Check if package.json exists
@@ -244,16 +252,20 @@ async function installDependencies(extractedPath: string): Promise<void> {
 
   // For TypeScript projects, try to build to generate type declarations
   // This enables TypeDoc to resolve types from workspace dependencies
-  await buildTypeDeclarations(extractedPath, pmInfo);
+  await buildTypeDeclarations(extractedPath, pmInfo, targetPackages);
 }
 
 /**
  * Build TypeScript declarations for workspace packages.
  * This helps TypeDoc resolve types from sibling packages in a monorepo.
+ * @param extractedPath - Path to the extracted repository
+ * @param pmInfo - Package manager info
+ * @param targetPackages - Optional list of packages to filter (builds only these + deps)
  */
 async function buildTypeDeclarations(
   extractedPath: string,
-  pmInfo: { name: string; buildCmd: string }
+  pmInfo: { name: string; buildCmd: string },
+  targetPackages?: string[]
 ): Promise<void> {
   const { execSync } = await import("child_process");
 
@@ -281,12 +293,36 @@ async function buildTypeDeclarations(
       // Marker doesn't exist, proceed with build
     }
 
-    console.log("   🔨 Building type declarations...");
+    // Build filtered packages if specified, otherwise build all
+    const hasTargetFilter = targetPackages && targetPackages.length > 0;
+    
+    if (hasTargetFilter) {
+      console.log(`   🔨 Building type declarations for: ${targetPackages.join(", ")}...`);
+    } else {
+      console.log("   🔨 Building type declarations...");
+    }
 
-    // Try build:types first, then fall back to build
-    const buildCmd = scripts["build:types"]
-      ? `${pmInfo.name} run build:types`
-      : pmInfo.buildCmd;
+    // Construct build command with optional filtering
+    let buildCmd: string;
+    
+    if (hasTargetFilter && pmInfo.name === "pnpm") {
+      // pnpm: use --filter with ... suffix to include dependencies
+      // e.g., pnpm --filter @langchain/openai... run build
+      const filters = targetPackages.map(pkg => `--filter "${pkg}..."`).join(" ");
+      const scriptName = scripts["build:types"] ? "build:types" : "build";
+      buildCmd = `pnpm ${filters} run ${scriptName}`;
+    } else if (hasTargetFilter && pmInfo.name === "yarn") {
+      // yarn workspaces: use foreach with --from to include deps
+      // Note: This works for yarn berry (v2+)
+      const pkgList = targetPackages.map(pkg => `"${pkg}"`).join(" ");
+      const scriptName = scripts["build:types"] ? "build:types" : "build";
+      buildCmd = `yarn workspaces foreach --from ${pkgList} -R run ${scriptName}`;
+    } else {
+      // No filter or npm - build everything
+      buildCmd = scripts["build:types"]
+        ? `${pmInfo.name} run build:types`
+        : pmInfo.buildCmd;
+    }
 
     try {
       // Add node_modules/.bin to PATH so binaries like tsdown are found
@@ -325,7 +361,7 @@ async function buildTypeDeclarations(
  * Fetch and extract a tarball from GitHub.
  */
 export async function fetchTarball(options: FetchOptions): Promise<FetchResult> {
-  const { repo, sha, output } = options;
+  const { repo, sha, output, targetPackages } = options;
 
   console.log(`📥 Fetching tarball for ${repo}@${sha.substring(0, 7)}`);
 
@@ -343,7 +379,7 @@ export async function fetchTarball(options: FetchOptions): Promise<FetchResult> 
     console.log(`✅ Using cached tarball: ${extractedPath}`);
 
     // Ensure dependencies are installed even for cached tarballs
-    await installDependencies(extractedPath);
+    await installDependencies(extractedPath, targetPackages);
 
     return {
       repo,
@@ -400,7 +436,7 @@ export async function fetchTarball(options: FetchOptions): Promise<FetchResult> 
 
   // Install dependencies for proper type resolution
   // This handles both workspace packages and external dependencies (e.g., openai, @anthropic-ai/sdk)
-  await installDependencies(extractedPath);
+  await installDependencies(extractedPath, targetPackages);
 
   // Mark extraction as complete
   const fetchedAt = new Date().toISOString();

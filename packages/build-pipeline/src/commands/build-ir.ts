@@ -509,13 +509,14 @@ async function extractHistoricalVersion(
 
   console.log(`      Extracting ${version} (${sha.slice(0, 7)})...`);
 
-  // Fetch tarball for this SHA
+  // Fetch tarball for this SHA with filtered build for just this package
   let fetchResult: FetchResult;
   try {
     fetchResult = await fetchTarball({
       repo: config.repo,
       sha,
       output: cacheDir,
+      targetPackages: [pkgConfig.name],
     });
   } catch (error) {
     console.warn(`      ⚠️ Failed to fetch ${version}: ${error}`);
@@ -1237,12 +1238,16 @@ async function buildConfig(
   const cacheDir = opts.cache || getCacheBaseDir();
   console.log(`\n📥 Fetching source to: ${cacheDir}`);
 
+  // Get target package names for filtered builds (improves build performance)
+  const targetPackageNames = packagesToProcess.map((p) => p.name);
+
   let fetchResult: FetchResult;
   try {
     fetchResult = await fetchTarball({
       repo: config.repo,
       sha,
       output: cacheDir,
+      targetPackages: targetPackageNames,
     });
   } catch (error) {
     console.error(`\n❌ Failed to fetch source: ${error}`);
