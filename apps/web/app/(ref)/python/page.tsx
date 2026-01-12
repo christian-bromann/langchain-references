@@ -10,6 +10,11 @@ import Link from "next/link";
 import { Box, ChevronRight } from "lucide-react";
 
 /**
+ * Force static generation for optimal performance.
+ */
+export const dynamic = "force-static";
+
+/**
  * Page metadata for SEO and social sharing
  */
 export const metadata: Metadata = {

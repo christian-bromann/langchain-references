@@ -296,11 +296,17 @@ class PythonExtractor:
 
                 # Add type annotation if present
                 if param.annotation:
-                    param_str += f": {param.annotation}"
+                    # Ensure annotation is converted to string properly
+                    annotation_str = str(param.annotation) if param.annotation else ""
+                    if annotation_str and not annotation_str.startswith("<"):
+                        param_str += f": {annotation_str}"
 
                 # Add default value if present
-                if param.default is not None and str(param.default) != "":
-                    param_str += f" = {param.default}"
+                if param.default is not None:
+                    default_str = str(param.default) if param.default is not None else ""
+                    # Skip if it looks like a bound method or other non-value string
+                    if default_str and not default_str.startswith("<"):
+                        param_str += f" = {default_str}"
 
                 params.append(param_str)
 
@@ -319,7 +325,16 @@ class PythonExtractor:
 
             # Add return type if available
             if hasattr(obj, "returns") and obj.returns:
-                signature += f" -> {obj.returns}"
+                # Ensure returns is converted to string properly
+                returns_str = str(obj.returns) if obj.returns else ""
+                # Skip if it looks like a bound method or other non-type string
+                if returns_str and not returns_str.startswith("<"):
+                    signature += f" -> {returns_str}"
+
+            # Final validation: ensure signature doesn't contain bound method patterns
+            if "<bound method" in signature or "<function" in signature:
+                # Something went wrong, return empty to fall back gracefully
+                return ""
 
             return signature
         except Exception:

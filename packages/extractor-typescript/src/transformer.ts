@@ -837,12 +837,12 @@ export class TypeDocTransformer {
         const externalPackage = (type as any).package;
 
         const ref: TypeReference = { name };
-        
+
         // Add qualified name if available
         if (qualifiedName && qualifiedName !== name) {
           ref.qualifiedName = qualifiedName;
         }
-        
+
         // For external packages, include package info in qualifiedName
         if (externalPackage && !ref.qualifiedName) {
           ref.qualifiedName = `${externalPackage}.${name}`;

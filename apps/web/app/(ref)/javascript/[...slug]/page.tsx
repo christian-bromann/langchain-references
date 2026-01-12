@@ -43,17 +43,16 @@ export async function generateStaticParams(): Promise<{ slug: string[] }[]> {
 }
 
 /**
- * Allow dynamic params for paths not generated at build time.
- * Set to false to return 404 for unknown paths.
- * Set to true to dynamically render unknown paths on-demand.
+ * Force static generation for all pages.
+ * This ensures all pages are pre-rendered at build time for optimal performance.
  */
-export const dynamicParams = true;
+export const dynamic = "force-static";
 
 /**
- * Revalidate pages every hour to keep content fresh while benefiting from caching.
- * This enables ISR (Incremental Static Regeneration) for dynamic pages.
+ * Disable dynamic params - return 404 for paths not generated at build time.
+ * All valid pages are pre-generated via generateStaticParams.
  */
-export const revalidate = 3600;
+export const dynamicParams = false;
 
 export default async function JavaScriptSymbolPage({ params, searchParams }: Props) {
   const { slug } = await params;

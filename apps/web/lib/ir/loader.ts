@@ -836,14 +836,26 @@ export async function getSymbolOptimized(
 
 /**
  * Symbol kinds to include in static generation.
- * Limited to reduce build time on Vercel - other pages render on-demand.
+ * All routable symbol types are included for full static generation.
+ * This improves page load performance by pre-rendering all pages at build time.
  * - Packages: always included (handled separately)
  * - Modules: important for navigation and discovery
  * - Functions: commonly accessed, standalone pages
  * - Classes: core API elements, frequently accessed
  * - Methods: class methods, important for API usage
+ * - Interfaces: TypeScript interfaces for type definitions
+ * - Type Aliases: custom type definitions
+ * - Enums: enumeration types
  */
-const STATIC_GENERATION_KINDS = new Set(["module", "function", "class", "method"]);
+const STATIC_GENERATION_KINDS = new Set([
+  "module",
+  "function", 
+  "class",
+  "method",
+  "interface",
+  "typeAlias",
+  "enum",
+]);
 
 /**
  * Slugify a package name for URLs
