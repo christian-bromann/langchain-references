@@ -19,6 +19,7 @@ import {
   getKnownSymbolNamesData,
   getSymbolOptimized,
   getIndividualSymbol,
+  getCrossProjectPackages,
 } from "@/lib/ir/loader";
 import { getProjectForPackage } from "@/lib/config/projects";
 import { CodeBlock } from "./CodeBlock";
@@ -1004,6 +1005,40 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
     );
   }
 
+  // Build typeUrlMap for cross-project type linking
+  const typeUrlMap = new Map<string, string>();
+  if (symbol.typeRefs && symbol.typeRefs.length > 0) {
+    const irLanguage = language === "python" ? "python" : "javascript";
+    const crossProjectPackages = await getCrossProjectPackages(irLanguage);
+    const langPath = language === "python" ? "python" : "javascript";
+    const currentPkgSlug = slugifyPackageName(packageName);
+
+    for (const ref of symbol.typeRefs) {
+      // Skip if already in current package's known symbols
+      if (knownSymbols.has(ref.name)) {
+        continue;
+      }
+
+      // Try to resolve from qualified name
+      if (ref.qualifiedName) {
+        const parts = ref.qualifiedName.split(".");
+        // Try progressively longer prefixes to find the package
+        for (let i = 1; i <= Math.min(parts.length - 1, 3); i++) {
+          const prefix = parts.slice(0, i).join("_");
+          const pkg = crossProjectPackages.get(prefix);
+
+          if (pkg && pkg.knownSymbols.has(ref.name)) {
+            // Don't link to the same package we're on
+            if (pkg.slug !== currentPkgSlug) {
+              typeUrlMap.set(ref.name, `/${langPath}/${pkg.slug}/${ref.name}`);
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+
   const sourceUrl =
     symbol.source && symbol.source.line
       ? `https://github.com/${symbol.source.repo}/blob/${symbol.source.sha}/${symbol.source.path}#L${symbol.source.line}`
@@ -1118,6 +1153,7 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
             typeRefs={symbol.typeRefs}
             knownSymbols={knownSymbols}
             packageName={packageName}
+            typeUrlMap={typeUrlMap}
             className="rounded-lg"
           />
         )
@@ -1140,6 +1176,7 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
                   knownSymbols={knownSymbols}
                   language={language}
                   packageName={packageName}
+                  typeUrlMap={typeUrlMap}
                 />
               </code>
             ))}
@@ -1162,6 +1199,7 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
           language={language}
           knownSymbols={knownSymbols}
           packageName={packageName}
+          typeUrlMap={typeUrlMap}
         />
       ))}
 
@@ -1224,17 +1262,21 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
 /**
  * Parse a type string and render with links to known symbols.
  * Uses dashed underlines for linked types.
+ * Supports cross-project linking via typeUrlMap.
  */
 function TypeReference({
   typeStr,
   knownSymbols,
   language,
   packageName,
+  typeUrlMap,
 }: {
   typeStr: string;
   knownSymbols: Set<string>;
   language: UrlLanguage;
   packageName: string;
+  /** Map of type names to their resolved URLs (for cross-project linking) */
+  typeUrlMap?: Map<string, string>;
 }) {
   // Regex to match potential type names (PascalCase identifiers)
   // This captures type names like CreateAgentParams, InteropZodType, etc.
@@ -1255,7 +1297,7 @@ function TypeReference({
       );
     }
 
-    // Check if this type is a known symbol
+    // Check if this type is a known symbol in current package
     if (knownSymbols.has(typeName)) {
       const langPath = language === "python" ? "python" : "javascript";
       const pkgSlug = slugifyPackageName(packageName);
@@ -1265,6 +1307,18 @@ function TypeReference({
         <Link
           key={`link-${startIndex}`}
           href={href}
+          className="text-primary hover:text-primary/80 underline decoration-dashed decoration-primary/50 underline-offset-2"
+        >
+          {typeName}
+        </Link>
+      );
+    }
+    // Check if we have a cross-project URL for this type
+    else if (typeUrlMap?.has(typeName)) {
+      parts.push(
+        <Link
+          key={`link-${startIndex}`}
+          href={typeUrlMap.get(typeName)!}
           className="text-primary hover:text-primary/80 underline decoration-dashed decoration-primary/50 underline-offset-2"
         >
           {typeName}
@@ -1293,11 +1347,14 @@ async function Section({
   language,
   knownSymbols,
   packageName,
+  typeUrlMap,
 }: {
   section: DocSection;
   language: UrlLanguage;
   knownSymbols: Set<string>;
   packageName: string;
+  /** Map of type names to their resolved URLs (for cross-project linking) */
+  typeUrlMap?: Map<string, string>;
 }) {
   if (section.kind === "parameters" || section.kind === "attributes") {
     return (
@@ -1331,6 +1388,7 @@ async function Section({
                           knownSymbols={knownSymbols}
                           language={language}
                           packageName={packageName}
+                          typeUrlMap={typeUrlMap}
                         />
                       ) : (
                         "unknown"

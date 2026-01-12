@@ -935,3 +935,121 @@ export async function getStaticParamsForLanguage(
   return params;
 }
 
+/**
+ * Cross-project package info for type linking
+ */
+export interface CrossProjectPackage {
+  /** URL slug for the package (e.g., "langchain_core") */
+  slug: string;
+  /** Language of the package */
+  language: "python" | "javascript";
+  /** Set of known symbol names in this package */
+  knownSymbols: Set<string>;
+}
+
+/**
+ * Cache for cross-project packages
+ */
+const crossProjectPackageCache = new Map<string, Map<string, CrossProjectPackage>>();
+
+/**
+ * Get all packages across all projects for cross-referencing.
+ * Returns a map of module prefixes to package info.
+ * 
+ * For Python: maps "langchain_core" -> { slug: "langchain_core", language: "python", knownSymbols }
+ * For JS: maps "@langchain/core" -> { slug: "langchain_core", language: "javascript", knownSymbols }
+ */
+export async function getCrossProjectPackages(
+  language: "python" | "javascript"
+): Promise<Map<string, CrossProjectPackage>> {
+  const cacheKey = language;
+  if (crossProjectPackageCache.has(cacheKey)) {
+    return crossProjectPackageCache.get(cacheKey)!;
+  }
+
+  const packages = new Map<string, CrossProjectPackage>();
+
+  // Import projects dynamically to avoid circular dependencies
+  const { getEnabledProjects } = await import("@/lib/config/projects");
+  const enabledProjects = getEnabledProjects();
+
+  // Load packages from all enabled projects
+  for (const project of enabledProjects) {
+    const variant = project.variants.find(v => v.language === language && v.enabled);
+    if (!variant) continue;
+
+    const buildId = await getBuildIdForLanguage(language, project.id);
+    if (!buildId) continue;
+
+    const manifest = await getManifestData(buildId);
+    if (!manifest) continue;
+
+    const ecosystem = language === "python" ? "python" : "javascript";
+
+    for (const pkg of manifest.packages) {
+      if (pkg.ecosystem !== ecosystem) continue;
+
+      // Get the module prefix (e.g., "langchain_core" from package name)
+      const modulePrefix = pkg.publishedName.replace(/-/g, "_").replace(/^@/, "").replace(/\//g, "_");
+      
+      // Load known symbols for this package
+      const knownSymbolNames = await getKnownSymbolNamesData(buildId, pkg.packageId);
+      
+      packages.set(modulePrefix, {
+        slug: modulePrefix,
+        language,
+        knownSymbols: new Set(knownSymbolNames),
+      });
+      
+      // Also add the original published name as a key for lookups
+      if (pkg.publishedName !== modulePrefix) {
+        packages.set(pkg.publishedName, {
+          slug: modulePrefix,
+          language,
+          knownSymbols: new Set(knownSymbolNames),
+        });
+      }
+    }
+  }
+
+  crossProjectPackageCache.set(cacheKey, packages);
+  return packages;
+}
+
+/**
+ * Resolve a type reference to its URL if it exists in any package.
+ * 
+ * @param typeName - The simple type name (e.g., "BaseChatModel")
+ * @param qualifiedName - The fully qualified name (e.g., "langchain_core.language_models.BaseChatModel")
+ * @param language - The language of the current page
+ * @returns The URL path to the type, or null if not found
+ */
+export async function resolveTypeReferenceUrl(
+  typeName: string,
+  qualifiedName: string | undefined,
+  language: "python" | "javascript"
+): Promise<string | null> {
+  if (!qualifiedName) return null;
+
+  const packages = await getCrossProjectPackages(language);
+  
+  // Extract the package prefix from the qualified name
+  // e.g., "langchain_core.language_models.BaseChatModel" -> "langchain_core"
+  const parts = qualifiedName.split(".");
+  if (parts.length < 2) return null;
+  
+  // Try progressively longer prefixes to find the package
+  // This handles nested modules like "langgraph.checkpoint.base.Checkpointer"
+  for (let i = 1; i <= Math.min(parts.length - 1, 3); i++) {
+    const prefix = parts.slice(0, i).join("_");
+    const pkg = packages.get(prefix);
+    
+    if (pkg && pkg.knownSymbols.has(typeName)) {
+      const langPath = language === "python" ? "python" : "javascript";
+      return `/${langPath}/${pkg.slug}/${typeName}`;
+    }
+  }
+
+  return null;
+}
+

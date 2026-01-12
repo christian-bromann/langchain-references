@@ -3,6 +3,7 @@
  *
  * Renders function/method signatures with syntax highlighting and
  * clickable links for types that exist in the documentation.
+ * Supports cross-project linking (e.g., linking to langchain-core types from deepagents).
  */
 
 import Link from "next/link";
@@ -14,12 +15,14 @@ interface SignatureBlockProps {
   signature: string;
   /** Programming language for styling */
   language: "python" | "typescript" | "javascript";
-  /** Type references that can be linked */
+  /** Type references that can be linked (includes qualifiedName for cross-project linking) */
   typeRefs?: TypeReference[];
-  /** Set of known symbol names in the package */
+  /** Set of known symbol names in the current package */
   knownSymbols: Set<string>;
-  /** Package name for generating URLs */
+  /** Current package name for generating URLs */
   packageName: string;
+  /** Map of type names to their resolved URLs (for cross-project linking) */
+  typeUrlMap?: Map<string, string>;
   /** Additional CSS classes */
   className?: string;
 }
@@ -83,7 +86,8 @@ function tokenizeSignature(
   signature: string,
   language: "python" | "typescript" | "javascript",
   knownSymbols: Set<string>,
-  packageName: string
+  packageName: string,
+  typeUrlMap?: Map<string, string>
 ): Token[] {
   const tokens: Token[] = [];
   const langPath = language === "python" ? "python" : "javascript";
@@ -121,7 +125,11 @@ function tokenizeSignature(
       else if (PYTHON_BUILTINS.has(identifier)) {
         tokens.push({ type: "builtin", value: identifier });
       }
-      // Check if it's a known symbol that can be linked
+      // Check if we have a pre-computed URL for this type (cross-project linking)
+      else if (typeUrlMap?.has(identifier)) {
+        tokens.push({ type: "type-link", value: identifier, href: typeUrlMap.get(identifier)! });
+      }
+      // Check if it's a known symbol in the current package
       else if (knownSymbols.has(identifier)) {
         const href = `/${langPath}/${pkgSlug}/${identifier}`;
         tokens.push({ type: "type-link", value: identifier, href });
@@ -198,9 +206,10 @@ export function SignatureBlock({
   typeRefs,
   knownSymbols,
   packageName,
+  typeUrlMap,
   className,
 }: SignatureBlockProps) {
-  const tokens = tokenizeSignature(signature, language, knownSymbols, packageName);
+  const tokens = tokenizeSignature(signature, language, knownSymbols, packageName, typeUrlMap);
 
   return (
     <div className={`relative group ${className || ""}`}>
