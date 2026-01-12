@@ -208,6 +208,12 @@ function generateSymbolLookupIndex(
 
 /**
  * Generate routing map from symbols.
+ * 
+ * The routing map uses qualifiedName as the key to match the format expected
+ * by getStaticParamsForLanguage which splits by "." to generate URL segments.
+ * 
+ * Example: "langchain_classic.model_laboratory.ModelLaboratory" -> 
+ *          /python/langchain-classic/model_laboratory/ModelLaboratory
  */
 function generateRoutingMap(
   packageId: string,
@@ -218,12 +224,19 @@ function generateRoutingMap(
   const slugs: RoutingMap["slugs"] = {};
 
   for (const symbol of symbols) {
-    if (!["class", "function", "interface", "module", "typeAlias", "enum"].includes(symbol.kind)) {
+    // Only include routable symbol kinds
+    if (!["class", "function", "interface", "module", "typeAlias", "enum", "method"].includes(symbol.kind)) {
       continue;
     }
 
-    const slug = generateSlug(symbol);
-    slugs[slug] = {
+    // Only include public symbols
+    if (symbol.tags?.visibility !== "public") {
+      continue;
+    }
+
+    // Use qualifiedName as key (e.g., "langchain_classic.model_laboratory.ModelLaboratory")
+    // This matches the format expected by getStaticParamsForLanguage
+    slugs[symbol.qualifiedName] = {
       refId: symbol.id,
       kind: symbol.kind,
       pageType: mapKindToPageType(symbol.kind),
@@ -237,14 +250,6 @@ function generateRoutingMap(
     language,
     slugs,
   };
-}
-
-/**
- * Generate URL slug from symbol.
- */
-function generateSlug(symbol: SymbolRecord): string {
-  const kindPlural = symbol.kind + "s";
-  return `${kindPlural}/${symbol.name}`;
 }
 
 /**
