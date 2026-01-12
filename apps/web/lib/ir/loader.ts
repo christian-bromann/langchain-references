@@ -658,13 +658,14 @@ export async function getSymbolByQualifiedName(
 }
 
 /**
- * Get package info from manifest
+ * Get package info from manifest (unified - works in prod and dev)
  */
 export async function getPackageInfo(
   buildId: string,
   packageId: string
 ): Promise<Package | null> {
-  const manifest = await getManifest(buildId);
+  // Use unified getManifestData to support both blob and local
+  const manifest = await getManifestData(buildId);
 
   if (!manifest) {
     return null;
@@ -674,13 +675,14 @@ export async function getPackageInfo(
 }
 
 /**
- * Get all packages for a language
+ * Get all packages for a language (unified - works in prod and dev)
  */
 export async function getPackagesForLanguage(
   buildId: string,
   language: "python" | "javascript"
 ): Promise<Package[]> {
-  const manifest = await getManifest(buildId);
+  // Use unified getManifestData to support both blob and local
+  const manifest = await getManifestData(buildId);
 
   if (!manifest) {
     return [];
@@ -865,6 +867,30 @@ export async function getLocalKnownSymbolNames(
     .map((s) => s.name);
 
   return [...new Set(names)];
+}
+
+/**
+ * Get local individual symbol by ID (for development)
+ * This matches the behavior of getIndividualSymbol for blob storage.
+ */
+export async function getLocalIndividualSymbol(
+  buildId: string,
+  symbolId: string,
+  packageId?: string
+): Promise<SymbolRecord | null> {
+  // If we have a packageId, look up in that package's symbols
+  if (packageId) {
+    const result = await getLocalPackageSymbols(buildId, packageId);
+    if (result?.symbols) {
+      const symbol = result.symbols.find((s) => s.id === symbolId);
+      if (symbol) return symbol;
+    }
+    return null;
+  }
+
+  // Without packageId, we'd need to scan all packages which is expensive
+  // For local dev, this is rarely used - just return null and let caller fall back
+  return null;
 }
 
 /**
@@ -1054,6 +1080,18 @@ export async function getKnownSymbolNamesData(
 }
 
 /**
+ * Get the symbol lookup index (unified - works in prod and dev)
+ */
+export async function getSymbolLookupIndexData(
+  buildId: string,
+  packageId: string
+): Promise<SymbolLookupIndex | null> {
+  return isProduction()
+    ? getSymbolLookupIndex(buildId, packageId)
+    : getLocalSymbolLookupIndex(buildId, packageId);
+}
+
+/**
  * Get a symbol by qualified name using optimized lookup (unified - works in prod and dev)
  * Fetches only the specific symbol (~1-5KB) instead of all symbols (~14MB)
  */
@@ -1065,6 +1103,23 @@ export async function getSymbolOptimized(
   return isProduction()
     ? getSymbolByQualifiedName(buildId, packageId, qualifiedName)
     : getLocalSymbolByQualifiedName(buildId, packageId, qualifiedName);
+}
+
+/**
+ * Get an individual symbol by ID (unified - works in prod and dev)
+ * In production, fetches from blob. In dev, looks up in local symbols.
+ * 
+ * Note: For local mode without packageId, this may return null.
+ * Callers should fall back to other methods if needed.
+ */
+export async function getIndividualSymbolData(
+  buildId: string,
+  symbolId: string,
+  packageId?: string
+): Promise<SymbolRecord | null> {
+  return isProduction()
+    ? getIndividualSymbol(buildId, symbolId)
+    : getLocalIndividualSymbol(buildId, symbolId, packageId);
 }
 
 // =============================================================================

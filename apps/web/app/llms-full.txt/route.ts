@@ -11,7 +11,7 @@ import { NextResponse } from "next/server";
 import {
   getBuildIdForLanguage,
   getManifestData,
-  getPackageSymbols,
+  getSymbols,
 } from "@/lib/ir/loader";
 import { getBaseUrl } from "@/lib/config/mcp";
 import { slugifyPackageName } from "@/lib/utils/url";
@@ -112,7 +112,7 @@ export async function GET(): Promise<Response> {
           addLine(`### ${pkg.publishedName}`);
           addLine("");
 
-          const symbolsData = await getPackageSymbols(pythonBuildId, pkg.packageId);
+          const symbolsData = await getSymbols(pythonBuildId, pkg.packageId);
           if (symbolsData && symbolsData.symbols.length > 0) {
             // Sort symbols by kind, then by name
             const sorted = [...symbolsData.symbols].sort((a, b) => {
@@ -169,7 +169,7 @@ export async function GET(): Promise<Response> {
           addLine(`### ${pkg.publishedName}`);
           addLine("");
 
-          const symbolsData = await getPackageSymbols(jsBuildId, pkg.packageId);
+          const symbolsData = await getSymbols(jsBuildId, pkg.packageId);
           if (symbolsData && symbolsData.symbols.length > 0) {
             // Sort symbols by kind, then by name
             const sorted = [...symbolsData.symbols].sort((a, b) => {

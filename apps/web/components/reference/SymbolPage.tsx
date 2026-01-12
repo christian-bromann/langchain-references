@@ -18,8 +18,8 @@ import {
   getSymbolData,
   getKnownSymbolNamesData,
   getSymbolOptimized,
-  getIndividualSymbol,
-  getSymbolLookupIndex,
+  getIndividualSymbolData,
+  getSymbolLookupIndexData,
   getCrossProjectPackages,
 } from "@/lib/ir/loader";
 import { getProjectForPackage } from "@/lib/config/projects";
@@ -857,7 +857,7 @@ async function resolveInheritedMembers(
         const cached = baseSymbolResolutionCache.get(cacheKey);
         if (cached) return cached;
       } else {
-        const index = await getSymbolLookupIndex(buildId, currentPackageId);
+        const index = await getSymbolLookupIndexData(buildId, currentPackageId);
         if (index?.symbols) {
           let foundId: string | null = null;
           for (const [qualifiedName, entry] of Object.entries(index.symbols)) {
@@ -872,7 +872,7 @@ async function resolveInheritedMembers(
           }
 
           if (foundId) {
-            const symbol = await getIndividualSymbol(buildId, foundId);
+            const symbol = await getIndividualSymbolData(buildId, foundId, currentPackageId);
             if (symbol) {
               const pkg = manifestPackages.find((p) => p.packageId === currentPackageId);
               const resolved = {
@@ -900,7 +900,7 @@ async function resolveInheritedMembers(
         continue;
       }
 
-      const index = await getSymbolLookupIndex(buildId, pkgId);
+      const index = await getSymbolLookupIndexData(buildId, pkgId);
       if (!index?.symbols) {
         baseSymbolResolutionCache.set(cacheKey, null);
         continue;
@@ -924,7 +924,7 @@ async function resolveInheritedMembers(
         continue;
       }
 
-      const symbol = await getIndividualSymbol(buildId, foundId);
+      const symbol = await getIndividualSymbolData(buildId, foundId, pkgId);
       if (!symbol) {
         baseSymbolResolutionCache.set(cacheKey, null);
         continue;
@@ -962,7 +962,7 @@ async function resolveInheritedMembers(
     } else {
       const memberIds = baseSymbol.members.map((m) => m.refId).filter(Boolean);
       const resolved = await Promise.all(
-        memberIds.map(async (id) => ({ id, symbol: await getIndividualSymbol(buildId, id) }))
+        memberIds.map(async (id) => ({ id, symbol: await getIndividualSymbolData(buildId, id, basePackageId) }))
       );
       for (const r of resolved) {
         if (r.symbol) symbolsById.set(r.id, r.symbol);
@@ -1101,7 +1101,7 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
           memberSymbols = new Map();
           // Fetch each member symbol individually in parallel
           const memberPromises = irSymbol.members.map(async (member) => {
-            const memberSymbol = await getIndividualSymbol(buildId, member.refId);
+            const memberSymbol = await getIndividualSymbolData(buildId, member.refId, packageId);
             if (memberSymbol) {
               return { refId: member.refId, symbol: memberSymbol };
             }
