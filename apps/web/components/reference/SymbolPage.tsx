@@ -19,6 +19,7 @@ import {
   getKnownSymbolNamesData,
   getSymbolOptimized,
   getIndividualSymbol,
+  getSymbolLookupIndex,
   getCrossProjectPackages,
 } from "@/lib/ir/loader";
 import { getProjectForPackage } from "@/lib/config/projects";
@@ -775,6 +776,15 @@ async function findSymbolOptimized(
 }
 
 /**
+ * Cache for resolving base symbols across packages.
+ * Keyed by `${buildId}:${packageId}:${baseName}`.
+ */
+const baseSymbolResolutionCache = new Map<
+  string,
+  { symbol: SymbolRecord; packageId: string; packageName: string } | null
+>();
+
+/**
  * Resolve inherited members from base classes.
  * Searches for base class symbols in the current package and other packages.
  * Recursively follows the inheritance chain.
@@ -784,7 +794,7 @@ async function resolveInheritedMembers(
   currentPackageId: string,
   baseClassNames: string[],
   ownMemberNames: string[],
-  currentPackageSymbols: SymbolRecord[]
+  currentPackageSymbols?: SymbolRecord[]
 ): Promise<InheritedMemberGroup[]> {
   const inheritedGroups: InheritedMemberGroup[] = [];
   const ownMemberSet = new Set(ownMemberNames);
@@ -792,7 +802,29 @@ async function resolveInheritedMembers(
 
   // Get manifest to find all packages for cross-package inheritance
   const manifest = await getManifestData(buildId);
-  const allPackageIds = manifest?.packages.map((p) => p.packageId) || [];
+  const manifestPackages = manifest?.packages || [];
+
+  // Limit cross-package lookups heavily to avoid a fetch storm during prerendering.
+  // Most inheritance chains resolve from the current package or the core package.
+  const crossPackageLimit = Number(process.env.INHERITANCE_CROSS_PACKAGE_LIMIT ?? 3);
+  const candidatePackageIds = Array.from(
+    new Set([
+      currentPackageId,
+      ...manifestPackages
+        .filter((p) => {
+          const published = (p.publishedName || "").toLowerCase();
+          const pid = (p.packageId || "").toLowerCase();
+          return (
+            published.includes("langchain-core") ||
+            published.includes("@langchain/core") ||
+            pid.includes("langchain_core") ||
+            pid.includes("pkg_js_langchain_core") ||
+            pid.includes("pkg_py_langchain_core")
+          );
+        })
+        .map((p) => p.packageId),
+    ])
+  ).slice(0, Math.max(1, crossPackageLimit));
 
   // Helper to find a symbol by name across all packages
   async function findBaseSymbol(
@@ -800,7 +832,7 @@ async function resolveInheritedMembers(
   ): Promise<{ symbol: SymbolRecord; packageId: string; packageName: string } | null> {
     // First, try to find in current package
     let baseSymbol =
-      currentPackageSymbols.find(
+      currentPackageSymbols?.find(
         (s) =>
           (s.kind === "class" || s.kind === "interface") &&
           (s.name === simpleBaseName ||
@@ -809,7 +841,7 @@ async function resolveInheritedMembers(
       ) || null;
 
     if (baseSymbol) {
-      const pkg = manifest?.packages.find((p) => p.packageId === currentPackageId);
+      const pkg = manifestPackages.find((p) => p.packageId === currentPackageId);
       return {
         symbol: baseSymbol,
         packageId: currentPackageId,
@@ -817,30 +849,95 @@ async function resolveInheritedMembers(
       };
     }
 
-    // Search in other packages (like @langchain/core)
-    for (const pkgId of allPackageIds) {
+    // If we don't have full current package symbols (to avoid huge downloads),
+    // try resolving within the current package via the lightweight lookup index.
+    if (!currentPackageSymbols) {
+      const cacheKey = `${buildId}:${currentPackageId}:${simpleBaseName}`;
+      if (baseSymbolResolutionCache.has(cacheKey)) {
+        const cached = baseSymbolResolutionCache.get(cacheKey);
+        if (cached) return cached;
+      } else {
+        const index = await getSymbolLookupIndex(buildId, currentPackageId);
+        if (index?.symbols) {
+          let foundId: string | null = null;
+          for (const [qualifiedName, entry] of Object.entries(index.symbols)) {
+            if (
+              qualifiedName === simpleBaseName ||
+              qualifiedName.endsWith(`.${simpleBaseName}`) ||
+              qualifiedName.endsWith(`/${simpleBaseName}`)
+            ) {
+              foundId = entry.id;
+              break;
+            }
+          }
+
+          if (foundId) {
+            const symbol = await getIndividualSymbol(buildId, foundId);
+            if (symbol) {
+              const pkg = manifestPackages.find((p) => p.packageId === currentPackageId);
+              const resolved = {
+                symbol,
+                packageId: currentPackageId,
+                packageName: pkg?.publishedName || "",
+              };
+              baseSymbolResolutionCache.set(cacheKey, resolved);
+              return resolved;
+            }
+          }
+        }
+        baseSymbolResolutionCache.set(cacheKey, null);
+      }
+    }
+
+    // Search in a small set of candidate packages using lightweight lookup indexes.
+    for (const pkgId of candidatePackageIds) {
       if (pkgId === currentPackageId) continue;
 
-      const pkgSymbols = await getSymbols(buildId, pkgId);
-      if (!pkgSymbols?.symbols) continue;
-
-      baseSymbol =
-        pkgSymbols.symbols.find(
-          (s) =>
-            (s.kind === "class" || s.kind === "interface") &&
-            (s.name === simpleBaseName ||
-              s.qualifiedName === simpleBaseName ||
-              s.qualifiedName.endsWith(`.${simpleBaseName}`))
-        ) || null;
-
-      if (baseSymbol) {
-        const pkg = manifest?.packages.find((p) => p.packageId === pkgId);
-        return {
-          symbol: baseSymbol,
-          packageId: pkgId,
-          packageName: pkg?.publishedName || "",
-        };
+      const cacheKey = `${buildId}:${pkgId}:${simpleBaseName}`;
+      if (baseSymbolResolutionCache.has(cacheKey)) {
+        const cached = baseSymbolResolutionCache.get(cacheKey);
+        if (cached) return cached;
+        continue;
       }
+
+      const index = await getSymbolLookupIndex(buildId, pkgId);
+      if (!index?.symbols) {
+        baseSymbolResolutionCache.set(cacheKey, null);
+        continue;
+      }
+
+      // Find a matching qualified name in the lookup index
+      let foundId: string | null = null;
+      for (const [qualifiedName, entry] of Object.entries(index.symbols)) {
+        if (
+          qualifiedName === simpleBaseName ||
+          qualifiedName.endsWith(`.${simpleBaseName}`) ||
+          qualifiedName.endsWith(`/${simpleBaseName}`)
+        ) {
+          foundId = entry.id;
+          break;
+        }
+      }
+
+      if (!foundId) {
+        baseSymbolResolutionCache.set(cacheKey, null);
+        continue;
+      }
+
+      const symbol = await getIndividualSymbol(buildId, foundId);
+      if (!symbol) {
+        baseSymbolResolutionCache.set(cacheKey, null);
+        continue;
+      }
+
+      const pkg = manifestPackages.find((p) => p.packageId === pkgId);
+      const resolved = {
+        symbol,
+        packageId: pkgId,
+        packageName: pkg?.publishedName || "",
+      };
+      baseSymbolResolutionCache.set(cacheKey, resolved);
+      return resolved;
     }
 
     return null;
@@ -855,13 +952,22 @@ async function resolveInheritedMembers(
   ): Promise<void> {
     if (!baseSymbol.members || baseSymbol.members.length === 0) return;
 
-    // Get the package's symbol list for resolving member details
-    const pkgSymbols =
-      basePackageId === currentPackageId
-        ? currentPackageSymbols
-        : (await getSymbols(buildId, basePackageId))?.symbols || [];
-
-    const symbolsById = new Map(pkgSymbols.map((s) => [s.id, s]));
+    // Resolve member details without fetching full symbols.json.
+    // We fetch referenced members individually (small files) to avoid blob throttling.
+    const symbolsById = new Map<string, SymbolRecord>();
+    if (basePackageId === currentPackageId && currentPackageSymbols?.length) {
+      for (const s of currentPackageSymbols) {
+        symbolsById.set(s.id, s);
+      }
+    } else {
+      const memberIds = baseSymbol.members.map((m) => m.refId).filter(Boolean);
+      const resolved = await Promise.all(
+        memberIds.map(async (id) => ({ id, symbol: await getIndividualSymbol(buildId, id) }))
+      );
+      for (const r of resolved) {
+        if (r.symbol) symbolsById.set(r.id, r.symbol);
+      }
+    }
 
     // Filter out members that are already defined on the current class
     const inheritedMembers: DisplayMember[] = [];
@@ -1018,18 +1124,14 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
           irSymbol.relations?.extends &&
           irSymbol.relations.extends.length > 0
         ) {
-          // For inherited members, we need the full package symbols
-          // This is cached in-memory, so subsequent loads are fast
-          const allSymbolsResult = await getSymbols(buildId, packageId);
-          if (allSymbolsResult?.symbols) {
-            inheritedMembers = await resolveInheritedMembers(
-              buildId,
-              packageId,
-              irSymbol.relations.extends,
-              irSymbol.members?.map((m) => m.name) || [],
-              allSymbolsResult.symbols
-            );
-          }
+          // For inherited members, avoid fetching full symbols.json during prerender.
+          // We resolve base classes via lightweight lookup indexes + individual symbol files.
+          inheritedMembers = await resolveInheritedMembers(
+            buildId,
+            packageId,
+            irSymbol.relations.extends,
+            irSymbol.members?.map((m) => m.name) || []
+          );
         }
 
       symbol = toDisplaySymbol(irSymbol, memberSymbols, inheritedMembers);

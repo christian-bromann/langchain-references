@@ -98,11 +98,13 @@ async function fetchPointer<T>(pointerName: string): Promise<T | null> {
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      const response = await fetch(url, {
-        // Use force-cache to enable static generation
-        // In-memory pointerCache handles deduplication during builds
-        cache: "force-cache",
-      });
+      const response = await withBlobFetchLimit(() =>
+        fetch(url, {
+          // Use force-cache to enable static generation
+          // In-memory pointerCache handles deduplication during builds
+          cache: "force-cache",
+        })
+      );
 
       if (!response.ok) {
         if (response.status >= 400 && response.status < 500) {
@@ -181,6 +183,29 @@ const INITIAL_RETRY_DELAY_MS = 500;
 const MAX_RETRY_DELAY_MS = 10000;
 
 /**
+ * Limit concurrent blob fetches per worker process.
+ * This helps reduce connection resets/rate limiting during parallel SSG.
+ */
+const MAX_CONCURRENT_BLOB_FETCHES = Number(process.env.BLOB_FETCH_CONCURRENCY ?? 6);
+let activeBlobFetches = 0;
+const blobFetchWaiters: Array<() => void> = [];
+
+async function withBlobFetchLimit<T>(fn: () => Promise<T>): Promise<T> {
+  if (activeBlobFetches >= MAX_CONCURRENT_BLOB_FETCHES) {
+    await new Promise<void>((resolve) => blobFetchWaiters.push(resolve));
+  }
+
+  activeBlobFetches++;
+  try {
+    return await fn();
+  } finally {
+    activeBlobFetches--;
+    const next = blobFetchWaiters.shift();
+    next?.();
+  }
+}
+
+/**
  * Sleep helper for retry delays
  */
 function sleep(ms: number): Promise<void> {
@@ -205,14 +230,17 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
   // Use force-cache for smaller files (manifests, routing maps, lookup indexes)
   const isLargeFile = path.endsWith("/symbols.json");
   const cacheStrategy = isLargeFile ? "no-store" : "force-cache";
+  const maxRetries = isLargeFile ? 10 : MAX_RETRIES;
 
   let lastError: unknown = null;
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const response = await fetch(url, {
-        cache: cacheStrategy,
-      });
+      const response = await withBlobFetchLimit(() =>
+        fetch(url, {
+          cache: cacheStrategy,
+        })
+      );
 
       if (!response.ok) {
         // Don't retry 404s or client errors
@@ -239,7 +267,7 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
         errorMessage.includes("terminated") ||
         errorMessage.includes("aborted");
 
-      if (!isRetryable || attempt === MAX_RETRIES - 1) {
+      if (!isRetryable || attempt === maxRetries - 1) {
         // Don't retry or last attempt
         break;
       }
@@ -247,18 +275,18 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
       // Exponential backoff with jitter
       const delay = Math.min(
         INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt) + Math.random() * 500,
-        MAX_RETRY_DELAY_MS
+        isLargeFile ? 30000 : MAX_RETRY_DELAY_MS
       );
 
       console.warn(
-        `Fetch failed for ${path}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
+        `Fetch failed for ${path}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})`
       );
 
       await sleep(delay);
     }
   }
 
-  console.error(`Failed to fetch blob after ${MAX_RETRIES} attempts: ${path}`, lastError);
+  console.error(`Failed to fetch blob after ${maxRetries} attempts: ${path}`, lastError);
   return null;
 }
 
