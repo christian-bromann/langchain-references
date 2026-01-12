@@ -15,6 +15,7 @@ export type {
   SymbolParam,
   SymbolSource,
   MemberReference,
+  TypeReference,
   SearchRecord,
   SearchIndex,
   RoutingMap,

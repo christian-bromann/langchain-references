@@ -76,6 +76,9 @@ export interface SymbolRecord {
   /** Return type information */
   returns?: SymbolReturns;
 
+  /** Type references that can be cross-linked (from signature, params, returns) */
+  typeRefs?: TypeReference[];
+
   /** Type parameters (generics) */
   typeParams?: TypeParam[];
 
@@ -211,6 +214,23 @@ export interface SymbolReturns {
 }
 
 /**
+ * A reference to a type that can be cross-linked.
+ */
+export interface TypeReference {
+  /** Simple name as it appears in the code (e.g., "GraphSchema") */
+  name: string;
+
+  /** Fully qualified name if resolvable (e.g., "langgraph.types.GraphSchema") */
+  qualifiedName?: string;
+
+  /** Symbol ID if this is a symbol within the same package */
+  refId?: string;
+
+  /** Whether this is an external type (from another package) */
+  external?: boolean;
+}
+
+/**
  * A type parameter (generic).
  */
 export interface TypeParam {
@@ -308,8 +328,3 @@ export interface SymbolTags {
   /** Whether the method is static */
   isStatic?: boolean;
 }
-
-
-
-
-

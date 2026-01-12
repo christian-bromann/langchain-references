@@ -6,9 +6,215 @@ Intermediate Representation (IR) format.
 """
 
 import hashlib
+import re
 from typing import Any, Dict, List, Optional
 
 from .config import ExtractionConfig
+
+
+def clean_mkdocs_admonitions(text: str) -> str:
+    """
+    Clean MkDocs Material admonition syntax from text.
+    
+    Converts admonition blocks to plain text/markdown by:
+    - Removing admonition openers (???, !!!)
+    - Removing fenced code blocks (they'll be extracted separately)
+    - Preserving regular text content
+    
+    Args:
+        text: Raw text that may contain admonition syntax.
+        
+    Returns:
+        Cleaned text without admonitions or code blocks.
+    """
+    if not text:
+        return text
+    
+    # Remove admonition openers: ???+ example "Title", !!! note "Title", etc.
+    # Keep any content that follows on subsequent lines
+    text = re.sub(
+        r'^[\?\!]{3}\+?\s*\w+(?:\s+"[^"]*")?\s*$',
+        '',
+        text,
+        flags=re.MULTILINE
+    )
+    
+    # Remove trailing closing markers for collapsible admonitions
+    text = re.sub(r'^[\?\!]{3}\s*$', '', text, flags=re.MULTILINE)
+    
+    # Remove fenced code blocks entirely (they'll be extracted as examples)
+    text = re.sub(r'```\w*\n[\s\S]*?```', '', text)
+    
+    # Clean up multiple blank lines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    
+    return text.strip()
+
+
+def dedent_code(code: str) -> str:
+    """
+    Remove common leading whitespace from code lines.
+    
+    This fixes indentation issues where code blocks have
+    extra leading spaces. Handles two cases:
+    1. All lines have common indentation - remove it
+    2. First line has no indent, subsequent lines do - dedent subsequent lines
+    
+    Args:
+        code: Code string that may have common leading whitespace.
+        
+    Returns:
+        Code with common leading whitespace removed.
+    """
+    if not code:
+        return code
+    
+    lines = code.split('\n')
+    if len(lines) <= 1:
+        return code.strip()
+    
+    # Check if first non-empty line has no indentation
+    first_line_indent = 0
+    for line in lines:
+        if line.strip():
+            first_line_indent = len(line) - len(line.lstrip())
+            break
+    
+    # Find minimum indentation of lines after the first non-empty line
+    # (ignoring empty lines)
+    min_indent = float('inf')
+    found_first = False
+    for line in lines:
+        if line.strip():
+            if not found_first:
+                found_first = True
+                continue  # Skip first non-empty line
+            indent = len(line) - len(line.lstrip())
+            min_indent = min(min_indent, indent)
+    
+    # If first line has no indent but subsequent lines do, dedent subsequent lines
+    if first_line_indent == 0 and min_indent != float('inf') and min_indent > 0:
+        dedented_lines = []
+        found_first = False
+        for line in lines:
+            if line.strip():
+                if not found_first:
+                    found_first = True
+                    dedented_lines.append(line)
+                else:
+                    # Remove the common indentation from subsequent lines
+                    dedented_lines.append(line[min_indent:] if len(line) >= min_indent else line.lstrip())
+            else:
+                dedented_lines.append(line)
+        return '\n'.join(dedented_lines)
+    
+    # Standard case: all lines have common indentation
+    min_indent = float('inf')
+    for line in lines:
+        if line.strip():
+            indent = len(line) - len(line.lstrip())
+            min_indent = min(min_indent, indent)
+    
+    if min_indent == float('inf') or min_indent == 0:
+        return code
+    
+    dedented_lines = []
+    for line in lines:
+        if line.strip():
+            dedented_lines.append(line[min_indent:])
+        else:
+            dedented_lines.append(line)
+    
+    return '\n'.join(dedented_lines)
+
+
+def extract_code_blocks_from_text(text: str) -> list:
+    """
+    Extract fenced code blocks from text.
+    
+    Args:
+        text: Text that may contain fenced code blocks.
+        
+    Returns:
+        List of code block contents.
+    """
+    if not text:
+        return []
+    
+    # Find all fenced code blocks: ```python\ncode\n```
+    pattern = r'```(\w*)\n([\s\S]*?)```'
+    matches = re.findall(pattern, text)
+    
+    code_blocks = []
+    for lang, code in matches:
+        # Strip and dedent the code to fix indentation issues
+        code = dedent_code(code.strip())
+        if code:
+            code_blocks.append({
+                "code": code,
+                "language": lang if lang else "python",
+            })
+    
+    return code_blocks
+
+
+def clean_example_content(content: str) -> str:
+    """
+    Clean up example content from docstrings.
+    
+    Handles:
+    - MkDocs Material admonition syntax (???+ example, !!! note, etc.)
+    - Fenced code blocks wrapped in HTML
+    - Extracting just the code from fenced blocks
+    
+    Args:
+        content: Raw example content from docstring.
+        
+    Returns:
+        Cleaned code content.
+    """
+    if not content:
+        return content
+    
+    # Remove MkDocs admonition openers: ???+ example "Example", !!! note "Note", etc.
+    # These appear at the start of lines and may have quotes
+    content = re.sub(
+        r'^[\?\!]{3}\+?\s*\w+(?:\s+"[^"]*")?\s*$',
+        '',
+        content,
+        flags=re.MULTILINE
+    )
+    
+    # Remove HTML paragraph tags that wrap the admonition
+    content = re.sub(r'<p>[\?\!]{3}\+?\s*\w+(?:\s+"[^"]*")?</p>', '', content)
+    
+    # Handle code blocks wrapped in HTML <pre><code> tags
+    # Pattern: <pre><code>```language\ncode\n```\n</code></pre>
+    html_code_pattern = r'<pre><code>```(\w*)\n(.*?)```\s*</code></pre>'
+    html_matches = re.findall(html_code_pattern, content, re.DOTALL)
+    if html_matches:
+        # Extract just the code from the first match
+        return html_matches[0][1].strip()
+    
+    # Handle regular fenced code blocks: ```python\ncode\n```
+    # Extract code from inside the fences
+    fenced_pattern = r'```\w*\n(.*?)```'
+    fenced_matches = re.findall(fenced_pattern, content, re.DOTALL)
+    if fenced_matches:
+        # Return the code from inside the fence
+        return fenced_matches[0].strip()
+    
+    # Clean up any remaining HTML tags
+    content = re.sub(r'</?(?:p|pre|code)>', '', content)
+    
+    # Remove leading/trailing whitespace and normalize newlines
+    content = content.strip()
+    
+    # If content is now empty after cleaning, return original
+    if not content:
+        return content
+    
+    return content
 
 
 class IRTransformer:
@@ -87,8 +293,17 @@ class IRTransformer:
 
             # Extract documentation
             docstring = raw.get("docstring", {})
-            summary = docstring.get("summary", "")
+            raw_summary = docstring.get("summary", "")
             sections = docstring.get("sections", [])
+
+            # Extract code blocks from summary before cleaning
+            embedded_examples = extract_code_blocks_from_text(raw_summary)
+            seen_examples: set = set()  # Track unique examples by code content
+            for ex in embedded_examples:
+                seen_examples.add(ex["code"])
+            
+            # Clean the summary (removes admonitions and code blocks)
+            summary = clean_mkdocs_admonitions(raw_summary)
 
             # Build docs object
             docs = {
@@ -96,14 +311,25 @@ class IRTransformer:
             }
 
             # Add description from additional text sections
+            # Skip text that duplicates the summary
             description_parts = []
             for section in sections:
                 if section.get("kind") == "text" and section.get("value"):
-                    description_parts.append(section["value"])
+                    raw_text = section["value"]
+                    # Extract code blocks from text sections (dedupe against summary)
+                    for ex in extract_code_blocks_from_text(raw_text):
+                        if ex["code"] not in seen_examples:
+                            embedded_examples.append(ex)
+                            seen_examples.add(ex["code"])
+                    # Clean MkDocs admonition syntax from description text
+                    text = clean_mkdocs_admonitions(raw_text)
+                    # Skip if this text duplicates the summary
+                    if text.strip() and text.strip() != summary.strip():
+                        description_parts.append(text)
             if description_parts:
                 docs["description"] = "\n\n".join(description_parts)
 
-            # Extract examples
+            # Extract examples from dedicated Examples sections
             examples = []
             for section in sections:
                 if section.get("kind") == "examples":
@@ -111,12 +337,26 @@ class IRTransformer:
                     if isinstance(value, list):
                         for ex in value:
                             if isinstance(ex, dict):
-                                examples.append({
-                                    "code": ex.get("description", ""),
-                                    "language": "python",
-                                })
+                                raw_code = ex.get("description", "")
+                                cleaned_code = clean_example_content(raw_code)
+                                # Dedent and dedupe
+                                cleaned_code = dedent_code(cleaned_code)
+                                if cleaned_code and cleaned_code not in seen_examples:
+                                    examples.append({
+                                        "code": cleaned_code,
+                                        "language": "python",
+                                    })
+                                    seen_examples.add(cleaned_code)
                             else:
-                                examples.append({"code": str(ex), "language": "python"})
+                                cleaned_code = clean_example_content(str(ex))
+                                cleaned_code = dedent_code(cleaned_code)
+                                if cleaned_code and cleaned_code not in seen_examples:
+                                    examples.append({"code": cleaned_code, "language": "python"})
+                                    seen_examples.add(cleaned_code)
+            
+            # Add embedded examples extracted from summary/description text
+            examples.extend(embedded_examples)
+            
             if examples:
                 docs["examples"] = examples
 
@@ -180,6 +420,18 @@ class IRTransformer:
 
             if returns:
                 ir_symbol["returns"] = returns
+
+            # Add type references for cross-linking
+            type_refs = raw.get("type_refs", [])
+            if type_refs:
+                ir_symbol["typeRefs"] = [
+                    {
+                        "name": ref["name"],
+                        **({"qualifiedName": ref["qualifiedName"]} if ref.get("qualifiedName") else {}),
+                    }
+                    for ref in type_refs
+                    if ref.get("name")
+                ]
 
             # Add relations for classes
             bases = raw.get("bases", [])
@@ -306,8 +558,6 @@ class IRTransformer:
         Returns a clean path like:
         - libs/pkg/file.py
         """
-        import re
-        
         if not file_path:
             return ""
         

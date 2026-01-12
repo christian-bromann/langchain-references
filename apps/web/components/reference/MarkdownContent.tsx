@@ -20,9 +20,31 @@ interface MarkdownContentProps {
 }
 
 /**
+ * Clean MkDocs Material admonition syntax from markdown content.
+ * This is a frontend safety net for content that may contain admonitions.
+ */
+function cleanMkDocsContent(content: string): string {
+  if (!content) return content;
+
+  // Remove MkDocs admonition openers: ???+ example "Title", !!! note "Title", etc.
+  let cleaned = content.replace(/^[?!]{3}\+?\s*\w+(?:\s+"[^"]*")?\s*$/gm, "");
+
+  // Remove trailing closing markers for collapsible admonitions
+  cleaned = cleaned.replace(/^[?!]{3}\s*$/gm, "");
+
+  // Clean up multiple blank lines
+  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+
+  return cleaned.trim();
+}
+
+/**
  * Process markdown to HTML with Shiki syntax highlighting.
  */
 async function processMarkdown(content: string): Promise<string> {
+  // Clean MkDocs syntax before processing
+  const cleanedContent = cleanMkDocsContent(content);
+
   const result = await unified()
     .use(remarkParse)
     .use(remarkRehype)
@@ -33,7 +55,7 @@ async function processMarkdown(content: string): Promise<string> {
       },
     })
     .use(rehypeStringify)
-    .process(content);
+    .process(cleanedContent);
 
   return String(result);
 }

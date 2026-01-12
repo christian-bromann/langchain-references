@@ -9,7 +9,7 @@ import { ChevronRight, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
 import { buildPackageUrl, getKindColor, getKindLabel, slugifyPackageName } from "@/lib/utils/url";
-import type { SymbolKind, Visibility, Stability, SymbolRecord } from "@/lib/ir/types";
+import type { SymbolKind, Visibility, Stability, SymbolRecord, TypeReference } from "@/lib/ir/types";
 import type { PackageChangelog, SymbolSnapshot } from "@langchain/ir-schema";
 import {
   getBuildIdForLanguage,
@@ -19,10 +19,10 @@ import {
   getKnownSymbolNamesData,
   getSymbolOptimized,
   getIndividualSymbol,
-  isProduction,
 } from "@/lib/ir/loader";
 import { getProjectForPackage } from "@/lib/config/projects";
 import { CodeBlock } from "./CodeBlock";
+import { SignatureBlock } from "./SignatureBlock";
 import { MarkdownContent } from "./MarkdownContent";
 import { TableOfContents, type TOCSection, type TOCItem, type TOCInheritedGroup } from "./TableOfContents";
 import { symbolToMarkdown } from "@/lib/ir/markdown-generator";
@@ -32,6 +32,7 @@ import { VersionHistory } from "./VersionHistory";
 import { VersionSwitcher } from "./VersionSwitcher";
 import fs from "fs/promises";
 import path from "path";
+import { cleanExampleCode } from "@/lib/utils/clean-example";
 
 interface SymbolPageProps {
   language: "python" | "javascript";
@@ -165,6 +166,8 @@ interface DisplaySymbol {
       replacement?: string;
     };
   };
+  /** Type references for cross-linking in signature */
+  typeRefs?: TypeReference[];
 }
 
 /**
@@ -312,6 +315,7 @@ function toDisplaySymbol(
     bases: symbol.relations?.extends,
     inheritedMembers,
     versionInfo: symbol.versionInfo,
+    typeRefs: symbol.typeRefs,
   };
 }
 
@@ -893,7 +897,7 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
       getKnownSymbolNamesData(buildId, packageId),
       findSymbolOptimized(buildId, packageId, symbolPath),
     ]);
-    
+
     knownSymbols = new Set(knownSymbolNames);
 
     // If a specific version is requested, try to load the historical snapshot
@@ -1101,11 +1105,22 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
 
       {/* Signature / Import statement */}
       {symbol.signature && (
-        <CodeBlock
-          code={getDisplayCode(symbol, packageName, language)}
-          language={language === "python" ? "python" : "typescript"}
-          className="rounded-lg [&_pre]:p-4 [&_pre]:m-0 [&_pre]:text-sm [&_code]:text-sm [&_pre]:overflow-x-auto"
-        />
+        symbol.kind === "module" ? (
+          <CodeBlock
+            code={getDisplayCode(symbol, packageName, language)}
+            language={language === "python" ? "python" : "typescript"}
+            className="rounded-lg [&_pre]:p-4 [&_pre]:m-0 [&_pre]:text-sm [&_code]:text-sm [&_pre]:overflow-x-auto"
+          />
+        ) : (
+          <SignatureBlock
+            signature={formatSignature(symbol.signature, language)}
+            language={language === "python" ? "python" : "typescript"}
+            typeRefs={symbol.typeRefs}
+            knownSymbols={knownSymbols}
+            packageName={packageName}
+            className="rounded-lg"
+          />
+        )
       )}
 
       {/* Bases (for classes) */}
@@ -1344,6 +1359,14 @@ async function Section({
   }
 
   if (section.kind === "example" && section.content) {
+    // Clean the example code to remove MkDocs admonition syntax and HTML artifacts
+    const cleanedCode = cleanExampleCode(section.content);
+
+    // Skip rendering if the cleaned code is empty
+    if (!cleanedCode) {
+      return null;
+    }
+
     return (
       <div id="examples">
         <h2 className="text-xl font-heading font-semibold text-foreground mb-4">
@@ -1353,7 +1376,7 @@ async function Section({
           <p className="text-foreground-secondary mb-3">{section.description}</p>
         )}
         <CodeBlock
-          code={section.content}
+          code={cleanedCode}
           language={language === "python" ? "python" : "typescript"}
           className="rounded-lg [&_pre]:p-4 [&_pre]:m-0 [&_pre]:text-sm [&_code]:text-sm [&_pre]:overflow-x-auto"
         />

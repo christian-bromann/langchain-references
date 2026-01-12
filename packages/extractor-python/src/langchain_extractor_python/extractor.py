@@ -192,6 +192,7 @@ class PythonExtractor:
                 "decorators": self._get_decorators(obj),
                 "is_async": getattr(obj, "is_async", False),
                 "is_abstract": self._is_abstract(obj),
+                "type_refs": self._extract_type_refs(obj),
             }
         except Exception:
             # Silently skip objects that can't be extracted
@@ -246,21 +247,210 @@ class PythonExtractor:
             The signature string, or empty string if not applicable.
         """
         try:
-            if hasattr(obj, "signature"):
-                return str(obj.signature)
-            if hasattr(obj, "parameters"):
-                params = []
-                for param in obj.parameters:
+            # Check if this object has parameters (functions, methods, classes with __init__)
+            if not hasattr(obj, "parameters"):
+                return ""
+
+            params = []
+            has_positional_only = False
+            has_keyword_only = False
+            positional_only_added = False
+            keyword_only_added = False
+
+            for param in obj.parameters:
+                # Get the parameter kind - normalize to lowercase with underscores
+                kind_str = str(param.kind).lower() if hasattr(param, "kind") else ""
+
+                # Check for positional-only (handles both "positional_only" and "positional-only")
+                is_positional_only = "positional_only" in kind_str or "positional-only" in kind_str
+                # Check for keyword-only
+                is_keyword_only = "keyword_only" in kind_str or "keyword-only" in kind_str
+                # Check for *args
+                is_var_positional = "var_positional" in kind_str or "var-positional" in kind_str
+                # Check for **kwargs
+                is_var_keyword = "var_keyword" in kind_str or "var-keyword" in kind_str
+
+                # Handle positional-only separator
+                if is_positional_only:
+                    has_positional_only = True
+                elif has_positional_only and not positional_only_added:
+                    # Add the / separator after positional-only params
+                    params.append("/")
+                    positional_only_added = True
+
+                # Handle keyword-only separator (but not if we just added *args)
+                if is_keyword_only and not has_keyword_only and not is_var_positional:
+                    has_keyword_only = True
+                    if not keyword_only_added:
+                        params.append("*")
+                        keyword_only_added = True
+
+                # Handle *args and **kwargs
+                if is_var_positional:
+                    param_str = f"*{param.name}"
+                    keyword_only_added = True  # *args implicitly starts keyword-only section
+                elif is_var_keyword:
+                    param_str = f"**{param.name}"
+                else:
                     param_str = param.name
-                    if param.annotation:
-                        param_str += f": {param.annotation}"
-                    if param.default:
-                        param_str += f" = {param.default}"
-                    params.append(param_str)
-                return f"({', '.join(params)})"
+
+                # Add type annotation if present
+                if param.annotation:
+                    param_str += f": {param.annotation}"
+
+                # Add default value if present
+                if param.default is not None and str(param.default) != "":
+                    param_str += f" = {param.default}"
+
+                params.append(param_str)
+
+            # Add trailing / for positional-only params if they're the last params
+            if has_positional_only and not positional_only_added:
+                params.append("/")
+
+            # Build signature with function/method name and return type
+            name = obj.name if hasattr(obj, "name") else ""
+            params_str = ",\n    ".join(params) if params else ""
+            
+            if params:
+                signature = f"{name}(\n    {params_str},\n)"
+            else:
+                signature = f"{name}()"
+
+            # Add return type if available
+            if hasattr(obj, "returns") and obj.returns:
+                signature += f" -> {obj.returns}"
+
+            return signature
         except Exception:
             pass
         return ""
+
+    def _extract_type_refs(self, obj: GriffeObject) -> List[Dict[str, Any]]:
+        """
+        Extract type references from parameters and return type for cross-linking.
+
+        Args:
+            obj: The griffe object.
+
+        Returns:
+            List of type reference dictionaries with name and qualifiedName.
+        """
+        type_refs = []
+        seen_names: set = set()
+
+        # Built-in types and common primitives to skip
+        builtins = {
+            "str", "int", "float", "bool", "None", "bytes", "object",
+            "list", "dict", "set", "tuple", "type", "Any", "Optional",
+            "Union", "List", "Dict", "Set", "Tuple", "Type", "Callable",
+            "Iterable", "Iterator", "Generator", "Sequence", "Mapping",
+            "Literal", "TypeVar", "Generic", "Protocol", "ClassVar",
+            "Awaitable", "Coroutine", "AsyncIterator", "AsyncGenerator",
+            "Self", "NoReturn", "Never", "Final", "Annotated",
+        }
+
+        def extract_type_names_from_expr(expr, obj_context) -> None:
+            """Recursively extract type names from a griffe expression."""
+            if expr is None:
+                return
+
+            expr_type = type(expr).__name__
+
+            # Handle ExprName - simple type reference like "GraphSchema"
+            if expr_type == "ExprName":
+                name = getattr(expr, "name", str(expr))
+                if name and name not in builtins and name not in seen_names:
+                    seen_names.add(name)
+
+                    # Try to resolve to qualified name
+                    qualified_name = None
+
+                    # Check if this expr has a canonical path
+                    if hasattr(expr, "canonical_path"):
+                        try:
+                            canonical = expr.canonical_path
+                            # Only use if it's a real path (not just the name itself)
+                            if canonical and "." in canonical:
+                                qualified_name = canonical
+                        except Exception:
+                            pass
+
+                    # Try to find in parent scope
+                    if not qualified_name:
+                        try:
+                            current = obj_context
+                            while current:
+                                if hasattr(current, "members") and name in current.members:
+                                    member = current.members[name]
+                                    if hasattr(member, "path"):
+                                        qualified_name = member.path
+                                        break
+                                current = getattr(current, "parent", None)
+                        except Exception:
+                            pass
+
+                    type_refs.append({
+                        "name": name,
+                        "qualifiedName": qualified_name,
+                    })
+
+            # Handle ExprBinOp - union types like "A | B"
+            elif expr_type == "ExprBinOp":
+                if hasattr(expr, "left"):
+                    extract_type_names_from_expr(expr.left, obj_context)
+                if hasattr(expr, "right"):
+                    extract_type_names_from_expr(expr.right, obj_context)
+
+            # Handle ExprSubscript - generic types like "List[A]" or "Dict[K, V]"
+            elif expr_type == "ExprSubscript":
+                # The base type (e.g., "List" in "List[A]")
+                if hasattr(expr, "left"):
+                    extract_type_names_from_expr(expr.left, obj_context)
+                # The type parameters
+                if hasattr(expr, "slice"):
+                    slice_val = expr.slice
+                    if isinstance(slice_val, (list, tuple)):
+                        for item in slice_val:
+                            extract_type_names_from_expr(item, obj_context)
+                    else:
+                        extract_type_names_from_expr(slice_val, obj_context)
+
+            # Handle ExprTuple - multiple items like in "Dict[K, V]"
+            elif expr_type == "ExprTuple":
+                if hasattr(expr, "elements"):
+                    for elem in expr.elements:
+                        extract_type_names_from_expr(elem, obj_context)
+
+            # Handle string annotations (forward references)
+            elif isinstance(expr, str):
+                if expr.isidentifier() and expr not in builtins and expr not in seen_names:
+                    seen_names.add(expr)
+                    type_refs.append({
+                        "name": expr,
+                        "qualifiedName": None,
+                    })
+
+        try:
+            # Extract from parameters
+            if hasattr(obj, "parameters"):
+                for param in obj.parameters:
+                    if hasattr(param, "annotation") and param.annotation:
+                        extract_type_names_from_expr(param.annotation, obj)
+
+            # Extract from return type
+            if hasattr(obj, "returns") and obj.returns:
+                extract_type_names_from_expr(obj.returns, obj)
+
+            # Extract from base classes
+            if hasattr(obj, "bases"):
+                for base in obj.bases:
+                    extract_type_names_from_expr(base, obj)
+
+        except Exception:
+            pass
+
+        return type_refs
 
     def _extract_docstring(self, obj: GriffeObject) -> Dict[str, Any]:
         """

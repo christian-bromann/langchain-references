@@ -88,8 +88,11 @@ langchain-reference-docs/
 │   └── update-kv.ts                  # Build pointer updater
 │
 ├── configs/                          # Build configurations
-│   ├── python.json                   # Python packages config
-│   └── typescript.json               # TypeScript packages config
+│   ├── langchain-python.json         # LangChain Python packages
+│   ├── langchain-typescript.json     # LangChain TypeScript packages
+│   ├── langgraph-python.json         # LangGraph Python packages
+│   ├── langgraph-typescript.json     # LangGraph TypeScript packages
+│   └── *-versions.json               # Cached version/tag data
 │
 └── .github/
     └── workflows/
@@ -130,11 +133,17 @@ pnpm dev
 ### Building IR Locally
 
 ```bash
-# Build TypeScript IR (generates to ./ir-output/)
-pnpm build:ir:local --config configs/typescript.json
+# Build TypeScript IR (local mode - generates to ./ir-output/, no cloud upload)
+pnpm build:ir --local --config ./configs/langchain-typescript.json
 
-# Build Python IR
-pnpm build:ir:local --config configs/python.json
+# Build Python IR (local mode)
+pnpm build:ir --local --config ./configs/langchain-python.json
+
+# Build LangGraph Python IR
+pnpm build:ir --local --config ./configs/langgraph-python.json
+
+# Build with version history tracking
+pnpm build:ir --local --with-versions --config ./configs/langchain-python.json
 ```
 
 ### Production Build
@@ -249,17 +258,32 @@ The build pipeline extracts documentation from source repositories:
 ### Build Commands
 
 ```bash
-# Full build with upload
-pnpm build:ir --config configs/typescript.json
+# Full build with upload (requires BLOB_READ_WRITE_TOKEN)
+pnpm build:ir --config ./configs/langchain-typescript.json
 
-# Local-only build (no upload)
-pnpm build:ir:local --config configs/typescript.json
+# Local-only build (no upload, generates to ./ir-output/)
+pnpm build:ir --local --config ./configs/langchain-typescript.json
+
+# Build by project (all configs for a project)
+pnpm build:ir --project langchain --local
+
+# Build by language (all configs for a language)
+pnpm build:ir --language python --local
+
+# Build all configurations
+pnpm build:ir --all --local
 
 # Build specific SHA
-pnpm build:ir --config configs/typescript.json --sha abc1234
+pnpm build:ir --config ./configs/langchain-typescript.json --sha abc1234 --local
 
-# Dry run (generate but don't upload)
-pnpm build:ir --config configs/typescript.json --dry-run
+# Build with version history tracking
+pnpm build:ir --config ./configs/langchain-python.json --with-versions --local
+
+# Force rebuild (ignore up-to-date check)
+pnpm build:ir --config ./configs/langchain-python.json --force --local
+
+# Show all available options
+pnpm build:ir --help
 ```
 
 ### Build Configuration

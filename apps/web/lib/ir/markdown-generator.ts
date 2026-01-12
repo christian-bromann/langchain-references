@@ -11,6 +11,7 @@
 import type { SymbolRecord, SymbolKind, Language } from "./types";
 import { slugifyPackageName } from "../utils/url";
 import { getBaseUrl } from "../config/mcp";
+import { cleanExampleCode } from "../utils/clean-example";
 
 /**
  * Options for markdown generation
@@ -241,6 +242,10 @@ export function symbolToMarkdown(
     lines.push("");
     for (let i = 0; i < symbol.docs.examples.length; i++) {
       const example = symbol.docs.examples[i];
+      // Clean the example code to remove MkDocs admonition syntax
+      const cleanedCode = cleanExampleCode(example.code);
+      if (!cleanedCode) continue; // Skip empty examples
+
       if (example.title) {
         lines.push(`### ${example.title}`);
         lines.push("");
@@ -251,7 +256,7 @@ export function symbolToMarkdown(
       const exampleLang =
         example.language || getCodeLanguage(symbol.language);
       lines.push("```" + exampleLang);
-      lines.push(example.code);
+      lines.push(cleanedCode);
       lines.push("```");
       lines.push("");
     }
