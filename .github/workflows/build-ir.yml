@@ -103,6 +103,8 @@ jobs:
 
       - name: Download blob storage content
         id: download
+        env:
+          BLOB_BASE_URL: ${{ secrets.BLOB_BASE_URL }}
         run: |
           echo "📥 Downloading existing IR data from blob storage..."
           mkdir -p blob-cache
@@ -188,8 +190,6 @@ jobs:
           else
             echo "has_data=false" >> $GITHUB_OUTPUT
           fi
-        env:
-          BLOB_BASE_URL: ${{ vars.BLOB_BASE_URL }}
 
       - name: Upload blob cache artifact
         if: steps.download.outputs.has_data == 'true'
@@ -436,7 +436,7 @@ jobs:
           echo "compiled=true" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BLOB_BASE_URL: ${{ vars.BLOB_BASE_URL }}
+          BLOB_BASE_URL: ${{ secrets.BLOB_BASE_URL }}
 
       - name: Check result
         id: check-result
