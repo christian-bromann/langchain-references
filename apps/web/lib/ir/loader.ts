@@ -185,17 +185,31 @@ const MAX_RETRY_DELAY_MS = 10000;
 /**
  * Limit concurrent blob fetches per worker process.
  * This helps reduce connection resets/rate limiting during parallel SSG.
+ * 
+ * Lower values = fewer concurrent connections = less likely to hit ECONNRESET
+ * Higher values = faster builds (if blob can handle it)
+ * 
+ * Default is 3 to be conservative. Can be tuned via BLOB_FETCH_CONCURRENCY env var.
  */
-const MAX_CONCURRENT_BLOB_FETCHES = Number(process.env.BLOB_FETCH_CONCURRENCY ?? 6);
+const MAX_CONCURRENT_BLOB_FETCHES = Number(process.env.BLOB_FETCH_CONCURRENCY ?? 3);
 let activeBlobFetches = 0;
+let totalBlobFetches = 0;
+let failedBlobFetches = 0;
 const blobFetchWaiters: Array<() => void> = [];
 
 async function withBlobFetchLimit<T>(fn: () => Promise<T>): Promise<T> {
+  // Wait if we're at the concurrency limit
   if (activeBlobFetches >= MAX_CONCURRENT_BLOB_FETCHES) {
+    const waitStart = Date.now();
     await new Promise<void>((resolve) => blobFetchWaiters.push(resolve));
+    const waitTime = Date.now() - waitStart;
+    if (waitTime > 5000) {
+      console.log(`[blob] waited ${waitTime}ms for fetch slot (queue=${blobFetchWaiters.length})`);
+    }
   }
 
   activeBlobFetches++;
+  totalBlobFetches++;
   try {
     return await fn();
   } finally {
@@ -235,7 +249,11 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const startTime = Date.now();
+    let phase = "init";
+
     try {
+      phase = "fetch";
       const response = await withBlobFetchLimit(() =>
         fetch(url, {
           cache: cacheStrategy,
@@ -251,9 +269,25 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
         throw new Error(`HTTP ${response.status}`);
       }
 
-      return response.json();
+      phase = "json";
+      const data = await response.json();
+      
+      // Log successful large file fetches for debugging
+      if (isLargeFile && attempt > 0) {
+        const elapsed = Date.now() - startTime;
+        console.log(`[blob] ✓ ${path} succeeded on attempt ${attempt + 1} (${elapsed}ms)`);
+      }
+
+      return data;
     } catch (error) {
       lastError = error;
+      const elapsed = Date.now() - startTime;
+
+      // Extract detailed error info
+      const err = error as Error & { cause?: Error & { code?: string; syscall?: string; errno?: number } };
+      const causeCode = err.cause?.code || "unknown";
+      const causeSyscall = err.cause?.syscall || "unknown";
+      const causeErrno = err.cause?.errno;
 
       // Check if this is a retryable error
       const errorMessage = String(error);
@@ -265,28 +299,43 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
         errorMessage.includes("socket hang up") ||
         errorMessage.includes("HTTP 5") ||
         errorMessage.includes("terminated") ||
-        errorMessage.includes("aborted");
+        errorMessage.includes("aborted") ||
+        causeCode === "ECONNRESET" ||
+        causeCode === "UND_ERR_SOCKET";
 
       if (!isRetryable || attempt === maxRetries - 1) {
-        // Don't retry or last attempt
+        // Log detailed failure info
+        console.error(
+          `[blob] ✗ ${path} FAILED after ${attempt + 1} attempts, phase=${phase}, elapsed=${elapsed}ms, ` +
+          `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
+          `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`
+        );
         break;
       }
 
-      // Exponential backoff with jitter
+      // Exponential backoff with jitter - use longer delays for large files
+      const baseDelay = isLargeFile ? 2000 : INITIAL_RETRY_DELAY_MS;
+      const maxDelay = isLargeFile ? 60000 : MAX_RETRY_DELAY_MS;
       const delay = Math.min(
-        INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt) + Math.random() * 500,
-        isLargeFile ? 30000 : MAX_RETRY_DELAY_MS
+        baseDelay * Math.pow(2, attempt) + Math.random() * 1000,
+        maxDelay
       );
 
       console.warn(
-        `Fetch failed for ${path}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})`
+        `[blob] ⟳ ${path} retry ${attempt + 1}/${maxRetries} in ${Math.round(delay)}ms, ` +
+        `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`
       );
 
       await sleep(delay);
     }
   }
 
-  console.error(`Failed to fetch blob after ${maxRetries} attempts: ${path}`, lastError);
+  failedBlobFetches++;
+  console.error(
+    `[blob] ✗ ${path} EXHAUSTED after ${maxRetries} attempts ` +
+    `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
+    lastError
+  );
   return null;
 }
 
