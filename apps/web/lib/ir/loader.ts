@@ -190,9 +190,8 @@ function sleep(ms: number): Promise<void> {
 /**
  * Fetch JSON from Vercel Blob (public access) with retry logic
  *
- * Uses force-cache to enable static generation. Large files (>2MB) will
- * show warnings about not being cached, but this is informational only -
- * the fetch still works and static generation proceeds normally.
+ * For large files (>2MB) like symbols.json, uses no-store to avoid Next.js
+ * cache issues. For smaller files (manifests, routing maps), uses force-cache.
  * The in-memory caches handle deduplication during the build process.
  *
  * Includes retry logic with exponential backoff for connection resets
@@ -202,14 +201,17 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
   const url = getBlobUrl(path);
   if (!url) return null;
 
+  // Use no-store for large files (symbols.json) to avoid Next.js cache issues
+  // Use force-cache for smaller files (manifests, routing maps, lookup indexes)
+  const isLargeFile = path.endsWith("/symbols.json");
+  const cacheStrategy = isLargeFile ? "no-store" : "force-cache";
+
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       const response = await fetch(url, {
-        // Use force-cache to enable static generation
-        // Large files (>2MB) will show cache warnings but still work
-        cache: "force-cache",
+        cache: cacheStrategy,
       });
 
       if (!response.ok) {
@@ -233,7 +235,9 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
         errorMessage.includes("ECONNREFUSED") ||
         errorMessage.includes("fetch failed") ||
         errorMessage.includes("socket hang up") ||
-        errorMessage.includes("HTTP 5");
+        errorMessage.includes("HTTP 5") ||
+        errorMessage.includes("terminated") ||
+        errorMessage.includes("aborted");
 
       if (!isRetryable || attempt === MAX_RETRIES - 1) {
         // Don't retry or last attempt
@@ -529,7 +533,7 @@ export async function getSymbolByQualifiedName(
       qualifiedName.replace(/\//g, "."),
       qualifiedName.replace(/\./g, "/"),
     ];
-    
+
     for (const variation of variations) {
       const found = index.symbols[variation];
       if (found) {
