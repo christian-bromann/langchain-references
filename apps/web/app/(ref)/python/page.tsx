@@ -5,8 +5,43 @@
  * Lists all available Python packages.
  */
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Box, ChevronRight } from "lucide-react";
+
+/**
+ * Page metadata for SEO and social sharing
+ */
+export const metadata: Metadata = {
+  title: "Python API Reference",
+  description:
+    "Python API reference documentation for LangChain, LangGraph, and LangSmith packages. Browse classes, functions, and modules.",
+  openGraph: {
+    title: "Python API Reference",
+    description:
+      "Python API reference documentation for LangChain, LangGraph, and LangSmith packages.",
+    type: "website",
+    url: "/python",
+    images: [
+      {
+        url: "/og/python",
+        width: 1200,
+        height: 630,
+        alt: "Python API Reference",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Python API Reference",
+    description:
+      "Python API reference documentation for LangChain, LangGraph, and LangSmith packages.",
+    images: ["/og/python"],
+  },
+  alternates: {
+    canonical: "/python",
+  },
+};
 import { cn } from "@/lib/utils/cn";
 import { getBuildIdForLanguage, getManifestData } from "@/lib/ir/loader";
 import type { Package } from "@/lib/ir/types";

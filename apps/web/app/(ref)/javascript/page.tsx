@@ -5,8 +5,43 @@
  * Lists all available JavaScript packages.
  */
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Box, ChevronRight } from "lucide-react";
+
+/**
+ * Page metadata for SEO and social sharing
+ */
+export const metadata: Metadata = {
+  title: "JavaScript API Reference",
+  description:
+    "JavaScript/TypeScript API reference documentation for LangChain.js, LangGraph.js, and related packages. Browse classes, functions, and modules.",
+  openGraph: {
+    title: "JavaScript API Reference",
+    description:
+      "JavaScript/TypeScript API reference documentation for LangChain.js and LangGraph.js packages.",
+    type: "website",
+    url: "/javascript",
+    images: [
+      {
+        url: "/og/javascript",
+        width: 1200,
+        height: 630,
+        alt: "JavaScript API Reference",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "JavaScript API Reference",
+    description:
+      "JavaScript/TypeScript API reference documentation for LangChain.js and LangGraph.js packages.",
+    images: ["/og/javascript"],
+  },
+  alternates: {
+    canonical: "/javascript",
+  },
+};
 import { cn } from "@/lib/utils/cn";
 import { getBuildIdForLanguage, getManifestData } from "@/lib/ir/loader";
 import type { Package } from "@/lib/ir/types";

@@ -111,9 +111,40 @@ export async function generateMetadata({ params }: Props) {
     ? parsed.symbolPath[parsed.symbolPath.length - 1]
     : parsed.packageName;
 
+  const title = `${symbolName} | ${parsed.packageName}`;
+  const description = parsed.fullPath
+    ? `JavaScript/TypeScript API reference for ${parsed.fullPath} in ${parsed.packageName}. Part of the LangChain ecosystem.`
+    : `JavaScript/TypeScript API reference for ${parsed.packageName}. Part of the LangChain ecosystem.`;
+
+  // Build OG image URL
+  const ogImagePath = `/og/javascript/${slug.join("/")}`;
+
   return {
-    title: `${symbolName} | ${parsed.packageName}`,
-    description: `JavaScript API reference for ${parsed.packageName}${parsed.fullPath ? ` - ${parsed.fullPath}` : ""}`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      url: `/javascript/${slug.join("/")}`,
+      images: [
+        {
+          url: ogImagePath,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImagePath],
+    },
+    alternates: {
+      canonical: `/javascript/${slug.join("/")}`,
+    },
   };
 }
 

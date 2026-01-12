@@ -46,11 +46,94 @@ interface SymbolPageProps {
 }
 
 /**
+ * Split a string by a delimiter at depth 0 (outside of nested brackets/generics).
+ */
+function splitAtDepthZero(str: string, delimiter: string): string[] {
+  const parts: string[] = [];
+  let current = "";
+  let depth = 0;
+
+  for (const char of str) {
+    if (char === "<" || char === "[" || char === "{" || char === "(") {
+      depth++;
+      current += char;
+    } else if (char === ">" || char === "]" || char === "}" || char === ")") {
+      depth--;
+      current += char;
+    } else if (char === delimiter && depth === 0) {
+      parts.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  if (current.trim()) {
+    parts.push(current.trim());
+  }
+  return parts;
+}
+
+/**
  * Format a long function/method signature to be multi-line.
- * When a signature exceeds a reasonable width, each parameter is placed on its own line.
+ * When a signature exceeds a reasonable width, each parameter and type parameter
+ * is placed on its own line.
  */
 function formatSignature(signature: string, language: UrlLanguage): string {
-  // Only format if signature contains parentheses (functions/methods)
+  // Check if signature is "long" - threshold of 80 characters
+  if (signature.length <= 80) {
+    return signature;
+  }
+
+  // For TypeScript, handle generic type parameters first
+  // e.g., "createAgent<T extends Record<string, any>, U = undefined>(...)"
+  const genericStart = signature.indexOf("<");
+  const parenStart = signature.indexOf("(");
+
+  // If there are generics before the function parentheses, format them
+  if (genericStart !== -1 && (parenStart === -1 || genericStart < parenStart)) {
+    // Find the matching closing bracket for the generic
+    let depth = 0;
+    let genericEnd = -1;
+    for (let i = genericStart; i < signature.length; i++) {
+      const char = signature[i];
+      if (char === "<") depth++;
+      else if (char === ">") {
+        depth--;
+        if (depth === 0) {
+          genericEnd = i;
+          break;
+        }
+      }
+    }
+
+    if (genericEnd !== -1) {
+      const funcName = signature.slice(0, genericStart); // e.g., "createAgent"
+      const typeParamsStr = signature.slice(genericStart + 1, genericEnd); // e.g., "T extends Record<string, any>, U = undefined"
+      const rest = signature.slice(genericEnd + 1); // e.g., "(params: ...): ReturnType"
+
+      // Split type parameters at depth 0
+      const typeParams = splitAtDepthZero(typeParamsStr, ",");
+
+      // Format the rest (function parameters) recursively
+      const formattedRest = formatSignatureParams(rest);
+
+      // If type params are complex (>2 or signature is very long), format them on separate lines
+      if (typeParams.length > 2 || signature.length > 120) {
+        const indent = "  ";
+        const formattedTypeParams = typeParams.map((p) => `${indent}${p}`).join(",\n");
+        return `${funcName}<\n${formattedTypeParams}\n>${formattedRest}`;
+      }
+    }
+  }
+
+  // Format function parameters
+  return formatSignatureParams(signature);
+}
+
+/**
+ * Format function parameters in a signature to be multi-line.
+ */
+function formatSignatureParams(signature: string): string {
   const parenStart = signature.indexOf("(");
   const parenEnd = signature.lastIndexOf(")");
 
@@ -58,7 +141,7 @@ function formatSignature(signature: string, language: UrlLanguage): string {
     return signature;
   }
 
-  // Check if signature is "long" - threshold of 80 characters
+  // Check if just this part is short enough
   if (signature.length <= 80) {
     return signature;
   }
@@ -67,28 +150,8 @@ function formatSignature(signature: string, language: UrlLanguage): string {
   const paramsStr = signature.slice(parenStart + 1, parenEnd); // e.g., "text: string, runId: string, ..."
   const suffix = signature.slice(parenEnd); // e.g., "): void | Promise<void>"
 
-  // Parse parameters - handle nested generics and brackets
-  const params: string[] = [];
-  let current = "";
-  let depth = 0;
-
-  for (const char of paramsStr) {
-    if (char === "<" || char === "[" || char === "{" || char === "(") {
-      depth++;
-      current += char;
-    } else if (char === ">" || char === "]" || char === "}" || char === ")") {
-      depth--;
-      current += char;
-    } else if (char === "," && depth === 0) {
-      params.push(current.trim());
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-  if (current.trim()) {
-    params.push(current.trim());
-  }
+  // Split parameters at depth 0
+  const params = splitAtDepthZero(paramsStr, ",");
 
   // If only 1-2 params and not too long, keep on one line
   if (params.length <= 2 && signature.length <= 100) {

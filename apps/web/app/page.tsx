@@ -1,4 +1,36 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+/**
+ * Page metadata for SEO and social sharing
+ */
+export const metadata: Metadata = {
+  title: "LangChain Reference Docs",
+  description:
+    "Unified API reference documentation for LangChain, LangGraph, and LangSmith. Browse Python and JavaScript/TypeScript packages, classes, functions, and modules.",
+  openGraph: {
+    title: "LangChain Reference Docs",
+    description:
+      "Unified API reference documentation for LangChain, LangGraph, and LangSmith.",
+    type: "website",
+    url: "/",
+    images: [
+      {
+        url: "/og/home",
+        width: 1200,
+        height: 630,
+        alt: "LangChain Reference Docs",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "LangChain Reference Docs",
+    description:
+      "Unified API reference documentation for LangChain, LangGraph, and LangSmith.",
+    images: ["/og/home"],
+  },
+};
 
 export default function HomePage() {
   return (
