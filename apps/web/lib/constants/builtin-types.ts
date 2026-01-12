@@ -224,13 +224,21 @@ export const JS_BUILTIN_TYPES: Record<string, string> = {
 
 /**
  * Get external documentation URL for a built-in type
+ *
+ * NOTE: We use Object.hasOwn() to check for key existence to avoid
+ * accidentally returning prototype properties like "constructor" or "toString"
+ * which would return functions instead of strings.
  */
 export function getBuiltinTypeDocUrl(
   typeName: string,
   language: "python" | "typescript" | "javascript"
 ): string | null {
   if (language === "python") {
-    return PYTHON_BUILTIN_TYPES[typeName] || null;
+    return Object.hasOwn(PYTHON_BUILTIN_TYPES, typeName)
+      ? PYTHON_BUILTIN_TYPES[typeName]
+      : null;
   }
-  return JS_BUILTIN_TYPES[typeName] || null;
+  return Object.hasOwn(JS_BUILTIN_TYPES, typeName)
+    ? JS_BUILTIN_TYPES[typeName]
+    : null;
 }

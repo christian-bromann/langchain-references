@@ -274,14 +274,25 @@ jobs:
       - name: Check for artifacts
         id: check-artifacts
         run: |
-          if [ -d "artifacts" ] && [ "$(ls -A artifacts 2>/dev/null)" ]; then
-            echo "has_artifacts=true" >> $GITHUB_OUTPUT
-            echo "Found artifacts to process:"
-            find artifacts -name "reference.manifest.json" | head -20
+          # Artifacts are uploaded as ir-output/{buildId}/...
+          # When merged, they become artifacts/ir-output/{buildId}/...
+          # OR artifacts/{buildId}/... depending on how they were uploaded
+          
+          # Check both possible structures
+          if [ -d "artifacts/ir-output" ]; then
+            IR_PATH="artifacts/ir-output"
+          elif [ -d "artifacts" ] && [ "$(ls -A artifacts 2>/dev/null)" ]; then
+            IR_PATH="artifacts"
           else
             echo "has_artifacts=false" >> $GITHUB_OUTPUT
             echo "No artifacts found - all builds were skipped"
+            exit 0
           fi
+          
+          echo "ir_path=$IR_PATH" >> $GITHUB_OUTPUT
+          echo "has_artifacts=true" >> $GITHUB_OUTPUT
+          echo "Found artifacts in $IR_PATH:"
+          find "$IR_PATH" -name "reference.manifest.json" | head -20
 
       - name: Merge manifests and update pointers
         if: steps.check-artifacts.outputs.has_artifacts == 'true'
@@ -291,9 +302,11 @@ jobs:
           # 1. Group manifests by build ID (same project+language+sha = same buildId)
           # 2. Merge package lists from all manifests with the same buildId
           # 3. Update pointers with the merged manifest
+          
+          IR_PATH="${{ steps.check-artifacts.outputs.ir_path }}"
 
           # Find all unique build directories
-          for build_dir in artifacts/*/; do
+          for build_dir in "$IR_PATH"/*/; do
             [ -d "$build_dir" ] || continue
 
             BUILD_ID=$(basename "$build_dir")
@@ -309,58 +322,65 @@ jobs:
               continue
             fi
 
-            # The merged artifact already combines all packages with the same buildId
+            # The merged artifact combines all packages with the same buildId
             # Each package's symbols are in packages/{packageId}/ subdirectories
             # Count how many packages are in this build
             pkg_count=$(find "$build_dir/packages" -name "symbols.json" 2>/dev/null | wc -l | tr -d ' ')
 
             echo "Build $BUILD_ID has $pkg_count package(s)"
-
-            # Regenerate manifest to include all packages in this build directory
-            # Use jq to update the manifest with all actual packages present
-            if [ "$pkg_count" -gt 1 ]; then
-              echo "  Regenerating manifest for merged packages..."
-
-              # Get base manifest info (irVersion, build, project, sources)
-              base_manifest=$(cat "$manifest")
-
-              # Build new packages array from all symbols.json files
-              new_packages="[]"
-              for symbols_file in "$build_dir"/packages/*/symbols.json; do
-                [ -f "$symbols_file" ] || continue
-
-                pkg_dir=$(dirname "$symbols_file")
-                pkg_id=$(basename "$pkg_dir")
-
-                # Extract package info from symbols.json
-                pkg_info=$(jq -c '.package' "$symbols_file" 2>/dev/null || echo '{}')
-                if [ "$pkg_info" != '{}' ] && [ "$pkg_info" != 'null' ]; then
-                  # Count symbols
-                  total=$(jq '.symbols | length' "$symbols_file")
-                  classes=$(jq '[.symbols[] | select(.kind == "class")] | length' "$symbols_file")
-                  functions=$(jq '[.symbols[] | select(.kind == "function")] | length' "$symbols_file")
-                  modules=$(jq '[.symbols[] | select(.kind == "module")] | length' "$symbols_file")
-                  types=$(jq '[.symbols[] | select(.kind == "interface" or .kind == "typeAlias" or .kind == "enum")] | length' "$symbols_file")
-
-                  # Build package entry (simplified - uses existing package info)
-                  pkg_entry=$(echo "$pkg_info" | jq -c --arg pid "$pkg_id" \
-                    --argjson total "$total" --argjson classes "$classes" \
-                    --argjson functions "$functions" --argjson modules "$modules" \
-                    --argjson types "$types" \
-                    '. + {
-                      packageId: $pid,
-                      stats: {total: $total, classes: $classes, functions: $functions, modules: $modules, types: $types},
-                      nav: {rootGroups: ["Classes", "Functions", "Types"]},
-                      entry: {kind: "module", refId: ""}
-                    }')
-                  new_packages=$(echo "$new_packages" | jq -c ". + [$pkg_entry]")
-                fi
-              done
-
-              # Update manifest with new packages array
-              echo "$base_manifest" | jq --argjson pkgs "$new_packages" '.packages = $pkgs' > "$manifest"
-              echo "  Updated manifest with $(echo "$new_packages" | jq 'length') packages"
+            
+            if [ "$pkg_count" -eq 0 ]; then
+              echo "  No packages found, skipping"
+              continue
             fi
+
+            # ALWAYS regenerate manifest from symbols.json files
+            # This is necessary because with parallel builds, each package uploads its own
+            # manifest that only contains that package. The last one uploaded "wins" in
+            # artifact merging, so we need to rebuild the complete manifest from all packages.
+            echo "  Regenerating manifest from all packages..."
+
+            # Get base manifest info (irVersion, build, project, sources)
+            base_manifest=$(cat "$manifest")
+
+            # Build new packages array from all symbols.json files
+            new_packages="[]"
+            for symbols_file in "$build_dir"/packages/*/symbols.json; do
+              [ -f "$symbols_file" ] || continue
+
+              pkg_dir=$(dirname "$symbols_file")
+              pkg_id=$(basename "$pkg_dir")
+
+              # Extract package info from symbols.json
+              pkg_info=$(jq -c '.package' "$symbols_file" 2>/dev/null || echo '{}')
+              if [ "$pkg_info" != '{}' ] && [ "$pkg_info" != 'null' ]; then
+                # Count symbols
+                total=$(jq '.symbols | length' "$symbols_file")
+                classes=$(jq '[.symbols[] | select(.kind == "class")] | length' "$symbols_file")
+                functions=$(jq '[.symbols[] | select(.kind == "function")] | length' "$symbols_file")
+                modules=$(jq '[.symbols[] | select(.kind == "module")] | length' "$symbols_file")
+                types=$(jq '[.symbols[] | select(.kind == "interface" or .kind == "typeAlias" or .kind == "enum")] | length' "$symbols_file")
+
+                # Build package entry (simplified - uses existing package info)
+                pkg_entry=$(echo "$pkg_info" | jq -c --arg pid "$pkg_id" \
+                  --argjson total "$total" --argjson classes "$classes" \
+                  --argjson functions "$functions" --argjson modules "$modules" \
+                  --argjson types "$types" \
+                  '. + {
+                    packageId: $pid,
+                    stats: {total: $total, classes: $classes, functions: $functions, modules: $modules, types: $types},
+                    nav: {rootGroups: ["Classes", "Functions", "Types"]},
+                    entry: {kind: "module", refId: ""}
+                  }')
+                new_packages=$(echo "$new_packages" | jq -c ". + [$pkg_entry]")
+              else
+                echo "    Warning: Could not extract package info from $symbols_file"
+              fi
+            done
+
+            # Update manifest with new packages array
+            echo "$base_manifest" | jq --argjson pkgs "$new_packages" '.packages = $pkgs' > "$manifest"
+            echo "  Updated manifest with $(echo "$new_packages" | jq 'length') packages"
 
             echo "Updating pointers for build: $BUILD_ID"
             npx tsx packages/build-pipeline/src/commands/update-pointers.ts "$BUILD_ID" "$manifest"
