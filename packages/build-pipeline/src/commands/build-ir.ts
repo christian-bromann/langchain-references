@@ -211,7 +211,9 @@ async function extractTypeScript(
   repo: string,
   sha: string,
   entryPoints?: string[],
-  sourcePathPrefix?: string
+  sourcePathPrefix?: string,
+  /** Package's relative path within the repo (e.g., "libs/langchain-core") */
+  packageRepoPath?: string
 ): Promise<void> {
   console.log(`   📘 Extracting: ${packageName}`);
 
@@ -240,7 +242,8 @@ async function extractTypeScript(
     repo,
     sha,
     sourcePathPrefix,
-    packagePath
+    packagePath,
+    packageRepoPath
   );
 
   const symbols = transformer.transform();
@@ -542,7 +545,8 @@ async function extractHistoricalVersion(
         config.repo,
         sha,
         pkgConfig.entryPoints,
-        fetchResult.extractedPath
+        fetchResult.extractedPath,
+        versionPath  // Package's relative path in the repo
       );
     }
 
@@ -1254,7 +1258,8 @@ async function buildConfig(
           config.repo,
           sha,
           pkgConfig.entryPoints,
-          fetchResult.extractedPath
+          fetchResult.extractedPath,
+          pkgConfig.path  // Package's relative path in the repo
         );
       }
       console.log(`   ✓ ${pkgConfig.name}`);

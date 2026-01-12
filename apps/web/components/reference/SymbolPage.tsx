@@ -35,6 +35,7 @@ import fs from "fs/promises";
 import path from "path";
 import { cleanExampleCode } from "@/lib/utils/clean-example";
 import { getBuiltinTypeDocUrl } from "@/lib/constants/builtin-types";
+import { TechArticleJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 
 interface SymbolPageProps {
   language: "python" | "javascript";
@@ -1081,14 +1082,14 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
   for (const [, pkg] of crossProjectPackages) {
     // Skip the current package
     if (pkg.slug === currentPkgSlug) continue;
-    
+
     for (const symbolName of pkg.knownSymbols) {
       // Skip if already in current package's known symbols (local takes precedence)
       if (knownSymbols.has(symbolName)) continue;
-      
+
       // Skip if already mapped (first package wins for same symbol name)
       if (typeUrlMap.has(symbolName)) continue;
-      
+
       typeUrlMap.set(symbolName, `/${langPath}/${pkg.slug}/${symbolName}`);
     }
   }
@@ -1103,18 +1104,38 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
   // Generate TOC data
   const { topItems, sections, inheritedGroups } = generateTOCData(symbol);
 
+  // Build breadcrumb items for structured data
+  const urlLangPath = language === "python" ? "python" : "javascript";
+  const urlLangLabel = language === "python" ? "Python" : "JavaScript";
+  const breadcrumbItems = [
+    { name: urlLangLabel, url: `/${urlLangPath}` },
+    { name: packageName, url: buildPackageUrl(language, packageName) },
+    { name: symbol.name, url: `/${urlLangPath}/${slugifyPackageName(packageName)}/${symbolPath}` },
+  ];
+
   return (
-    <div className="flex gap-8">
-      {/* Main content */}
-      <div className="flex-1 min-w-0 space-y-8">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center gap-2 text-sm text-foreground-secondary flex-wrap">
-        <Link
-          href={`/${language === "python" ? "python" : "javascript"}`}
-          className="hover:text-foreground transition-colors"
-        >
-          {language === "python" ? "Python" : "JavaScript"}
-        </Link>
+    <>
+      {/* Structured Data */}
+      <TechArticleJsonLd
+        title={`${symbol.name} - ${packageName}`}
+        description={symbol.docs.summary || symbol.docs.description || `API reference for ${symbol.name} in ${packageName}`}
+        url={`/${urlLangPath}/${slugifyPackageName(packageName)}/${symbolPath}`}
+        language={language}
+        packageName={packageName}
+      />
+      <BreadcrumbJsonLd items={breadcrumbItems} />
+
+      <div className="flex gap-8">
+        {/* Main content */}
+        <div className="flex-1 min-w-0 space-y-8">
+        {/* Breadcrumbs */}
+        <nav className="flex items-center gap-2 text-sm text-foreground-secondary flex-wrap">
+          <Link
+            href={`/${language === "python" ? "python" : "javascript"}`}
+            className="hover:text-foreground transition-colors"
+          >
+            {language === "python" ? "Python" : "JavaScript"}
+          </Link>
         <ChevronRight className="h-4 w-4 shrink-0" />
         <Link
           href={buildPackageUrl(language, packageName)}
@@ -1301,15 +1322,16 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
       />
       </div>
 
-      {/* Table of Contents sidebar */}
-      <TableOfContents
-        topItems={topItems}
-        sections={sections}
-        inheritedGroups={inheritedGroups}
-        markdown={irSymbolForMarkdown ? symbolToMarkdown(irSymbolForMarkdown, packageName) : undefined}
-        pageUrl={`${getBaseUrl()}/${language === "python" ? "python" : "javascript"}/${slugifyPackageName(packageName)}/${symbolPath}`}
-      />
-    </div>
+        {/* Table of Contents sidebar */}
+        <TableOfContents
+          topItems={topItems}
+          sections={sections}
+          inheritedGroups={inheritedGroups}
+          markdown={irSymbolForMarkdown ? symbolToMarkdown(irSymbolForMarkdown, packageName) : undefined}
+          pageUrl={`${getBaseUrl()}/${language === "python" ? "python" : "javascript"}/${slugifyPackageName(packageName)}/${symbolPath}`}
+        />
+      </div>
+    </>
   );
 }
 

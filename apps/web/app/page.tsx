@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { WebsiteJsonLd } from "@/components/seo/JsonLd";
 
 /**
  * Page metadata for SEO and social sharing
@@ -34,7 +35,9 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8">
+    <>
+      <WebsiteJsonLd />
+      <div className="min-h-screen flex flex-col items-center justify-center p-8">
       <div className="max-w-2xl text-center">
         <h1 className="text-4xl font-heading font-bold mb-4">
           LangChain Reference Docs
@@ -83,6 +86,7 @@ export default function HomePage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

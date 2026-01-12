@@ -96,6 +96,24 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${inter.variable} ${manrope.variable} ${jetbrainsMono.variable}`}
     >
+      <head>
+        {/* Preconnect to external resources for faster loading */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        {/* DNS prefetch for GitHub (source links) */}
+        <link rel="dns-prefetch" href="https://github.com" />
+        {/* Preconnect to Vercel Blob storage if configured */}
+        {process.env.NEXT_PUBLIC_BLOB_URL && (
+          <link
+            rel="preconnect"
+            href={new URL(process.env.NEXT_PUBLIC_BLOB_URL).origin}
+          />
+        )}
+      </head>
       <body className="antialiased">
         <ThemeProvider
           attribute="class"

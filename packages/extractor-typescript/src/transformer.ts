@@ -186,6 +186,8 @@ export class TypeDocTransformer {
   private sha: string;
   private sourcePathPrefix: string;
   private packagePath: string;
+  /** Package's relative path within the repo (e.g., "libs/langchain-core") */
+  private packageRepoPath: string;
   private symbolIdMap: Map<number, string>;
 
   constructor(
@@ -194,7 +196,9 @@ export class TypeDocTransformer {
     repo: string,
     sha: string,
     sourcePathPrefix?: string,
-    packagePath?: string
+    packagePath?: string,
+    /** Package's relative path within the repo (e.g., "libs/langchain-core") */
+    packageRepoPath?: string
   ) {
     this.project = project;
     this.packageName = packageName;
@@ -206,6 +210,8 @@ export class TypeDocTransformer {
       ? sourcePathPrefix.replace(/\/?$/, "/")
       : "";
     this.packagePath = packagePath || "";
+    // Normalize the package repo path - remove leading/trailing slashes
+    this.packageRepoPath = (packageRepoPath || "").replace(/^\/|\/$/g, "");
     // Build a map from symbol IDs to their names for type resolution
     this.symbolIdMap = this.buildSymbolIdMap();
   }
@@ -1083,15 +1089,17 @@ export class TypeDocTransformer {
     // TypeDoc includes the full path from extraction, but we only want the repo-relative path
     let filePath = source.fileName;
 
-    // Handle absolute paths
+    // Handle absolute paths - strip the extraction prefix
     if (this.sourcePathPrefix && filePath.startsWith(this.sourcePathPrefix)) {
       filePath = filePath.slice(this.sourcePathPrefix.length);
     }
 
     // Handle relative paths with ../ that escape to tmp directory
     // Match pattern: ../../../.../extracted/libs/{package}/{path} or .../extracted/{path}
+    // We need to extract just the relative path within the package
     const extractedMatch = filePath.match(/\/extracted\/(?:libs\/)?([^/]+)\/(.+)$/);
     if (extractedMatch) {
+      // extractedMatch[2] contains the path within the package (e.g., "src/runnables/base.ts")
       filePath = extractedMatch[2];
     }
 
@@ -1108,6 +1116,12 @@ export class TypeDocTransformer {
       if (srcMatch) {
         filePath = `src/${srcMatch[1]}`;
       }
+    }
+
+    // If we have a package repo path (e.g., "libs/langchain-core"), prepend it
+    // This ensures the source URL correctly points to the file in the monorepo
+    if (this.packageRepoPath && !filePath.startsWith(this.packageRepoPath)) {
+      filePath = `${this.packageRepoPath}/${filePath}`;
     }
 
     return {

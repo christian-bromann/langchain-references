@@ -25,6 +25,7 @@ interface CliOptions {
   raw: boolean;
   verbose: boolean;
   sourcePathPrefix?: string;
+  packageRepoPath?: string;
 }
 
 program
@@ -45,6 +46,7 @@ program
   .option("--include-internal", "Include @internal members", false)
   .option("--raw", "Output raw TypeDoc JSON without IR transformation", false)
   .option("--source-path-prefix <prefix>", "Path prefix to strip from source file paths in output")
+  .option("--package-repo-path <path>", "Package's relative path within the repo (e.g., libs/langchain-core)")
   .option("-v, --verbose", "Enable verbose output", false);
 
 program.parse();
@@ -103,7 +105,8 @@ async function main(): Promise<void> {
         config.repo,
         config.sha,
         options.sourcePathPrefix,
-        config.packagePath  // Pass package path for AST fallback resolution
+        config.packagePath,  // Pass package path for AST fallback resolution
+        options.packageRepoPath  // Package's relative path within the repo
       );
 
       const symbols = transformer.transform();
