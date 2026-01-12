@@ -168,6 +168,62 @@ export function filterToMinorVersions(
   return Array.from(seen.values());
 }
 
+/**
+ * Keep both the first and last patch release for each minor version.
+ * Exception: For 0.0.x versions, only keep the last version.
+ *
+ * Example: [0.2.15, 0.2.14, 0.2.0, 0.1.5, 0.1.0, 0.0.8, 0.0.1]
+ *       → [0.2.15, 0.2.0, 0.1.5, 0.1.0, 0.0.8]
+ *
+ * @param versions - Array of discovered versions (should be sorted newest first)
+ * @returns Filtered array with first and last version per minor (except 0.0.x)
+ */
+export function filterToFirstAndLastMinorVersions(
+  versions: DiscoveredVersion[]
+): DiscoveredVersion[] {
+  // Group versions by minor version
+  const minorGroups = new Map<string, DiscoveredVersion[]>();
+
+  for (const v of versions) {
+    const parsed = semver.parse(v.version);
+    if (!parsed) continue;
+
+    const minorKey = `${parsed.major}.${parsed.minor}`;
+    if (!minorGroups.has(minorKey)) {
+      minorGroups.set(minorKey, []);
+    }
+    minorGroups.get(minorKey)!.push(v);
+  }
+
+  const result: DiscoveredVersion[] = [];
+
+  for (const [minorKey, group] of minorGroups) {
+    // Sort group by semver (newest first)
+    group.sort((a, b) => semver.rcompare(a.version, b.version));
+
+    const latest = group[0]; // Newest patch
+    const oldest = group[group.length - 1]; // Oldest patch
+
+    // For 0.0.x, only include the latest version
+    if (minorKey === "0.0") {
+      result.push(latest);
+    } else {
+      // Include the latest patch
+      result.push(latest);
+
+      // Include the oldest patch if different from latest
+      if (oldest.version !== latest.version) {
+        result.push(oldest);
+      }
+    }
+  }
+
+  // Sort final result by semver (newest first)
+  result.sort((a, b) => semver.rcompare(a.version, b.version));
+
+  return result;
+}
+
 // =============================================================================
 // GIT TAG FETCHING
 // =============================================================================
@@ -254,27 +310,49 @@ export async function fetchGitTags(
   process.stdout.write("\r" + " ".repeat(80) + "\r");
   console.log(`   Found ${matchingRefs.length} matching tags across ${page} pages`);
 
-  // Phase 2: Filter to keep only the latest patch for each minor version
+  // Phase 2: Filter to keep first and last patch for each minor version
+  // Exception: For 0.0.x, only keep the last version
   // Sort by semver descending first
   matchingRefs.sort((a, b) => semver.rcompare(a.version, b.version));
 
-  const seenMinorVersions = new Set<string>();
-  const filteredRefs: TagRef[] = [];
-
+  // Group by minor version
+  const minorGroups = new Map<string, TagRef[]>();
   for (const ref of matchingRefs) {
     const parsed = semver.parse(ref.version);
     if (!parsed) continue;
 
     const minorKey = `${parsed.major}.${parsed.minor}`;
-    if (seenMinorVersions.has(minorKey)) {
-      continue; // Skip older patches for this minor
+    if (!minorGroups.has(minorKey)) {
+      minorGroups.set(minorKey, []);
     }
-
-    seenMinorVersions.add(minorKey);
-    filteredRefs.push(ref);
+    minorGroups.get(minorKey)!.push(ref);
   }
 
-  console.log(`   Filtered to ${filteredRefs.length} minor versions: ${filteredRefs.map(r => r.version).join(", ")}`);
+  const filteredRefs: TagRef[] = [];
+
+  for (const [minorKey, group] of minorGroups) {
+    // group is already sorted newest first
+    const latest = group[0];
+    const oldest = group[group.length - 1];
+
+    // For 0.0.x, only include the latest version
+    if (minorKey === "0.0") {
+      filteredRefs.push(latest);
+    } else {
+      // Include the latest patch
+      filteredRefs.push(latest);
+
+      // Include the oldest patch if different from latest
+      if (oldest.version !== latest.version) {
+        filteredRefs.push(oldest);
+      }
+    }
+  }
+
+  // Sort final result by semver (newest first)
+  filteredRefs.sort((a, b) => semver.rcompare(a.version, b.version));
+
+  console.log(`   Filtered to ${filteredRefs.length} versions (first+last per minor): ${filteredRefs.map(r => r.version).join(", ")}`);
 
   // Phase 3: Fetch dates only for the filtered minor versions
   let fetchedCount = 0;
@@ -370,9 +448,9 @@ export async function discoverVersions(
   // Step 3: Sort by semantic version (newest first)
   versions.sort((a, b) => semver.rcompare(a.version, b.version));
 
-  // Step 4: Filter to keep only the latest patch per minor version
-  const filteredVersions = filterToMinorVersions(versions);
-  console.log(`Filtered to ${filteredVersions.length} minor/major versions`);
+  // Step 4: Filter to keep first and last patch per minor version (except 0.0.x)
+  const filteredVersions = filterToFirstAndLastMinorVersions(versions);
+  console.log(`Filtered to ${filteredVersions.length} versions (first+last per minor)`);
 
   // Step 5: Apply maxVersions limit
   let result = filteredVersions.slice(0, options.maxVersions);

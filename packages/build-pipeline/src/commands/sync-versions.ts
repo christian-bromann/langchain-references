@@ -528,31 +528,69 @@ async function syncProject(
     // Sort by semver descending
     matchingVersions.sort((a, b) => semver.rcompare(a.version, b.version));
 
-    // Filter to minor versions only (keep latest patch per minor)
-    const seenMinors = new Set<string>();
-    const minorVersions: typeof matchingVersions = [];
+    // Filter to keep first and last patch for each minor version
+    // Exception: For 0.0.x, only keep the last version
+    const minorGroups = new Map<string, typeof matchingVersions>();
 
     for (const v of matchingVersions) {
       const parsed = semver.parse(v.version);
       if (!parsed) continue;
 
       const minorKey = `${parsed.major}.${parsed.minor}`;
-      if (seenMinors.has(minorKey)) continue;
-
-      seenMinors.add(minorKey);
-      minorVersions.push(v);
-
-      if (minorVersions.length >= maxVersions) break;
+      if (!minorGroups.has(minorKey)) {
+        minorGroups.set(minorKey, []);
+      }
+      minorGroups.get(minorKey)!.push(v);
     }
 
-    console.log(`      Filtered to ${minorVersions.length} minor versions`);
+    const minorVersions: typeof matchingVersions = [];
+
+    for (const [minorKey, group] of minorGroups) {
+      // group is already sorted newest first
+      const latest = group[0];
+      const oldest = group[group.length - 1];
+
+      // For 0.0.x, only include the latest version
+      if (minorKey === "0.0") {
+        minorVersions.push(latest);
+      } else {
+        // Include the latest patch
+        minorVersions.push(latest);
+
+        // Include the oldest patch if different from latest
+        if (oldest.version !== latest.version) {
+          minorVersions.push(oldest);
+        }
+      }
+    }
+
+    // Sort final result by version descending
+    minorVersions.sort((a, b) => semver.rcompare(a.version, b.version));
+
+    // Apply maxVersions limit (counting by unique minor versions, not individual versions)
+    const limitedVersions: typeof matchingVersions = [];
+    const minorCount = new Set<string>();
+
+    for (const v of minorVersions) {
+      const parsed = semver.parse(v.version);
+      if (!parsed) continue;
+
+      const minorKey = `${parsed.major}.${parsed.minor}`;
+      if (!minorCount.has(minorKey)) {
+        if (minorCount.size >= maxVersions) break;
+        minorCount.add(minorKey);
+      }
+      limitedVersions.push(v);
+    }
+
+    console.log(`      Filtered to ${limitedVersions.length} versions (first+last per ${minorCount.size} minors)`);
 
     // Check what's new vs existing
     const existingVersionSet = new Set(
       existingPkg?.versions.map((v) => v.version) ?? []
     );
 
-    const newVersions = minorVersions.filter(
+    const newVersions = limitedVersions.filter(
       (v) => !existingVersionSet.has(v.version)
     );
 
@@ -564,15 +602,15 @@ async function syncProject(
       continue;
     }
 
-    console.log(`      Fetching dates for ${forceRefresh ? minorVersions.length : newVersions.length} versions...`);
+    console.log(`      Fetching dates for ${forceRefresh ? limitedVersions.length : newVersions.length} versions...`);
 
     // Fetch dates for new versions (or all if force refresh)
-    const versionsToFetch = forceRefresh ? minorVersions : newVersions;
+    const versionsToFetch = forceRefresh ? limitedVersions : newVersions;
     const versionEntries: VersionEntry[] = [];
 
     // Reuse existing entries if not force refresh
     if (!forceRefresh && existingPkg) {
-      for (const v of minorVersions) {
+      for (const v of limitedVersions) {
         const existing = existingPkg.versions.find((e) => e.version === v.version);
         if (existing) {
           versionEntries.push(existing);
