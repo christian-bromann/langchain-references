@@ -14,16 +14,31 @@ const POINTERS_PATH = "pointers";
 
 /**
  * Check if we should use blob storage (production) or local files.
- * 
+ *
  * Set USE_LOCAL_IR=true to force local file reading even during production builds.
  * This is useful when running `pull-ir` before `next build` to avoid network issues.
  */
+let isProductionLoggedOnce = false;
 export function isProduction(): boolean {
   // Allow forcing local IR usage even in production
-  if (process.env.USE_LOCAL_IR === "true" || process.env.USE_LOCAL_IR === "1") {
+  const useLocalIr = process.env.USE_LOCAL_IR === "true" || process.env.USE_LOCAL_IR === "1";
+  const isVercel = !!process.env.VERCEL;
+  const isProd = process.env.NODE_ENV === "production";
+
+  // Log once to help debug env var issues
+  if (!isProductionLoggedOnce) {
+    isProductionLoggedOnce = true;
+    console.log(
+      `[loader] isProduction check: USE_LOCAL_IR=${process.env.USE_LOCAL_IR}, ` +
+      `NODE_ENV=${process.env.NODE_ENV}, VERCEL=${process.env.VERCEL}, ` +
+      `result=${useLocalIr ? false : isProd || isVercel}`
+    );
+  }
+
+  if (useLocalIr) {
     return false;
   }
-  return process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+  return isProd || isVercel;
 }
 
 /**
@@ -686,6 +701,7 @@ function getLocalIrBasePath(): string {
 /**
  * Get the latest build ID for a language and project from local symlinks
  */
+let localBuildIdLoggedOnce = false;
 export async function getLocalLatestBuildId(
   language: "python" | "javascript",
   project: string = "langchain"
@@ -697,6 +713,20 @@ export async function getLocalLatestBuildId(
     const languageId = language === "python" ? "python" : "javascript";
 
     const symlink = path.join(basePath, `latest-${project}-${languageId}`);
+
+    // Log once to debug path issues
+    if (!localBuildIdLoggedOnce) {
+      localBuildIdLoggedOnce = true;
+      console.log(`[loader] Looking for local IR at: ${basePath}`);
+      console.log(`[loader] cwd: ${process.cwd()}`);
+      try {
+        const files = await fs.readdir(basePath);
+        console.log(`[loader] ir-output contents: ${files.slice(0, 10).join(", ")}${files.length > 10 ? "..." : ""}`);
+      } catch (e) {
+        console.log(`[loader] ir-output not found or not readable: ${e}`);
+      }
+    }
+
     const target = await fs.readlink(symlink);
     return target;
   } catch {
