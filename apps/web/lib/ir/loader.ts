@@ -45,12 +45,17 @@ export function isProduction(): boolean {
  * Get the Vercel Blob store base URL.
  * For public blobs, we access them directly via this URL.
  *
- * The BLOB_URL can be set explicitly, or derived from NEXT_PUBLIC_BLOB_URL.
+ * Checks for environment variables in order:
+ * 1. BLOB_URL (explicit blob URL)
+ * 2. BLOB_BASE_URL (used by CI/build pipeline)
+ * 3. NEXT_PUBLIC_BLOB_URL (client-side accessible)
+ *
  * Example: https://xxxxxx.public.blob.vercel-storage.com
  */
 function getBlobUrl(path: string): string | null {
-  const baseUrl = process.env.BLOB_URL || process.env.NEXT_PUBLIC_BLOB_URL;
+  const baseUrl = process.env.BLOB_URL || process.env.BLOB_BASE_URL || process.env.NEXT_PUBLIC_BLOB_URL;
   if (!baseUrl) {
+    console.warn("[loader] No blob URL configured. Set BLOB_URL, BLOB_BASE_URL, or NEXT_PUBLIC_BLOB_URL.");
     return null;
   }
   return `${baseUrl}/${path}`;

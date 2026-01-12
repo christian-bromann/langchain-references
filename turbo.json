@@ -1,7 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["**/.env.*local"],
-  "globalEnv": ["NODE_ENV", "VERCEL", "CACHE_BUST", "USE_LOCAL_IR"],
+  "globalEnv": ["NODE_ENV", "VERCEL", "CACHE_BUST", "USE_LOCAL_IR", "BLOB_URL", "BLOB_BASE_URL", "NEXT_PUBLIC_BLOB_URL"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

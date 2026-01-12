@@ -44,17 +44,17 @@ export async function generateStaticParams(): Promise<{ slug: string[] }[]> {
 
 /**
  * Enable Incremental Static Regeneration (ISR).
- * 
+ *
  * Pre-rendered pages (classes, functions, interfaces, etc.) are built at deploy time.
  * Other pages (methods, properties, modules) are generated on-demand and cached.
- * 
+ *
  * Revalidate cached pages every hour to pick up documentation updates.
  */
 export const revalidate = 3600; // 1 hour
 
 /**
  * Enable dynamic params for on-demand page generation.
- * 
+ *
  * Pages not pre-rendered at build time (methods, properties, etc.) will be
  * generated on first request and then cached. This keeps build size small
  * while still providing fast responses for all valid pages.
