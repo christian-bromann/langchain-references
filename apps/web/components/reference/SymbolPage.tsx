@@ -1246,7 +1246,7 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
                 key={base}
                 className="px-2 py-1 bg-background-secondary rounded text-sm font-mono text-foreground"
               >
-                <TypeReference
+                <TypeReferenceDisplay
                   typeStr={base}
                   knownSymbols={knownSymbols}
                   language={language}
@@ -1340,7 +1340,7 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
  * Uses dashed underlines for linked types.
  * Supports cross-project linking via typeUrlMap.
  */
-function TypeReference({
+function TypeReferenceDisplay({
   typeStr,
   knownSymbols,
   language,
@@ -1475,7 +1475,7 @@ async function Section({
                   <td className="py-3 px-3">
                     <code className="font-mono text-foreground-secondary text-xs">
                       {item.type ? (
-                        <TypeReference
+                        <TypeReferenceDisplay
                           typeStr={item.type}
                           knownSymbols={knownSymbols}
                           language={language}
