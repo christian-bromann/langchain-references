@@ -236,6 +236,31 @@ class PythonExtractor:
 
         return base_kind
 
+    def _is_invalid_repr(self, value: str) -> bool:
+        """
+        Check if a string looks like a Python repr of an object rather than a valid value.
+
+        Args:
+            value: The string to check.
+
+        Returns:
+            True if the string appears to be an invalid repr (bound method, function, etc.)
+        """
+        if not value:
+            return False
+        # Strip whitespace for checking
+        stripped = value.strip()
+        # Check for common invalid repr patterns
+        invalid_patterns = [
+            "<bound method",
+            "<function",
+            "<class",
+            "<module",
+            "<built-in",
+            "<lambda",
+        ]
+        return any(pattern in stripped for pattern in invalid_patterns)
+
     def _get_signature(self, obj: GriffeObject) -> str:
         """
         Get the signature string for callable objects.
@@ -251,13 +276,27 @@ class PythonExtractor:
             if not hasattr(obj, "parameters"):
                 return ""
 
+            # Verify parameters is actually iterable with parameter objects
+            parameters = obj.parameters
+            if parameters is None:
+                return ""
+
+            # Check if parameters looks like a bound method or other non-iterable
+            params_repr = repr(parameters)
+            if self._is_invalid_repr(params_repr):
+                return ""
+
             params = []
             has_positional_only = False
             has_keyword_only = False
             positional_only_added = False
             keyword_only_added = False
 
-            for param in obj.parameters:
+            for param in parameters:
+                # Verify this is a real parameter object
+                if not hasattr(param, "name"):
+                    continue
+
                 # Get the parameter kind - normalize to lowercase with underscores
                 kind_str = str(param.kind).lower() if hasattr(param, "kind") else ""
 
@@ -298,14 +337,15 @@ class PythonExtractor:
                 if param.annotation:
                     # Ensure annotation is converted to string properly
                     annotation_str = str(param.annotation) if param.annotation else ""
-                    if annotation_str and not annotation_str.startswith("<"):
+                    # Skip if it looks like a bound method or other non-type string
+                    if annotation_str and not self._is_invalid_repr(annotation_str):
                         param_str += f": {annotation_str}"
 
                 # Add default value if present
                 if param.default is not None:
                     default_str = str(param.default) if param.default is not None else ""
                     # Skip if it looks like a bound method or other non-value string
-                    if default_str and not default_str.startswith("<"):
+                    if default_str and not self._is_invalid_repr(default_str):
                         param_str += f" = {default_str}"
 
                 params.append(param_str)
@@ -328,11 +368,11 @@ class PythonExtractor:
                 # Ensure returns is converted to string properly
                 returns_str = str(obj.returns) if obj.returns else ""
                 # Skip if it looks like a bound method or other non-type string
-                if returns_str and not returns_str.startswith("<"):
+                if returns_str and not self._is_invalid_repr(returns_str):
                     signature += f" -> {returns_str}"
 
-            # Final validation: ensure signature doesn't contain bound method patterns
-            if "<bound method" in signature or "<function" in signature:
+            # Final validation: ensure signature doesn't contain any invalid patterns
+            if self._is_invalid_repr(signature):
                 # Something went wrong, return empty to fall back gracefully
                 return ""
 

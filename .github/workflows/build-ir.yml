@@ -340,7 +340,7 @@ jobs:
             # Get base manifest info (irVersion, build, project, sources)
             base_manifest=$(cat "$manifest")
             project=$(echo "$base_manifest" | jq -r '.project // "langchain"')
-            
+
             # Determine language from the first package
             first_pkg_lang=$(echo "$base_manifest" | jq -r '.packages[0].language // "typescript"')
             if [ "$first_pkg_lang" == "python" ]; then
@@ -358,7 +358,7 @@ jobs:
               pointer_url="$BLOB_URL/pointers/latest-${project}-${ecosystem}.json"
               existing_pointer=$(curl -sf "$pointer_url" 2>/dev/null || echo '{}')
               existing_build_id=$(echo "$existing_pointer" | jq -r '.buildId // empty')
-              
+
               if [ -n "$existing_build_id" ] && [ "$existing_build_id" != "$BUILD_ID" ]; then
                 # Fetch the existing manifest
                 existing_manifest_url="$BLOB_URL/ir/${existing_build_id}/reference.manifest.json"
