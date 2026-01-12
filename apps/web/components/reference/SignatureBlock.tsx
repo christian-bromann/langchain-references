@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { CopyButton } from "./CopyButton";
 import type { TypeReference } from "@langchain/ir-schema";
+import { getBuiltinTypeDocUrl } from "@/lib/constants/builtin-types";
 
 interface SignatureBlockProps {
   /** The signature string to render */
@@ -41,6 +42,7 @@ type TokenType =
   | "keyword"
   | "type"
   | "type-link"
+  | "type-external"
   | "parameter"
   | "operator"
   | "punctuation"
@@ -56,27 +58,14 @@ interface Token {
 }
 
 /**
- * Built-in Python types that shouldn't be linked
- */
-const PYTHON_BUILTINS = new Set([
-  "str", "int", "float", "bool", "None", "bytes", "object",
-  "list", "dict", "set", "tuple", "type", "Any", "Optional",
-  "Union", "List", "Dict", "Set", "Tuple", "Type", "Callable",
-  "Iterable", "Iterator", "Generator", "Sequence", "Mapping",
-  "Literal", "TypeVar", "Generic", "Protocol", "ClassVar",
-  "Awaitable", "Coroutine", "AsyncIterator", "AsyncGenerator",
-  "Self", "NoReturn", "Never", "Final", "Annotated",
-]);
-
-/**
- * Python keywords
+ * Python keywords (not linked)
  */
 const PYTHON_KEYWORDS = new Set([
   "self", "cls", "async", "await", "def", "class", "return",
   "if", "else", "elif", "for", "while", "try", "except",
   "finally", "with", "as", "import", "from", "pass", "break",
   "continue", "raise", "yield", "lambda", "and", "or", "not",
-  "in", "is", "True", "False",
+  "in", "is", "True", "False", "None",
 ]);
 
 /**
@@ -121,10 +110,6 @@ function tokenizeSignature(
       if (PYTHON_KEYWORDS.has(identifier)) {
         tokens.push({ type: "keyword", value: identifier });
       }
-      // Check if it's a built-in type
-      else if (PYTHON_BUILTINS.has(identifier)) {
-        tokens.push({ type: "builtin", value: identifier });
-      }
       // Check if we have a pre-computed URL for this type (cross-project linking)
       else if (typeUrlMap?.has(identifier)) {
         tokens.push({ type: "type-link", value: identifier, href: typeUrlMap.get(identifier)! });
@@ -134,13 +119,20 @@ function tokenizeSignature(
         const href = `/${langPath}/${pkgSlug}/${identifier}`;
         tokens.push({ type: "type-link", value: identifier, href });
       }
-      // Check if it looks like a type (PascalCase)
-      else if (/^[A-Z]/.test(identifier)) {
-        tokens.push({ type: "type", value: identifier });
-      }
-      // Otherwise it's a parameter or plain identifier
+      // Check if it's a built-in type with external documentation
       else {
-        tokens.push({ type: "parameter", value: identifier });
+        const builtinUrl = getBuiltinTypeDocUrl(identifier, language);
+        if (builtinUrl) {
+          tokens.push({ type: "type-external", value: identifier, href: builtinUrl });
+        }
+        // Check if it looks like a type (PascalCase)
+        else if (/^[A-Z]/.test(identifier)) {
+          tokens.push({ type: "type", value: identifier });
+        }
+        // Otherwise it's a parameter or plain identifier
+        else {
+          tokens.push({ type: "parameter", value: identifier });
+        }
       }
     } else {
       // Fallback for any unmatched characters
@@ -165,6 +157,9 @@ function getTokenClasses(type: TokenType): string {
       return `${baseClasses} text-[#005cc5] dark:text-[#79b8ff]`; // Blue
     case "type-link":
       return `${baseClasses} text-primary hover:text-primary/80 underline decoration-dashed decoration-primary/50 underline-offset-2 cursor-pointer`;
+    case "type-external":
+      // External links (Python docs, MDN, TypeScript docs) - dotted underline to differentiate
+      return `${baseClasses} text-[#005cc5] dark:text-[#79b8ff] hover:text-[#0366d6] dark:hover:text-[#58a6ff] underline decoration-dotted decoration-[#005cc5]/50 dark:decoration-[#79b8ff]/50 underline-offset-2 cursor-pointer`;
     case "parameter":
       return `${baseClasses} text-[#e36209] dark:text-[#ffab70]`; // Orange
     case "operator":
@@ -191,6 +186,19 @@ function TokenSpan({ token }: { token: Token }) {
       <Link href={token.href} className={classes}>
         {token.value}
       </Link>
+    );
+  }
+
+  if (token.type === "type-external" && token.href) {
+    return (
+      <a
+        href={token.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={classes}
+      >
+        {token.value}
+      </a>
     );
   }
 

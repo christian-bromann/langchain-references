@@ -34,6 +34,7 @@ import { VersionSwitcher } from "./VersionSwitcher";
 import fs from "fs/promises";
 import path from "path";
 import { cleanExampleCode } from "@/lib/utils/clean-example";
+import { getBuiltinTypeDocUrl } from "@/lib/constants/builtin-types";
 
 interface SymbolPageProps {
   language: "python" | "javascript";
@@ -1278,9 +1279,8 @@ function TypeReference({
   /** Map of type names to their resolved URLs (for cross-project linking) */
   typeUrlMap?: Map<string, string>;
 }) {
-  // Regex to match potential type names (PascalCase identifiers)
-  // This captures type names like CreateAgentParams, InteropZodType, etc.
-  const typeNamePattern = /([A-Z][a-zA-Z0-9_]*)/g;
+  // Regex to match potential type names (identifiers starting with uppercase or lowercase for Python builtins)
+  const typeNamePattern = /([A-Za-z][a-zA-Z0-9_]*)/g;
 
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
@@ -1324,8 +1324,25 @@ function TypeReference({
           {typeName}
         </Link>
       );
-    } else {
-      parts.push(<span key={`type-${startIndex}`}>{typeName}</span>);
+    }
+    // Check if this is a built-in type with external documentation
+    else {
+      const builtinUrl = getBuiltinTypeDocUrl(typeName, language);
+      if (builtinUrl) {
+        parts.push(
+          <a
+            key={`builtin-${startIndex}`}
+            href={builtinUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-foreground-secondary hover:text-foreground underline decoration-dotted decoration-foreground-muted/50 underline-offset-2"
+          >
+            {typeName}
+          </a>
+        );
+      } else {
+        parts.push(<span key={`type-${startIndex}`}>{typeName}</span>);
+      }
     }
 
     lastIndex = startIndex + typeName.length;
