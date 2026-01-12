@@ -23,7 +23,7 @@
       }
     },
     {
-      "name": "langgraph_checkpoint",
+      "name": "langgraph.checkpoint",
       "path": "libs/checkpoint",
       "displayName": "LangGraph Checkpoint",
       "versioning": {
@@ -32,7 +32,7 @@
       }
     },
     {
-      "name": "langgraph_checkpoint_sqlite",
+      "name": "langgraph.checkpoint.sqlite",
       "path": "libs/checkpoint-sqlite",
       "displayName": "Checkpoint SQLite",
       "versioning": {
@@ -41,7 +41,7 @@
       }
     },
     {
-      "name": "langgraph_checkpoint_postgres",
+      "name": "langgraph.checkpoint.postgres",
       "path": "libs/checkpoint-postgres",
       "displayName": "Checkpoint Postgres",
       "versioning": {
@@ -59,7 +59,7 @@
       }
     },
     {
-      "name": "langgraph_prebuilt",
+      "name": "langgraph.prebuilt",
       "path": "libs/prebuilt",
       "displayName": "LangGraph Prebuilt",
       "versioning": {

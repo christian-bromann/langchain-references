@@ -218,11 +218,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BLOB_BASE_URL: ${{ vars.BLOB_BASE_URL }}
 
+      - name: Prepare artifact name
+        id: artifact
+        run: |
+          # Sanitize package name for artifact (replace @ and / with safe characters)
+          # e.g., @langchain/core -> langchain-core
+          SAFE_NAME=$(echo "${{ matrix.package }}" | sed 's/@//g' | sed 's/\//-/g' | sed 's/\./-/g')
+          echo "name=ir-${{ matrix.project }}-${{ matrix.language }}-${SAFE_NAME}" >> $GITHUB_OUTPUT
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          # Unique artifact name per package to avoid conflicts
-          name: ir-${{ matrix.project }}-${{ matrix.language }}-${{ matrix.package }}
+          name: ${{ steps.artifact.outputs.name }}
           path: |
             ir-output/
             !ir-output/latest-*

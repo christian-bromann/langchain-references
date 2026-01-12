@@ -6,8 +6,8 @@
   "packages": [
     {
       "name": "deepagents",
-      "path": ".",
-      "entryPoints": ["src/index.ts"],
+      "path": "libs/deepagents",
+      "entryPoints": ["auto"],
       "displayName": "Deep Agents",
       "versioning": {
         "tagPattern": "v*",

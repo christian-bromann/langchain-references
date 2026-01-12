@@ -145,7 +145,7 @@
       "lastUpdated": "2026-01-12T05:35:52.421Z"
     },
     {
-      "packageName": "langgraph_checkpoint",
+      "packageName": "langgraph.checkpoint",
       "tagPattern": "checkpoint==*",
       "versions": [
         {
@@ -200,7 +200,7 @@
       "lastUpdated": "2026-01-12T05:35:54.966Z"
     },
     {
-      "packageName": "langgraph_checkpoint_sqlite",
+      "packageName": "langgraph.checkpoint.sqlite",
       "tagPattern": "checkpointsqlite==*",
       "versions": [
         {
@@ -243,7 +243,7 @@
       "lastUpdated": "2026-01-12T05:35:56.760Z"
     },
     {
-      "packageName": "langgraph_checkpoint_postgres",
+      "packageName": "langgraph.checkpoint.postgres",
       "tagPattern": "checkpointpostgres==*",
       "versions": [
         {
@@ -341,7 +341,7 @@
       "lastUpdated": "2026-01-12T05:36:01.297Z"
     },
     {
-      "packageName": "langgraph_prebuilt",
+      "packageName": "langgraph.prebuilt",
       "tagPattern": "prebuilt==*",
       "versions": [
         {
