@@ -966,7 +966,7 @@ function computeVersionDeltas(
 
 /**
  * Build version history for packages using cached version data.
- * 
+ *
  * INCREMENTAL BUILD: This function now fetches existing changelogs from blob storage
  * and only processes new versions that aren't already in the changelog. This dramatically
  * reduces CI time from ~2 hours to seconds when no new versions exist.
@@ -1041,27 +1041,28 @@ async function buildVersionHistory(
     // =========================================================================
     let existingChangelog: DeployedChangelog | null = null;
     let versionsToProcess: CachedVersionEntry[] = versions;
-    
+
     if (!forceFullRebuild) {
       try {
         existingChangelog = await fetchDeployedChangelog(project, language, packageId);
-        
+
         if (existingChangelog) {
           // Find which versions we already have in the existing changelog
           const existingVersionSet = new Set(
             existingChangelog.changelog.history.map((h) => h.version)
           );
-          
+
           // Filter to only versions NOT in the existing changelog
           const newVersions = versions.filter((v) => !existingVersionSet.has(v.version));
-          
+
           if (newVersions.length === 0) {
             // All versions are already processed - use existing changelog
-            console.log(`\n   📦 ${pkgConfig.name}: Using existing changelog (${existingChangelog.changelog.history.length} versions, all up-to-date)`);
-            
+            console.log(`\n   📦 ${pkgConfig.name}: ⏭️  SKIPPED - changelog already exists in blob storage`);
+            console.log(`      Found ${existingChangelog.changelog.history.length} versions in existing changelog (latest: ${existingChangelog.versions.latest.version})`);
+
             // Still need to annotate latest symbols and write files locally
             await annotateSymbolsFromChangelog(latestSymbolsPath, existingChangelog.changelog, versions);
-            
+
             // Write existing changelog and versions to local output
             await fs.writeFile(
               path.join(pkgOutputDir, "changelog.json"),
@@ -1071,11 +1072,11 @@ async function buildVersionHistory(
               path.join(pkgOutputDir, "versions.json"),
               JSON.stringify(existingChangelog.versions, null, 2)
             );
-            
-            console.log(`      ✓ Skipped extraction (changelog already complete)`);
+
+            console.log(`      ✓ Reused existing changelog, no extraction needed`);
             continue;
           }
-          
+
           // We have some new versions to process
           console.log(`\n   📦 ${pkgConfig.name}: Found ${newVersions.length} new version(s) to process (existing: ${existingVersionSet.size})`);
           versionsToProcess = newVersions;
@@ -1111,7 +1112,7 @@ async function buildVersionHistory(
       if (oldestNewIdx < versions.length - 1) {
         const previousVersion = versions[oldestNewIdx + 1];
         needPreviousVersion = true;
-        
+
         // Extract this one version to enable diffing
         const result = await extractHistoricalVersion(
           config,
@@ -1129,7 +1130,7 @@ async function buildVersionHistory(
     }
 
     // Extract only the versions we need to process (excluding latest which is already done)
-    const versionsToExtract = versionsToProcess.filter((v) => 
+    const versionsToExtract = versionsToProcess.filter((v) =>
       v.version !== versions[0].version && !versionSymbols.has(v.version)
     );
 
@@ -1153,17 +1154,17 @@ async function buildVersionHistory(
     // If we have existing changelog, merge the new deltas with existing history
     let finalDeltas: VersionDelta[];
     let allVersionStats: Map<string, VersionStats>;
-    
+
     if (existingChangelog && versionsToProcess.length < versions.length) {
       // Incremental: compute deltas only for new versions + the bridge to existing
       const { deltas: newDeltas, versionStats: newStats } = computeVersionDeltas(
         versionSymbols,
         versionsToProcess
       );
-      
+
       // Merge new deltas (newest first) with existing history
       finalDeltas = [...newDeltas, ...existingChangelog.changelog.history];
-      
+
       // Merge version stats
       allVersionStats = new Map<string, VersionStats>();
       for (const [v, stats] of newStats) {
@@ -1175,7 +1176,7 @@ async function buildVersionHistory(
           allVersionStats.set(vInfo.version, vInfo.stats);
         }
       }
-      
+
       console.log(`      ✓ Merged ${newDeltas.length} new delta(s) with ${existingChangelog.changelog.history.length} existing`);
     } else {
       // Full build: compute deltas for all versions
@@ -1294,7 +1295,7 @@ async function annotateSymbolsFromChangelog(
     // Build introduction map from changelog history
     const introductionMap = new Map<string, string>();
     const modifiedInMap = new Map<string, string[]>();
-    
+
     // Process from oldest to newest
     const sortedHistory = [...changelog.history].reverse();
     for (const delta of sortedHistory) {
@@ -1312,7 +1313,7 @@ async function annotateSymbolsFromChangelog(
 
     let annotatedCount = 0;
     const oldestVersion = versions[versions.length - 1]?.version || versions[0].version;
-    
+
     if (symbolsData.symbols && Array.isArray(symbolsData.symbols)) {
       for (const symbol of symbolsData.symbols) {
         const since = introductionMap.get(symbol.qualifiedName);

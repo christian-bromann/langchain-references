@@ -21,6 +21,43 @@ export interface DeployedChangelog {
 }
 
 // =============================================================================
+// BLOB URL RESOLUTION
+// =============================================================================
+
+/**
+ * Get the Vercel Blob base URL from environment.
+ * Supports multiple sources:
+ * 1. BLOB_BASE_URL (explicit, preferred for CI)
+ * 2. BLOB_URL (used by the web app)
+ * 3. Derived from BLOB_READ_WRITE_TOKEN (fallback)
+ *
+ * The token format is: vercel_blob_rw_{store_id}_{secret}
+ * The public URL is: https://{store_id}.public.blob.vercel-storage.com
+ */
+function getBlobBaseUrl(): string | null {
+  if (process.env.BLOB_BASE_URL) {
+    return process.env.BLOB_BASE_URL;
+  }
+
+  if (process.env.BLOB_URL) {
+    return process.env.BLOB_URL;
+  }
+
+  // Try to derive from BLOB_READ_WRITE_TOKEN
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (token) {
+    // Token format: vercel_blob_rw_{store_id}_{secret}
+    const match = token.match(/^vercel_blob_rw_([^_]+)_/);
+    if (match) {
+      const storeId = match[1];
+      return `https://${storeId}.public.blob.vercel-storage.com`;
+    }
+  }
+
+  return null;
+}
+
+// =============================================================================
 // FETCH DEPLOYED CHANGELOG
 // =============================================================================
 
@@ -61,10 +98,10 @@ export async function fetchDeployedChangelog(
   packageId: string,
   baseUrl?: string
 ): Promise<DeployedChangelog | null> {
-  const blobBaseUrl = baseUrl ?? process.env.BLOB_BASE_URL;
+  const blobBaseUrl = baseUrl ?? getBlobBaseUrl();
 
   if (!blobBaseUrl) {
-    console.log("BLOB_BASE_URL not set - will do full build");
+    console.log("No blob storage URL available (BLOB_BASE_URL, BLOB_URL, or BLOB_READ_WRITE_TOKEN not set) - will do full build");
     return null;
   }
 
