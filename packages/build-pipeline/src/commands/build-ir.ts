@@ -68,6 +68,7 @@ import {
 import { uploadIR } from "../upload.js";
 import { updatePointers } from "../pointers.js";
 import { checkForUpdates, type UpdateCheckResult } from "./check-updates.js";
+import { fetchDeployedChangelog, type DeployedChangelog } from "../changelog-fetcher.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -965,6 +966,10 @@ function computeVersionDeltas(
 
 /**
  * Build version history for packages using cached version data.
+ * 
+ * INCREMENTAL BUILD: This function now fetches existing changelogs from blob storage
+ * and only processes new versions that aren't already in the changelog. This dramatically
+ * reduces CI time from ~2 hours to seconds when no new versions exist.
  */
 async function buildVersionHistory(
   config: BuildConfig,
@@ -988,6 +993,8 @@ async function buildVersionHistory(
 
   const cacheDir = getCacheBaseDir();
   const pkgList = packagesToProcess || config.packages;
+  const project = config.project || "langchain";
+  const language = config.language === "python" ? "python" : "javascript";
 
   for (const pkgConfig of pkgList) {
     if (!pkgConfig.versioning?.tagPattern) {
@@ -1017,8 +1024,6 @@ async function buildVersionHistory(
       continue;
     }
 
-    console.log(`\n   📦 ${pkgConfig.name}: Processing ${versions.length} version(s)${minVersion ? ` (minVersion: ${minVersion})` : ""}`);
-
     const packageId = normalizePackageId(pkgConfig.name, config.language);
     const pkgOutputDir = path.join(irOutputPath, "packages", packageId);
     const latestSymbolsPath = path.join(pkgOutputDir, "symbols.json");
@@ -1031,8 +1036,62 @@ async function buildVersionHistory(
       continue;
     }
 
+    // =========================================================================
+    // INCREMENTAL BUILD: Check for existing changelog in blob storage
+    // =========================================================================
+    let existingChangelog: DeployedChangelog | null = null;
+    let versionsToProcess: CachedVersionEntry[] = versions;
+    
+    if (!forceFullRebuild) {
+      try {
+        existingChangelog = await fetchDeployedChangelog(project, language, packageId);
+        
+        if (existingChangelog) {
+          // Find which versions we already have in the existing changelog
+          const existingVersionSet = new Set(
+            existingChangelog.changelog.history.map((h) => h.version)
+          );
+          
+          // Filter to only versions NOT in the existing changelog
+          const newVersions = versions.filter((v) => !existingVersionSet.has(v.version));
+          
+          if (newVersions.length === 0) {
+            // All versions are already processed - use existing changelog
+            console.log(`\n   📦 ${pkgConfig.name}: Using existing changelog (${existingChangelog.changelog.history.length} versions, all up-to-date)`);
+            
+            // Still need to annotate latest symbols and write files locally
+            await annotateSymbolsFromChangelog(latestSymbolsPath, existingChangelog.changelog, versions);
+            
+            // Write existing changelog and versions to local output
+            await fs.writeFile(
+              path.join(pkgOutputDir, "changelog.json"),
+              JSON.stringify(existingChangelog.changelog, null, 2)
+            );
+            await fs.writeFile(
+              path.join(pkgOutputDir, "versions.json"),
+              JSON.stringify(existingChangelog.versions, null, 2)
+            );
+            
+            console.log(`      ✓ Skipped extraction (changelog already complete)`);
+            continue;
+          }
+          
+          // We have some new versions to process
+          console.log(`\n   📦 ${pkgConfig.name}: Found ${newVersions.length} new version(s) to process (existing: ${existingVersionSet.size})`);
+          versionsToProcess = newVersions;
+        } else {
+          console.log(`\n   📦 ${pkgConfig.name}: No existing changelog found, building full history (${versions.length} versions)`);
+        }
+      } catch (error) {
+        console.log(`\n   📦 ${pkgConfig.name}: Failed to fetch existing changelog (${error}), building full history`);
+      }
+    } else {
+      console.log(`\n   📦 ${pkgConfig.name}: Force full rebuild requested, processing ${versions.length} version(s)`);
+    }
+
     const versionSymbols = new Map<string, Map<string, SymbolRecord>>();
 
+    // Always load latest symbols (we've already extracted them)
     console.log(`      ✓ ${versions[0].version} (latest, already extracted)`);
     try {
       const latestSymbols = await loadSymbolNames(latestSymbolsPath);
@@ -1042,8 +1101,39 @@ async function buildVersionHistory(
       continue;
     }
 
-    for (let i = 1; i < versions.length; i++) {
-      const v = versions[i];
+    // If we have existing changelog and only processing new versions,
+    // we also need the previous version's symbols to compute the diff
+    let needPreviousVersion = false;
+    if (existingChangelog && versionsToProcess.length > 0 && versionsToProcess.length < versions.length) {
+      // Find the most recent existing version (the one just before the oldest new version)
+      const oldestNewVersion = versionsToProcess[versionsToProcess.length - 1];
+      const oldestNewIdx = versions.findIndex((v) => v.version === oldestNewVersion.version);
+      if (oldestNewIdx < versions.length - 1) {
+        const previousVersion = versions[oldestNewIdx + 1];
+        needPreviousVersion = true;
+        
+        // Extract this one version to enable diffing
+        const result = await extractHistoricalVersion(
+          config,
+          pkgConfig,
+          previousVersion.sha,
+          previousVersion.version,
+          cacheDir
+        );
+        if (result) {
+          console.log(`      ✓ ${previousVersion.version} (previous version for diff, ${result.symbolCount} symbols)`);
+          const symbols = await loadSymbolNames(result.symbolsPath);
+          versionSymbols.set(previousVersion.version, symbols);
+        }
+      }
+    }
+
+    // Extract only the versions we need to process (excluding latest which is already done)
+    const versionsToExtract = versionsToProcess.filter((v) => 
+      v.version !== versions[0].version && !versionSymbols.has(v.version)
+    );
+
+    for (const v of versionsToExtract) {
       const result = await extractHistoricalVersion(
         config,
         pkgConfig,
@@ -1059,15 +1149,50 @@ async function buildVersionHistory(
       }
     }
 
+    // Compute deltas for only the versions we processed
+    // If we have existing changelog, merge the new deltas with existing history
+    let finalDeltas: VersionDelta[];
+    let allVersionStats: Map<string, VersionStats>;
+    
+    if (existingChangelog && versionsToProcess.length < versions.length) {
+      // Incremental: compute deltas only for new versions + the bridge to existing
+      const { deltas: newDeltas, versionStats: newStats } = computeVersionDeltas(
+        versionSymbols,
+        versionsToProcess
+      );
+      
+      // Merge new deltas (newest first) with existing history
+      finalDeltas = [...newDeltas, ...existingChangelog.changelog.history];
+      
+      // Merge version stats
+      allVersionStats = new Map<string, VersionStats>();
+      for (const [v, stats] of newStats) {
+        allVersionStats.set(v, stats);
+      }
+      // Add existing stats
+      for (const vInfo of existingChangelog.versions.versions) {
+        if (!allVersionStats.has(vInfo.version)) {
+          allVersionStats.set(vInfo.version, vInfo.stats);
+        }
+      }
+      
+      console.log(`      ✓ Merged ${newDeltas.length} new delta(s) with ${existingChangelog.changelog.history.length} existing`);
+    } else {
+      // Full build: compute deltas for all versions
+      const { deltas, versionStats } = computeVersionDeltas(versionSymbols, versions);
+      finalDeltas = deltas;
+      allVersionStats = versionStats;
+    }
+
+    // Compute symbol introductions across ALL versions (for annotation)
     const introductions = computeSymbolIntroductions(versionSymbols, versions);
-    const { deltas, versionStats } = computeVersionDeltas(versionSymbols, versions);
 
     try {
       const symbolsContent = await fs.readFile(latestSymbolsPath, "utf-8");
       const symbolsData = JSON.parse(symbolsContent);
 
       const modifiedInMap = new Map<string, string[]>();
-      for (const delta of deltas) {
+      for (const delta of finalDeltas) {
         for (const mod of delta.modified) {
           const modVersions = modifiedInMap.get(mod.qualifiedName) || [];
           modVersions.push(delta.version);
@@ -1099,7 +1224,7 @@ async function buildVersionHistory(
       packageId,
       packageName: pkgConfig.displayName || pkgConfig.name,
       generatedAt: new Date().toISOString(),
-      history: deltas,
+      history: finalDeltas,
     };
 
     await fs.writeFile(
@@ -1107,12 +1232,12 @@ async function buildVersionHistory(
       JSON.stringify(changelog, null, 2)
     );
 
-    const totalAdded = deltas.reduce((sum, d) => sum + d.added.length, 0);
-    const totalRemoved = deltas.reduce((sum, d) => sum + d.removed.length, 0);
-    const totalModified = deltas.reduce((sum, d) => sum + d.modified.length, 0);
+    const totalAdded = finalDeltas.reduce((sum, d) => sum + d.added.length, 0);
+    const totalRemoved = finalDeltas.reduce((sum, d) => sum + d.removed.length, 0);
+    const totalModified = finalDeltas.reduce((sum, d) => sum + d.modified.length, 0);
     console.log(`      ✓ Generated changelog: +${totalAdded} added, -${totalRemoved} removed, ~${totalModified} modified`);
 
-    const latestStats = versionStats.get(versions[0].version) || {
+    const latestStats = allVersionStats.get(versions[0].version) || {
       added: 0,
       removed: 0,
       modified: 0,
@@ -1136,7 +1261,7 @@ async function buildVersionHistory(
         sha: v.sha,
         tag: v.tag,
         releaseDate: v.releaseDate,
-        stats: versionStats.get(v.version) || {
+        stats: allVersionStats.get(v.version) || {
           added: 0,
           removed: 0,
           modified: 0,
@@ -1150,6 +1275,61 @@ async function buildVersionHistory(
       path.join(pkgOutputDir, "versions.json"),
       JSON.stringify(versionsIndex, null, 2)
     );
+  }
+}
+
+/**
+ * Annotate symbols with version info from an existing changelog.
+ * Used when we skip extraction because the changelog is already complete.
+ */
+async function annotateSymbolsFromChangelog(
+  latestSymbolsPath: string,
+  changelog: PackageChangelog,
+  versions: CachedVersionEntry[]
+): Promise<void> {
+  try {
+    const symbolsContent = await fs.readFile(latestSymbolsPath, "utf-8");
+    const symbolsData = JSON.parse(symbolsContent);
+
+    // Build introduction map from changelog history
+    const introductionMap = new Map<string, string>();
+    const modifiedInMap = new Map<string, string[]>();
+    
+    // Process from oldest to newest
+    const sortedHistory = [...changelog.history].reverse();
+    for (const delta of sortedHistory) {
+      for (const added of delta.added) {
+        if (!introductionMap.has(added.qualifiedName)) {
+          introductionMap.set(added.qualifiedName, delta.version);
+        }
+      }
+      for (const modified of delta.modified) {
+        const existing = modifiedInMap.get(modified.qualifiedName) || [];
+        existing.push(delta.version);
+        modifiedInMap.set(modified.qualifiedName, existing);
+      }
+    }
+
+    let annotatedCount = 0;
+    const oldestVersion = versions[versions.length - 1]?.version || versions[0].version;
+    
+    if (symbolsData.symbols && Array.isArray(symbolsData.symbols)) {
+      for (const symbol of symbolsData.symbols) {
+        const since = introductionMap.get(symbol.qualifiedName);
+        const modifiedIn = modifiedInMap.get(symbol.qualifiedName);
+
+        symbol.versionInfo = {
+          since: since || oldestVersion,
+          ...(modifiedIn && modifiedIn.length > 0 ? { modifiedIn } : {}),
+        };
+        annotatedCount++;
+      }
+
+      await fs.writeFile(latestSymbolsPath, JSON.stringify(symbolsData, null, 2));
+      console.log(`      ✓ Annotated ${annotatedCount} symbols with version info (from existing changelog)`);
+    }
+  } catch (error) {
+    console.warn(`      ⚠️ Failed to annotate symbols from changelog: ${error}`);
   }
 }
 

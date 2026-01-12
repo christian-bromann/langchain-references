@@ -277,7 +277,7 @@ jobs:
           # Artifacts are uploaded as ir-output/{buildId}/...
           # When merged, they become artifacts/ir-output/{buildId}/...
           # OR artifacts/{buildId}/... depending on how they were uploaded
-          
+
           # Check both possible structures
           if [ -d "artifacts/ir-output" ]; then
             IR_PATH="artifacts/ir-output"
@@ -288,7 +288,7 @@ jobs:
             echo "No artifacts found - all builds were skipped"
             exit 0
           fi
-          
+
           echo "ir_path=$IR_PATH" >> $GITHUB_OUTPUT
           echo "has_artifacts=true" >> $GITHUB_OUTPUT
           echo "Found artifacts in $IR_PATH:"
@@ -302,7 +302,7 @@ jobs:
           # 1. Group manifests by build ID (same project+language+sha = same buildId)
           # 2. Merge package lists from all manifests with the same buildId
           # 3. Update pointers with the merged manifest
-          
+
           IR_PATH="${{ steps.check-artifacts.outputs.ir_path }}"
 
           # Find all unique build directories
@@ -328,7 +328,7 @@ jobs:
             pkg_count=$(find "$build_dir/packages" -name "symbols.json" 2>/dev/null | wc -l | tr -d ' ')
 
             echo "Build $BUILD_ID has $pkg_count package(s)"
-            
+
             if [ "$pkg_count" -eq 0 ]; then
               echo "  No packages found, skipping"
               continue
