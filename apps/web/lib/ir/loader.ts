@@ -1108,7 +1108,7 @@ export async function getSymbolOptimized(
 /**
  * Get an individual symbol by ID (unified - works in prod and dev)
  * In production, fetches from blob. In dev, looks up in local symbols.
- * 
+ *
  * Note: For local mode without packageId, this may return null.
  * Callers should fall back to other methods if needed.
  */
@@ -1129,22 +1129,28 @@ export async function getIndividualSymbolData(
 
 /**
  * Symbol kinds to include in static generation.
- * All routable symbol types are included for full static generation.
- * This improves page load performance by pre-rendering all pages at build time.
+ *
+ * To stay within Vercel's build size limits (~75MB), we only pre-render
+ * the most important "top-level" symbols. Other symbol types (methods,
+ * properties, attributes) are generated on-demand using ISR.
+ *
+ * Pre-rendered (important for SEO and direct linking):
  * - Packages: always included (handled separately)
- * - Modules: important for navigation and discovery
- * - Functions: commonly accessed, standalone pages
  * - Classes: core API elements, frequently accessed
- * - Methods: class methods, important for API usage
+ * - Functions: commonly accessed, standalone pages
  * - Interfaces: TypeScript interfaces for type definitions
  * - Type Aliases: custom type definitions
  * - Enums: enumeration types
+ *
+ * On-demand (generated via ISR when first accessed):
+ * - Methods: class methods (many per class, accessed via class page)
+ * - Properties: class properties
+ * - Attributes: Python class attributes
+ * - Modules: navigation pages (less frequently directly accessed)
  */
 const STATIC_GENERATION_KINDS = new Set([
-  "module",
   "function",
   "class",
-  "method",
   "interface",
   "typeAlias",
   "enum",

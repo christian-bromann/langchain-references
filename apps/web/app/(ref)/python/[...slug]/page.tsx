@@ -43,16 +43,23 @@ export async function generateStaticParams(): Promise<{ slug: string[] }[]> {
 }
 
 /**
- * Force static generation for all pages.
- * This ensures all pages are pre-rendered at build time for optimal performance.
+ * Enable Incremental Static Regeneration (ISR).
+ * 
+ * Pre-rendered pages (classes, functions, interfaces, etc.) are built at deploy time.
+ * Other pages (methods, properties, modules) are generated on-demand and cached.
+ * 
+ * Revalidate cached pages every hour to pick up documentation updates.
  */
-export const dynamic = "force-static";
+export const revalidate = 3600; // 1 hour
 
 /**
- * Disable dynamic params - return 404 for paths not generated at build time.
- * All valid pages are pre-generated via generateStaticParams.
+ * Enable dynamic params for on-demand page generation.
+ * 
+ * Pages not pre-rendered at build time (methods, properties, etc.) will be
+ * generated on first request and then cached. This keeps build size small
+ * while still providing fast responses for all valid pages.
  */
-export const dynamicParams = false;
+export const dynamicParams = true;
 
 export default async function PythonSymbolPage({ params, searchParams }: Props) {
   const { slug } = await params;
