@@ -31,6 +31,49 @@ export const metadata: Metadata = {
   description:
     "API reference documentation for LangChain, LangGraph, and LangSmith",
   metadataBase: new URL("https://reference.langchain.com"),
+  icons: {
+    icon: [
+      {
+        url: "/favicons/light/favicon-16x16.png",
+        sizes: "16x16",
+        type: "image/png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/favicons/light/favicon-32x32.png",
+        sizes: "32x32",
+        type: "image/png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/favicons/dark/favicon-16x16.png",
+        sizes: "16x16",
+        type: "image/png",
+        media: "(prefers-color-scheme: dark)",
+      },
+      {
+        url: "/favicons/dark/favicon-32x32.png",
+        sizes: "32x32",
+        type: "image/png",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
+    shortcut: [
+      {
+        url: "/favicons/light/favicon.ico",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/favicons/dark/favicon.ico",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
+    apple: {
+      url: "/favicons/apple-touch-icon.png",
+      sizes: "180x180",
+      type: "image/png",
+    },
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
