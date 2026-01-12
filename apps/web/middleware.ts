@@ -106,6 +106,28 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Handle dot-notation URLs and convert to slash-notation
+  // Example: /javascript/langchain-core/embeddings.EmbeddingsInterface
+  //       -> /javascript/langchain-core/embeddings/EmbeddingsInterface
+  // This supports both URL formats for better user experience
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments.length >= 3) {
+    // segments[0] is language (python/javascript)
+    // segments[1] is package slug (langchain-core)
+    // segments[2+] is symbol path which might contain dots
+    const symbolSegments = segments.slice(2);
+    const lastSegment = symbolSegments[symbolSegments.length - 1];
+    
+    // Check if any symbol segment contains a dot (indicating qualified name format)
+    // But ignore URL-encoded dots (%2F) which are already handled
+    if (lastSegment && lastSegment.includes(".") && !lastSegment.includes("%")) {
+      // Convert dots to slashes in the symbol path
+      const expandedSegments = symbolSegments.flatMap(seg => seg.split("."));
+      const newPath = `/${segments[0]}/${segments[1]}/${expandedSegments.join("/")}`;
+      return NextResponse.redirect(new URL(newPath, request.url), 301);
+    }
+  }
+
   // Check if this request wants an alternate format
   const wantedFormat = wantsAlternateFormat(request);
 

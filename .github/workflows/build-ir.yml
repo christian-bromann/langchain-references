@@ -297,13 +297,16 @@ jobs:
       - name: Merge manifests and update pointers
         if: steps.check-artifacts.outputs.has_artifacts == 'true'
         run: |
-          # With package-level parallelization, each package creates its own manifest
-          # with only that package's info. We need to:
-          # 1. Group manifests by build ID (same project+language+sha = same buildId)
-          # 2. Merge package lists from all manifests with the same buildId
-          # 3. Update pointers with the merged manifest
+          # With package-level parallelization and incremental builds, we need to:
+          # 1. For each build, collect packages from the artifacts
+          # 2. MERGE with existing packages from blob storage (for packages that weren't rebuilt)
+          # 3. Update pointers with the complete manifest
+          #
+          # This is critical because incremental builds only include packages that had updates,
+          # but the manifest needs ALL packages for the web app to work correctly.
 
           IR_PATH="${{ steps.check-artifacts.outputs.ir_path }}"
+          BLOB_URL="${BLOB_BASE_URL:-}"
 
           # Find all unique build directories
           for build_dir in "$IR_PATH"/*/; do
@@ -327,24 +330,53 @@ jobs:
             # Count how many packages are in this build
             pkg_count=$(find "$build_dir/packages" -name "symbols.json" 2>/dev/null | wc -l | tr -d ' ')
 
-            echo "Build $BUILD_ID has $pkg_count package(s)"
+            echo "Build $BUILD_ID has $pkg_count new/updated package(s)"
 
             if [ "$pkg_count" -eq 0 ]; then
               echo "  No packages found, skipping"
               continue
             fi
 
-            # ALWAYS regenerate manifest from symbols.json files
-            # This is necessary because with parallel builds, each package uploads its own
-            # manifest that only contains that package. The last one uploaded "wins" in
-            # artifact merging, so we need to rebuild the complete manifest from all packages.
-            echo "  Regenerating manifest from all packages..."
-
             # Get base manifest info (irVersion, build, project, sources)
             base_manifest=$(cat "$manifest")
+            project=$(echo "$base_manifest" | jq -r '.project // "langchain"')
+            
+            # Determine language from the first package
+            first_pkg_lang=$(echo "$base_manifest" | jq -r '.packages[0].language // "typescript"')
+            if [ "$first_pkg_lang" == "python" ]; then
+              ecosystem="python"
+            else
+              ecosystem="javascript"
+            fi
 
-            # Build new packages array from all symbols.json files
+            echo "  Project: $project, Language: $ecosystem"
+
+            # Try to fetch existing manifest from blob storage to merge with
+            existing_packages="[]"
+            if [ -n "$BLOB_URL" ]; then
+              echo "  Fetching existing manifest from blob storage..."
+              pointer_url="$BLOB_URL/pointers/latest-${project}-${ecosystem}.json"
+              existing_pointer=$(curl -sf "$pointer_url" 2>/dev/null || echo '{}')
+              existing_build_id=$(echo "$existing_pointer" | jq -r '.buildId // empty')
+              
+              if [ -n "$existing_build_id" ] && [ "$existing_build_id" != "$BUILD_ID" ]; then
+                # Fetch the existing manifest
+                existing_manifest_url="$BLOB_URL/ir/${existing_build_id}/reference.manifest.json"
+                existing_manifest=$(curl -sf "$existing_manifest_url" 2>/dev/null || echo '{}')
+                existing_packages=$(echo "$existing_manifest" | jq -c '.packages // []')
+                existing_count=$(echo "$existing_packages" | jq 'length')
+                echo "  Found $existing_count existing package(s) in blob storage (build: $existing_build_id)"
+              else
+                echo "  No existing build found or same build ID, starting fresh"
+              fi
+            else
+              echo "  No BLOB_URL set, cannot fetch existing manifest"
+            fi
+
+            # Build new packages array from all symbols.json files in artifacts
+            echo "  Processing new/updated packages from artifacts..."
             new_packages="[]"
+            new_package_ids="[]"
             for symbols_file in "$build_dir"/packages/*/symbols.json; do
               [ -f "$symbols_file" ] || continue
 
@@ -373,18 +405,41 @@ jobs:
                     entry: {kind: "module", refId: ""}
                   }')
                 new_packages=$(echo "$new_packages" | jq -c ". + [$pkg_entry]")
+                new_package_ids=$(echo "$new_package_ids" | jq -c ". + [\"$pkg_id\"]")
+                echo "    + $pkg_id ($total symbols)"
               else
                 echo "    Warning: Could not extract package info from $symbols_file"
               fi
             done
 
-            # Update manifest with new packages array
-            echo "$base_manifest" | jq --argjson pkgs "$new_packages" '.packages = $pkgs' > "$manifest"
-            echo "  Updated manifest with $(echo "$new_packages" | jq 'length') packages"
+            # Merge: Start with new packages, then add existing packages that weren't updated
+            merged_packages="$new_packages"
+            if [ "$existing_packages" != "[]" ]; then
+              echo "  Merging with existing packages..."
+              # Add existing packages that aren't in the new set
+              while IFS= read -r existing_pkg; do
+                [ -z "$existing_pkg" ] && continue
+                existing_id=$(echo "$existing_pkg" | jq -r '.packageId')
+                # Check if this package was updated (is in new_package_ids)
+                is_updated=$(echo "$new_package_ids" | jq --arg id "$existing_id" 'any(. == $id)')
+                if [ "$is_updated" == "false" ]; then
+                  merged_packages=$(echo "$merged_packages" | jq -c ". + [$existing_pkg]")
+                  echo "    = $existing_id (kept from existing)"
+                fi
+              done < <(echo "$existing_packages" | jq -c '.[]')
+            fi
+
+            merged_count=$(echo "$merged_packages" | jq 'length')
+            echo "  Final manifest has $merged_count package(s)"
+
+            # Update manifest with merged packages array
+            echo "$base_manifest" | jq --argjson pkgs "$merged_packages" '.packages = $pkgs' > "$manifest"
 
             echo "Updating pointers for build: $BUILD_ID"
             npx tsx packages/build-pipeline/src/commands/update-pointers.ts "$BUILD_ID" "$manifest"
           done
+        env:
+          BLOB_BASE_URL: ${{ vars.BLOB_BASE_URL }}
 
       - name: Report skipped
         if: steps.check-artifacts.outputs.has_artifacts == 'false'
