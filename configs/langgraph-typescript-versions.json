@@ -2,7 +2,7 @@
   "project": "langgraph",
   "language": "typescript",
   "repo": "langchain-ai/langgraphjs",
-  "lastSynced": "2026-01-12T06:57:20.511Z",
+  "lastSynced": "2026-01-12T07:23:14.195Z",
   "packages": [
     {
       "packageName": "@langchain/langgraph",
@@ -13,45 +13,9 @@
           "sha": "e521f5f35f6452466ea7cc8053626a03197cbf1f",
           "tag": "0.3.6",
           "releaseDate": "2025-07-01T12:45:05Z"
-        },
-        {
-          "version": "0.3.0",
-          "sha": "4ad95745c83655f169f7b2167ccf1bf04d10fc06",
-          "tag": "0.3.0",
-          "releaseDate": "2025-06-02T22:35:34Z"
-        },
-        {
-          "version": "0.2.74",
-          "sha": "c9e96aa500ac6c6c3410dd45bdf02bc9c1738503",
-          "tag": "0.2.74",
-          "releaseDate": "2025-05-28T21:30:48Z"
-        },
-        {
-          "version": "0.2.0",
-          "sha": "2d2cd8606375c4233a347af74f693ba27559a44d",
-          "tag": "0.2.0",
-          "releaseDate": "2024-09-03T01:32:33Z"
-        },
-        {
-          "version": "0.1.9",
-          "sha": "437a5122c61fa10fdabd09fcd5f32347f3edbda2",
-          "tag": "0.1.9",
-          "releaseDate": "2024-08-29T08:01:30Z"
-        },
-        {
-          "version": "0.1.0",
-          "sha": "0d0ecb772e25e4f3012b2b0cedec046b60401715",
-          "tag": "0.1.0",
-          "releaseDate": "2024-08-22T18:26:15Z"
-        },
-        {
-          "version": "0.0.34",
-          "sha": "aab2af0eca3fc3b74b55c49ab84882c5eaf92d4f",
-          "tag": "0.0.34",
-          "releaseDate": "2024-08-12T13:03:55Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:36:07.665Z"
+      "lastUpdated": "2026-01-12T07:23:08.746Z"
     },
     {
       "packageName": "@langchain/langgraph-sdk",
@@ -88,7 +52,7 @@
           "releaseDate": "2025-07-07T12:53:46Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:36:09.283Z"
+      "lastUpdated": "2026-01-12T07:23:10.223Z"
     },
     {
       "packageName": "@langchain/langgraph-checkpoint",
@@ -101,7 +65,7 @@
           "releaseDate": "2025-06-02T00:26:56Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:36:09.580Z"
+      "lastUpdated": "2026-01-12T07:23:10.527Z"
     },
     {
       "packageName": "@langchain/langgraph-checkpoint-mongodb",
@@ -114,7 +78,7 @@
           "releaseDate": "2025-02-21T08:37:48Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:36:09.931Z"
+      "lastUpdated": "2026-01-12T07:23:10.814Z"
     },
     {
       "packageName": "@langchain/langgraph-checkpoint-postgres",
@@ -127,7 +91,7 @@
           "releaseDate": "2025-05-07T03:58:42Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:36:10.312Z"
+      "lastUpdated": "2026-01-12T07:23:11.092Z"
     },
     {
       "packageName": "@langchain/langgraph-checkpoint-sqlite",
@@ -138,15 +102,9 @@
           "sha": "824f41738ba67f1c8325ce65ae04e7385076b543",
           "tag": "checkpoint-sqlite==0.1.5",
           "releaseDate": "2025-05-13T22:44:37Z"
-        },
-        {
-          "version": "0.1.4",
-          "sha": "c270c1419e83ba9c1ce18db0e5a68ac29fd9cb3d",
-          "tag": "checkpoint-sqlite==0.1.4",
-          "releaseDate": "2025-01-30T00:10:52Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:36:10.904Z"
+      "lastUpdated": "2026-01-12T07:23:11.318Z"
     },
     {
       "packageName": "@langchain/langgraph-api",
@@ -171,7 +129,7 @@
           "releaseDate": "2025-07-07T15:18:56Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:36:11.796Z"
+      "lastUpdated": "2026-01-12T07:23:12.328Z"
     },
     {
       "packageName": "@langchain/langgraph-cli",
@@ -196,7 +154,7 @@
           "releaseDate": "2025-07-07T15:18:56Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:36:12.651Z"
+      "lastUpdated": "2026-01-12T07:23:13.194Z"
     },
     {
       "packageName": "@langchain/langgraph-cua",
@@ -209,7 +167,7 @@
           "releaseDate": "2025-05-31T00:14:00Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:36:12.966Z"
+      "lastUpdated": "2026-01-12T07:23:13.541Z"
     },
     {
       "packageName": "@langchain/langgraph-supervisor",
@@ -222,7 +180,7 @@
           "releaseDate": "2025-06-13T17:49:12Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:36:13.221Z"
+      "lastUpdated": "2026-01-12T07:23:13.876Z"
     },
     {
       "packageName": "@langchain/langgraph-swarm",
@@ -235,7 +193,7 @@
           "releaseDate": "2025-05-31T00:23:23Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:36:13.518Z"
+      "lastUpdated": "2026-01-12T07:23:14.195Z"
     }
   ]
 }

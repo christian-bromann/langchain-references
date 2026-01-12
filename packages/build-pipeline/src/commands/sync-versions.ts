@@ -574,11 +574,27 @@ async function syncProject(
     // Sort final result by version descending
     minorVersions.sort((a, b) => semver.rcompare(a.version, b.version));
 
+    // Filter v0.x: keep only the single highest v0.x version
+    // This reduces processing of old 0.x versions that often have build/compatibility issues
+    const v0Versions = minorVersions.filter((v) => semver.major(v.version) === 0);
+    const v1PlusVersions = minorVersions.filter((v) => semver.major(v.version) >= 1);
+
+    let filteredMinorVersions: typeof minorVersions;
+    if (v0Versions.length > 0) {
+      // v0Versions is already sorted descending, take only the first (highest)
+      const latestV0 = v0Versions[0];
+      filteredMinorVersions = [...v1PlusVersions, latestV0];
+      // Re-sort to maintain descending order
+      filteredMinorVersions.sort((a, b) => semver.rcompare(a.version, b.version));
+    } else {
+      filteredMinorVersions = minorVersions;
+    }
+
     // Apply maxVersions limit (counting by unique minor versions, not individual versions)
     const limitedVersions: typeof matchingVersions = [];
     const minorCount = new Set<string>();
 
-    for (const v of minorVersions) {
+    for (const v of filteredMinorVersions) {
       const parsed = semver.parse(v.version);
       if (!parsed) continue;
 
@@ -590,7 +606,8 @@ async function syncProject(
       limitedVersions.push(v);
     }
 
-    console.log(`      Filtered to ${limitedVersions.length} versions (first+last per ${minorCount.size} minors)`);
+    const v0Kept = limitedVersions.filter((v) => semver.major(v.version) === 0).length;
+    console.log(`      Filtered to ${limitedVersions.length} versions (${minorCount.size} minors, ${v0Kept} v0.x)`);
 
     // Check what's new vs existing
     const existingVersionSet = new Set(

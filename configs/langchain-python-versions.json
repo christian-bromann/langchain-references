@@ -2,7 +2,7 @@
   "project": "langchain",
   "language": "python",
   "repo": "langchain-ai/langchain",
-  "lastSynced": "2026-01-12T06:57:16.022Z",
+  "lastSynced": "2026-01-12T07:22:35.681Z",
   "packages": [
     {
       "packageName": "langchain",
@@ -49,39 +49,9 @@
           "sha": "bdf1cd383ce36dc18381a3bf3fb0a579337a32b5",
           "tag": "langchain==0.3.27",
           "releaseDate": "2025-07-24T14:37:08Z"
-        },
-        {
-          "version": "0.3.0",
-          "sha": "58c7414e10a00bb33f45ad5d1965ed44b3b4f0df",
-          "tag": "langchain==0.3.0",
-          "releaseDate": "2024-09-13T22:40:37Z"
-        },
-        {
-          "version": "0.2.17",
-          "sha": "76e1dc7e5342f4b993815f1726523272b5c10926",
-          "tag": "langchain==0.2.17",
-          "releaseDate": "2024-11-04T19:08:48Z"
-        },
-        {
-          "version": "0.2.0",
-          "sha": "e5046cbd7226d7043535f87dd40973d83879786f",
-          "tag": "langchain==0.2.0",
-          "releaseDate": "2024-05-17T20:40:51Z"
-        },
-        {
-          "version": "0.1.20",
-          "sha": "5c07a96de1f594c6748ab81ae03c3e7fa88d2b71",
-          "tag": "langchain==0.1.20",
-          "releaseDate": "2024-05-10T21:15:56Z"
-        },
-        {
-          "version": "0.1.17",
-          "sha": "14422a4220780cfca9afd564d99fecc3dfc3155a",
-          "tag": "langchain==0.1.17",
-          "releaseDate": "2024-04-30T21:55:12Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:34:57.062Z"
+      "lastUpdated": "2026-01-12T07:22:24.223Z"
     },
     {
       "packageName": "langchain_classic",
@@ -128,39 +98,9 @@
           "sha": "bdf1cd383ce36dc18381a3bf3fb0a579337a32b5",
           "tag": "langchain==0.3.27",
           "releaseDate": "2025-07-24T14:37:08Z"
-        },
-        {
-          "version": "0.3.0",
-          "sha": "58c7414e10a00bb33f45ad5d1965ed44b3b4f0df",
-          "tag": "langchain==0.3.0",
-          "releaseDate": "2024-09-13T22:40:37Z"
-        },
-        {
-          "version": "0.2.17",
-          "sha": "76e1dc7e5342f4b993815f1726523272b5c10926",
-          "tag": "langchain==0.2.17",
-          "releaseDate": "2024-11-04T19:08:48Z"
-        },
-        {
-          "version": "0.2.0",
-          "sha": "e5046cbd7226d7043535f87dd40973d83879786f",
-          "tag": "langchain==0.2.0",
-          "releaseDate": "2024-05-17T20:40:51Z"
-        },
-        {
-          "version": "0.1.20",
-          "sha": "5c07a96de1f594c6748ab81ae03c3e7fa88d2b71",
-          "tag": "langchain==0.1.20",
-          "releaseDate": "2024-05-10T21:15:56Z"
-        },
-        {
-          "version": "0.1.17",
-          "sha": "14422a4220780cfca9afd564d99fecc3dfc3155a",
-          "tag": "langchain==0.1.17",
-          "releaseDate": "2024-04-30T21:55:12Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:00.615Z"
+      "lastUpdated": "2026-01-12T07:22:26.186Z"
     },
     {
       "packageName": "langchain_core",
@@ -207,39 +147,9 @@
           "sha": "e6dde2b99c7aadd42d348288540954dded975bb3",
           "tag": "langchain-core==0.3.82",
           "releaseDate": "2026-01-09T18:30:14Z"
-        },
-        {
-          "version": "0.3.0",
-          "sha": "222caaebddbf82cae76a96826775a1aca7b12451",
-          "tag": "langchain-core==0.3.0",
-          "releaseDate": "2024-09-13T22:01:36Z"
-        },
-        {
-          "version": "0.2.43",
-          "sha": "9fdeb74d9965258ad077d535681d9bae84b58e08",
-          "tag": "langchain-core==0.2.43",
-          "releaseDate": "2024-10-31T20:26:39Z"
-        },
-        {
-          "version": "0.2.0",
-          "sha": "33dbad02fe970a940cde69268c4bec7af61ba8a0",
-          "tag": "langchain-core==0.2.0",
-          "releaseDate": "2024-05-17T20:05:28Z"
-        },
-        {
-          "version": "0.1.53",
-          "sha": "f28e339129e886e24b6d9e21fe218456c20570fb",
-          "tag": "langchain-core==0.1.53",
-          "releaseDate": "2024-11-02T00:22:00Z"
-        },
-        {
-          "version": "0.1.47",
-          "sha": "748f2ba9eaffee969d87a376b974bb7588594900",
-          "tag": "langchain-core==0.1.47",
-          "releaseDate": "2024-04-30T16:22:05Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:04.257Z"
+      "lastUpdated": "2026-01-12T07:22:28.241Z"
     },
     {
       "packageName": "langchain_text_splitters",
@@ -262,33 +172,9 @@
           "sha": "6b5fdfb8049addd7d8eef98e835a3204a26f553c",
           "tag": "langchain-text-splitters==0.3.11",
           "releaseDate": "2025-08-31T23:00:05Z"
-        },
-        {
-          "version": "0.3.0",
-          "sha": "d1462badaf6f4eb0353a640e00ed499ec23ec784",
-          "tag": "langchain-text-splitters==0.3.0",
-          "releaseDate": "2024-09-13T22:31:06Z"
-        },
-        {
-          "version": "0.2.4",
-          "sha": "1dfc8c01affc98446592060e62894ee36a3b9446",
-          "tag": "langchain-text-splitters==0.2.4",
-          "releaseDate": "2024-09-03T18:10:21Z"
-        },
-        {
-          "version": "0.2.0",
-          "sha": "1b555021f7b1b7d5610ea32bc806fb57715ae4f7",
-          "tag": "langchain-text-splitters==0.2.0",
-          "releaseDate": "2024-05-17T20:30:54Z"
-        },
-        {
-          "version": "0.0.2",
-          "sha": "be15740084e31d6850808e08ccb005f652664a48",
-          "tag": "langchain-text-splitters==0.0.2",
-          "releaseDate": "2024-05-16T02:48:51Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:06.411Z"
+      "lastUpdated": "2026-01-12T07:22:29.154Z"
     },
     {
       "packageName": "langchain_anthropic",
@@ -335,39 +221,9 @@
           "sha": "a763ebe86cbf63ca1f378286c1dd76e16d88e503",
           "tag": "langchain-anthropic==0.3.22",
           "releaseDate": "2025-10-09T18:29:38Z"
-        },
-        {
-          "version": "0.3.0",
-          "sha": "2898b95ca7c3df5978d35e6bd293df97ccf76994",
-          "tag": "langchain-anthropic==0.3.0",
-          "releaseDate": "2024-11-12T19:58:00Z"
-        },
-        {
-          "version": "0.2.4",
-          "sha": "06420de2e770156995a14b0aef9ea8a4e1604f39",
-          "tag": "langchain-anthropic==0.2.4",
-          "releaseDate": "2024-10-31T18:27:05Z"
-        },
-        {
-          "version": "0.2.0",
-          "sha": "832bc834b11f696edcbe3b37aa35feeb8ac322e3",
-          "tag": "langchain-anthropic==0.2.0",
-          "releaseDate": "2024-09-13T22:47:09Z"
-        },
-        {
-          "version": "0.1.23",
-          "sha": "63c483ea01167a1ed6eded7a074793ad46569eaa",
-          "tag": "langchain-anthropic==0.1.23",
-          "releaseDate": "2024-08-14T16:13:56Z"
-        },
-        {
-          "version": "0.1.12",
-          "sha": "c5a981e3b4f0b31a42e3d95f5c6e77a0715e1d4c",
-          "tag": "langchain-anthropic==0.1.12",
-          "releaseDate": "2024-05-15T21:20:46Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:10.213Z"
+      "lastUpdated": "2026-01-12T07:22:31.481Z"
     },
     {
       "packageName": "langchain_deepseek",
@@ -390,15 +246,9 @@
           "sha": "af3789b9edf418061996fb1b09c65a09d97daf2e",
           "tag": "langchain-deepseek==0.1.4",
           "releaseDate": "2025-07-22T17:29:52Z"
-        },
-        {
-          "version": "0.1.0",
-          "sha": "04e8f3b6d7753cae88b604829c6561e12f894a0b",
-          "tag": "langchain-deepseek==0.1.0",
-          "releaseDate": "2025-02-04T18:35:07Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:11.589Z"
+      "lastUpdated": "2026-01-12T07:22:32.335Z"
     },
     {
       "packageName": "langchain_groq",
@@ -433,39 +283,9 @@
           "sha": "937087a29cd702c4809e24ffc2131e18dbad7c4f",
           "tag": "langchain-groq==0.3.8",
           "releaseDate": "2025-09-09T18:39:02Z"
-        },
-        {
-          "version": "0.3.0",
-          "sha": "aae8306d6c1b921538265cf36e114513434a5e0c",
-          "tag": "langchain-groq==0.3.0",
-          "releaseDate": "2025-03-19T15:23:30Z"
-        },
-        {
-          "version": "0.2.5",
-          "sha": "17507c9ba64499dafbe9c5186b29f64a9e872d72",
-          "tag": "langchain-groq==0.2.5",
-          "releaseDate": "2025-03-07T20:25:51Z"
-        },
-        {
-          "version": "0.2.0",
-          "sha": "537f6924dc18d158c8f3168a0b487f7631ae38f7",
-          "tag": "langchain-groq==0.2.0",
-          "releaseDate": "2024-09-13T22:48:48Z"
-        },
-        {
-          "version": "0.1.10",
-          "sha": "c0dd293f1040d7538bb2e4e0a94568420239d496",
-          "tag": "langchain-groq==0.1.10",
-          "releaseDate": "2024-09-12T17:41:11Z"
-        },
-        {
-          "version": "0.1.4",
-          "sha": "c5a981e3b4f0b31a42e3d95f5c6e77a0715e1d4c",
-          "tag": "langchain-groq==0.1.4",
-          "releaseDate": "2024-05-15T21:20:46Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:14.698Z"
+      "lastUpdated": "2026-01-12T07:22:33.975Z"
     },
     {
       "packageName": "langchain_openai",
@@ -500,39 +320,9 @@
           "sha": "f95669aa0aee8df05b55765a5d5ea3000fd61dfe",
           "tag": "langchain-openai==0.3.35",
           "releaseDate": "2025-10-06T14:51:01Z"
-        },
-        {
-          "version": "0.3.0",
-          "sha": "6e63ccba8429e55ece4d40b6e8f4a069579ba290",
-          "tag": "langchain-openai==0.3.0",
-          "releaseDate": "2025-01-10T15:50:32Z"
-        },
-        {
-          "version": "0.2.14",
-          "sha": "c3ccd93c12ba14bb17b799e7e38e5fdf653cb029",
-          "tag": "langchain-openai==0.2.14",
-          "releaseDate": "2024-12-19T21:43:32Z"
-        },
-        {
-          "version": "0.2.0",
-          "sha": "f7ae12fa1fbbe7a571a4a23083f38974d973b856",
-          "tag": "langchain-openai==0.2.0",
-          "releaseDate": "2024-09-13T22:38:10Z"
-        },
-        {
-          "version": "0.1.25",
-          "sha": "d9813bdbbc1264ecb843b0a15284d708b3bae264",
-          "tag": "langchain-openai==0.1.25",
-          "releaseDate": "2024-09-13T19:00:01Z"
-        },
-        {
-          "version": "0.1.5",
-          "sha": "6fa8626e2fb7339192181e68eeaadd07cf103940",
-          "tag": "langchain-openai==0.1.5",
-          "releaseDate": "2024-05-01T22:03:29Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:17.685Z"
+      "lastUpdated": "2026-01-12T07:22:35.681Z"
     }
   ]
 }

@@ -2,7 +2,7 @@
   "project": "deepagent",
   "language": "typescript",
   "repo": "langchain-ai/deepagentsjs",
-  "lastSynced": "2026-01-12T06:57:13.108Z",
+  "lastSynced": "2026-01-12T07:22:19.353Z",
   "packages": [
     {
       "packageName": "deepagents",
@@ -39,7 +39,7 @@
           "releaseDate": "2025-11-05T22:50:06Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:34:50.854Z"
+      "lastUpdated": "2026-01-12T07:22:19.353Z"
     }
   ]
 }

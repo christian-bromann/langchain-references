@@ -311,7 +311,7 @@ class PythonExtractor:
             # Build signature with function/method name and return type
             name = obj.name if hasattr(obj, "name") else ""
             params_str = ",\n    ".join(params) if params else ""
-            
+
             if params:
                 signature = f"{name}(\n    {params_str},\n)"
             else:

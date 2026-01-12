@@ -2,7 +2,7 @@
   "project": "langchain",
   "language": "typescript",
   "repo": "langchain-ai/langchainjs",
-  "lastSynced": "2026-01-12T06:57:18.696Z",
+  "lastSynced": "2026-01-12T07:22:57.935Z",
   "packages": [
     {
       "packageName": "langchain",
@@ -51,7 +51,7 @@
           "releaseDate": "2025-09-29T22:58:35Z"
         }
       ],
-      "lastUpdated": "2026-01-12T06:57:18.190Z"
+      "lastUpdated": "2026-01-12T07:22:39.718Z"
     },
     {
       "packageName": "@langchain/core",
@@ -88,7 +88,7 @@
           "releaseDate": "2025-10-27T19:02:21Z"
         }
       ],
-      "lastUpdated": "2026-01-12T06:57:18.695Z"
+      "lastUpdated": "2026-01-12T07:22:41.448Z"
     },
     {
       "packageName": "@langchain/community",
@@ -125,7 +125,7 @@
           "releaseDate": "2025-09-29T22:58:35Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:26.586Z"
+      "lastUpdated": "2026-01-12T07:22:43.116Z"
     },
     {
       "packageName": "@langchain/anthropic",
@@ -180,7 +180,7 @@
           "releaseDate": "2025-10-27T19:02:21Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:29.325Z"
+      "lastUpdated": "2026-01-12T07:22:45.674Z"
     },
     {
       "packageName": "@langchain/aws",
@@ -217,7 +217,7 @@
           "releaseDate": "2025-09-02T19:39:31Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:31.567Z"
+      "lastUpdated": "2026-01-12T07:22:47.359Z"
     },
     {
       "packageName": "@langchain/deepseek",
@@ -242,7 +242,7 @@
           "releaseDate": "2025-07-05T00:59:44Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:32.495Z"
+      "lastUpdated": "2026-01-12T07:22:48.577Z"
     },
     {
       "packageName": "@langchain/google-genai",
@@ -291,7 +291,7 @@
           "releaseDate": "2025-09-15T21:41:49Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:34.950Z"
+      "lastUpdated": "2026-01-12T07:22:50.844Z"
     },
     {
       "packageName": "@langchain/google-vertexai",
@@ -340,7 +340,7 @@
           "releaseDate": "2025-09-15T21:41:49Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:37.709Z"
+      "lastUpdated": "2026-01-12T07:22:52.929Z"
     },
     {
       "packageName": "@langchain/google-vertexai-web",
@@ -389,7 +389,7 @@
           "releaseDate": "2025-09-15T21:41:49Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:39.912Z"
+      "lastUpdated": "2026-01-12T07:22:55.033Z"
     },
     {
       "packageName": "@langchain/groq",
@@ -414,7 +414,7 @@
           "releaseDate": "2025-09-15T21:41:49Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:41.027Z"
+      "lastUpdated": "2026-01-12T07:22:56.062Z"
     },
     {
       "packageName": "@langchain/openai",
@@ -451,19 +451,13 @@
           "releaseDate": "2025-10-20T18:25:23Z"
         },
         {
-          "version": "1.0.0-alpha.1",
-          "sha": "18af31ddaf11464d1fa49cacf650677c6c3c0c8b",
-          "tag": "@langchain/openai==1.0.0-alpha.1",
-          "releaseDate": "2025-08-28T01:15:12Z"
-        },
-        {
           "version": "0.6.14",
           "sha": "23a92ed3fae05531193af80977019aaa82fe94df",
           "tag": "@langchain/openai==0.6.14",
           "releaseDate": "2025-09-29T22:58:35Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:43.923Z"
+      "lastUpdated": "2026-01-12T07:22:57.935Z"
     }
   ]
 }

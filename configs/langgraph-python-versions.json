@@ -2,7 +2,7 @@
   "project": "langgraph",
   "language": "python",
   "repo": "langchain-ai/langgraph",
-  "lastSynced": "2026-01-12T06:57:19.950Z",
+  "lastSynced": "2026-01-12T07:23:07.985Z",
   "packages": [
     {
       "packageName": "langgraph",
@@ -25,81 +25,9 @@
           "sha": "252d6efbbf6260f0169044ea4b4a90bca86eb3ed",
           "tag": "0.6.11",
           "releaseDate": "2025-10-20T23:58:04Z"
-        },
-        {
-          "version": "0.6.0",
-          "sha": "440c7ff12a2e516162e4fc1357ca4d88caad30e6",
-          "tag": "0.6.0",
-          "releaseDate": "2025-07-28T13:11:43Z"
-        },
-        {
-          "version": "0.5.4",
-          "sha": "1ee6bfeb8db82aaaac365f802c973ef852efc123",
-          "tag": "0.5.4",
-          "releaseDate": "2025-07-21T18:17:00Z"
-        },
-        {
-          "version": "0.5.0",
-          "sha": "0a4cd5fcaa86379acf6e24d4a494cac54b1af4f6",
-          "tag": "0.5.0",
-          "releaseDate": "2025-06-26T22:47:46Z"
-        },
-        {
-          "version": "0.4.10",
-          "sha": "13d66e0ebb62d6dde33e2f8e4ee8ffbd5b392ed2",
-          "tag": "0.4.10",
-          "releaseDate": "2025-06-25T17:41:51Z"
-        },
-        {
-          "version": "0.4.0",
-          "sha": "9ffa6371e0119230b6606e86645e8f7871e12271",
-          "tag": "0.4.0",
-          "releaseDate": "2025-04-29T13:40:09Z"
-        },
-        {
-          "version": "0.3.34",
-          "sha": "6263c2f71088d7d5fcaed8585948bd5868488996",
-          "tag": "0.3.34",
-          "releaseDate": "2025-04-24T14:16:37Z"
-        },
-        {
-          "version": "0.3.0",
-          "sha": "24c13c211e7a5808ce8f6b09bb7ad74ca577c0f1",
-          "tag": "0.3.0",
-          "releaseDate": "2025-02-26T23:33:07Z"
-        },
-        {
-          "version": "0.2.76",
-          "sha": "2e36189c165c1100d65dce52d3c43e084fc27a9f",
-          "tag": "0.2.76",
-          "releaseDate": "2025-02-26T21:41:28Z"
-        },
-        {
-          "version": "0.2.0",
-          "sha": "172b4af6ed088c74f9a53346e9b8017270cc85c0",
-          "tag": "0.2.0",
-          "releaseDate": "2024-08-07T03:25:18Z"
-        },
-        {
-          "version": "0.1.17",
-          "sha": "298c93ca4aef9fb7cc363065de4956dcdb7ac952",
-          "tag": "0.1.17",
-          "releaseDate": "2024-07-31T01:27:48Z"
-        },
-        {
-          "version": "0.1.2",
-          "sha": "1a58af81b32374a340326cb1ca7725ab4b2bafd3",
-          "tag": "0.1.2",
-          "releaseDate": "2024-06-26T23:25:34Z"
-        },
-        {
-          "version": "0.0.8",
-          "sha": "6fb060add0b4b05333446087a875246406282b11",
-          "tag": "v0.0.8",
-          "releaseDate": "2023-11-29T10:11:13Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:50.488Z"
+      "lastUpdated": "2026-01-12T07:23:00.026Z"
     },
     {
       "packageName": "langgraph_sdk",
@@ -110,39 +38,9 @@
           "sha": "454af218968b2962b4beeb9a28b9d421f0610694",
           "tag": "sdk==0.3.2",
           "releaseDate": "2026-01-09T21:07:32Z"
-        },
-        {
-          "version": "0.3.0",
-          "sha": "efe78447b3cdd424702274ffda918961af07e560",
-          "tag": "sdk==0.3.0",
-          "releaseDate": "2025-12-12T22:16:48Z"
-        },
-        {
-          "version": "0.2.15",
-          "sha": "76711536f93d6d6906f3dc3104f452ddb7c72e5a",
-          "tag": "sdk==0.2.15",
-          "releaseDate": "2025-12-09T19:09:12Z"
-        },
-        {
-          "version": "0.2.0",
-          "sha": "869b0f2de4f4122f2b8b5fc7fa5b88bf48dd8f8b",
-          "tag": "sdk==0.2.0",
-          "releaseDate": "2025-07-22T17:27:04Z"
-        },
-        {
-          "version": "0.1.74",
-          "sha": "819eae891ef121a073728f35a309f1f0e85b7008",
-          "tag": "sdk==0.1.74",
-          "releaseDate": "2025-07-21T16:33:00Z"
-        },
-        {
-          "version": "0.1.23",
-          "sha": "19ff4a142f40d1be8ac55409c249f95a82583148",
-          "tag": "sdk==0.1.23",
-          "releaseDate": "2024-06-19T20:00:55Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:52.421Z"
+      "lastUpdated": "2026-01-12T07:23:00.286Z"
     },
     {
       "packageName": "langgraph.checkpoint",
@@ -197,7 +95,7 @@
           "releaseDate": "2024-08-02T22:58:04Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:54.966Z"
+      "lastUpdated": "2026-01-12T07:23:02.920Z"
     },
     {
       "packageName": "langgraph.checkpoint.sqlite",
@@ -240,7 +138,7 @@
           "releaseDate": "2024-08-07T02:43:35Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:56.760Z"
+      "lastUpdated": "2026-01-12T07:23:04.812Z"
     },
     {
       "packageName": "langgraph.checkpoint.postgres",
@@ -283,7 +181,7 @@
           "releaseDate": "2024-08-07T02:53:29Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:35:58.771Z"
+      "lastUpdated": "2026-01-12T07:23:06.757Z"
     },
     {
       "packageName": "langgraph_cli",
@@ -294,51 +192,9 @@
           "sha": "05e4efe712ae6b9dd9560007395c9ee248f45b1f",
           "tag": "cli==0.4.11",
           "releaseDate": "2025-12-17T14:10:37Z"
-        },
-        {
-          "version": "0.4.0",
-          "sha": "ddf4e62bde806111a05de247cf028ec08883eac0",
-          "tag": "cli==0.4.0",
-          "releaseDate": "2025-08-26T12:59:12Z"
-        },
-        {
-          "version": "0.3.8",
-          "sha": "501ba8be344865468303de6d453d6497b045c36d",
-          "tag": "cli==0.3.8",
-          "releaseDate": "2025-08-21T00:59:27Z"
-        },
-        {
-          "version": "0.3.1",
-          "sha": "c17ee1bf5ac2c1fb1b14a7a692e4109e76c1cbf7",
-          "tag": "cli==0.3.1",
-          "releaseDate": "2025-06-09T15:57:29Z"
-        },
-        {
-          "version": "0.2.12",
-          "sha": "194c4c1d1cb95a9c490180e05fea083bc6ae67a7",
-          "tag": "cli==0.2.12",
-          "releaseDate": "2025-06-04T22:50:07Z"
-        },
-        {
-          "version": "0.2.1",
-          "sha": "a03cb0b16d1457751e06e855b688da1d0cfea4af",
-          "tag": "cli==0.2.1",
-          "releaseDate": "2025-04-10T15:56:07Z"
-        },
-        {
-          "version": "0.1.89",
-          "sha": "05a4fcc8bb225de7255c849e9b445709aee890c4",
-          "tag": "cli==0.1.89",
-          "releaseDate": "2025-04-04T17:46:47Z"
-        },
-        {
-          "version": "0.1.40",
-          "sha": "4a38dd45dc7ff35164bc716ac37a8448ef90fd1e",
-          "tag": "cli==0.1.40",
-          "releaseDate": "2024-06-20T20:10:28Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:36:01.297Z"
+      "lastUpdated": "2026-01-12T07:23:07.043Z"
     },
     {
       "packageName": "langgraph.prebuilt",
@@ -361,51 +217,9 @@
           "sha": "738f38cb355f8d9a268405f379e33256a5668609",
           "tag": "prebuilt==0.6.5",
           "releaseDate": "2025-10-21T00:11:29Z"
-        },
-        {
-          "version": "0.6.0",
-          "sha": "440c7ff12a2e516162e4fc1357ca4d88caad30e6",
-          "tag": "prebuilt==0.6.0",
-          "releaseDate": "2025-07-28T13:11:43Z"
-        },
-        {
-          "version": "0.5.2",
-          "sha": "6182cd1dcb59b69303faa1171d2bffa243dcedf1",
-          "tag": "prebuilt==0.5.2",
-          "releaseDate": "2025-06-30T19:50:21Z"
-        },
-        {
-          "version": "0.5.0",
-          "sha": "0a4cd5fcaa86379acf6e24d4a494cac54b1af4f6",
-          "tag": "prebuilt==0.5.0",
-          "releaseDate": "2025-06-26T22:47:46Z"
-        },
-        {
-          "version": "0.2.3",
-          "sha": "45b91e9a604b2a4f8f12e18fe93079729492fcb9",
-          "tag": "prebuilt==0.2.3",
-          "releaseDate": "2025-06-26T01:37:50Z"
-        },
-        {
-          "version": "0.2.0",
-          "sha": "aff3be03dcd5b8ce0fdebde71997295e87b96f61",
-          "tag": "prebuilt==0.2.0",
-          "releaseDate": "2025-05-22T17:54:58Z"
-        },
-        {
-          "version": "0.1.8",
-          "sha": "e89633f30b02243ab140b1a440c4e79e78a550ee",
-          "tag": "prebuilt==0.1.8",
-          "releaseDate": "2025-04-03T16:01:18Z"
-        },
-        {
-          "version": "0.1.0",
-          "sha": "3778f6113cfd57c5b67e892cc6e902a9d368fb38",
-          "tag": "prebuilt==0.1.0",
-          "releaseDate": "2025-02-26T23:48:03Z"
         }
       ],
-      "lastUpdated": "2026-01-12T05:36:04.594Z"
+      "lastUpdated": "2026-01-12T07:23:07.985Z"
     }
   ]
 }
