@@ -78,7 +78,7 @@ interface LatestLanguagePointer {
 }
 
 /**
- * Fetch a pointer JSON from Vercel Blob (public access)
+ * Fetch a pointer JSON from Vercel Blob (public access) with retry logic
  *
  * Uses in-memory cache for deduplication. Pointers are small files
  * that indicate the latest build ID for each language.
@@ -89,29 +89,58 @@ async function fetchPointer<T>(pointerName: string): Promise<T | null> {
     return pointerCache.get(cacheKey) as T;
   }
 
-  try {
-    const url = getBlobUrl(`${POINTERS_PATH}/${pointerName}.json`);
-    if (!url) {
-      return null;
-    }
-
-    const response = await fetch(url, {
-      // Use force-cache to enable static generation
-      // In-memory pointerCache handles deduplication during builds
-      cache: "force-cache",
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    pointerCache.set(cacheKey, data);
-    return data;
-  } catch (error) {
-    console.error(`Failed to fetch pointer: ${pointerName}`, error);
+  const url = getBlobUrl(`${POINTERS_PATH}/${pointerName}.json`);
+  if (!url) {
     return null;
   }
+
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(url, {
+        // Use force-cache to enable static generation
+        // In-memory pointerCache handles deduplication during builds
+        cache: "force-cache",
+      });
+
+      if (!response.ok) {
+        if (response.status >= 400 && response.status < 500) {
+          return null;
+        }
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      pointerCache.set(cacheKey, data);
+      return data;
+    } catch (error) {
+      lastError = error;
+
+      const errorMessage = String(error);
+      const isRetryable =
+        errorMessage.includes("ECONNRESET") ||
+        errorMessage.includes("ETIMEDOUT") ||
+        errorMessage.includes("ECONNREFUSED") ||
+        errorMessage.includes("fetch failed") ||
+        errorMessage.includes("socket hang up") ||
+        errorMessage.includes("HTTP 5");
+
+      if (!isRetryable || attempt === MAX_RETRIES - 1) {
+        break;
+      }
+
+      const delay = Math.min(
+        INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt) + Math.random() * 500,
+        MAX_RETRY_DELAY_MS
+      );
+
+      await sleep(delay);
+    }
+  }
+
+  console.error(`Failed to fetch pointer: ${pointerName}`, lastError);
+  return null;
 }
 
 /**
@@ -145,30 +174,88 @@ export async function getLatestBuildIdForLanguage(
 }
 
 /**
- * Fetch JSON from Vercel Blob (public access)
+ * Retry configuration for blob fetches
+ */
+const MAX_RETRIES = 5;
+const INITIAL_RETRY_DELAY_MS = 500;
+const MAX_RETRY_DELAY_MS = 10000;
+
+/**
+ * Sleep helper for retry delays
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Fetch JSON from Vercel Blob (public access) with retry logic
  *
  * Uses force-cache to enable static generation. Large files (>2MB) will
  * show warnings about not being cached, but this is informational only -
  * the fetch still works and static generation proceeds normally.
  * The in-memory caches handle deduplication during the build process.
+ *
+ * Includes retry logic with exponential backoff for connection resets
+ * and rate limit errors, which can occur during parallel static generation.
  */
 async function fetchBlobJson<T>(path: string): Promise<T | null> {
-  try {
-    const url = getBlobUrl(path);
-    if (!url) return null;
+  const url = getBlobUrl(path);
+  if (!url) return null;
 
-    const response = await fetch(url, {
-      // Use force-cache to enable static generation
-      // Large files (>2MB) will show cache warnings but still work
-      cache: "force-cache",
-    });
-    if (!response.ok) return null;
+  let lastError: unknown = null;
 
-    return response.json();
-  } catch (error) {
-    console.error(`Failed to fetch blob: ${path}`, error);
-    return null;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(url, {
+        // Use force-cache to enable static generation
+        // Large files (>2MB) will show cache warnings but still work
+        cache: "force-cache",
+      });
+
+      if (!response.ok) {
+        // Don't retry 404s or client errors
+        if (response.status >= 400 && response.status < 500) {
+          return null;
+        }
+        // Retry server errors
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      lastError = error;
+
+      // Check if this is a retryable error
+      const errorMessage = String(error);
+      const isRetryable =
+        errorMessage.includes("ECONNRESET") ||
+        errorMessage.includes("ETIMEDOUT") ||
+        errorMessage.includes("ECONNREFUSED") ||
+        errorMessage.includes("fetch failed") ||
+        errorMessage.includes("socket hang up") ||
+        errorMessage.includes("HTTP 5");
+
+      if (!isRetryable || attempt === MAX_RETRIES - 1) {
+        // Don't retry or last attempt
+        break;
+      }
+
+      // Exponential backoff with jitter
+      const delay = Math.min(
+        INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt) + Math.random() * 500,
+        MAX_RETRY_DELAY_MS
+      );
+
+      console.warn(
+        `Fetch failed for ${path}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
+      );
+
+      await sleep(delay);
+    }
   }
+
+  console.error(`Failed to fetch blob after ${MAX_RETRIES} attempts: ${path}`, lastError);
+  return null;
 }
 
 /**
@@ -373,6 +460,10 @@ export async function getKnownSymbolNames(
 /**
  * Fetch an individual symbol by ID from blob storage.
  * Individual symbol files are stored at ir/{buildId}/symbols/{shardKey}/{symbolId}.json
+ *
+ * Note: This may return null if individual symbol files weren't uploaded
+ * (e.g., for packages merged from existing blob data). Callers should
+ * fall back to getPackageSymbols/getSymbolByPath if this returns null.
  */
 export async function getIndividualSymbol(
   buildId: string,
@@ -386,19 +477,33 @@ export async function getIndividualSymbol(
 
   // Shard key is first 2 characters of symbol ID
   const shardKey = symbolId.substring(0, 2);
-  const path = `${IR_BASE_PATH}/${buildId}/symbols/${shardKey}/${symbolId}.json`;
-  const symbol = await fetchBlobJson<SymbolRecord>(path);
+  const blobPath = `${IR_BASE_PATH}/${buildId}/symbols/${shardKey}/${symbolId}.json`;
 
-  if (symbol) {
-    individualSymbolCache.set(cacheKey, symbol);
+  // Use a simpler fetch without retry for individual symbols since we have a fallback
+  try {
+    const url = getBlobUrl(blobPath);
+    if (!url) return null;
+
+    const response = await fetch(url, { cache: "force-cache" });
+    if (!response.ok) return null;
+
+    const symbol = await response.json();
+    if (symbol) {
+      individualSymbolCache.set(cacheKey, symbol);
+    }
+    return symbol;
+  } catch {
+    // Silently fail - caller should fall back to symbols.json
+    return null;
   }
-
-  return symbol;
 }
 
 /**
  * Get a symbol by its qualified name using the optimized lookup index.
  * This fetches only the specific symbol (~1-5KB) instead of all symbols (11MB+).
+ *
+ * If individual symbol files aren't available, falls back to loading from
+ * the full symbols.json file (slower but more reliable).
  */
 export async function getSymbolByQualifiedName(
   buildId: string,
@@ -408,15 +513,19 @@ export async function getSymbolByQualifiedName(
   // First, get the lookup index
   const index = await getSymbolLookupIndex(buildId, packageId);
   if (!index) {
-    return null;
+    // Fall back to full symbols.json search
+    return getSymbolByPath(buildId, packageId, qualifiedName);
   }
 
   // Look up the symbol ID
   const entry = index.symbols[qualifiedName];
-  if (!entry) {
+  let symbolId: string | null = null;
+
+  if (entry) {
+    symbolId = entry.id;
+  } else {
     // Try some variations
     const variations = [
-      qualifiedName,
       qualifiedName.replace(/\//g, "."),
       qualifiedName.replace(/\./g, "/"),
     ];
@@ -424,14 +533,25 @@ export async function getSymbolByQualifiedName(
     for (const variation of variations) {
       const found = index.symbols[variation];
       if (found) {
-        return getIndividualSymbol(buildId, found.id);
+        symbolId = found.id;
+        break;
       }
     }
+  }
+
+  if (!symbolId) {
     return null;
   }
 
-  // Fetch the individual symbol
-  return getIndividualSymbol(buildId, entry.id);
+  // Try to fetch the individual symbol file first (fast path)
+  const individualSymbol = await getIndividualSymbol(buildId, symbolId);
+  if (individualSymbol) {
+    return individualSymbol;
+  }
+
+  // Fall back to full symbols.json search (slow path but more reliable)
+  // This handles cases where individual symbol files weren't uploaded
+  return getSymbolByPath(buildId, packageId, qualifiedName);
 }
 
 /**
@@ -849,7 +969,7 @@ export async function getSymbolOptimized(
  */
 const STATIC_GENERATION_KINDS = new Set([
   "module",
-  "function", 
+  "function",
   "class",
   "method",
   "interface",
@@ -967,7 +1087,7 @@ const crossProjectPackageCache = new Map<string, Map<string, CrossProjectPackage
 /**
  * Get all packages across all projects for cross-referencing.
  * Returns a map of module prefixes to package info.
- * 
+ *
  * For Python: maps "langchain_core" -> { slug: "langchain_core", language: "python", knownSymbols }
  * For JS: maps "@langchain/core" -> { slug: "langchain_core", language: "javascript", knownSymbols }
  */
@@ -1003,16 +1123,16 @@ export async function getCrossProjectPackages(
 
       // Get the module prefix (e.g., "langchain_core" from package name)
       const modulePrefix = pkg.publishedName.replace(/-/g, "_").replace(/^@/, "").replace(/\//g, "_");
-      
+
       // Load known symbols for this package
       const knownSymbolNames = await getKnownSymbolNamesData(buildId, pkg.packageId);
-      
+
       packages.set(modulePrefix, {
         slug: modulePrefix,
         language,
         knownSymbols: new Set(knownSymbolNames),
       });
-      
+
       // Also add the original published name as a key for lookups
       if (pkg.publishedName !== modulePrefix) {
         packages.set(pkg.publishedName, {
@@ -1030,7 +1150,7 @@ export async function getCrossProjectPackages(
 
 /**
  * Resolve a type reference to its URL if it exists in any package.
- * 
+ *
  * @param typeName - The simple type name (e.g., "BaseChatModel")
  * @param qualifiedName - The fully qualified name (e.g., "langchain_core.language_models.BaseChatModel")
  * @param language - The language of the current page
@@ -1044,18 +1164,18 @@ export async function resolveTypeReferenceUrl(
   if (!qualifiedName) return null;
 
   const packages = await getCrossProjectPackages(language);
-  
+
   // Extract the package prefix from the qualified name
   // e.g., "langchain_core.language_models.BaseChatModel" -> "langchain_core"
   const parts = qualifiedName.split(".");
   if (parts.length < 2) return null;
-  
+
   // Try progressively longer prefixes to find the package
   // This handles nested modules like "langgraph.checkpoint.base.Checkpointer"
   for (let i = 1; i <= Math.min(parts.length - 1, 3); i++) {
     const prefix = parts.slice(0, i).join("_");
     const pkg = packages.get(prefix);
-    
+
     if (pkg && pkg.knownSymbols.has(typeName)) {
       const langPath = language === "python" ? "python" : "javascript";
       return `/${langPath}/${pkg.slug}/${typeName}`;
