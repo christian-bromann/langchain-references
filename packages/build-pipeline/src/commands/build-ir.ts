@@ -323,11 +323,14 @@ async function createManifest(
   buildId: string,
   config: BuildConfig,
   fetchResult: FetchResult,
-  irOutputPath: string
+  irOutputPath: string,
+  /** Optional filtered list of packages (defaults to all packages in config) */
+  packagesToProcess?: PackageConfig[]
 ): Promise<Manifest> {
   const packages: Package[] = [];
+  const pkgList = packagesToProcess || config.packages;
 
-  for (const pkgConfig of config.packages) {
+  for (const pkgConfig of pkgList) {
     const pkgOutputPath = path.join(irOutputPath, "packages", normalizePackageId(pkgConfig.name, config.language));
 
     try {
@@ -966,7 +969,9 @@ async function buildVersionHistory(
   config: BuildConfig,
   fetchResult: FetchResult,
   irOutputPath: string,
-  forceFullRebuild?: boolean
+  forceFullRebuild?: boolean,
+  /** Optional filtered list of packages (defaults to all packages in config) */
+  packagesToProcess?: PackageConfig[]
 ): Promise<void> {
   const cachedVersions = await loadCachedVersions(
     config.project || "langchain",
@@ -981,8 +986,9 @@ async function buildVersionHistory(
   console.log(`   Using cached versions from ${cachedVersions.lastSynced.split("T")[0]}`);
 
   const cacheDir = getCacheBaseDir();
+  const pkgList = packagesToProcess || config.packages;
 
-  for (const pkgConfig of config.packages) {
+  for (const pkgConfig of pkgList) {
     if (!pkgConfig.versioning?.tagPattern) {
       continue;
     }
@@ -1161,6 +1167,8 @@ async function buildConfig(
     fullRebuild?: boolean;
     force?: boolean;
     verbose?: boolean;
+    /** Filter to build only a specific package by name */
+    packageFilter?: string;
   }
 ): Promise<{ buildId: string; success: boolean; skipped?: boolean }> {
   console.log(`\n📄 Loading config: ${configPath}`);
@@ -1195,10 +1203,23 @@ async function buildConfig(
     console.log(`\n🔨 Force build requested - skipping update check`);
   }
 
+  // Filter to a specific package if requested
+  let packagesToProcess = config.packages;
+  if (opts.packageFilter) {
+    const filtered = config.packages.filter((p) => p.name === opts.packageFilter);
+    if (filtered.length === 0) {
+      console.error(`\n❌ Package '${opts.packageFilter}' not found in config.`);
+      console.error(`   Available packages: ${config.packages.map((p) => p.name).join(", ")}`);
+      return { buildId: "(invalid-package)", success: false };
+    }
+    packagesToProcess = filtered;
+    console.log(`   📦 Filtering to package: ${opts.packageFilter}`);
+  }
+
   console.log(`   Project: ${config.project || "langchain"}`);
   console.log(`   Language: ${config.language}`);
   console.log(`   Repository: ${config.repo}`);
-  console.log(`   Packages: ${config.packages.map((p) => p.name).join(", ")}`);
+  console.log(`   Packages: ${packagesToProcess.map((p) => p.name).join(", ")}`);
 
   const sha = opts.sha || (await getLatestSha(config.repo));
   console.log(`\n📌 Target SHA: ${sha.substring(0, 7)}`);
@@ -1232,7 +1253,7 @@ async function buildConfig(
 
   const failedPackages = new Set<string>();
 
-  for (const pkgConfig of config.packages) {
+  for (const pkgConfig of packagesToProcess) {
     const packagePath = path.join(fetchResult.extractedPath, pkgConfig.path);
     const pkgOutputDir = path.join(irOutputPath, "packages", normalizePackageId(pkgConfig.name, config.language));
     await fs.mkdir(pkgOutputDir, { recursive: true });
@@ -1274,14 +1295,14 @@ async function buildConfig(
   }
 
   console.log("\n📋 Creating manifest...");
-  const manifest = await createManifest(buildId, config, fetchResult, irOutputPath);
+  const manifest = await createManifest(buildId, config, fetchResult, irOutputPath, packagesToProcess);
   const manifestPath = path.join(irOutputPath, "reference.manifest.json");
   await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
   console.log(`   ✓ ${manifest.packages.length} packages in manifest`);
 
   if (opts.withVersions) {
     console.log("\n📜 Building version history...");
-    await buildVersionHistory(config, fetchResult, irOutputPath, opts.fullRebuild);
+    await buildVersionHistory(config, fetchResult, irOutputPath, opts.fullRebuild, packagesToProcess);
   }
 
   // Clean up main extracted repository to save disk space in CI
@@ -1328,6 +1349,7 @@ async function main() {
     .option("--config <path>", "Build a specific configuration file")
     .option("--project <name>", `Build all configs for a project (${PROJECTS.join(", ")})`)
     .option("--language <lang>", `Build all configs for a language (${LANGUAGES.join(", ")})`)
+    .option("--package <name>", "Build only a specific package within a config (for parallel CI)")
     .option("--all", "Build all project/language combinations")
     .option("--sha <sha>", "Git SHA to use (defaults to latest main)")
     .option("--output <path>", "Output directory for IR artifacts", "./ir-output")
@@ -1394,6 +1416,7 @@ async function main() {
       fullRebuild: opts.full,
       force: opts.force,
       verbose: opts.verbose,
+      packageFilter: opts.package,
     });
     results.push({ config: path.basename(configPath), ...result });
   }

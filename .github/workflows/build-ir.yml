@@ -1,7 +1,7 @@
 # Build IR Workflow
 #
 # Builds IR artifacts for all LangChain ecosystem projects.
-# Uses a matrix strategy to build each project+language combination in parallel.
+# Uses a matrix strategy to build each package in parallel for maximum speed.
 #
 # The workflow is optimized to skip builds when no new releases exist:
 # - Compares build creation date against manually-configured version metadata
@@ -73,53 +73,77 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Determine which configurations to build based on inputs
+  # Determine which packages to build based on inputs
+  # Each package gets its own parallel runner for maximum speed
   matrix:
     name: Generate Build Matrix
     runs-on: ubuntu-latest
     outputs:
-      configs: ${{ steps.generate.outputs.configs }}
+      packages: ${{ steps.generate.outputs.packages }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate matrix
+      - name: Generate package-level matrix
         id: generate
         run: |
-          # Build the list of configs based on inputs
+          # Build the list of packages from config files
           PROJECT="${{ github.event.inputs.project }}"
           LANGUAGE="${{ github.event.inputs.language }}"
 
-          # All possible configs (compact JSON on single line)
-          ALL_CONFIGS='[{"project":"langchain","language":"python","config":"langchain-python.json"},{"project":"langchain","language":"typescript","config":"langchain-typescript.json"},{"project":"langgraph","language":"python","config":"langgraph-python.json"},{"project":"langgraph","language":"typescript","config":"langgraph-typescript.json"},{"project":"deepagent","language":"python","config":"deepagent-python.json"},{"project":"deepagent","language":"typescript","config":"deepagent-typescript.json"}]'
+          # Generate matrix entries from config files
+          PACKAGES="[]"
 
-          # Filter based on inputs
-          if [ -n "$PROJECT" ] && [ -n "$LANGUAGE" ]; then
-            # Both specified - single config
-            CONFIGS=$(echo "$ALL_CONFIGS" | jq -c "[.[] | select(.project == \"$PROJECT\" and .language == \"$LANGUAGE\")]")
-          elif [ -n "$PROJECT" ]; then
-            # Only project specified
-            CONFIGS=$(echo "$ALL_CONFIGS" | jq -c "[.[] | select(.project == \"$PROJECT\")]")
-          elif [ -n "$LANGUAGE" ]; then
-            # Only language specified
-            CONFIGS=$(echo "$ALL_CONFIGS" | jq -c "[.[] | select(.language == \"$LANGUAGE\")]")
-          else
-            # No filters - build all
-            CONFIGS="$ALL_CONFIGS"
-          fi
+          for config_file in configs/*-python.json configs/*-typescript.json; do
+            # Skip if no files match
+            [ -f "$config_file" ] || continue
 
-          echo "configs=$CONFIGS" >> $GITHUB_OUTPUT
-          echo "Building configs:"
-          echo "$CONFIGS" | jq .
+            # Skip schema file
+            [[ "$config_file" == *"config-schema"* ]] && continue
 
-  # Build each project+language in parallel
+            config_name=$(basename "$config_file")
+            file_project=$(echo "$config_name" | sed 's/-\(python\|typescript\)\.json$//')
+            file_language=$(echo "$config_name" | sed 's/.*-\(python\|typescript\)\.json$/\1/')
+
+            # Apply project filter
+            if [ -n "$PROJECT" ] && [ "$file_project" != "$PROJECT" ]; then
+              continue
+            fi
+
+            # Apply language filter
+            if [ -n "$LANGUAGE" ] && [ "$file_language" != "$LANGUAGE" ]; then
+              continue
+            fi
+
+            # Extract packages from config file
+            packages_in_config=$(jq -r '.packages[].name' "$config_file")
+
+            for pkg in $packages_in_config; do
+              entry=$(jq -n \
+                --arg project "$file_project" \
+                --arg language "$file_language" \
+                --arg config "$config_name" \
+                --arg package "$pkg" \
+                '{project: $project, language: $language, config: $config, package: $package}')
+              PACKAGES=$(echo "$PACKAGES" | jq -c ". + [$entry]")
+            done
+          done
+
+          echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+          echo "Building $(echo "$PACKAGES" | jq length) packages in parallel:"
+          echo "$PACKAGES" | jq -r '.[] | "  - \(.project)/\(.language)/\(.package)"'
+
+  # Build each package in parallel for maximum speed
   build:
-    name: Build ${{ matrix.project }} (${{ matrix.language }})
+    name: ${{ matrix.package }} (${{ matrix.language }})
     needs: matrix
     runs-on: ubuntu-latest
+    # Skip if no packages to build (e.g., bad filter)
+    if: ${{ needs.matrix.outputs.packages != '[]' }}
     strategy:
       fail-fast: false
+      max-parallel: 20  # GitHub allows up to 256 concurrent jobs
       matrix:
-        include: ${{ fromJson(needs.matrix.outputs.configs) }}
+        include: ${{ fromJson(needs.matrix.outputs.packages) }}
 
     env:
       BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
@@ -163,7 +187,7 @@ jobs:
           cd packages/extractor-python
           pip install -e .
 
-      - name: Build IR
+      - name: Build IR for ${{ matrix.package }}
         id: build
         run: |
           FLAGS=""
@@ -183,10 +207,11 @@ jobs:
             FLAGS="$FLAGS --force"
           fi
 
-          # Run via tsx directly (no build step required for internal packages)
-          # The command will automatically check for updates and skip if not needed
+          # Run via tsx directly with package filter for parallel execution
+          # Each runner builds only ONE package for maximum parallelization
           npx tsx packages/build-pipeline/src/commands/build-ir.ts \
             --config ./configs/${{ matrix.config }} \
+            --package "${{ matrix.package }}" \
             --skip-pointers \
             $FLAGS
         env:
@@ -196,7 +221,8 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ir-${{ matrix.project }}-${{ matrix.language }}
+          # Unique artifact name per package to avoid conflicts
+          name: ir-${{ matrix.project }}-${{ matrix.language }}-${{ matrix.package }}
           path: |
             ir-output/
             !ir-output/latest-*
@@ -204,9 +230,10 @@ jobs:
           if-no-files-found: ignore
 
   # Update pointers after all builds complete
+  # This job merges package artifacts and updates build pointers
   update-pointers:
     name: Update Build Pointers
-    needs: build
+    needs: [matrix, build]
     runs-on: ubuntu-latest
     # Run if build succeeded (even if some were skipped)
     if: ${{ !cancelled() && needs.build.result == 'success' }}
@@ -233,47 +260,103 @@ jobs:
         id: download
         uses: actions/download-artifact@v4
         with:
-          path: ir-output/
+          path: artifacts/
           merge-multiple: true
         continue-on-error: true
 
       - name: Check for artifacts
         id: check-artifacts
         run: |
-          if [ -d "ir-output" ] && [ "$(ls -A ir-output 2>/dev/null)" ]; then
+          if [ -d "artifacts" ] && [ "$(ls -A artifacts 2>/dev/null)" ]; then
             echo "has_artifacts=true" >> $GITHUB_OUTPUT
-            echo "Found artifacts to process"
-            ls -la ir-output/
+            echo "Found artifacts to process:"
+            find artifacts -name "reference.manifest.json" | head -20
           else
             echo "has_artifacts=false" >> $GITHUB_OUTPUT
             echo "No artifacts found - all builds were skipped"
           fi
 
-      - name: Update pointers for each build
+      - name: Merge manifests and update pointers
         if: steps.check-artifacts.outputs.has_artifacts == 'true'
         run: |
-          # Find manifest files, but skip symlinked directories (like latest-*)
-          for manifest in ir-output/*/reference.manifest.json; do
-            if [ -f "$manifest" ]; then
-              BUILD_DIR=$(dirname "$manifest")
+          # With package-level parallelization, each package creates its own manifest
+          # with only that package's info. We need to:
+          # 1. Group manifests by build ID (same project+language+sha = same buildId)
+          # 2. Merge package lists from all manifests with the same buildId
+          # 3. Update pointers with the merged manifest
 
-              # Skip if BUILD_DIR is a symlink (e.g., latest-langchain-python)
-              if [ -L "$BUILD_DIR" ]; then
-                echo "Skipping symlink: $BUILD_DIR"
-                continue
-              fi
+          # Find all unique build directories
+          for build_dir in artifacts/*/; do
+            [ -d "$build_dir" ] || continue
 
-              BUILD_ID=$(basename "$BUILD_DIR")
+            BUILD_ID=$(basename "$build_dir")
 
-              # Also skip if BUILD_ID starts with "latest-" (just in case)
-              if [[ "$BUILD_ID" == latest-* ]]; then
-                echo "Skipping latest pointer directory: $BUILD_ID"
-                continue
-              fi
-
-              echo "Updating pointers for build: $BUILD_ID"
-              npx tsx packages/build-pipeline/src/commands/update-pointers.ts "$BUILD_ID" "$manifest"
+            # Skip symlinks and latest-* directories
+            if [ -L "$build_dir" ] || [[ "$BUILD_ID" == latest-* ]]; then
+              continue
             fi
+
+            manifest="$build_dir/reference.manifest.json"
+            if [ ! -f "$manifest" ]; then
+              echo "No manifest in $build_dir, skipping"
+              continue
+            fi
+
+            # The merged artifact already combines all packages with the same buildId
+            # Each package's symbols are in packages/{packageId}/ subdirectories
+            # Count how many packages are in this build
+            pkg_count=$(find "$build_dir/packages" -name "symbols.json" 2>/dev/null | wc -l | tr -d ' ')
+
+            echo "Build $BUILD_ID has $pkg_count package(s)"
+
+            # Regenerate manifest to include all packages in this build directory
+            # Use jq to update the manifest with all actual packages present
+            if [ "$pkg_count" -gt 1 ]; then
+              echo "  Regenerating manifest for merged packages..."
+
+              # Get base manifest info (irVersion, build, project, sources)
+              base_manifest=$(cat "$manifest")
+
+              # Build new packages array from all symbols.json files
+              new_packages="[]"
+              for symbols_file in "$build_dir"/packages/*/symbols.json; do
+                [ -f "$symbols_file" ] || continue
+
+                pkg_dir=$(dirname "$symbols_file")
+                pkg_id=$(basename "$pkg_dir")
+
+                # Extract package info from symbols.json
+                pkg_info=$(jq -c '.package' "$symbols_file" 2>/dev/null || echo '{}')
+                if [ "$pkg_info" != '{}' ] && [ "$pkg_info" != 'null' ]; then
+                  # Count symbols
+                  total=$(jq '.symbols | length' "$symbols_file")
+                  classes=$(jq '[.symbols[] | select(.kind == "class")] | length' "$symbols_file")
+                  functions=$(jq '[.symbols[] | select(.kind == "function")] | length' "$symbols_file")
+                  modules=$(jq '[.symbols[] | select(.kind == "module")] | length' "$symbols_file")
+                  types=$(jq '[.symbols[] | select(.kind == "interface" or .kind == "typeAlias" or .kind == "enum")] | length' "$symbols_file")
+
+                  # Build package entry (simplified - uses existing package info)
+                  pkg_entry=$(echo "$pkg_info" | jq -c --arg pid "$pkg_id" \
+                    --argjson total "$total" --argjson classes "$classes" \
+                    --argjson functions "$functions" --argjson modules "$modules" \
+                    --argjson types "$types" \
+                    '. + {
+                      packageId: $pid,
+                      stats: {total: $total, classes: $classes, functions: $functions, modules: $modules, types: $types},
+                      nav: {rootGroups: ["Classes", "Functions", "Types"]},
+                      entry: {kind: "module", refId: ""}
+                    }')
+                  new_packages=$(echo "$new_packages" | jq -c ". + [$pkg_entry]")
+                fi
+              done
+
+              # Update manifest with new packages array
+              echo "$base_manifest" | jq --argjson pkgs "$new_packages" '.packages = $pkgs' > "$manifest"
+              echo "  Updated manifest with $(echo "$new_packages" | jq 'length') packages"
+            fi
+
+            echo "Updating pointers for build: $BUILD_ID"
+            npx tsx packages/build-pipeline/src/commands/update-pointers.ts "$BUILD_ID" "$manifest"
           done
 
       - name: Report skipped
