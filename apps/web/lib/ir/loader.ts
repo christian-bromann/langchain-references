@@ -13,9 +13,16 @@ const IR_BASE_PATH = "ir";
 const POINTERS_PATH = "pointers";
 
 /**
- * Check if we're running in production (Vercel)
+ * Check if we should use blob storage (production) or local files.
+ * 
+ * Set USE_LOCAL_IR=true to force local file reading even during production builds.
+ * This is useful when running `pull-ir` before `next build` to avoid network issues.
  */
 export function isProduction(): boolean {
+  // Allow forcing local IR usage even in production
+  if (process.env.USE_LOCAL_IR === "true" || process.env.USE_LOCAL_IR === "1") {
+    return false;
+  }
   return process.env.NODE_ENV === "production" || !!process.env.VERCEL;
 }
 
@@ -185,10 +192,10 @@ const MAX_RETRY_DELAY_MS = 10000;
 /**
  * Limit concurrent blob fetches per worker process.
  * This helps reduce connection resets/rate limiting during parallel SSG.
- * 
+ *
  * Lower values = fewer concurrent connections = less likely to hit ECONNRESET
  * Higher values = faster builds (if blob can handle it)
- * 
+ *
  * Default is 3 to be conservative. Can be tuned via BLOB_FETCH_CONCURRENCY env var.
  */
 const MAX_CONCURRENT_BLOB_FETCHES = Number(process.env.BLOB_FETCH_CONCURRENCY ?? 3);
@@ -271,7 +278,7 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
 
       phase = "json";
       const data = await response.json();
-      
+
       // Log successful large file fetches for debugging
       if (isLargeFile && attempt > 0) {
         const elapsed = Date.now() - startTime;
