@@ -152,14 +152,15 @@ async function detectPackageManager(
           return {
             name: "yarn",
             // Yarn Berry: use --immutable for frozen lockfile, --mode=skip-build to skip postinstall
-            installCmd: "corepack enable && yarn install --immutable --mode=skip-build",
+            // Note: corepack is handled via environment variables in execSync
+            installCmd: "yarn install --immutable --mode=skip-build",
             buildCmd: "yarn run build",
           };
         }
         // Yarn Classic (v1): use --frozen-lockfile
         return {
           name: "yarn",
-          installCmd: "yarn install --frozen-lockfile --ignore-scripts --ignore-optional",
+          installCmd: "yarn install --frozen-lockfile --ignore-scripts",
           buildCmd: "yarn run build",
         };
       }
@@ -234,10 +235,14 @@ async function installDependencies(extractedPath: string, targetPackages?: strin
       stdio: "pipe" as const,
       timeout: 600000, // 10 minute timeout for large monorepos
       maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large monorepos
-      shell: "/bin/bash", // Required for corepack enable && yarn install
+      shell: "/bin/bash",
       env: {
         ...process.env,
         CI: "true", // Required for non-interactive pnpm/yarn
+        // Corepack settings for Yarn Berry - prevent prompts and auto-install
+        COREPACK_ENABLE_AUTO_PIN: "0",
+        COREPACK_ENABLE_DOWNLOAD_PROMPT: "0",
+        COREPACK_ENABLE_STRICT: "0",
       },
     });
 
@@ -295,28 +300,38 @@ async function buildTypeDeclarations(
 
     // Build filtered packages if specified, otherwise build all
     const hasTargetFilter = targetPackages && targetPackages.length > 0;
-    
+
     if (hasTargetFilter) {
       console.log(`   🔨 Building type declarations for: ${targetPackages.join(", ")}...`);
     } else {
       console.log("   🔨 Building type declarations...");
     }
 
+    // Check if Yarn Berry for workspace commands
+    const isBerry = pmInfo.name === "yarn" && await isYarnBerry(extractedPath);
+
     // Construct build command with optional filtering
     let buildCmd: string;
-    
+
     if (hasTargetFilter && pmInfo.name === "pnpm") {
       // pnpm: use --filter with ... suffix to include dependencies
       // e.g., pnpm --filter @langchain/openai... run build
       const filters = targetPackages.map(pkg => `--filter "${pkg}..."`).join(" ");
       const scriptName = scripts["build:types"] ? "build:types" : "build";
       buildCmd = `pnpm ${filters} run ${scriptName}`;
-    } else if (hasTargetFilter && pmInfo.name === "yarn") {
-      // yarn workspaces: use foreach with --from to include deps
-      // Note: This works for yarn berry (v2+)
+    } else if (hasTargetFilter && pmInfo.name === "yarn" && isBerry) {
+      // Yarn Berry (v2+): use workspaces foreach with --from to include deps
       const pkgList = targetPackages.map(pkg => `"${pkg}"`).join(" ");
       const scriptName = scripts["build:types"] ? "build:types" : "build";
       buildCmd = `yarn workspaces foreach --from ${pkgList} -R run ${scriptName}`;
+    } else if (hasTargetFilter && pmInfo.name === "yarn" && !isBerry) {
+      // Yarn Classic (v1): doesn't support foreach, run workspace command for each package
+      // Fall back to building specific workspaces sequentially
+      const scriptName = scripts["build:types"] ? "build:types" : "build";
+      // For yarn classic, we need to build each package individually
+      // Use && to chain commands
+      const cmds = targetPackages.map(pkg => `yarn workspace ${pkg} run ${scriptName}`);
+      buildCmd = cmds.join(" && ");
     } else {
       // No filter or npm - build everything
       buildCmd = scripts["build:types"]
@@ -341,6 +356,10 @@ async function buildTypeDeclarations(
           PATH: enhancedPath,
           // Skip tests and linting during build
           CI: "true",
+          // Corepack settings for Yarn Berry - prevent prompts and auto-install
+          COREPACK_ENABLE_AUTO_PIN: "0",
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0",
+          COREPACK_ENABLE_STRICT: "0",
         },
       });
 

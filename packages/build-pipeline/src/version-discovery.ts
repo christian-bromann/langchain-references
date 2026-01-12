@@ -289,6 +289,12 @@ export async function fetchGitTags(
       const version = parseVersionFromTag(tagName, pattern);
       if (!version) continue;
 
+      // Skip pre-release versions (alpha, beta, rc, etc.)
+      const parsed = semver.parse(version);
+      if (parsed && parsed.prerelease.length > 0) {
+        continue;
+      }
+
       matchingRefs.push({
         name: tagName,
         version,

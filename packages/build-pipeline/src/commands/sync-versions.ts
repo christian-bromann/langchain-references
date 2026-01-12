@@ -279,6 +279,7 @@ async function fetchAllRepoTags(
 
 /**
  * Filter cached tags for a specific package pattern.
+ * Excludes pre-release versions (alpha, beta, rc, etc.)
  */
 function filterTagsForPattern(
   allTags: { name: string; sha: string; objectType: string; objectUrl?: string }[],
@@ -298,6 +299,12 @@ function filterTagsForPattern(
 
     const version = parseVersionFromTag(tag.name, pattern);
     if (version) {
+      // Skip pre-release versions (alpha, beta, rc, etc.)
+      const parsed = semver.parse(version);
+      if (parsed && parsed.prerelease.length > 0) {
+        continue;
+      }
+
       matchingTags.push({
         tag: tag.name,
         version,
