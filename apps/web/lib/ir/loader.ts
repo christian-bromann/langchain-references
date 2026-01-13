@@ -1021,7 +1021,7 @@ export async function getBuildIdForLanguage(
   const buildId = await (isProduction()
     ? getLatestBuildIdForLanguage(language, project)
     : getLocalLatestBuildId(language, project));
-  
+
   if (!buildId) {
     console.log(`[loader] getBuildIdForLanguage: No build ID found for ${project}/${language} (isProduction=${isProduction()})`);
   }

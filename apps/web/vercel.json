@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd ../.. && pnpm tsx packages/build-pipeline/src/commands/pull-ir.ts && echo 'USE_LOCAL_IR=true' > apps/web/.env.local && pnpm turbo build --filter=@langchain/reference-web --force",
+  "buildCommand": "cd ../.. && pnpm tsx packages/build-pipeline/src/commands/pull-ir.ts && USE_LOCAL_IR=true pnpm turbo build --filter=@langchain/reference-web --force",
   "installCommand": "cd ../.. && pnpm install",
   "framework": "nextjs",
   "regions": ["iad1"],
