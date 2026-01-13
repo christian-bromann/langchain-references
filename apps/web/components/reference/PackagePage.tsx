@@ -47,15 +47,22 @@ function toDisplaySymbol(symbol: SymbolRecord): DisplaySymbol {
 
 export async function PackagePage({ language, packageId, packageName }: PackagePageProps) {
   const irLanguage = language === "python" ? "python" : "javascript";
-  
+
   // Determine which project this package belongs to
   const project = getProjectForPackage(packageName);
   const buildId = await getBuildIdForLanguage(irLanguage, project.id);
+
+  console.log(`[PackagePage] packageName=${packageName}, packageId=${packageId}, project=${project.id}, buildId=${buildId}`);
+
   const result = buildId ? await getSymbols(buildId, packageId) : null;
+
+  console.log(`[PackagePage] getSymbols result: ${result ? `${result.symbols?.length} symbols` : 'null'}`);
 
   const symbols: DisplaySymbol[] = result?.symbols
     ?.filter((s) => s.tags?.visibility === "public")
     .map(toDisplaySymbol) ?? [];
+
+  console.log(`[PackagePage] After visibility filter: ${symbols.length} public symbols`);
 
   // Group symbols by kind
   const classes = symbols.filter((s) => s.kind === "class");

@@ -735,8 +735,10 @@ export async function getLocalLatestBuildId(
     }
 
     const target = await fs.readlink(symlink);
+    console.log(`[loader] getLocalLatestBuildId: ${project}/${language} -> ${target}`);
     return target;
-  } catch {
+  } catch (error) {
+    console.error(`[loader] getLocalLatestBuildId ERROR for ${project}/${language}:`, error);
     return null;
   }
 }
@@ -792,13 +794,16 @@ export async function getLocalPackageSymbols(
       packageId,
       "symbols.json"
     );
+    console.log(`[loader] getLocalPackageSymbols: reading ${symbolsPath}`);
     const content = await fs.readFile(symbolsPath, "utf-8");
     const data = JSON.parse(content);
     const symbols = data.symbols || data;
+    console.log(`[loader] getLocalPackageSymbols: found ${symbols.length} symbols for ${packageId}`);
     const result = { symbols, total: symbols.length };
     localPackageSymbolsCache.set(cacheKey, result);
     return result;
-  } catch {
+  } catch (error) {
+    console.error(`[loader] getLocalPackageSymbols ERROR for ${buildId}/${packageId}:`, error);
     return null;
   }
 }
