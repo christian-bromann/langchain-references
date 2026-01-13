@@ -724,18 +724,14 @@ export async function getLocalLatestBuildId(
     // Log once to debug path issues
     if (!localBuildIdLoggedOnce) {
       localBuildIdLoggedOnce = true;
-      console.log(`[loader] Looking for local IR at: ${basePath}`);
-      console.log(`[loader] cwd: ${process.cwd()}`);
       try {
         const files = await fs.readdir(basePath);
-        console.log(`[loader] ir-output contents: ${files.slice(0, 10).join(", ")}${files.length > 10 ? "..." : ""}`);
       } catch (e) {
         console.log(`[loader] ir-output not found or not readable: ${e}`);
       }
     }
 
     const target = await fs.readlink(symlink);
-    console.log(`[loader] getLocalLatestBuildId: ${project}/${language} -> ${target}`);
     return target;
   } catch (error) {
     console.error(`[loader] getLocalLatestBuildId ERROR for ${project}/${language}:`, error);
@@ -794,11 +790,9 @@ export async function getLocalPackageSymbols(
       packageId,
       "symbols.json"
     );
-    console.log(`[loader] getLocalPackageSymbols: reading ${symbolsPath}`);
     const content = await fs.readFile(symbolsPath, "utf-8");
     const data = JSON.parse(content);
     const symbols = data.symbols || data;
-    console.log(`[loader] getLocalPackageSymbols: found ${symbols.length} symbols for ${packageId}`);
     const result = { symbols, total: symbols.length };
     localPackageSymbolsCache.set(cacheKey, result);
     return result;
