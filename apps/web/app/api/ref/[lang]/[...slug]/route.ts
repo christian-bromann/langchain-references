@@ -16,20 +16,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseSlugWithLanguage } from "@/lib/utils/url";
 import {
   getBuildIdForLanguage,
-  getSymbols,
   getManifestData,
   getSymbolOptimized,
   getPackageInfo,
+  getCatalogEntries,
+  getSymbolViaShardedLookup,
+  isProduction,
 } from "@/lib/ir/loader";
 import {
   symbolToMarkdown,
-  packageToMarkdown,
+  packageToMarkdownFromCatalog,
 } from "@/lib/ir/markdown-generator";
 import {
   getContentTypeForFormat,
   getCacheHeaders,
 } from "@/lib/utils/content-negotiation";
-import type { SymbolRecord } from "@/lib/ir/types";
 import type { UrlLanguage } from "@/lib/utils/url";
 
 interface RouteParams {
@@ -37,46 +38,6 @@ interface RouteParams {
     lang: string;
     slug: string[];
   }>;
-}
-
-/**
- * Find a symbol by path in the symbols array
- */
-function findSymbolByPath(
-  symbols: SymbolRecord[],
-  symbolPath: string,
-  language: UrlLanguage
-): SymbolRecord | null {
-  // Try exact match on qualifiedName
-  let symbol = symbols.find((s) => s.qualifiedName === symbolPath);
-  if (symbol) return symbol;
-
-  // Try matching just the symbol name (last part of path)
-  const symbolName = symbolPath.split(".").pop() || symbolPath;
-  symbol = symbols.find((s) => s.name === symbolName);
-  if (symbol) return symbol;
-
-  // For Python, try matching with package prefix
-  if (language === "python") {
-    const withDots = symbolPath.replace(/\//g, ".");
-    symbol = symbols.find(
-      (s) =>
-        s.qualifiedName === withDots ||
-        s.qualifiedName.endsWith(`.${withDots}`)
-    );
-    if (symbol) return symbol;
-  }
-
-  // For JavaScript, try matching module paths
-  if (language === "javascript" || language === "typescript") {
-    const withSlashes = symbolPath.replace(/\./g, "/");
-    symbol = symbols.find(
-      (s) => s.name === withSlashes || s.qualifiedName === withSlashes
-    );
-    if (symbol) return symbol;
-  }
-
-  return null;
 }
 
 export async function GET(
@@ -133,10 +94,11 @@ export async function GET(
     );
   }
 
-  // If no symbol path, return package overview (needs all symbols)
+  // If no symbol path, return package overview
+  // OPTIMIZATION: Use sharded catalog (<500KB) instead of symbols.json (23MB+)
   if (parsed.symbolPath.length === 0) {
-    const symbolsResult = await getSymbols(buildId, parsed.packageId);
-    if (!symbolsResult?.symbols) {
+    const catalogEntries = await getCatalogEntries(buildId, parsed.packageId);
+    if (!catalogEntries || catalogEntries.length === 0) {
       return NextResponse.json(
         { error: "Failed to load symbols" },
         { status: 500 }
@@ -147,11 +109,11 @@ export async function GET(
       return NextResponse.json(
         {
           package: packageInfo,
-          symbols: symbolsResult.symbols.map((s) => ({
-            name: s.name,
-            kind: s.kind,
-            qualifiedName: s.qualifiedName,
-            summary: s.docs?.summary,
+          symbols: catalogEntries.map((e) => ({
+            name: e.name,
+            kind: e.kind,
+            qualifiedName: e.qualifiedName,
+            summary: e.summary,
           })),
         },
         { headers: getCacheHeaders() }
@@ -159,9 +121,9 @@ export async function GET(
     }
 
     const irLanguage = language === "python" ? "python" : "typescript";
-    const markdown = packageToMarkdown(
+    const markdown = packageToMarkdownFromCatalog(
       parsed.packageName,
-      symbolsResult.symbols,
+      catalogEntries,
       irLanguage
     );
 
@@ -176,12 +138,9 @@ export async function GET(
   // OPTIMIZATION: Use optimized lookup for single symbol (~1-5KB instead of 11MB)
   let symbol = await getSymbolOptimized(buildId, parsed.packageId, parsed.fullPath);
 
-  // Fall back to full symbol search if optimized lookup fails
-  if (!symbol) {
-    const symbolsResult = await getSymbols(buildId, parsed.packageId);
-    if (symbolsResult?.symbols) {
-      symbol = findSymbolByPath(symbolsResult.symbols, parsed.fullPath, language);
-    }
+  // Fall back to sharded lookup in production (avoids loading symbols.json)
+  if (!symbol && isProduction()) {
+    symbol = await getSymbolViaShardedLookup(buildId, parsed.packageId, parsed.fullPath);
   }
 
   if (!symbol) {

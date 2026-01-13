@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import type { PackageChangelog, VersionDelta, ChangeRecord } from "@langchain/ir-schema";
+import type { PackageChangelog, ChangeRecord } from "@langchain/ir-schema";
+import {
+  getBuildIdForLanguage,
+  getSymbolChangelog,
+  isProduction,
+  type SymbolChangelogEntry,
+} from "@/lib/ir/loader";
 
 interface VersionChange {
   version: string;
@@ -15,16 +21,6 @@ interface VersionChange {
 }
 
 /**
- * Pointer type for latest builds.
- * Matches LatestBuildPointer from @langchain/build-pipeline/pointers
- * and LatestLanguagePointer from lib/ir/loader.ts
- */
-interface LatestPointer {
-  buildId: string;
-  updatedAt: string;
-}
-
-/**
  * Map project+language to the local IR output symlink name.
  */
 function getLocalIrPath(project: string, language: string): string {
@@ -33,31 +29,14 @@ function getLocalIrPath(project: string, language: string): string {
 }
 
 /**
- * Fetch the latest build pointer for a project+language from Vercel Blob.
- */
-async function fetchLatestBuildId(
-  blobBaseUrl: string,
-  project: string,
-  language: string
-): Promise<string | null> {
-  const langSuffix = language === "python" ? "python" : "javascript";
-  const pointerUrl = `${blobBaseUrl}/pointers/latest-${project}-${langSuffix}.json`;
-
-  try {
-    const response = await fetch(pointerUrl, { cache: "no-store" });
-    if (!response.ok) return null;
-    const pointer = (await response.json()) as LatestPointer;
-    return pointer.buildId;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * GET /api/changelog/:project/:language/:packageId
  *
  * Lazy-load changelog data for a specific symbol.
  * Query param: ?symbol=QualifiedName
+ *
+ * OPTIMIZATION: Uses sharded changelog files (<500KB each) instead of
+ * full changelog.json (which can be 18MB+). This enables CDN caching
+ * and fast API responses.
  *
  * Returns an array of version changes relevant to the symbol.
  */
@@ -85,9 +64,34 @@ export async function GET(
   }
 
   try {
-    let changelog: PackageChangelog | null = null;
+    const irLanguage = language === "python" ? "python" : "javascript";
 
-    // Try local IR output first (for development)
+    // In production, use sharded changelog (fast path)
+    if (isProduction()) {
+      const buildId = await getBuildIdForLanguage(irLanguage, project);
+      if (!buildId) {
+        return NextResponse.json([], { status: 200 });
+      }
+
+      // Fetch only the shard containing this symbol's changelog (~50-200KB)
+      const shardedChanges = await getSymbolChangelog(buildId, packageId, symbolName);
+
+      // Convert to VersionChange format
+      const changes: VersionChange[] = shardedChanges.map((entry: SymbolChangelogEntry) => ({
+        version: entry.version,
+        releaseDate: entry.releaseDate,
+        type: entry.type,
+      }));
+
+      return NextResponse.json(changes, {
+        status: 200,
+        headers: {
+          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+        },
+      });
+    }
+
+    // In development, use local changelog.json (full file is fine locally)
     const localIrPath = getLocalIrPath(project, language);
     const localChangelogPath = path.join(
       process.cwd(),
@@ -102,43 +106,19 @@ export async function GET(
 
     try {
       const localContent = await fs.readFile(localChangelogPath, "utf-8");
-      changelog = JSON.parse(localContent);
+      const changelog: PackageChangelog = JSON.parse(localContent);
+      const symbolChanges = extractSymbolChanges(changelog, symbolName);
+
+      return NextResponse.json(symbolChanges, {
+        status: 200,
+        headers: {
+          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+        },
+      });
     } catch {
-      // Local file not found, try blob storage
-    }
-
-    // Fallback to blob storage - use buildId-based path
-    if (!changelog) {
-      const blobBaseUrl = process.env.BLOB_BASE_URL || process.env.BLOB_URL;
-      if (blobBaseUrl) {
-        // First, get the latest buildId for this project+language
-        const buildId = await fetchLatestBuildId(blobBaseUrl, project, language);
-        if (buildId) {
-          const changelogUrl = `${blobBaseUrl}/ir/${buildId}/packages/${packageId}/changelog.json`;
-          const response = await fetch(changelogUrl, {
-            next: { revalidate: 3600 },
-          });
-
-          if (response.ok) {
-            changelog = await response.json();
-          }
-        }
-      }
-    }
-
-    if (!changelog) {
+      // No local changelog
       return NextResponse.json([], { status: 200 });
     }
-
-    // Extract changes relevant to this symbol
-    const symbolChanges = extractSymbolChanges(changelog, symbolName);
-
-    return NextResponse.json(symbolChanges, {
-      status: 200,
-      headers: {
-        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
-      },
-    });
   } catch (error) {
     console.error("Failed to load changelog:", error);
     return NextResponse.json(

@@ -69,6 +69,70 @@ interface SymbolLookupIndex {
   knownSymbols: string[];
 }
 
+// =============================================================================
+// SHARDED INDEX TYPES
+// =============================================================================
+
+/**
+ * Sharded lookup index manifest
+ */
+interface ShardedLookupIndex {
+  packageId: string;
+  symbolCount: number;
+  shards: string[];
+  knownSymbols: string[];
+}
+
+/**
+ * Single shard of the lookup index
+ */
+type LookupShard = Record<string, SymbolLookupEntry>;
+
+/**
+ * Catalog entry - lightweight symbol summary for package overview
+ */
+export interface CatalogEntry {
+  id: string;
+  kind: string;
+  name: string;
+  qualifiedName: string;
+  summary?: string;
+  signature?: string;
+}
+
+/**
+ * Sharded catalog manifest
+ */
+interface ShardedCatalogIndex {
+  packageId: string;
+  symbolCount: number;
+  shards: string[];
+}
+
+/**
+ * Changelog entry for a single symbol
+ */
+export interface SymbolChangelogEntry {
+  version: string;
+  releaseDate: string;
+  type: "added" | "modified" | "deprecated" | "removed";
+}
+
+/**
+ * Sharded changelog manifest
+ */
+interface ShardedChangelogIndex {
+  packageId: string;
+  generatedAt: string;
+  versions: Array<{ version: string; releaseDate: string }>;
+  shards: string[];
+}
+
+/**
+ * Single shard of the changelog
+ */
+type ChangelogShard = Record<string, SymbolChangelogEntry[]>;
+
 /**
  * Cache for manifest data (in-memory for the request lifecycle)
  */
@@ -78,6 +142,26 @@ const symbolShardCache = new Map<string, SymbolRecord[]>();
 const pointerCache = new Map<string, unknown>();
 const lookupIndexCache = new Map<string, SymbolLookupIndex>();
 const individualSymbolCache = new Map<string, SymbolRecord>();
+
+// Sharded index caches
+const shardedLookupIndexCache = new Map<string, ShardedLookupIndex>();
+const lookupShardCache = new Map<string, LookupShard>();
+const shardedCatalogIndexCache = new Map<string, ShardedCatalogIndex>();
+const catalogShardCache = new Map<string, CatalogEntry[]>();
+const shardedChangelogIndexCache = new Map<string, ShardedChangelogIndex>();
+const changelogShardCache = new Map<string, ChangelogShard>();
+
+/**
+ * Compute a shard key from a qualified name using MD5 hash.
+ * Returns first 2 hex characters (00-ff = 256 possible shards).
+ * Must match the algorithm in packages/build-pipeline/src/upload.ts
+ */
+function computeShardKey(qualifiedName: string): string {
+  // Use Node's crypto module (available in Next.js server components)
+  const crypto = require("crypto");
+  const hash = crypto.createHash("md5").update(qualifiedName).digest("hex");
+  return hash.substring(0, 2);
+}
 
 /**
  * Pointer types stored in Blob
@@ -436,24 +520,6 @@ export async function getSymbolShard(
   }
 
   return symbols;
-}
-
-/**
- * Get a specific symbol by ID
- */
-export async function getSymbol(
-  buildId: string,
-  packageId: string,
-  symbolId: string
-): Promise<SymbolRecord | null> {
-  const shardPrefix = getShardPrefix(symbolId);
-  const symbols = await getSymbolShard(buildId, packageId, shardPrefix);
-
-  if (!symbols) {
-    return null;
-  }
-
-  return symbols.find((s) => s.id === symbolId) || null;
 }
 
 /**
@@ -1121,6 +1187,255 @@ export async function getIndividualSymbolData(
   return isProduction()
     ? getIndividualSymbol(buildId, symbolId)
     : getLocalIndividualSymbol(buildId, symbolId, packageId);
+}
+
+// =============================================================================
+// SHARDED INDEX FETCHERS
+// =============================================================================
+// These functions fetch from the new sharded index structure for better performance.
+// Each shard is <500KB and can be CDN-cached, avoiding the 2MB Next.js cache limit.
+
+/**
+ * Get the sharded lookup index manifest for a package.
+ */
+async function getShardedLookupIndexManifest(
+  buildId: string,
+  packageId: string
+): Promise<ShardedLookupIndex | null> {
+  const cacheKey = `${buildId}:${packageId}:lookup-index`;
+  if (shardedLookupIndexCache.has(cacheKey)) {
+    return shardedLookupIndexCache.get(cacheKey)!;
+  }
+
+  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/lookup/index.json`;
+  const index = await fetchBlobJson<ShardedLookupIndex>(path);
+
+  if (index) {
+    shardedLookupIndexCache.set(cacheKey, index);
+  }
+
+  return index;
+}
+
+/**
+ * Get a specific lookup shard.
+ */
+async function getLookupShard(
+  buildId: string,
+  packageId: string,
+  shardKey: string
+): Promise<LookupShard | null> {
+  const cacheKey = `${buildId}:${packageId}:lookup:${shardKey}`;
+  if (lookupShardCache.has(cacheKey)) {
+    return lookupShardCache.get(cacheKey)!;
+  }
+
+  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/lookup/${shardKey}.json`;
+  const shard = await fetchBlobJson<LookupShard>(path);
+
+  if (shard) {
+    lookupShardCache.set(cacheKey, shard);
+  }
+
+  return shard;
+}
+
+/**
+ * Look up a symbol by qualified name using the sharded lookup index.
+ * Only fetches the specific shard needed (~50-200KB).
+ */
+export async function getSymbolFromShardedLookup(
+  buildId: string,
+  packageId: string,
+  qualifiedName: string
+): Promise<SymbolLookupEntry | null> {
+  const shardKey = computeShardKey(qualifiedName);
+  const shard = await getLookupShard(buildId, packageId, shardKey);
+
+  if (!shard) {
+    return null;
+  }
+
+  return shard[qualifiedName] || null;
+}
+
+/**
+ * Get the sharded catalog index manifest for a package.
+ */
+async function getShardedCatalogIndexManifest(
+  buildId: string,
+  packageId: string
+): Promise<ShardedCatalogIndex | null> {
+  const cacheKey = `${buildId}:${packageId}:catalog-index`;
+  if (shardedCatalogIndexCache.has(cacheKey)) {
+    return shardedCatalogIndexCache.get(cacheKey)!;
+  }
+
+  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/catalog/index.json`;
+  const index = await fetchBlobJson<ShardedCatalogIndex>(path);
+
+  if (index) {
+    shardedCatalogIndexCache.set(cacheKey, index);
+  }
+
+  return index;
+}
+
+/**
+ * Get a specific catalog shard.
+ */
+async function getCatalogShard(
+  buildId: string,
+  packageId: string,
+  shardKey: string
+): Promise<CatalogEntry[] | null> {
+  const cacheKey = `${buildId}:${packageId}:catalog:${shardKey}`;
+  if (catalogShardCache.has(cacheKey)) {
+    return catalogShardCache.get(cacheKey)!;
+  }
+
+  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/catalog/${shardKey}.json`;
+  const shard = await fetchBlobJson<CatalogEntry[]>(path);
+
+  if (shard) {
+    catalogShardCache.set(cacheKey, shard);
+  }
+
+  return shard;
+}
+
+/**
+ * Get all catalog entries for a package by fetching all shards in parallel.
+ * Each shard is <500KB and CDN-cacheable.
+ */
+export async function getCatalogEntries(
+  buildId: string,
+  packageId: string
+): Promise<CatalogEntry[]> {
+  if (isProduction()) {
+    const manifest = await getShardedCatalogIndexManifest(buildId, packageId);
+    if (!manifest?.shards) {
+      return [];
+    }
+
+    // Fetch all shards in parallel
+    const shardPromises = manifest.shards.map((shardKey) =>
+      getCatalogShard(buildId, packageId, shardKey)
+    );
+    const shards = await Promise.all(shardPromises);
+
+    // Flatten results
+    const entries: CatalogEntry[] = [];
+    for (const shard of shards) {
+      if (shard) {
+        entries.push(...shard);
+      }
+    }
+
+    return entries;
+  } else {
+    // In development, generate catalog from local symbols
+    const result = await getLocalPackageSymbols(buildId, packageId);
+    if (!result?.symbols) {
+      return [];
+    }
+
+    return result.symbols
+      .filter((s) => s.tags?.visibility === "public")
+      .filter((s) => ["class", "function", "interface", "module", "typeAlias", "enum"].includes(s.kind))
+      .map((s) => ({
+        id: s.id,
+        kind: s.kind,
+        name: s.name,
+        qualifiedName: s.qualifiedName,
+        summary: s.docs?.summary?.substring(0, 200),
+        signature: s.signature?.substring(0, 300),
+      }));
+  }
+}
+
+/**
+ * Get the sharded changelog index manifest for a package.
+ */
+async function getShardedChangelogIndexManifest(
+  buildId: string,
+  packageId: string
+): Promise<ShardedChangelogIndex | null> {
+  const cacheKey = `${buildId}:${packageId}:changelog-index`;
+  if (shardedChangelogIndexCache.has(cacheKey)) {
+    return shardedChangelogIndexCache.get(cacheKey)!;
+  }
+
+  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/changelog/index.json`;
+  const index = await fetchBlobJson<ShardedChangelogIndex>(path);
+
+  if (index) {
+    shardedChangelogIndexCache.set(cacheKey, index);
+  }
+
+  return index;
+}
+
+/**
+ * Get a specific changelog shard.
+ */
+async function getChangelogShard(
+  buildId: string,
+  packageId: string,
+  shardKey: string
+): Promise<ChangelogShard | null> {
+  const cacheKey = `${buildId}:${packageId}:changelog:${shardKey}`;
+  if (changelogShardCache.has(cacheKey)) {
+    return changelogShardCache.get(cacheKey)!;
+  }
+
+  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/changelog/${shardKey}.json`;
+  const shard = await fetchBlobJson<ChangelogShard>(path);
+
+  if (shard) {
+    changelogShardCache.set(cacheKey, shard);
+  }
+
+  return shard;
+}
+
+/**
+ * Get changelog entries for a specific symbol using the sharded changelog.
+ * Only fetches the specific shard needed (~50-200KB).
+ */
+export async function getSymbolChangelog(
+  buildId: string,
+  packageId: string,
+  qualifiedName: string
+): Promise<SymbolChangelogEntry[]> {
+  const shardKey = computeShardKey(qualifiedName);
+  const shard = await getChangelogShard(buildId, packageId, shardKey);
+
+  if (!shard) {
+    return [];
+  }
+
+  return shard[qualifiedName] || [];
+}
+
+/**
+ * Get symbol by qualified name using sharded lookup + individual symbol fetch.
+ * This is the optimized path that avoids loading symbols.json entirely.
+ */
+export async function getSymbolViaShardedLookup(
+  buildId: string,
+  packageId: string,
+  qualifiedName: string
+): Promise<SymbolRecord | null> {
+  // First, look up the symbol ID from the sharded lookup index
+  const entry = await getSymbolFromShardedLookup(buildId, packageId, qualifiedName);
+
+  if (!entry) {
+    return null;
+  }
+
+  // Then fetch the individual symbol file
+  return getIndividualSymbolData(buildId, entry.id, packageId);
 }
 
 // =============================================================================

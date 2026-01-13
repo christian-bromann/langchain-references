@@ -429,5 +429,106 @@ export function packageToMarkdown(
   return lines.join("\n");
 }
 
+/**
+ * Catalog entry type for lightweight symbol summaries.
+ * Matches CatalogEntry from loader.ts
+ */
+interface CatalogEntry {
+  id: string;
+  kind: string;
+  name: string;
+  qualifiedName: string;
+  summary?: string;
+  signature?: string;
+}
+
+/**
+ * Generate markdown documentation for a package from catalog entries.
+ * Uses lightweight catalog entries instead of full SymbolRecord objects.
+ *
+ * @param packageName - The package name
+ * @param entries - Array of catalog entries
+ * @param language - The language (python or typescript)
+ * @returns Markdown string
+ */
+export function packageToMarkdownFromCatalog(
+  packageName: string,
+  entries: CatalogEntry[],
+  language: Language
+): string {
+  const lines: string[] = [];
+  const baseUrl = getBaseUrl();
+  const langPath = language === "python" ? "python" : "javascript";
+  const packageSlug = slugifyPackageName(packageName);
+
+  lines.push(`# ${packageName}`);
+  lines.push("");
+  lines.push(
+    `> ${language === "python" ? "Python" : "JavaScript/TypeScript"} package`
+  );
+  lines.push("");
+  lines.push(`📖 [View in docs](${baseUrl}/${langPath}/${packageSlug})`);
+  lines.push("");
+
+  // Group entries by kind
+  const classes = entries.filter((e) => e.kind === "class");
+  const functions = entries.filter((e) => e.kind === "function");
+  const interfaces = entries.filter((e) => e.kind === "interface");
+  const types = entries.filter((e) => e.kind === "typeAlias");
+  const enums = entries.filter((e) => e.kind === "enum");
+
+  if (classes.length > 0) {
+    lines.push("## Classes");
+    lines.push("");
+    for (const cls of classes) {
+      const summary = cls.summary ? ` - ${cls.summary}` : "";
+      lines.push(`- \`${cls.name}\`${summary}`);
+    }
+    lines.push("");
+  }
+
+  if (functions.length > 0) {
+    lines.push("## Functions");
+    lines.push("");
+    for (const fn of functions) {
+      const summary = fn.summary ? ` - ${fn.summary}` : "";
+      lines.push(`- \`${fn.name}()\`${summary}`);
+    }
+    lines.push("");
+  }
+
+  if (interfaces.length > 0) {
+    lines.push("## Interfaces");
+    lines.push("");
+    for (const iface of interfaces) {
+      const summary = iface.summary ? ` - ${iface.summary}` : "";
+      lines.push(`- \`${iface.name}\`${summary}`);
+    }
+    lines.push("");
+  }
+
+  if (types.length > 0) {
+    lines.push("## Types");
+    lines.push("");
+    for (const type of types) {
+      const summary = type.summary ? ` - ${type.summary}` : "";
+      lines.push(`- \`${type.name}\`${summary}`);
+    }
+    lines.push("");
+  }
+
+  if (enums.length > 0) {
+    lines.push("## Enums");
+    lines.push("");
+    for (const enumSym of enums) {
+      const summary = enumSym.summary ? ` - ${enumSym.summary}` : "";
+      lines.push(`- \`${enumSym.name}\`${summary}`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
 
 

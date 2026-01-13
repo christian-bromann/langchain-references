@@ -2,6 +2,9 @@
  * Package Page Component
  *
  * Displays an overview of a package with its classes, functions, and modules.
+ *
+ * OPTIMIZATION: Uses sharded catalog files (<500KB each) instead of symbols.json
+ * (which can be 23MB+). This enables CDN caching and fast page loads.
  */
 
 import Link from "next/link";
@@ -9,9 +12,8 @@ import { Box, Code, Folder, ChevronRight, FileType } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
 import { buildSymbolUrl, getKindColor, getKindLabel } from "@/lib/utils/url";
-import { getBuildIdForLanguage, getSymbols } from "@/lib/ir/loader";
+import { getBuildIdForLanguage, getCatalogEntries, type CatalogEntry } from "@/lib/ir/loader";
 import { getProjectForPackage } from "@/lib/config/projects";
-import type { SymbolRecord } from "@/lib/ir/types";
 
 interface PackagePageProps {
   language: UrlLanguage;
@@ -32,16 +34,16 @@ interface DisplaySymbol {
 }
 
 /**
- * Convert IR SymbolRecord to DisplaySymbol
+ * Convert CatalogEntry to DisplaySymbol
  */
-function toDisplaySymbol(symbol: SymbolRecord): DisplaySymbol {
+function toDisplaySymbol(entry: CatalogEntry): DisplaySymbol {
   return {
-    id: symbol.id,
-    kind: symbol.kind as DisplaySymbol["kind"],
-    name: symbol.name,
-    qualifiedName: symbol.qualifiedName,
-    summary: symbol.docs?.summary,
-    signature: symbol.signature,
+    id: entry.id,
+    kind: entry.kind as DisplaySymbol["kind"],
+    name: entry.name,
+    qualifiedName: entry.qualifiedName,
+    summary: entry.summary,
+    signature: entry.signature,
   };
 }
 
@@ -51,17 +53,13 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
   // Determine which project this package belongs to
   const project = getProjectForPackage(packageName);
   const buildId = await getBuildIdForLanguage(irLanguage, project.id);
-  const result = buildId ? await getSymbols(buildId, packageId) : null;
 
-  // Filter to public symbols only (visibility is "public" by default if not set)
-  // Also accept symbols without tags or without explicit visibility
-  const symbols: DisplaySymbol[] = result?.symbols
-    ?.filter((s) => {
-      const visibility = s.tags?.visibility;
-      // Include if explicitly public, or if visibility is not set (defaults to public)
-      return visibility === "public" || visibility === undefined;
-    })
-    .map(toDisplaySymbol) ?? [];
+  // OPTIMIZATION: Use sharded catalog instead of full symbols.json
+  // Each catalog shard is <500KB and CDN-cacheable
+  const catalogEntries = buildId ? await getCatalogEntries(buildId, packageId) : [];
+
+  // Convert to display symbols (catalog already filters to public symbols)
+  const symbols: DisplaySymbol[] = catalogEntries.map(toDisplaySymbol);
 
   // Group symbols by kind
   const classes = symbols.filter((s) => s.kind === "class");

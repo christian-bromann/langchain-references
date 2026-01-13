@@ -13,7 +13,6 @@ import {
   getManifestData,
   getSymbols,
   getSymbolData,
-  getPackageInfo,
 } from "@/lib/ir/loader";
 import { symbolToMarkdown } from "@/lib/ir/markdown-generator";
 import { getBaseUrl } from "@/lib/config/mcp";
@@ -398,7 +397,7 @@ async function searchSymbols(
 
       if (results.length >= limit * 2) break;
     }
-    
+
     if (results.length >= limit * 2) break;
   }
 

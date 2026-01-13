@@ -6,9 +6,10 @@
  */
 
 import { put, list, del } from "@vercel/blob";
+import { createHash } from "crypto";
 import fs from "fs/promises";
 import path from "path";
-import type { Manifest, SymbolRecord, RoutingMap, SearchIndex } from "@langchain/ir-schema";
+import type { Manifest, SymbolRecord, RoutingMap, SearchIndex, PackageChangelog } from "@langchain/ir-schema";
 
 // Maximum concurrent uploads to avoid overwhelming the Vercel Blob API
 // Vercel Blob has rate limits, so we keep this conservative
@@ -323,6 +324,246 @@ function extractKeywords(symbol: SymbolRecord): string[] {
   return [...new Set(keywords)];
 }
 
+// =============================================================================
+// SHARDED INDEX GENERATION
+// =============================================================================
+// These functions generate small, sharded index files (<500KB each) to avoid
+// hitting Next.js's 2MB data cache limit and enable CDN caching.
+
+/**
+ * Compute a shard key from a qualified name using MD5 hash.
+ * Returns first 2 hex characters (00-ff = 256 possible shards).
+ */
+function computeShardKey(qualifiedName: string): string {
+  const hash = createHash("md5").update(qualifiedName).digest("hex");
+  return hash.substring(0, 2);
+}
+
+/**
+ * Sharded lookup index manifest
+ */
+interface ShardedLookupIndex {
+  packageId: string;
+  symbolCount: number;
+  shards: string[];
+  knownSymbols: string[];
+}
+
+/**
+ * Single shard of the lookup index
+ */
+type LookupShard = Record<string, SymbolLookupEntry>;
+
+/**
+ * Generate sharded lookup index files.
+ * Each shard contains qualifiedName -> { id, kind, name } mappings for symbols
+ * whose qualifiedName hashes to that shard.
+ */
+function generateShardedLookupIndex(
+  packageId: string,
+  symbols: SymbolRecord[]
+): { index: ShardedLookupIndex; shards: Map<string, LookupShard> } {
+  const shards = new Map<string, LookupShard>();
+  const knownSymbols: string[] = [];
+  const linkableKinds = ["class", "interface", "typeAlias", "enum"];
+
+  for (const symbol of symbols) {
+    const shardKey = computeShardKey(symbol.qualifiedName);
+    
+    if (!shards.has(shardKey)) {
+      shards.set(shardKey, {});
+    }
+    
+    shards.get(shardKey)![symbol.qualifiedName] = {
+      id: symbol.id,
+      kind: symbol.kind,
+      name: symbol.name,
+    };
+
+    // Track linkable symbol names for type linking
+    if (linkableKinds.includes(symbol.kind)) {
+      knownSymbols.push(symbol.name);
+    }
+  }
+
+  const index: ShardedLookupIndex = {
+    packageId,
+    symbolCount: symbols.length,
+    shards: Array.from(shards.keys()).sort(),
+    knownSymbols: [...new Set(knownSymbols)],
+  };
+
+  return { index, shards };
+}
+
+/**
+ * Catalog entry - lightweight symbol summary for package overview
+ */
+interface CatalogEntry {
+  id: string;
+  kind: string;
+  name: string;
+  qualifiedName: string;
+  summary?: string;
+  signature?: string;
+}
+
+/**
+ * Sharded catalog manifest
+ */
+interface ShardedCatalogIndex {
+  packageId: string;
+  symbolCount: number;
+  shards: string[];
+}
+
+/**
+ * Generate sharded catalog files for package overview pages.
+ * Each shard contains lightweight symbol summaries.
+ */
+function generateShardedCatalog(
+  packageId: string,
+  symbols: SymbolRecord[]
+): { index: ShardedCatalogIndex; shards: Map<string, CatalogEntry[]> } {
+  const shards = new Map<string, CatalogEntry[]>();
+
+  for (const symbol of symbols) {
+    // Only include public symbols that should appear in package overview
+    if (symbol.tags?.visibility !== "public") continue;
+    if (!["class", "function", "interface", "module", "typeAlias", "enum"].includes(symbol.kind)) continue;
+
+    const shardKey = computeShardKey(symbol.qualifiedName);
+    
+    if (!shards.has(shardKey)) {
+      shards.set(shardKey, []);
+    }
+    
+    shards.get(shardKey)!.push({
+      id: symbol.id,
+      kind: symbol.kind,
+      name: symbol.name,
+      qualifiedName: symbol.qualifiedName,
+      summary: symbol.docs?.summary?.substring(0, 200),
+      signature: symbol.signature?.substring(0, 300),
+    });
+  }
+
+  const index: ShardedCatalogIndex = {
+    packageId,
+    symbolCount: symbols.length,
+    shards: Array.from(shards.keys()).sort(),
+  };
+
+  return { index, shards };
+}
+
+/**
+ * Changelog entry for a single symbol
+ */
+interface SymbolChangelogEntry {
+  version: string;
+  releaseDate: string;
+  type: "added" | "modified" | "deprecated" | "removed";
+}
+
+/**
+ * Sharded changelog manifest
+ */
+interface ShardedChangelogIndex {
+  packageId: string;
+  generatedAt: string;
+  versions: Array<{ version: string; releaseDate: string }>;
+  shards: string[];
+}
+
+/**
+ * Single shard of the changelog
+ */
+type ChangelogShard = Record<string, SymbolChangelogEntry[]>;
+
+/**
+ * Generate sharded changelog files.
+ * Each shard contains symbol histories keyed by qualifiedName.
+ */
+function generateShardedChangelog(
+  changelog: PackageChangelog
+): { index: ShardedChangelogIndex; shards: Map<string, ChangelogShard> } {
+  const shards = new Map<string, ChangelogShard>();
+  const versions: Array<{ version: string; releaseDate: string }> = [];
+
+  // Process each version delta
+  for (const delta of changelog.history) {
+    versions.push({ version: delta.version, releaseDate: delta.releaseDate });
+
+    // Process added symbols
+    for (const added of delta.added) {
+      addToChangelogShard(shards, added.qualifiedName, {
+        version: delta.version,
+        releaseDate: delta.releaseDate,
+        type: "added",
+      });
+    }
+
+    // Process modified symbols
+    for (const modified of delta.modified) {
+      addToChangelogShard(shards, modified.qualifiedName, {
+        version: delta.version,
+        releaseDate: delta.releaseDate,
+        type: "modified",
+      });
+    }
+
+    // Process deprecated symbols
+    for (const deprecated of delta.deprecated) {
+      addToChangelogShard(shards, deprecated.qualifiedName, {
+        version: delta.version,
+        releaseDate: delta.releaseDate,
+        type: "deprecated",
+      });
+    }
+
+    // Process removed symbols
+    for (const removed of delta.removed) {
+      addToChangelogShard(shards, removed.qualifiedName, {
+        version: delta.version,
+        releaseDate: delta.releaseDate,
+        type: "removed",
+      });
+    }
+  }
+
+  const index: ShardedChangelogIndex = {
+    packageId: changelog.packageId,
+    generatedAt: changelog.generatedAt,
+    versions,
+    shards: Array.from(shards.keys()).sort(),
+  };
+
+  return { index, shards };
+}
+
+/**
+ * Helper to add a changelog entry to the appropriate shard.
+ */
+function addToChangelogShard(
+  shards: Map<string, ChangelogShard>,
+  qualifiedName: string,
+  entry: SymbolChangelogEntry
+): void {
+  const shardKey = computeShardKey(qualifiedName);
+  
+  if (!shards.has(shardKey)) {
+    shards.set(shardKey, {});
+  }
+  
+  const shard = shards.get(shardKey)!;
+  if (!shard[qualifiedName]) {
+    shard[qualifiedName] = [];
+  }
+  
+  shard[qualifiedName].push(entry);
+}
+
 /**
  * Upload all IR artifacts for a build.
  */
@@ -394,12 +635,46 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
       content: JSON.stringify(routingMap, null, 2),
     });
 
-    // Add symbol lookup index (small file for efficient qualifiedName -> symbolId lookups)
-    const lookupIndex = generateSymbolLookupIndex(pkg.packageId, symbols);
+    // Add SHARDED symbol lookup index (replaces monolithic lookup.json)
+    const { index: lookupIndex, shards: lookupShards } = generateShardedLookupIndex(pkg.packageId, symbols);
+    
+    // Upload lookup index manifest
     uploadTasks.push({
-      blobPath: `ir/${buildId}/packages/${pkg.packageId}/lookup.json`,
+      blobPath: `ir/${buildId}/packages/${pkg.packageId}/lookup/index.json`,
       content: JSON.stringify(lookupIndex),
     });
+    
+    // Upload lookup shards
+    for (const [shardKey, shardData] of lookupShards) {
+      uploadTasks.push({
+        blobPath: `ir/${buildId}/packages/${pkg.packageId}/lookup/${shardKey}.json`,
+        content: JSON.stringify(shardData),
+      });
+    }
+    
+    // Also upload legacy lookup.json for backward compatibility (can be removed later)
+    const legacyLookupIndex = generateSymbolLookupIndex(pkg.packageId, symbols);
+    uploadTasks.push({
+      blobPath: `ir/${buildId}/packages/${pkg.packageId}/lookup.json`,
+      content: JSON.stringify(legacyLookupIndex),
+    });
+    
+    // Add SHARDED catalog for package overview pages
+    const { index: catalogIndex, shards: catalogShards } = generateShardedCatalog(pkg.packageId, symbols);
+    
+    // Upload catalog index manifest
+    uploadTasks.push({
+      blobPath: `ir/${buildId}/packages/${pkg.packageId}/catalog/index.json`,
+      content: JSON.stringify(catalogIndex),
+    });
+    
+    // Upload catalog shards
+    for (const [shardKey, shardData] of catalogShards) {
+      uploadTasks.push({
+        blobPath: `ir/${buildId}/packages/${pkg.packageId}/catalog/${shardKey}.json`,
+        content: JSON.stringify(shardData),
+      });
+    }
 
     // Add individual symbol tasks (sharded for efficient single-symbol lookups)
     const shards = shardSymbols(symbols);
@@ -412,10 +687,30 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
       }
     }
 
-    // Add changelog.json if it exists (generated with --with-versions)
+    // Add SHARDED changelog if it exists (generated with --with-versions)
     const changelogPath = path.join(irOutputPath, "packages", pkg.packageId, "changelog.json");
     try {
       const changelogContent = await fs.readFile(changelogPath, "utf-8");
+      const changelog: PackageChangelog = JSON.parse(changelogContent);
+      
+      // Generate sharded changelog
+      const { index: changelogIndex, shards: changelogShards } = generateShardedChangelog(changelog);
+      
+      // Upload changelog index manifest
+      uploadTasks.push({
+        blobPath: `ir/${buildId}/packages/${pkg.packageId}/changelog/index.json`,
+        content: JSON.stringify(changelogIndex),
+      });
+      
+      // Upload changelog shards
+      for (const [shardKey, shardData] of changelogShards) {
+        uploadTasks.push({
+          blobPath: `ir/${buildId}/packages/${pkg.packageId}/changelog/${shardKey}.json`,
+          content: JSON.stringify(shardData),
+        });
+      }
+      
+      // Also upload legacy changelog.json for backward compatibility (can be removed later)
       uploadTasks.push({
         blobPath: `ir/${buildId}/packages/${pkg.packageId}/changelog.json`,
         content: changelogContent,

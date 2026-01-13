@@ -16,12 +16,13 @@ import {
   getManifestData,
   getSymbols,
   getSymbolData,
-  getSymbolOptimized,
   getIndividualSymbolData,
   getSymbolLookupIndexData,
   getCrossProjectPackages,
   getPackageInfo,
   getRoutingMapData,
+  getSymbolViaShardedLookup,
+  isProduction,
 } from "@/lib/ir/loader";
 import { getProjectForPackage } from "@/lib/config/projects";
 import { CodeBlock } from "./CodeBlock";
@@ -809,8 +810,19 @@ async function findSymbolOptimized(
     }
   }
 
-  // If optimized lookup failed, fall back to the original method
-  // This handles edge cases and ensures backward compatibility
+  // In production, try the sharded lookup as a second attempt
+  // This avoids loading the full symbols.json file
+  if (isProduction()) {
+    for (const path of pathVariations) {
+      const symbol = await getSymbolViaShardedLookup(buildId, packageId, path);
+      if (symbol) return symbol;
+    }
+    // In production, don't fall back to getSymbols - return null instead
+    // This prevents loading multi-MB files on the hot path
+    return null;
+  }
+
+  // In development, fall back to the original method for debugging
   return findSymbol(buildId, packageId, symbolPath);
 }
 
