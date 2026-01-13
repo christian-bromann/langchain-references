@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Inter, Manrope, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { NavigationProgress } from "@/components/layout/NavigationProgress";
+import { BASE_URL } from "@/lib/config/base-url";
 import "./globals.css";
 
 const inter = Inter({
@@ -30,7 +31,9 @@ export const metadata: Metadata = {
   },
   description:
     "API reference documentation for LangChain, LangGraph, and LangSmith",
-  metadataBase: new URL("https://reference.langchain.com"),
+  // Important: this base is used to resolve relative OG image URLs (e.g. `/og/...`).
+  // While the custom domain isn't wired up, use the current Vercel deployment URL.
+  metadataBase: new URL(BASE_URL),
   icons: {
     icon: [
       {

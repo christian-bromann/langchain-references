@@ -8,8 +8,7 @@
 import type { MetadataRoute } from "next";
 import { getStaticParamsForLanguage } from "@/lib/ir/loader";
 import { getEnabledProjects } from "@/lib/config/projects";
-
-const BASE_URL = "https://reference.langchain.com";
+import { BASE_URL } from "@/lib/config/base-url";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const projects = getEnabledProjects();

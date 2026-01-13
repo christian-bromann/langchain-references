@@ -5,6 +5,8 @@
  * URLs and deep links for IDE integration.
  */
 
+import { BASE_URL } from "@/lib/config/base-url";
+
 /**
  * MCP Server configuration
  */
@@ -13,7 +15,7 @@ export const MCP_CONFIG = {
    * Base URL for the MCP server endpoint
    */
   serverUrl:
-    process.env.NEXT_PUBLIC_MCP_URL || "https://reference.langchain.com/mcp",
+    process.env.NEXT_PUBLIC_MCP_URL || `${getBaseUrl()}/mcp`,
 
   /**
    * Generate a Cursor IDE deep link to install the MCP server
@@ -38,9 +40,9 @@ export const MCP_CONFIG = {
  * Get the base URL for the reference site
  */
 export function getBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_BASE_URL || "https://reference.langchain.com"
-  );
+  // Keep as a function to preserve the existing API surface.
+  // Prefer the shared constant for consistent behavior across the app.
+  return BASE_URL;
 }
 
 /**

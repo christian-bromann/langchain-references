@@ -7,6 +7,7 @@
  */
 
 import Script from "next/script";
+import { BASE_URL } from "@/lib/config/base-url";
 
 /**
  * Website structured data for the homepage
@@ -18,13 +19,13 @@ export function WebsiteJsonLd() {
     name: "LangChain Reference Docs",
     description:
       "API reference documentation for LangChain, LangGraph, and LangSmith",
-    url: "https://reference.langchain.com",
+    url: BASE_URL,
     potentialAction: {
       "@type": "SearchAction",
       target: {
         "@type": "EntryPoint",
         urlTemplate:
-          "https://reference.langchain.com/search?q={search_term_string}",
+          `${BASE_URL}/search?q={search_term_string}`,
       },
       "query-input": "required name=search_term_string",
     },
@@ -69,7 +70,7 @@ export function TechArticleJsonLd({
     "@type": "TechArticle",
     headline: title,
     description,
-    url: `https://reference.langchain.com${url}`,
+    url: `${BASE_URL}${url}`,
     dateModified: dateModified || new Date().toISOString(),
     author: {
       "@type": "Organization",
@@ -83,7 +84,7 @@ export function TechArticleJsonLd({
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `https://reference.langchain.com${url}`,
+      "@id": `${BASE_URL}${url}`,
     },
     about: {
       "@type": "SoftwareSourceCode",
@@ -131,7 +132,7 @@ export function SoftwareSourceCodeJsonLd({
     "@type": "SoftwareSourceCode",
     name,
     description,
-    url: `https://reference.langchain.com${url}`,
+    url: `${BASE_URL}${url}`,
     codeRepository:
       codeRepository ||
       (programmingLanguage === "python"
@@ -181,7 +182,7 @@ export function BreadcrumbJsonLd({ items }: BreadcrumbJsonLdProps) {
       "@type": "ListItem",
       position: index + 1,
       name: item.name,
-      item: `https://reference.langchain.com${item.url}`,
+      item: `${BASE_URL}${item.url}`,
     })),
   };
 

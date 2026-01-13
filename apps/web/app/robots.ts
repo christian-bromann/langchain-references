@@ -6,6 +6,7 @@
  */
 
 import type { MetadataRoute } from "next";
+import { BASE_URL } from "@/lib/config/base-url";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -13,6 +14,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
     },
-    sitemap: "https://reference.langchain.com/sitemap.xml",
+    sitemap: `${BASE_URL}/sitemap.xml`,
   };
 }
