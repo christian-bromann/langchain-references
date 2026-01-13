@@ -12,7 +12,6 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Check, History, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { dispatchReferenceRouteLoadingStart } from "@/components/reference/ReferenceRouteLoadingOverlay";
 
 interface VersionChange {
   version: string;
@@ -108,8 +107,6 @@ export function VersionSwitcher({
 
     const queryString = params.toString();
     const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
-    // Ensure we show a loading skeleton even for router.push navigations.
-    dispatchReferenceRouteLoadingStart();
     router.push(newUrl);
     setOpen(false);
   };

@@ -8,7 +8,6 @@
 import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
 import { SidebarLoader } from "@/components/layout/SidebarLoader";
-import { ReferenceRouteLoadingOverlay } from "@/components/reference/ReferenceRouteLoadingOverlay";
 
 export default function ReferenceLayout({
   children,
@@ -29,8 +28,7 @@ export default function ReferenceLayout({
         </Suspense>
 
         {/* Main content - full width on mobile */}
-        <main className="flex-1 min-w-0 relative">
-          <ReferenceRouteLoadingOverlay />
+        <main className="flex-1 min-w-0">
           <div className="px-6 py-8">
             {children}
           </div>
