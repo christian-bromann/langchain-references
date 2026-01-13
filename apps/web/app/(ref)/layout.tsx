@@ -30,9 +30,7 @@ export default function ReferenceLayout({
 
         {/* Main content - full width on mobile */}
         <main className="flex-1 min-w-0 relative">
-          <Suspense fallback={null}>
-            <ReferenceRouteLoadingOverlay />
-          </Suspense>
+          <ReferenceRouteLoadingOverlay />
           <div className="px-6 py-8">
             {children}
           </div>
