@@ -218,8 +218,8 @@ function VersionChangeEntry({ change }: { change: VersionChange }) {
           {change.changes.map((c, idx) => (
             <li key={idx} className="flex items-start gap-2">
               {c.breaking && (
-                <span className="shrink-0 px-1 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded">
-                  BREAKING
+                <span className="shrink-0 px-1 text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 rounded">
+                  MODIFIED
                 </span>
               )}
               <span className="text-slate-600 dark:text-slate-300">

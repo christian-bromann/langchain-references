@@ -19,6 +19,7 @@ import {
   getSymbols,
   getManifestData,
   getSymbolOptimized,
+  getPackageInfo,
 } from "@/lib/ir/loader";
 import {
   symbolToMarkdown,
@@ -195,7 +196,10 @@ export async function GET(
     return NextResponse.json(symbol, { headers: getCacheHeaders() });
   }
 
-  const markdown = symbolToMarkdown(symbol, parsed.packageName);
+  const pkgInfo = await getPackageInfo(buildId, parsed.packageId);
+  const markdown = symbolToMarkdown(symbol, parsed.packageName, {
+    repoPathPrefix: pkgInfo?.repo?.path || undefined,
+  });
 
   return new Response(markdown, {
     headers: {

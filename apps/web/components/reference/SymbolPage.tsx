@@ -21,6 +21,7 @@ import {
   getIndividualSymbolData,
   getSymbolLookupIndexData,
   getCrossProjectPackages,
+  getPackageInfo,
 } from "@/lib/ir/loader";
 import { getProjectForPackage } from "@/lib/config/projects";
 import { CodeBlock } from "./CodeBlock";
@@ -340,7 +341,17 @@ function toDisplaySymbol(
   }
 
   // Resolve member details from their symbol records
-  const members: DisplayMember[] | undefined = symbol.members?.map((m) => {
+  // NOTE: Some IR builds may include member references with non-routable kinds
+  // (e.g. "alias") without emitting a corresponding SymbolRecord. Those would
+  // produce broken links like `/.../chat_models/annotations`. We filter them out
+  // here to avoid rendering dead member links.
+  const filteredMembers = symbol.members?.filter((m) => {
+    const kind = m.kind as unknown as string;
+    if (!kind || kind === "unknown" || kind === "alias") return false;
+    return true;
+  });
+
+  const members: DisplayMember[] | undefined = filteredMembers?.map((m) => {
     const memberSymbol = memberSymbols?.get(m.refId);
     const type = memberSymbol
       ? extractTypeFromSignature(memberSymbol.signature, m.kind)
@@ -512,8 +523,16 @@ async function getHistoricalSnapshot(
 
 /**
  * Convert a SymbolSnapshot to a DisplaySymbol for rendering.
+ *
+ * Note: snapshots only contain `sourcePath` + `sourceLine` (no repo/sha),
+ * so we optionally accept a fallback source (e.g. from the current symbol)
+ * to build a working GitHub link.
  */
-function snapshotToDisplaySymbol(snapshot: SymbolSnapshot, versionInfo?: DisplaySymbol["versionInfo"]): DisplaySymbol {
+function snapshotToDisplaySymbol(
+  snapshot: SymbolSnapshot,
+  versionInfo?: DisplaySymbol["versionInfo"],
+  fallbackSource?: { repo?: string; sha?: string }
+): DisplaySymbol {
   // Convert members from snapshot format to display format
   const members: DisplayMember[] | undefined = snapshot.members?.map((m) => ({
     name: m.name,
@@ -533,8 +552,8 @@ function snapshotToDisplaySymbol(snapshot: SymbolSnapshot, versionInfo?: Display
       summary: "", // Snapshots don't include documentation
     },
     source: {
-      repo: "",
-      sha: "",
+      repo: fallbackSource?.repo || "",
+      sha: fallbackSource?.sha || "",
       path: snapshot.sourcePath,
       line: snapshot.sourceLine,
     },
@@ -783,6 +802,17 @@ const baseSymbolResolutionCache = new Map<
   string,
   { symbol: SymbolRecord; packageId: string; packageName: string } | null
 >();
+
+function joinRepoPathPrefix(prefix: string, sourcePath: string): string {
+  const cleanPrefix = prefix.replace(/\/+$/, "");
+  const cleanSource = sourcePath.replace(/^[./]+/, "");
+
+  if (!cleanPrefix) return cleanSource;
+  if (cleanSource === cleanPrefix) return cleanSource;
+  if (cleanSource.startsWith(`${cleanPrefix}/`)) return cleanSource;
+
+  return `${cleanPrefix}/${cleanSource}`;
+}
 
 /**
  * Resolve inherited members from base classes.
@@ -1072,6 +1102,51 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
 
     knownSymbols = new Set(knownSymbolNames);
 
+    // If the symbol isn't found, it may be an "alias" member that was included in a parent
+    // module/class's member list but wasn't emitted as a full SymbolRecord in the IR.
+    // In that case, render a lightweight stub page instead of "not found".
+    if (!irSymbol) {
+      const parts = symbolPath.split(".");
+      if (parts.length >= 2) {
+        const memberName = parts[parts.length - 1]!;
+        const parentPath = parts.slice(0, -1).join(".");
+        const parent = await findSymbolOptimized(buildId, packageId, parentPath);
+        const parentHasAliasMember = !!parent?.members?.some((m) => {
+          const kind = (m.kind as unknown as string) || "";
+          return m.name === memberName && kind === "alias";
+        });
+
+        if (parent && parentHasAliasMember) {
+          symbol = {
+            id: `alias_stub_${symbolPath}`,
+            kind: "variable",
+            name: memberName,
+            qualifiedName: symbolPath,
+            signature: "",
+            docs: {
+              summary: `This symbol is an alias exported from \`${parentPath}\` and does not have dedicated reference docs.`,
+              description: `Go back to \`${parentPath}\` to see the module/class context where this alias is defined.`,
+            },
+            visibility: "public",
+            stability: "stable",
+            members: undefined,
+            bases: undefined,
+            inheritedMembers: undefined,
+            versionInfo: undefined,
+            typeRefs: undefined,
+            source: parent.source
+              ? {
+                  repo: parent.source.repo,
+                  sha: parent.source.sha,
+                  path: parent.source.path,
+                  line: parent.source.line ?? null,
+                }
+              : undefined,
+          };
+        }
+      }
+    }
+
     // If a specific version is requested, try to load the historical snapshot
     if (version && irSymbol) {
       const historicalData = await getHistoricalSnapshot(
@@ -1083,9 +1158,11 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
       );
 
       if (historicalData) {
-        symbol = snapshotToDisplaySymbol(historicalData.snapshot, {
-          since: version,
-        });
+        symbol = snapshotToDisplaySymbol(
+          historicalData.snapshot,
+          { since: version },
+          { repo: irSymbol.source?.repo, sha: irSymbol.source?.sha }
+        );
       }
     }
 
@@ -1196,11 +1273,28 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
     }
   }
 
+  const hasValidSource =
+    !!symbol.source?.repo &&
+    !!symbol.source?.sha &&
+    !!symbol.source?.path;
+
+  // Prefer package repo path prefix from the build manifest (already part of the IR data).
+  // This captures monorepo layouts like `libs/<package>` without hardcoding.
+  const pkgInfo = buildId ? await getPackageInfo(buildId, packageId) : null;
+  const repoPathPrefix = pkgInfo?.repo?.path || null;
+
+  const githubPath =
+    hasValidSource && symbol.source
+      ? repoPathPrefix
+        ? joinRepoPathPrefix(repoPathPrefix, symbol.source.path)
+        : symbol.source.path.replace(/^[./]+/, "")
+      : null;
+
   const sourceUrl =
-    symbol.source && symbol.source.line
-      ? `https://github.com/${symbol.source.repo}/blob/${symbol.source.sha}/${symbol.source.path}#L${symbol.source.line}`
-      : symbol.source
-        ? `https://github.com/${symbol.source.repo}/blob/${symbol.source.sha}/${symbol.source.path}`
+    hasValidSource && symbol.source?.line && githubPath
+      ? `https://github.com/${symbol.source.repo}/blob/${symbol.source.sha}/${githubPath}#L${symbol.source.line}`
+      : hasValidSource
+        ? `https://github.com/${symbol.source!.repo}/blob/${symbol.source!.sha}/${githubPath}`
         : null;
 
   // Generate TOC data
@@ -1296,12 +1390,6 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
           {symbol.stability === "deprecated" && (
             <span className="px-2 py-1 text-sm font-medium rounded bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
               Deprecated
-            </span>
-          )}
-          {/* Show banner when viewing historical version */}
-          {version && (
-            <span className="px-2 py-1 text-sm font-medium rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-              Viewing v{version}
             </span>
           )}
         </div>
@@ -1429,7 +1517,14 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
           topItems={topItems}
           sections={sections}
           inheritedGroups={inheritedGroups}
-          markdown={irSymbolForMarkdown ? symbolToMarkdown(irSymbolForMarkdown, packageName) : undefined}
+          markdown={
+            irSymbolForMarkdown
+              ? symbolToMarkdown(irSymbolForMarkdown, packageName, {
+                  // Use repo path prefix from manifest to build correct source links in markdown.
+                  repoPathPrefix: repoPathPrefix || undefined,
+                })
+              : undefined
+          }
           pageUrl={`${getBaseUrl()}/${language === "python" ? "python" : "javascript"}/${slugifyPackageName(packageName)}/${symbolPath}`}
         />
       </div>

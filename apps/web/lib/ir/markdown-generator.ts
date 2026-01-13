@@ -23,6 +23,11 @@ export interface MarkdownOptions {
   includeExamples?: boolean;
   /** Include member details for classes (default: true) */
   includeMemberDetails?: boolean;
+  /**
+   * Optional repository path prefix for the current package (e.g. `libs/langchain`).
+   * When provided, this is prepended to `symbol.source.path` if not already present.
+   */
+  repoPathPrefix?: string;
   /** Base URL for canonical links */
   baseUrl?: string;
 }
@@ -31,6 +36,7 @@ const DEFAULT_OPTIONS: Required<MarkdownOptions> = {
   includeSourceLink: true,
   includeExamples: true,
   includeMemberDetails: true,
+  repoPathPrefix: "",
   baseUrl: "",
 };
 
@@ -282,9 +288,19 @@ export function symbolToMarkdown(
 
   // Source link
   if (opts.includeSourceLink && symbol.source) {
+    // Some IR builds store `symbol.source.path` relative to the package root (e.g. `src/...`).
+    // If the caller provides `repoPathPrefix` (from the manifest's package repo path),
+    // we join it to build a correct GitHub URL for monorepos.
+    const cleanPrefix = opts.repoPathPrefix ? opts.repoPathPrefix.replace(/\/+$/, "") : "";
+    const cleanSource = symbol.source.path.replace(/^[./]+/, "");
+    const githubPath =
+      cleanPrefix && !cleanSource.startsWith(`${cleanPrefix}/`)
+        ? `${cleanPrefix}/${cleanSource}`
+        : cleanSource;
+
     const sourceUrl = symbol.source.line
-      ? `https://github.com/${symbol.source.repo}/blob/${symbol.source.sha}/${symbol.source.path}#L${symbol.source.line}`
-      : `https://github.com/${symbol.source.repo}/blob/${symbol.source.sha}/${symbol.source.path}`;
+      ? `https://github.com/${symbol.source.repo}/blob/${symbol.source.sha}/${githubPath}#L${symbol.source.line}`
+      : `https://github.com/${symbol.source.repo}/blob/${symbol.source.sha}/${githubPath}`;
 
     lines.push("---");
     lines.push("");

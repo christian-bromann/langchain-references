@@ -18,22 +18,11 @@ const POINTERS_PATH = "pointers";
  * Set USE_LOCAL_IR=true to force local file reading even during production builds.
  * This is useful when running `pull-ir` before `next build` to avoid network issues.
  */
-let isProductionLoggedOnce = false;
 export function isProduction(): boolean {
   // Allow forcing local IR usage even in production
   const useLocalIr = process.env.USE_LOCAL_IR === "true" || process.env.USE_LOCAL_IR === "1";
   const isVercel = !!process.env.VERCEL;
   const isProd = process.env.NODE_ENV === "production";
-
-  // Log once to help debug env var issues
-  if (!isProductionLoggedOnce) {
-    isProductionLoggedOnce = true;
-    console.log(
-      `[loader] isProduction check: USE_LOCAL_IR=${process.env.USE_LOCAL_IR}, ` +
-      `NODE_ENV=${process.env.NODE_ENV}, VERCEL=${process.env.VERCEL}, ` +
-      `result=${useLocalIr ? false : isProd || isVercel}`
-    );
-  }
 
   if (useLocalIr) {
     return false;
