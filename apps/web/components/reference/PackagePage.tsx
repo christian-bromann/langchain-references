@@ -57,12 +57,28 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
   const result = buildId ? await getSymbols(buildId, packageId) : null;
 
   console.log(`[PackagePage] getSymbols result: ${result ? `${result.symbols?.length} symbols` : 'null'}`);
+  
+  // Debug: show visibility values of first few symbols
+  if (result?.symbols?.length) {
+    const sample = result.symbols.slice(0, 3).map(s => ({
+      name: s.name,
+      visibility: s.tags?.visibility,
+      hasTags: !!s.tags
+    }));
+    console.log(`[PackagePage] Sample visibility:`, JSON.stringify(sample));
+  }
 
+  // Filter to public symbols only (visibility is "public" by default if not set)
+  // Also accept symbols without tags or without explicit visibility
   const symbols: DisplaySymbol[] = result?.symbols
-    ?.filter((s) => s.tags?.visibility === "public")
+    ?.filter((s) => {
+      const visibility = s.tags?.visibility;
+      // Include if explicitly public, or if visibility is not set (defaults to public)
+      return visibility === "public" || visibility === undefined;
+    })
     .map(toDisplaySymbol) ?? [];
 
-  console.log(`[PackagePage] After visibility filter: ${symbols.length} public symbols`);
+  console.log(`[PackagePage] After visibility filter: ${symbols.length} symbols (from ${result?.symbols?.length || 0} total)`);
 
   // Group symbols by kind
   const classes = symbols.filter((s) => s.kind === "class");
