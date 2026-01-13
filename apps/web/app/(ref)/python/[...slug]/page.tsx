@@ -43,21 +43,22 @@ export async function generateStaticParams(): Promise<{ slug: string[] }[]> {
 }
 
 /**
+ * Force static generation for pages returned by generateStaticParams.
+ * Combined with dynamicParams = true, this pre-renders known pages at build time
+ * while allowing unknown pages to be generated on-demand.
+ */
+export const dynamic = "force-static";
+
+/**
  * Enable Incremental Static Regeneration (ISR).
- *
- * Pre-rendered pages (classes, functions, interfaces, etc.) are built at deploy time.
- * Other pages (methods, properties, modules) are generated on-demand and cached.
- *
- * Revalidate cached pages every hour to pick up documentation updates.
+ * Pre-rendered pages are revalidated every hour.
  */
 export const revalidate = 3600; // 1 hour
 
 /**
  * Enable dynamic params for on-demand page generation.
- *
- * Pages not pre-rendered at build time (methods, properties, etc.) will be
- * generated on first request and then cached. This keeps build size small
- * while still providing fast responses for all valid pages.
+ * Pages not in generateStaticParams (methods, properties, modules) are generated
+ * on first request and cached.
  */
 export const dynamicParams = true;
 

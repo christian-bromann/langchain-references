@@ -57,7 +57,7 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
   const result = buildId ? await getSymbols(buildId, packageId) : null;
 
   console.log(`[PackagePage] getSymbols result: ${result ? `${result.symbols?.length} symbols` : 'null'}`);
-  
+
   // Debug: show visibility values of first few symbols
   if (result?.symbols?.length) {
     const sample = result.symbols.slice(0, 3).map(s => ({
