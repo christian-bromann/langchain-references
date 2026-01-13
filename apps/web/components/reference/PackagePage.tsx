@@ -51,22 +51,7 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
   // Determine which project this package belongs to
   const project = getProjectForPackage(packageName);
   const buildId = await getBuildIdForLanguage(irLanguage, project.id);
-
-  console.log(`[PackagePage] packageName=${packageName}, packageId=${packageId}, project=${project.id}, buildId=${buildId}`);
-
   const result = buildId ? await getSymbols(buildId, packageId) : null;
-
-  console.log(`[PackagePage] getSymbols result: ${result ? `${result.symbols?.length} symbols` : 'null'}`);
-
-  // Debug: show visibility values of first few symbols
-  if (result?.symbols?.length) {
-    const sample = result.symbols.slice(0, 3).map(s => ({
-      name: s.name,
-      visibility: s.tags?.visibility,
-      hasTags: !!s.tags
-    }));
-    console.log(`[PackagePage] Sample visibility:`, JSON.stringify(sample));
-  }
 
   // Filter to public symbols only (visibility is "public" by default if not set)
   // Also accept symbols without tags or without explicit visibility
@@ -77,8 +62,6 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
       return visibility === "public" || visibility === undefined;
     })
     .map(toDisplaySymbol) ?? [];
-
-  console.log(`[PackagePage] After visibility filter: ${symbols.length} symbols (from ${result?.symbols?.length || 0} total)`);
 
   // Group symbols by kind
   const classes = symbols.filter((s) => s.kind === "class");

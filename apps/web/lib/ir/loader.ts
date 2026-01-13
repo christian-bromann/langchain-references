@@ -621,9 +621,11 @@ export async function getSymbolByQualifiedName(
   // First, get the lookup index
   const index = await getSymbolLookupIndex(buildId, packageId);
   if (!index) {
+    console.log(`[loader] getSymbolByQualifiedName: No lookup index for ${packageId}, falling back to symbols.json`);
     // Fall back to full symbols.json search
     return getSymbolByPath(buildId, packageId, qualifiedName);
   }
+  console.log(`[loader] getSymbolByQualifiedName: Found index for ${packageId} with ${Object.keys(index.symbols || {}).length} symbols`);
 
   // Look up the symbol ID
   const entry = index.symbols[qualifiedName];
@@ -648,6 +650,7 @@ export async function getSymbolByQualifiedName(
   }
 
   if (!symbolId) {
+    console.log(`[loader] getSymbolByQualifiedName: Symbol "${qualifiedName}" not found in index for ${packageId}`);
     return null;
   }
 
@@ -1015,9 +1018,14 @@ export async function getBuildIdForLanguage(
   language: "python" | "javascript",
   project: string = "langchain"
 ): Promise<string | null> {
-  return isProduction()
+  const buildId = await (isProduction()
     ? getLatestBuildIdForLanguage(language, project)
-    : getLocalLatestBuildId(language, project);
+    : getLocalLatestBuildId(language, project));
+  
+  if (!buildId) {
+    console.log(`[loader] getBuildIdForLanguage: No build ID found for ${project}/${language} (isProduction=${isProduction()})`);
+  }
+  return buildId;
 }
 
 /**
