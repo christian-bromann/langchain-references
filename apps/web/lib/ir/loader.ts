@@ -1135,29 +1135,26 @@ export async function getIndividualSymbolData(
  * Symbol kinds to include in static generation.
  *
  * To stay within Vercel's build size limits (~75MB), we only pre-render
- * the most important "top-level" symbols. Other symbol types (methods,
- * properties, attributes) are generated on-demand using ISR.
+ * the most commonly accessed symbol types. Everything else is generated
+ * on-demand using ISR.
  *
- * Pre-rendered (important for SEO and direct linking):
+ * Pre-rendered (most important for SEO and direct linking):
  * - Packages: always included (handled separately)
- * - Classes: core API elements, frequently accessed
+ * - Classes: core API elements, most frequently accessed
  * - Functions: commonly accessed, standalone pages
- * - Interfaces: TypeScript interfaces for type definitions
- * - Type Aliases: custom type definitions
- * - Enums: enumeration types
  *
  * On-demand (generated via ISR when first accessed):
- * - Methods: class methods (many per class, accessed via class page)
+ * - Interfaces: TypeScript interfaces
+ * - Type Aliases: custom type definitions
+ * - Enums: enumeration types
+ * - Methods: class methods (many per class)
  * - Properties: class properties
  * - Attributes: Python class attributes
- * - Modules: navigation pages (less frequently directly accessed)
+ * - Modules: navigation pages
  */
 const STATIC_GENERATION_KINDS = new Set([
-  "function",
   "class",
-  "interface",
-  "typeAlias",
-  "enum",
+  "function",
 ]);
 
 /**
