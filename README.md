@@ -99,6 +99,19 @@ langchain-reference-docs/
         └── build.yml                 # GitHub Actions workflow
 ```
 
+## Legacy URL Redirects (Backwards Compatibility)
+
+When replacing the legacy reference sites, we maintain **301 redirects** from common historical URL shapes into the new canonical routes:
+
+- **Python legacy docs**: `.html` pages (e.g. `langchain_core/messages.html`) and `/python/integrations/...`
+- **JavaScript legacy docs (TypeDoc)**: `modules/*`, `classes/*`, `interfaces/*` pages (e.g. `_langchain_openai.ChatOpenAI.html`)
+- **Old Python v0.3 docs**: `/v0.3/python/**` is mapped best-effort into `/python/**` and may attach a `?v=0.3.x` query param when resolvable
+
+Redirect logic lives in `apps/web/middleware.ts` with pure mapping helpers in `apps/web/lib/utils/legacy-redirects.ts`.
+Limitations:
+
+- **Hash fragments** (`#...`) cannot be preserved by edge redirects.
+
 ## Quick Start
 
 ### Prerequisites

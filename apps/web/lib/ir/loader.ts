@@ -1295,14 +1295,32 @@ export async function getCrossProjectPackages(
 
     const ecosystem = language === "python" ? "python" : "javascript";
 
+    const irLanguage = language === "python" ? "python" : "typescript";
+
     for (const pkg of manifest.packages) {
       if (pkg.ecosystem !== ecosystem) continue;
 
       // Get the module prefix (e.g., "langchain_core" from package name)
       const modulePrefix = pkg.publishedName.replace(/-/g, "_").replace(/^@/, "").replace(/\//g, "_");
 
-      // Load known symbols for this package
-      const knownSymbolNames = await getKnownSymbolNamesData(buildId, pkg.packageId);
+      // Load known symbols for this package.
+      //
+      // IMPORTANT:
+      // We intentionally avoid `lookup.json` here because some packages can
+      // exceed Next.js' 2MB data cache limit (leading to cache failures and
+      // slow navigations). The routing map is significantly smaller and still
+      // contains enough info for type-linking (public, routable symbols).
+      const routingMap = await getRoutingMapData(buildId, pkg.packageId, pkg.displayName, irLanguage);
+      const knownSymbolNames = routingMap?.slugs
+        ? Array.from(
+            new Set(
+              Object.values(routingMap.slugs)
+                .filter((s) => ["class", "interface", "typeAlias", "enum"].includes(s.kind))
+                .map((s) => s.title)
+                .filter(Boolean)
+            )
+          )
+        : [];
 
       packages.set(modulePrefix, {
         slug: modulePrefix,

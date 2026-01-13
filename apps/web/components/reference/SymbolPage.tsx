@@ -16,12 +16,12 @@ import {
   getManifestData,
   getSymbols,
   getSymbolData,
-  getKnownSymbolNamesData,
   getSymbolOptimized,
   getIndividualSymbolData,
   getSymbolLookupIndexData,
   getCrossProjectPackages,
   getPackageInfo,
+  getRoutingMapData,
 } from "@/lib/ir/loader";
 import { getProjectForPackage } from "@/lib/config/projects";
 import { CodeBlock } from "./CodeBlock";
@@ -783,10 +783,30 @@ async function findSymbolOptimized(
   pathVariations.push(symbolPath.replace(/\./g, "/"));
   pathVariations.push(symbolPath.replace(/\./g, "_"));
 
-  // Try optimized lookup for each variation
-  for (const path of pathVariations) {
-    const symbol = await getSymbolOptimized(buildId, packageId, path);
-    if (symbol) return symbol;
+  // Prefer the routing map + individual symbol files.
+  // This avoids downloading `lookup.json` which can exceed Next.js' 2MB cache limit.
+  const pkgInfo = await getPackageInfo(buildId, packageId);
+  const irLanguage = pkgInfo?.language === "python" ? "python" : "typescript";
+  const routingMap = pkgInfo
+    ? await getRoutingMapData(buildId, packageId, pkgInfo.displayName, irLanguage)
+    : null;
+
+  if (routingMap?.slugs) {
+    const candidates: string[] = [];
+    for (const p of pathVariations) {
+      candidates.push(p);
+      // Try with package prefix for python-style qualified names
+      candidates.push(`${pkgInfo?.publishedName || pkgInfo?.displayName || ""}.${p}`.replace(/^\./, ""));
+      // Try slash form for TS module paths
+      candidates.push(p.replace(/\./g, "/"));
+    }
+
+    for (const key of candidates) {
+      const entry = routingMap.slugs[key];
+      if (!entry?.refId) continue;
+      const symbol = await getIndividualSymbolData(buildId, entry.refId, packageId);
+      if (symbol) return symbol;
+    }
   }
 
   // If optimized lookup failed, fall back to the original method
@@ -1094,13 +1114,27 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
   let knownSymbols = new Set<string>();
 
   if (buildId) {
-    // OPTIMIZATION: Fetch known symbols and main symbol in parallel
-    const [knownSymbolNames, irSymbol] = await Promise.all([
-      getKnownSymbolNamesData(buildId, packageId),
-      findSymbolOptimized(buildId, packageId, symbolPath),
-    ]);
+    // OPTIMIZATION: avoid `lookup.json` (can be >2MB). Use routing map for known symbols.
+    const pkgInfo = await getPackageInfo(buildId, packageId);
+    const routingMap = pkgInfo
+      ? await getRoutingMapData(
+          buildId,
+          packageId,
+          pkgInfo.displayName,
+          language === "python" ? "python" : "typescript"
+        )
+      : null;
 
-    knownSymbols = new Set(knownSymbolNames);
+    if (routingMap?.slugs) {
+      for (const entry of Object.values(routingMap.slugs)) {
+        if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
+          knownSymbols.add(entry.title);
+        }
+      }
+    }
+
+    // Main symbol lookup (routing map + individual symbol files; falls back as needed)
+    const irSymbol = await findSymbolOptimized(buildId, packageId, symbolPath);
 
     // If the symbol isn't found, it may be an "alias" member that was included in a parent
     // module/class's member list but wasn't emitted as a full SymbolRecord in the IR.
