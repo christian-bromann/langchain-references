@@ -11,7 +11,9 @@
 import { ImageResponse } from "next/og";
 import { type NextRequest } from "next/server";
 
-export const runtime = "edge";
+// Vercel OG is supported on the Node.js runtime.
+// Using Node.js here also ensures logs show up in standard function logs.
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
