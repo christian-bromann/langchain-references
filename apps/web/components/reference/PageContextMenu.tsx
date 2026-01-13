@@ -48,7 +48,28 @@ export function PageContextMenu({
   const [copiedItem, setCopiedItem] = useState<CopiedItem>(null);
   const [open, setOpen] = useState(false);
 
-  const markdownUrl = `${pageUrl}${pageUrl.includes("?") ? "&" : "?"}format=md`;
+  // "View as Markdown" should point to the programmatic ref endpoint,
+  // not the HTML page (which ignores `?format=md`).
+  const markdownUrl = (() => {
+    try {
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "http://localhost";
+      const url = new URL(pageUrl, origin);
+
+      // Rewrite `/python/...` -> `/api/ref/python/...`
+      if (!url.pathname.startsWith("/api/ref/")) {
+        url.pathname = `/api/ref${url.pathname}`;
+      }
+
+      url.searchParams.set("format", "md");
+      return url.toString();
+    } catch {
+      // Best-effort fallback for odd inputs
+      const sep = pageUrl.includes("?") ? "&" : "?";
+      const withFormat = `${pageUrl}${sep}format=md`;
+      return withFormat.startsWith("/api/ref/") ? withFormat : `/api/ref${withFormat}`;
+    }
+  })();
 
   const copyToClipboard = useCallback(
     async (text: string, itemId: CopiedItem) => {
