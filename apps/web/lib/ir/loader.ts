@@ -443,16 +443,41 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
 }
 
 /**
+ * Internal function to fetch manifest.
+ * Wrapped with unstable_cache for persistence across invocations.
+ */
+async function fetchManifest(buildId: string): Promise<Manifest | null> {
+  const path = `${IR_BASE_PATH}/${buildId}/reference.manifest.json`;
+  return fetchBlobJson<Manifest>(path);
+}
+
+/**
+ * Cached version of fetchManifest.
+ * Uses Next.js unstable_cache to persist data across function invocations.
+ */
+const getCachedManifest = unstable_cache(
+  fetchManifest,
+  ["manifest"],
+  {
+    revalidate: 3600, // 1 hour
+    tags: ["manifest"],
+  }
+);
+
+/**
  * Get the manifest for a build
+ *
+ * OPTIMIZATION: Uses Next.js unstable_cache to persist manifests
+ * across serverless function invocations.
  */
 export async function getManifest(buildId: string): Promise<Manifest | null> {
-  // Check cache first
+  // Check in-memory cache first (fastest path for same-request reuse)
   if (manifestCache.has(buildId)) {
     return manifestCache.get(buildId)!;
   }
 
-  const path = `${IR_BASE_PATH}/${buildId}/reference.manifest.json`;
-  const manifest = await fetchBlobJson<Manifest>(path);
+  // Fetch from Next.js data cache (persists across invocations)
+  const manifest = await getCachedManifest(buildId);
 
   if (manifest) {
     manifestCache.set(buildId, manifest);
@@ -462,9 +487,39 @@ export async function getManifest(buildId: string): Promise<Manifest | null> {
 }
 
 /**
+ * Internal function to fetch routing map.
+ * Wrapped with unstable_cache for persistence across invocations.
+ */
+async function fetchRoutingMap(
+  buildId: string,
+  packageId: string,
+  language: "python" | "typescript"
+): Promise<RoutingMap | null> {
+  // Routing maps are stored at ir/{buildId}/routing/{language}/{packageId}.json
+  const path = `${IR_BASE_PATH}/${buildId}/routing/${language}/${packageId}.json`;
+  return fetchBlobJson<RoutingMap>(path);
+}
+
+/**
+ * Cached version of fetchRoutingMap.
+ * Uses Next.js unstable_cache to persist data across function invocations.
+ */
+const getCachedRoutingMap = unstable_cache(
+  fetchRoutingMap,
+  ["routing-map"],
+  {
+    revalidate: 3600, // 1 hour
+    tags: ["routing-map"],
+  }
+);
+
+/**
  * Get the routing map for a package from Vercel Blob.
  * Routing maps are much smaller than full symbols and contain only
  * the slug → kind mapping needed for static generation.
+ *
+ * OPTIMIZATION: Uses Next.js unstable_cache to persist routing maps
+ * across serverless function invocations.
  */
 export async function getRoutingMap(
   buildId: string,
@@ -473,13 +528,13 @@ export async function getRoutingMap(
 ): Promise<RoutingMap | null> {
   const cacheKey = `${buildId}:${packageId}`;
 
+  // Check in-memory cache first (fastest path for same-request reuse)
   if (routingCache.has(cacheKey)) {
     return routingCache.get(cacheKey)!;
   }
 
-  // Routing maps are stored at ir/{buildId}/routing/{language}/{packageId}.json
-  const path = `${IR_BASE_PATH}/${buildId}/routing/${language}/${packageId}.json`;
-  const routingMap = await fetchBlobJson<RoutingMap>(path);
+  // Fetch from Next.js data cache (persists across invocations)
+  const routingMap = await getCachedRoutingMap(buildId, packageId, language);
 
   if (routingMap) {
     routingCache.set(cacheKey, routingMap);
@@ -587,9 +642,37 @@ export async function getPackageSymbols(
 // =============================================================================
 
 /**
+ * Internal function to fetch symbol lookup index.
+ * Wrapped with unstable_cache for persistence across invocations.
+ */
+async function fetchSymbolLookupIndex(
+  buildId: string,
+  packageId: string
+): Promise<SymbolLookupIndex | null> {
+  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/lookup.json`;
+  return fetchBlobJson<SymbolLookupIndex>(path);
+}
+
+/**
+ * Cached version of fetchSymbolLookupIndex.
+ * Uses Next.js unstable_cache to persist data across function invocations.
+ */
+const getCachedSymbolLookupIndex = unstable_cache(
+  fetchSymbolLookupIndex,
+  ["symbol-lookup-index"],
+  {
+    revalidate: 3600, // 1 hour
+    tags: ["symbol-lookup-index"],
+  }
+);
+
+/**
  * Get the symbol lookup index for a package.
  * This is a small file (~50-100KB) that maps qualifiedName -> symbolId.
  * Much faster than loading the full symbols.json (11MB+).
+ *
+ * OPTIMIZATION: Uses Next.js unstable_cache to persist lookup indexes
+ * across serverless function invocations.
  */
 export async function getSymbolLookupIndex(
   buildId: string,
@@ -597,12 +680,13 @@ export async function getSymbolLookupIndex(
 ): Promise<SymbolLookupIndex | null> {
   const cacheKey = `${buildId}:${packageId}`;
 
+  // Check in-memory cache first (fastest path for same-request reuse)
   if (lookupIndexCache.has(cacheKey)) {
     return lookupIndexCache.get(cacheKey)!;
   }
 
-  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/lookup.json`;
-  const index = await fetchBlobJson<SymbolLookupIndex>(path);
+  // Fetch from Next.js data cache (persists across invocations)
+  const index = await getCachedSymbolLookupIndex(buildId, packageId);
 
   if (index) {
     lookupIndexCache.set(cacheKey, index);
