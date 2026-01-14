@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils/cn";
 import { SearchModal, useSearchShortcut } from "@/components/search/SearchModal";
 import { ProjectTabs, getCurrentProject, getCurrentLanguage } from "./ProjectTabs";
 import { MobileProjectMenu } from "./MobileProjectMenu";
+import { OfflineBadge } from "./OfflineIndicator";
 import { getEnabledProjects } from "@/lib/config/projects";
 
 export function Header() {
@@ -61,6 +62,8 @@ export function Header() {
                   priority
                 />
               </Link>
+              {/* Offline badge - shown when user is offline */}
+              <OfflineBadge />
 
             </div>
 

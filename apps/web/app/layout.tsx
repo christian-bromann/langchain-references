@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import { Inter, Manrope, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { NavigationProgress } from "@/components/layout/NavigationProgress";
+import { OfflineIndicator } from "@/components/layout/OfflineIndicator";
+import { CacheProvider } from "@/components/cache/CacheProvider";
 import { BASE_URL } from "@/lib/config/base-url";
 import "./globals.css";
 
@@ -124,10 +126,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Suspense fallback={null}>
-            <NavigationProgress />
-          </Suspense>
-          {children}
+          <CacheProvider>
+            <Suspense fallback={null}>
+              <NavigationProgress />
+            </Suspense>
+            {children}
+            <OfflineIndicator />
+          </CacheProvider>
         </ThemeProvider>
       </body>
     </html>

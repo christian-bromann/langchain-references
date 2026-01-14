@@ -49,6 +49,7 @@ coverage/
 # IR build artifacts
 ir-output/
 cache/
+!apps/web/lib/cache
 
 .vercel
 .env*.local
