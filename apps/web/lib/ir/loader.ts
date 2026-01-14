@@ -200,9 +200,10 @@ async function fetchPointer<T>(pointerName: string): Promise<T | null> {
     try {
       const response = await withBlobFetchLimit(() =>
         fetch(url, {
-          // Use force-cache to enable static generation
-          // In-memory pointerCache handles deduplication during builds
-          cache: "force-cache",
+          // Use time-based revalidation instead of force-cache
+          // This prevents 404s from being cached indefinitely when new projects are added
+          // 60 seconds is short enough to detect new builds quickly during deployments
+          next: { revalidate: 60 },
         })
       );
 
@@ -341,9 +342,9 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
   if (!url) return null;
 
   // Use no-store for large files (symbols.json) to avoid Next.js cache issues
-  // Use force-cache for smaller files (manifests, routing maps, lookup indexes)
+  // Use time-based revalidation for smaller files (manifests, routing maps, catalogs)
+  // This prevents 404s from being cached indefinitely when new data is added
   const isLargeFile = path.endsWith("/symbols.json");
-  const cacheStrategy = isLargeFile ? "no-store" : "force-cache";
   const maxRetries = isLargeFile ? 10 : MAX_RETRIES;
 
   let lastError: unknown = null;
@@ -355,9 +356,10 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
     try {
       phase = "fetch";
       const response = await withBlobFetchLimit(() =>
-        fetch(url, {
-          cache: cacheStrategy,
-        })
+        fetch(url, isLargeFile 
+          ? { cache: "no-store" }
+          : { next: { revalidate: 3600 } } // 1 hour for small files, prevents 404s from being cached forever
+        )
       );
 
       if (!response.ok) {
