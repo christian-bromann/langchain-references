@@ -98,17 +98,6 @@ function isRSCRequest(url) {
 }
 
 /**
- * Get a normalized cache key for a URL (without RSC params)
- * This ensures RSC and HTML requests for the same page share the cache
- */
-function getCacheKey(url) {
-  const urlObj = new URL(url);
-  // Remove RSC-related query params
-  urlObj.searchParams.delete("_rsc");
-  return urlObj.href;
-}
-
-/**
  * Stale-while-revalidate strategy for API requests
  * Returns cached response immediately, then fetches fresh data in background
  */
@@ -243,65 +232,54 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Handle RSC requests - cache them for offline navigation
+  // Handle RSC requests - cache them separately (don't mix with HTML)
+  // RSC requests are for client-side navigation, not full page loads
   if (isRSCRequest(request.url)) {
-    const cacheKey = getCacheKey(request.url);
     event.respondWith(
       fetch(request)
         .then((networkResponse) => {
           if (networkResponse.ok) {
             const responseToCache = networkResponse.clone();
-            caches.open(STATIC_CACHE_NAME).then((cache) => {
-              // Store with normalized key so HTML requests can find it too
-              cache.put(cacheKey, responseToCache);
-              // Also store with original URL for RSC requests
-              cache.put(request.url, responseToCache.clone());
+            caches.open(SYMBOL_CACHE_NAME).then((cache) => {
+              // Store RSC responses in symbol cache, not static cache
+              cache.put(request.url, responseToCache);
             });
           }
           return networkResponse;
         })
         .catch(() => {
-          // Try to serve from cache
-          return caches.match(request.url).then((response) => {
-            if (response) return response;
-            // Try normalized key
-            return caches.match(cacheKey);
-          });
+          // Try to serve RSC from cache
+          return caches.match(request.url);
         })
     );
     return;
   }
 
   // For navigation requests (HTML), use network-first with caching
+  // These are full page loads (F5 refresh, direct URL access)
   if (request.mode === "navigate") {
-    const cacheKey = getCacheKey(request.url);
     event.respondWith(
       fetch(request)
         .then((networkResponse) => {
-          // Cache successful navigation responses for offline access
+          // Cache successful HTML navigation responses for offline access
           if (networkResponse.ok) {
             const responseToCache = networkResponse.clone();
             caches.open(STATIC_CACHE_NAME).then((cache) => {
-              // Store with normalized URL as key
-              cache.put(cacheKey, responseToCache);
+              // Store HTML pages in static cache with exact URL
+              cache.put(request.url, responseToCache);
             });
           }
           return networkResponse;
         })
         .catch(() => {
-          // If offline, try to serve from cache using normalized key
-          return caches.match(cacheKey).then((response) => {
+          // If offline, try to serve HTML from static cache
+          return caches.match(request.url).then((response) => {
             if (response) {
               return response;
             }
-            // Also try the exact URL
-            return caches.match(request).then((exactResponse) => {
-              if (exactResponse) {
-                return exactResponse;
-              }
-              // Return a styled offline page that matches the site design
-              return new Response(
-                `<!DOCTYPE html>
+            // No cached HTML - show offline page
+            return new Response(
+              `<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
@@ -461,8 +439,7 @@ self.addEventListener("fetch", (event) => {
               }
             );
           });
-        });
-      })
+        })
     );
     return;
   }
