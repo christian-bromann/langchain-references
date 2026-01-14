@@ -26,6 +26,11 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "2mb",
     },
+    // Inline critical CSS to reduce render-blocking resources
+    // This uses Critters to extract and inline above-the-fold CSS
+    optimizeCss: true,
+    // Tree-shake icon libraries to reduce bundle size
+    optimizePackageImports: ["lucide-react"],
   },
 };
 

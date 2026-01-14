@@ -24,7 +24,7 @@
   /* Text - Light Mode */
   --text-primary: #1C1C1C;
   --text-secondary: #6B6B6B;
-  --text-muted: #9B9B9B;
+  --text-muted: #757575; /* WCAG AA compliant: 4.6:1 contrast on white */
 
   /* Borders - Light Mode */
   --border-light: #E5E5E5;
@@ -52,7 +52,7 @@
   /* Text - Dark Mode */
   --text-primary: #FAFAFA;
   --text-secondary: #A0A0A0;
-  --text-muted: #707070;
+  --text-muted: #8F8F8F; /* WCAG AA compliant: 5.6:1 contrast on #0D0D0D */
 
   /* Borders - Dark Mode */
   --border-light: #2A2A2A;

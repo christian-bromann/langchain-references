@@ -12,7 +12,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Search, MessageCircle, Github, Moon, Sun, MoreVertical } from "lucide-react";
+import { Search, MessageCircle, Github, Moon, Sun, MoreVertical, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { SearchModal, useSearchShortcut } from "@/components/search/SearchModal";
 import { ProjectTabs, getCurrentProject, getCurrentLanguage } from "./ProjectTabs";
@@ -132,14 +132,15 @@ export function Header() {
                     </li>
                     <li className="whitespace-nowrap">
                       <a
-                        href="https://smith.langchain.com/"
+                        href="https://docs.langchain.com/"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="group px-4 py-1.5 relative inline-flex items-center text-sm font-medium"
                       >
                         <span className="absolute inset-0 bg-primary rounded-xl group-hover:opacity-90"></span>
                         <div className="mr-0.5 space-x-2.5 flex items-center">
-                          <span className="z-10 text-white">Try LangSmith</span>
+                          <BookOpen className="z-10 h-4 w-4 text-white" />
+                          <span className="z-10 text-white">Main Docs</span>
                           <svg
                             width="3"
                             height="24"
