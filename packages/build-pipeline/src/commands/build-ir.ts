@@ -1104,14 +1104,14 @@ async function buildVersionHistory(
 
     // If we have existing changelog and only processing new versions,
     // we also need the previous version's symbols to compute the diff
-    let needPreviousVersion = false;
+    let bridgeVersion: CachedVersionEntry | null = null;
     if (existingChangelog && versionsToProcess.length > 0 && versionsToProcess.length < versions.length) {
       // Find the most recent existing version (the one just before the oldest new version)
       const oldestNewVersion = versionsToProcess[versionsToProcess.length - 1];
       const oldestNewIdx = versions.findIndex((v) => v.version === oldestNewVersion.version);
       if (oldestNewIdx < versions.length - 1) {
         const previousVersion = versions[oldestNewIdx + 1];
-        needPreviousVersion = true;
+        bridgeVersion = previousVersion;
 
         // Extract this one version to enable diffing
         const result = await extractHistoricalVersion(
@@ -1157,13 +1157,27 @@ async function buildVersionHistory(
 
     if (existingChangelog && versionsToProcess.length < versions.length) {
       // Incremental: compute deltas only for new versions + the bridge to existing
+      // IMPORTANT: Include the bridge version in the array so computeVersionDeltas
+      // can properly diff the oldest new version against the previous existing version.
+      // Without this, the oldest new version would have no "previous" and all its
+      // symbols would incorrectly be marked as "added".
+      const versionsForDelta = bridgeVersion
+        ? [...versionsToProcess, bridgeVersion]
+        : versionsToProcess;
+
       const { deltas: newDeltas, versionStats: newStats } = computeVersionDeltas(
         versionSymbols,
-        versionsToProcess
+        versionsForDelta
       );
 
+      // Filter out the bridge version's delta (it's already in existing changelog)
+      // We only want the deltas for truly new versions
+      const filteredDeltas = bridgeVersion
+        ? newDeltas.filter((d) => d.version !== bridgeVersion?.version)
+        : newDeltas;
+
       // Merge new deltas (newest first) with existing history
-      finalDeltas = [...newDeltas, ...existingChangelog.changelog.history];
+      finalDeltas = [...filteredDeltas, ...existingChangelog.changelog.history];
 
       // Merge version stats
       allVersionStats = new Map<string, VersionStats>();
@@ -1177,7 +1191,7 @@ async function buildVersionHistory(
         }
       }
 
-      console.log(`      ✓ Merged ${newDeltas.length} new delta(s) with ${existingChangelog.changelog.history.length} existing`);
+      console.log(`      ✓ Merged ${filteredDeltas.length} new delta(s) with ${existingChangelog.changelog.history.length} existing`);
     } else {
       // Full build: compute deltas for all versions
       const { deltas, versionStats } = computeVersionDeltas(versionSymbols, versions);
