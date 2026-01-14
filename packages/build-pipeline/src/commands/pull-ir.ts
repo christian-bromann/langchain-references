@@ -263,6 +263,60 @@ async function pullProjectLanguage(
           console.log(`     ✓ versions`);
         }
       }
+
+      // Download sharded indices (lookup, catalog, changelog)
+      // These are small files (<500KB each) used for optimized production lookups
+      const shardedDirs = ["lookup", "catalog", "changelog"] as const;
+
+      for (const shardDir of shardedDirs) {
+        // First, try to fetch the index manifest to discover shards
+        const indexContent = await fetchBlobRaw(
+          `ir/${buildId}/packages/${pkg.packageId}/${shardDir}/index.json`
+        );
+
+        if (indexContent) {
+          // Create shard directory
+          const shardDirPath = path.join(pkgDir, shardDir);
+          await fs.mkdir(shardDirPath, { recursive: true });
+
+          // Save the index
+          await fs.writeFile(path.join(shardDirPath, "index.json"), indexContent, "utf-8");
+          result.filesDownloaded++;
+
+          // Parse index to get shard list
+          try {
+            const index = JSON.parse(indexContent) as { shards?: string[] };
+            if (index.shards && Array.isArray(index.shards)) {
+              // Download each shard in parallel (with concurrency limit)
+              const BATCH_SIZE = 10;
+              for (let i = 0; i < index.shards.length; i += BATCH_SIZE) {
+                const batch = index.shards.slice(i, i + BATCH_SIZE);
+                await Promise.all(
+                  batch.map(async (shardKey) => {
+                    const shardContent = await fetchBlobRaw(
+                      `ir/${buildId}/packages/${pkg.packageId}/${shardDir}/${shardKey}.json`
+                    );
+                    if (shardContent) {
+                      await fs.writeFile(
+                        path.join(shardDirPath, `${shardKey}.json`),
+                        shardContent,
+                        "utf-8"
+                      );
+                      result.filesDownloaded++;
+                    }
+                  })
+                );
+              }
+
+              if (verbose) {
+                console.log(`     ✓ ${shardDir} (${index.shards.length} shards)`);
+              }
+            }
+          } catch {
+            // Index parsing failed, skip shards
+          }
+        }
+      }
     }
 
     // Create symlink for latest

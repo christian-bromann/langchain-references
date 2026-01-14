@@ -209,11 +209,11 @@ function generateSymbolLookupIndex(
 
 /**
  * Generate routing map from symbols.
- * 
+ *
  * The routing map uses qualifiedName as the key to match the format expected
  * by getStaticParamsForLanguage which splits by "." to generate URL segments.
- * 
- * Example: "langchain_classic.model_laboratory.ModelLaboratory" -> 
+ *
+ * Example: "langchain_classic.model_laboratory.ModelLaboratory" ->
  *          /python/langchain-classic/model_laboratory/ModelLaboratory
  */
 function generateRoutingMap(
@@ -369,11 +369,11 @@ function generateShardedLookupIndex(
 
   for (const symbol of symbols) {
     const shardKey = computeShardKey(symbol.qualifiedName);
-    
+
     if (!shards.has(shardKey)) {
       shards.set(shardKey, {});
     }
-    
+
     shards.get(shardKey)![symbol.qualifiedName] = {
       id: symbol.id,
       kind: symbol.kind,
@@ -433,11 +433,11 @@ function generateShardedCatalog(
     if (!["class", "function", "interface", "module", "typeAlias", "enum"].includes(symbol.kind)) continue;
 
     const shardKey = computeShardKey(symbol.qualifiedName);
-    
+
     if (!shards.has(shardKey)) {
       shards.set(shardKey, []);
     }
-    
+
     shards.get(shardKey)!.push({
       id: symbol.id,
       kind: symbol.kind,
@@ -551,16 +551,16 @@ function addToChangelogShard(
   entry: SymbolChangelogEntry
 ): void {
   const shardKey = computeShardKey(qualifiedName);
-  
+
   if (!shards.has(shardKey)) {
     shards.set(shardKey, {});
   }
-  
+
   const shard = shards.get(shardKey)!;
   if (!shard[qualifiedName]) {
     shard[qualifiedName] = [];
   }
-  
+
   shard[qualifiedName].push(entry);
 }
 
@@ -637,13 +637,13 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
 
     // Add SHARDED symbol lookup index (replaces monolithic lookup.json)
     const { index: lookupIndex, shards: lookupShards } = generateShardedLookupIndex(pkg.packageId, symbols);
-    
+
     // Upload lookup index manifest
     uploadTasks.push({
       blobPath: `ir/${buildId}/packages/${pkg.packageId}/lookup/index.json`,
       content: JSON.stringify(lookupIndex),
     });
-    
+
     // Upload lookup shards
     for (const [shardKey, shardData] of lookupShards) {
       uploadTasks.push({
@@ -651,23 +651,23 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
         content: JSON.stringify(shardData),
       });
     }
-    
+
     // Also upload legacy lookup.json for backward compatibility (can be removed later)
     const legacyLookupIndex = generateSymbolLookupIndex(pkg.packageId, symbols);
     uploadTasks.push({
       blobPath: `ir/${buildId}/packages/${pkg.packageId}/lookup.json`,
       content: JSON.stringify(legacyLookupIndex),
     });
-    
+
     // Add SHARDED catalog for package overview pages
     const { index: catalogIndex, shards: catalogShards } = generateShardedCatalog(pkg.packageId, symbols);
-    
+
     // Upload catalog index manifest
     uploadTasks.push({
       blobPath: `ir/${buildId}/packages/${pkg.packageId}/catalog/index.json`,
       content: JSON.stringify(catalogIndex),
     });
-    
+
     // Upload catalog shards
     for (const [shardKey, shardData] of catalogShards) {
       uploadTasks.push({
@@ -692,16 +692,16 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
     try {
       const changelogContent = await fs.readFile(changelogPath, "utf-8");
       const changelog: PackageChangelog = JSON.parse(changelogContent);
-      
+
       // Generate sharded changelog
       const { index: changelogIndex, shards: changelogShards } = generateShardedChangelog(changelog);
-      
+
       // Upload changelog index manifest
       uploadTasks.push({
         blobPath: `ir/${buildId}/packages/${pkg.packageId}/changelog/index.json`,
         content: JSON.stringify(changelogIndex),
       });
-      
+
       // Upload changelog shards
       for (const [shardKey, shardData] of changelogShards) {
         uploadTasks.push({
@@ -709,7 +709,7 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
           content: JSON.stringify(shardData),
         });
       }
-      
+
       // Also upload legacy changelog.json for backward compatibility (can be removed later)
       uploadTasks.push({
         blobPath: `ir/${buildId}/packages/${pkg.packageId}/changelog.json`,
