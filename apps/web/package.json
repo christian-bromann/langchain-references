@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "generate-sw": "node scripts/generate-sw.js",
+    "dev": "npm run generate-sw && next dev",
+    "build": "npm run generate-sw && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "tsx --test",

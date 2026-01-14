@@ -1,1 +1,4 @@
 .vercel
+
+# Generated service worker (built from sw.template.js)
+public/sw.js
