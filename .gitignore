@@ -50,6 +50,7 @@ coverage/
 ir-output/
 cache/
 !apps/web/lib/cache
+!apps/web/components/cache
 
 .vercel
 .env*.local
