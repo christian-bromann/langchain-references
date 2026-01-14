@@ -835,6 +835,46 @@ const baseSymbolResolutionCache = new Map<
   { symbol: SymbolRecord; packageId: string; packageName: string } | null
 >();
 
+/**
+ * Clean a source path that may contain build cache prefixes.
+ * Removes paths like /tmp/.../extracted/... and handles duplicated package paths.
+ */
+function cleanSourcePath(sourcePath: string, repoPathPrefix?: string | null): string {
+  let cleaned = sourcePath;
+
+  // Strip everything up to and including /extracted/
+  const extractedIdx = cleaned.indexOf("/extracted/");
+  if (extractedIdx !== -1) {
+    cleaned = cleaned.slice(extractedIdx + "/extracted/".length);
+  }
+
+  // Also strip /tmp/ prefix paths that don't have /extracted/
+  const tmpIdx = cleaned.indexOf("/tmp/");
+  if (tmpIdx !== -1) {
+    // Try to find a reasonable starting point after tmp
+    const srcMatch = cleaned.match(/\/src\/(.+)$/);
+    if (srcMatch) {
+      cleaned = `src/${srcMatch[1]}`;
+    }
+  }
+
+  // Handle duplicated package paths (e.g., libs/pkg/libs/pkg/src/... -> libs/pkg/src/...)
+  if (repoPathPrefix) {
+    const pkgPathWithSlash = repoPathPrefix.replace(/^\/|\/$/g, "") + "/";
+    if (cleaned.startsWith(pkgPathWithSlash)) {
+      const afterPkgPath = cleaned.slice(pkgPathWithSlash.length);
+      if (afterPkgPath.startsWith(pkgPathWithSlash) || afterPkgPath.startsWith(repoPathPrefix)) {
+        cleaned = afterPkgPath;
+      }
+    }
+  }
+
+  // Clean up leading ./ or /
+  cleaned = cleaned.replace(/^[./]+/, "");
+
+  return cleaned;
+}
+
 function joinRepoPathPrefix(prefix: string, sourcePath: string): string {
   const cleanPrefix = prefix.replace(/\/+$/, "");
   const cleanSource = sourcePath.replace(/^[./]+/, "");
@@ -1320,21 +1360,28 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
     }
   }
 
-  const hasValidSource =
-    !!symbol.source?.repo &&
-    !!symbol.source?.sha &&
-    !!symbol.source?.path;
-
   // Prefer package repo path prefix from the build manifest (already part of the IR data).
   // This captures monorepo layouts like `libs/<package>` without hardcoding.
   const pkgInfo = buildId ? await getPackageInfo(buildId, packageId) : null;
   const repoPathPrefix = pkgInfo?.repo?.path || null;
 
+  // Clean the source path to remove build cache prefixes and fix duplicated paths
+  const cleanedSourcePath = symbol.source?.path
+    ? cleanSourcePath(symbol.source.path, repoPathPrefix)
+    : "";
+
+  const hasValidSource =
+    !!symbol.source?.repo &&
+    !!symbol.source?.sha &&
+    !!cleanedSourcePath &&
+    // Exclude node_modules paths - these are external dependencies
+    !cleanedSourcePath.includes("node_modules/");
+
   const githubPath =
-    hasValidSource && symbol.source
+    hasValidSource && cleanedSourcePath
       ? repoPathPrefix
-        ? joinRepoPathPrefix(repoPathPrefix, symbol.source.path)
-        : symbol.source.path.replace(/^[./]+/, "")
+        ? joinRepoPathPrefix(repoPathPrefix, cleanedSourcePath)
+        : cleanedSourcePath
       : null;
 
   const sourceUrl =

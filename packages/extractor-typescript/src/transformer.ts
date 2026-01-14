@@ -367,6 +367,7 @@ export class TypeDocTransformer {
       [ReflectionKind.Method]: "method",
       [ReflectionKind.Accessor]: "property",
       [ReflectionKind.TypeAlias]: "typeAlias",
+      [ReflectionKind.Reference]: "namespace",
     };
 
     return kindMap[kindValue] || null;
@@ -1003,10 +1004,12 @@ export class TypeDocTransformer {
       return undefined;
     }
 
-    // For modules, include all exported symbols (classes, functions, types, etc.)
+    // For modules and namespaces, include all exported symbols (classes, functions, types, etc.)
     // For classes/interfaces, include methods, properties, and constructors
-    const isModule = reflection.kind === ReflectionKind.Module;
-    const allowedKinds = isModule
+    const isModuleOrNamespace = reflection.kind === ReflectionKind.Module ||
+      reflection.kind === ReflectionKind.Namespace ||
+      reflection.kind === ReflectionKind.Reference;
+    const allowedKinds = isModuleOrNamespace
       ? ["class", "function", "interface", "typeAlias", "enum", "variable", "method", "property", "constructor", "namespace"]
       : ["method", "property", "constructor"];
 
@@ -1094,19 +1097,29 @@ export class TypeDocTransformer {
       filePath = filePath.slice(this.sourcePathPrefix.length);
     }
 
-    // Handle relative paths with ../ that escape to tmp directory
-    // Match pattern: ../../../.../extracted/libs/{package}/{path} or .../extracted/{path}
-    // We need to extract just the relative path within the package
-    const extractedMatch = filePath.match(/\/extracted\/(?:libs\/)?([^/]+)\/(.+)$/);
-    if (extractedMatch) {
-      // extractedMatch[2] contains the path within the package (e.g., "src/runnables/base.ts")
-      filePath = extractedMatch[2];
+    // Strip everything up to and including /extracted/ from the path
+    // This handles both absolute and relative paths that go through the build cache
+    const extractedIdx = filePath.indexOf("/extracted/");
+    if (extractedIdx !== -1) {
+      filePath = filePath.slice(extractedIdx + "/extracted/".length);
     }
 
-    // Handle paths containing /tmp/ or similar cache directories
-    const tmpMatch = filePath.match(/(?:^|\/|\.\.\/)tmp\/.*?\/extracted\/(?:libs\/)?([^/]+)\/(.+)$/);
-    if (tmpMatch) {
-      filePath = tmpMatch[2];
+    // If we have a package repo path (e.g., "libs/providers/langchain-openai"),
+    // check if the path has a duplicated prefix. This happens when TypeDoc reports
+    // paths relative to the extraction root, resulting in patterns like:
+    // libs/providers/langchain-openai/libs/providers/langchain-openai/src/...
+    // We want to normalize this to just: libs/providers/langchain-openai/src/...
+    if (this.packageRepoPath) {
+      const pkgPathWithSlash = this.packageRepoPath.replace(/^\/|\/$/g, "") + "/";
+      // Check if path starts with the package path and then repeats it
+      if (filePath.startsWith(pkgPathWithSlash)) {
+        const afterPkgPath = filePath.slice(pkgPathWithSlash.length);
+        // If what remains still starts with the package path, we have duplication
+        if (afterPkgPath.startsWith(pkgPathWithSlash) || afterPkgPath.startsWith(this.packageRepoPath)) {
+          // Remove the first occurrence, keep the second (which includes the actual file path)
+          filePath = afterPkgPath;
+        }
+      }
     }
 
     // Ensure the path doesn't start with ../ or /
@@ -1118,8 +1131,22 @@ export class TypeDocTransformer {
       }
     }
 
-    // If we have a package repo path (e.g., "libs/langchain-core"), prepend it
-    // This ensures the source URL correctly points to the file in the monorepo
+    // Clean up any leading ./ or /
+    filePath = filePath.replace(/^[./]+/, "");
+
+    // If the path still contains node_modules, it's an external dependency
+    // We can't link to it in the project repo, so clear the source reference
+    if (filePath.includes("node_modules/")) {
+      return {
+        repo: this.repo,
+        sha: this.sha,
+        path: "",
+        line: 0,
+      };
+    }
+
+    // If we have a package repo path and the path doesn't already start with it,
+    // prepend it to ensure the source URL correctly points to the file in the monorepo
     if (this.packageRepoPath && !filePath.startsWith(this.packageRepoPath)) {
       filePath = `${this.packageRepoPath}/${filePath}`;
     }

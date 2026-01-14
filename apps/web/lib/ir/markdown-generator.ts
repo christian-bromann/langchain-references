@@ -41,6 +41,36 @@ const DEFAULT_OPTIONS: Required<MarkdownOptions> = {
 };
 
 /**
+ * Clean a source path that may contain build cache prefixes.
+ * Removes paths like /tmp/.../extracted/... and handles duplicated package paths.
+ */
+function cleanSourcePath(sourcePath: string, repoPathPrefix?: string): string {
+  let cleaned = sourcePath;
+
+  // Strip everything up to and including /extracted/
+  const extractedIdx = cleaned.indexOf("/extracted/");
+  if (extractedIdx !== -1) {
+    cleaned = cleaned.slice(extractedIdx + "/extracted/".length);
+  }
+
+  // Handle duplicated package paths (e.g., libs/pkg/libs/pkg/src/... -> libs/pkg/src/...)
+  if (repoPathPrefix) {
+    const pkgPathWithSlash = repoPathPrefix.replace(/^\/|\/$/g, "") + "/";
+    if (cleaned.startsWith(pkgPathWithSlash)) {
+      const afterPkgPath = cleaned.slice(pkgPathWithSlash.length);
+      if (afterPkgPath.startsWith(pkgPathWithSlash) || afterPkgPath.startsWith(repoPathPrefix)) {
+        cleaned = afterPkgPath;
+      }
+    }
+  }
+
+  // Clean up leading ./ or /
+  cleaned = cleaned.replace(/^[./]+/, "");
+
+  return cleaned;
+}
+
+/**
  * Get human-readable label for symbol kind
  */
 function getKindLabel(kind: SymbolKind): string {
@@ -286,25 +316,30 @@ export function symbolToMarkdown(
     lines.push("");
   }
 
-  // Source link
-  if (opts.includeSourceLink && symbol.source) {
-    // Some IR builds store `symbol.source.path` relative to the package root (e.g. `src/...`).
-    // If the caller provides `repoPathPrefix` (from the manifest's package repo path),
-    // we join it to build a correct GitHub URL for monorepos.
-    const cleanPrefix = opts.repoPathPrefix ? opts.repoPathPrefix.replace(/\/+$/, "") : "";
-    const cleanSource = symbol.source.path.replace(/^[./]+/, "");
-    const githubPath =
-      cleanPrefix && !cleanSource.startsWith(`${cleanPrefix}/`)
-        ? `${cleanPrefix}/${cleanSource}`
-        : cleanSource;
+  // Source link - skip if path is empty or contains node_modules (external dependency)
+  if (opts.includeSourceLink && symbol.source && symbol.source.path) {
+    // Clean the source path to remove build cache prefixes and fix duplicated paths
+    const cleanedPath = cleanSourcePath(symbol.source.path, opts.repoPathPrefix);
 
-    const sourceUrl = symbol.source.line
-      ? `https://github.com/${symbol.source.repo}/blob/${symbol.source.sha}/${githubPath}#L${symbol.source.line}`
-      : `https://github.com/${symbol.source.repo}/blob/${symbol.source.sha}/${githubPath}`;
+    // Skip external dependencies (node_modules)
+    if (cleanedPath && !cleanedPath.includes("node_modules/")) {
+      // Some IR builds store `symbol.source.path` relative to the package root (e.g. `src/...`).
+      // If the caller provides `repoPathPrefix` (from the manifest's package repo path),
+      // we join it to build a correct GitHub URL for monorepos.
+      const cleanPrefix = opts.repoPathPrefix ? opts.repoPathPrefix.replace(/\/+$/, "") : "";
+      const githubPath =
+        cleanPrefix && !cleanedPath.startsWith(`${cleanPrefix}/`)
+          ? `${cleanPrefix}/${cleanedPath}`
+          : cleanedPath;
 
-    lines.push("---");
-    lines.push("");
-    lines.push(`[View source on GitHub](${sourceUrl})`);
+      const sourceUrl = symbol.source.line
+        ? `https://github.com/${symbol.source.repo}/blob/${symbol.source.sha}/${githubPath}#L${symbol.source.line}`
+        : `https://github.com/${symbol.source.repo}/blob/${symbol.source.sha}/${githubPath}`;
+
+      lines.push("---");
+      lines.push("");
+      lines.push(`[View source on GitHub](${sourceUrl})`);
+    }
   }
 
   return lines.join("\n");
