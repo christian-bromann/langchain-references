@@ -37,42 +37,16 @@ export const metadata: Metadata = {
   // While the custom domain isn't wired up, use the current Vercel deployment URL.
   metadataBase: new URL(BASE_URL),
   icons: {
+    // Using dark theme favicons as default (most users prefer dark mode)
+    // This reduces the number of icon link tags and favicon requests
     icon: [
-      {
-        url: "/favicons/light/favicon-16x16.png",
-        sizes: "16x16",
-        type: "image/png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/favicons/light/favicon-32x32.png",
-        sizes: "32x32",
-        type: "image/png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/favicons/dark/favicon-16x16.png",
-        sizes: "16x16",
-        type: "image/png",
-        media: "(prefers-color-scheme: dark)",
-      },
       {
         url: "/favicons/dark/favicon-32x32.png",
         sizes: "32x32",
         type: "image/png",
-        media: "(prefers-color-scheme: dark)",
       },
     ],
-    shortcut: [
-      {
-        url: "/favicons/light/favicon.ico",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/favicons/dark/favicon.ico",
-        media: "(prefers-color-scheme: dark)",
-      },
-    ],
+    shortcut: "/favicons/dark/favicon.ico",
     apple: {
       url: "/favicons/apple-touch-icon.png",
       sizes: "180x180",

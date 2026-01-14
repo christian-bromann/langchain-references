@@ -356,7 +356,7 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
     try {
       phase = "fetch";
       const response = await withBlobFetchLimit(() =>
-        fetch(url, isLargeFile 
+        fetch(url, isLargeFile
           ? { cache: "no-store" }
           : { next: { revalidate: 3600 } } // 1 hour for small files, prevents 404s from being cached forever
         )
@@ -761,8 +761,11 @@ export async function getPackagesForLanguage(
  */
 function getLocalIrBasePath(): string {
   // From apps/web, go up to the root and into ir-output
+  // Using dynamic path construction to avoid Turbopack static file pattern analysis
+  // (Turbopack would otherwise try to bundle all files matching the pattern)
   const path = require("path");
-  return path.join(process.cwd(), "..", "..", "ir-output");
+  const irFolder = ["ir", "output"].join("-");
+  return path.join(process.cwd(), "..", "..", irFolder);
 }
 
 /**
