@@ -23,8 +23,8 @@ const STATIC_ASSETS = [
   "/favicons/light/favicon-32x32.png",
   "/favicons/dark/favicon.ico",
   "/favicons/dark/favicon-32x32.png",
-  "/langchain-docs-teal.svg",
-  "/langchain-docs-lilac.svg",
+  "/reference-light.svg",
+  "/reference-dark.svg",
 ];
 
 /**
@@ -410,8 +410,8 @@ self.addEventListener("fetch", (event) => {
 </head>
 <body>
   <header>
-    <img class="logo logo-light" src="/langchain-docs-teal.svg" alt="LangChain" onerror="this.style.display='none'">
-    <img class="logo logo-dark" src="/langchain-docs-lilac.svg" alt="LangChain" onerror="this.style.display='none'">
+    <img class="logo logo-light" src="/reference-light.svg" alt="LangChain Reference" onerror="this.style.display='none'">
+    <img class="logo logo-dark" src="/reference-dark.svg" alt="LangChain Reference" onerror="this.style.display='none'">
   </header>
   <main>
     <div class="offline-icon-container">

@@ -18,8 +18,8 @@ interface SignatureBlockProps {
   language: "python" | "typescript" | "javascript";
   /** Type references that can be linked (includes qualifiedName for cross-project linking) */
   typeRefs?: TypeReference[];
-  /** Set of known symbol names in the current package */
-  knownSymbols: Set<string>;
+  /** Map of symbol names to their URL paths in the current package */
+  knownSymbols: Map<string, string>;
   /** Current package name for generating URLs */
   packageName: string;
   /** Map of type names to their resolved URLs (for cross-project linking) */
@@ -74,7 +74,7 @@ const PYTHON_KEYWORDS = new Set([
 function tokenizeSignature(
   signature: string,
   language: "python" | "typescript" | "javascript",
-  knownSymbols: Set<string>,
+  knownSymbols: Map<string, string>,
   packageName: string,
   typeUrlMap?: Map<string, string>
 ): Token[] {
@@ -116,7 +116,8 @@ function tokenizeSignature(
       }
       // Check if it's a known symbol in the current package
       else if (knownSymbols.has(identifier)) {
-        const href = `/${langPath}/${pkgSlug}/${identifier}`;
+        const symbolPath = knownSymbols.get(identifier)!;
+        const href = `/${langPath}/${pkgSlug}/${symbolPath}`;
         tokens.push({ type: "type-link", value: identifier, href });
       }
       // Check if it's a built-in type with external documentation

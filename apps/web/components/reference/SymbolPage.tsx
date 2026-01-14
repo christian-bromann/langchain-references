@@ -1123,7 +1123,7 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
 
   let symbol: DisplaySymbol | null = null;
   let irSymbolForMarkdown: SymbolRecord | null = null;
-  let knownSymbols = new Set<string>();
+  let knownSymbols = new Map<string, string>();
 
   if (buildId) {
     // OPTIMIZATION: avoid `lookup.json` (can be >2MB). Use routing map for known symbols.
@@ -1138,9 +1138,10 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
       : null;
 
     if (routingMap?.slugs) {
-      for (const entry of Object.values(routingMap.slugs)) {
+      for (const [slug, entry] of Object.entries(routingMap.slugs)) {
         if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
-          knownSymbols.add(entry.title);
+          // Map symbol name to its URL path (slug)
+          knownSymbols.set(entry.title, slug);
         }
       }
     }
@@ -1308,14 +1309,14 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
     // Skip the current package
     if (pkg.slug === currentPkgSlug) continue;
 
-    for (const symbolName of pkg.knownSymbols) {
+    for (const [symbolName, symbolPath] of pkg.knownSymbols) {
       // Skip if already in current package's known symbols (local takes precedence)
       if (knownSymbols.has(symbolName)) continue;
 
       // Skip if already mapped (first package wins for same symbol name)
       if (typeUrlMap.has(symbolName)) continue;
 
-      typeUrlMap.set(symbolName, `/${langPath}/${pkg.slug}/${symbolName}`);
+      typeUrlMap.set(symbolName, `/${langPath}/${pkg.slug}/${symbolPath}`);
     }
   }
 
@@ -1591,7 +1592,7 @@ function TypeReferenceDisplay({
   typeUrlMap,
 }: {
   typeStr: string;
-  knownSymbols: Set<string>;
+  knownSymbols: Map<string, string>;
   language: UrlLanguage;
   packageName: string;
   /** Map of type names to their resolved URLs (for cross-project linking) */
@@ -1619,7 +1620,8 @@ function TypeReferenceDisplay({
     if (knownSymbols.has(typeName)) {
       const langPath = language === "python" ? "python" : "javascript";
       const pkgSlug = slugifyPackageName(packageName);
-      const href = `/${langPath}/${pkgSlug}/${typeName}`;
+      const symbolPath = knownSymbols.get(typeName)!;
+      const href = `/${langPath}/${pkgSlug}/${symbolPath}`;
 
       parts.push(
         <Link
@@ -1686,7 +1688,7 @@ async function Section({
 }: {
   section: DocSection;
   language: UrlLanguage;
-  knownSymbols: Set<string>;
+  knownSymbols: Map<string, string>;
   packageName: string;
   /** Map of type names to their resolved URLs (for cross-project linking) */
   typeUrlMap?: Map<string, string>;

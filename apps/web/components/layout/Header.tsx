@@ -42,22 +42,22 @@ export function Header() {
           <div className="h-full relative flex-1 flex items-center gap-x-4 min-w-0 lg:border-none">
             <div className="flex-1 flex items-center gap-x-4">
               <Link href="/" className="flex items-center">
-                <span className="sr-only">Docs by LangChain home page</span>
-                {/* Light mode logo (teal) */}
+                <span className="sr-only">LangChain Reference home page</span>
+                {/* Light mode logo */}
                 <Image
-                  src="/langchain-docs-teal.svg"
-                  alt="LangChain Docs"
-                  width={265}
-                  height={32}
+                  src="/reference-light.svg"
+                  alt="LangChain Reference"
+                  width={332}
+                  height={38}
                   className="w-auto h-6 relative object-contain block dark:hidden"
                   priority
                 />
-                {/* Dark mode logo (lilac) */}
+                {/* Dark mode logo */}
                 <Image
-                  src="/langchain-docs-lilac.svg"
-                  alt="LangChain Docs"
-                  width={265}
-                  height={32}
+                  src="/reference-dark.svg"
+                  alt="LangChain Reference"
+                  width={332}
+                  height={38}
                   className="w-auto h-6 relative object-contain hidden dark:block"
                   priority
                 />

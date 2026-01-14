@@ -14,6 +14,12 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // Exclude ir-output directory from file tracing to avoid Turbopack warnings
+  // The ir-output directory is only used for local development
+  outputFileTracingExcludes: {
+    "*": ["../../ir-output/**"],
+  },
+
   // Experimental features
   experimental: {
     // Enable server actions

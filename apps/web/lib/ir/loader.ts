@@ -761,11 +761,8 @@ export async function getPackagesForLanguage(
  */
 function getLocalIrBasePath(): string {
   // From apps/web, go up to the root and into ir-output
-  // Using dynamic path construction to avoid Turbopack static file pattern analysis
-  // (Turbopack would otherwise try to bundle all files matching the pattern)
   const path = require("path");
-  const irFolder = ["ir", "output"].join("-");
-  return path.join(process.cwd(), "..", "..", irFolder);
+  return path.join(process.cwd(), "..", "..", "ir-output");
 }
 
 /**
@@ -1572,8 +1569,8 @@ export interface CrossProjectPackage {
   slug: string;
   /** Language of the package */
   language: "python" | "javascript";
-  /** Set of known symbol names in this package */
-  knownSymbols: Set<string>;
+  /** Map of symbol names to their URL paths in this package */
+  knownSymbols: Map<string, string>;
 }
 
 /**
@@ -1631,21 +1628,20 @@ export async function getCrossProjectPackages(
       // slow navigations). The routing map is significantly smaller and still
       // contains enough info for type-linking (public, routable symbols).
       const routingMap = await getRoutingMapData(buildId, pkg.packageId, pkg.displayName, irLanguage);
-      const knownSymbolNames = routingMap?.slugs
-        ? Array.from(
-            new Set(
-              Object.values(routingMap.slugs)
-                .filter((s) => ["class", "interface", "typeAlias", "enum"].includes(s.kind))
-                .map((s) => s.title)
-                .filter(Boolean)
-            )
-          )
-        : [];
+      const knownSymbolMap = new Map<string, string>();
+      if (routingMap?.slugs) {
+        for (const [slug, entry] of Object.entries(routingMap.slugs)) {
+          if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
+            // Map symbol name to its URL path (slug)
+            knownSymbolMap.set(entry.title, slug);
+          }
+        }
+      }
 
       packages.set(modulePrefix, {
         slug: modulePrefix,
         language,
-        knownSymbols: new Set(knownSymbolNames),
+        knownSymbols: knownSymbolMap,
       });
 
       // Also add the original published name as a key for lookups
@@ -1653,7 +1649,7 @@ export async function getCrossProjectPackages(
         packages.set(pkg.publishedName, {
           slug: modulePrefix,
           language,
-          knownSymbols: new Set(knownSymbolNames),
+          knownSymbols: knownSymbolMap,
         });
       }
     }
@@ -1693,7 +1689,8 @@ export async function resolveTypeReferenceUrl(
 
     if (pkg && pkg.knownSymbols.has(typeName)) {
       const langPath = language === "python" ? "python" : "javascript";
-      return `/${langPath}/${pkg.slug}/${typeName}`;
+      const symbolPath = pkg.knownSymbols.get(typeName)!;
+      return `/${langPath}/${pkg.slug}/${symbolPath}`;
     }
   }
 
