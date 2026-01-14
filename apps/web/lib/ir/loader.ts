@@ -7,6 +7,7 @@
  * - Development: Reads from local ir-output directory
  */
 
+import { unstable_cache } from "next/cache";
 import type { Manifest, Package, SymbolRecord, RoutingMap } from "./types";
 
 const IR_BASE_PATH = "ir";
@@ -1574,26 +1575,29 @@ export interface CrossProjectPackage {
 }
 
 /**
- * Cache for cross-project packages
+ * Cache for cross-project packages (in-memory, per-worker)
  */
 const crossProjectPackageCache = new Map<string, Map<string, CrossProjectPackage>>();
 
 /**
- * Get all packages across all projects for cross-referencing.
- * Returns a map of module prefixes to package info.
- *
- * For Python: maps "langchain_core" -> { slug: "langchain_core", language: "python", knownSymbols }
- * For JS: maps "@langchain/core" -> { slug: "langchain_core", language: "javascript", knownSymbols }
+ * Serializable version of CrossProjectPackage for Next.js data cache.
+ * Maps cannot be cached, so we use arrays of [key, value] pairs.
  */
-export async function getCrossProjectPackages(
-  language: "python" | "javascript"
-): Promise<Map<string, CrossProjectPackage>> {
-  const cacheKey = language;
-  if (crossProjectPackageCache.has(cacheKey)) {
-    return crossProjectPackageCache.get(cacheKey)!;
-  }
+interface SerializableCrossProjectPackage {
+  slug: string;
+  language: "python" | "javascript";
+  /** Array of [symbolName, urlPath] pairs (serializable form of knownSymbols Map) */
+  knownSymbols: [string, string][];
+}
 
-  const packages = new Map<string, CrossProjectPackage>();
+/**
+ * Internal function to fetch cross-project packages data.
+ * Returns serializable data structure for caching.
+ */
+async function fetchCrossProjectPackagesData(
+  language: "python" | "javascript"
+): Promise<[string, SerializableCrossProjectPackage][]> {
+  const packages: [string, SerializableCrossProjectPackage][] = [];
 
   // Import projects dynamically to avoid circular dependencies
   const { getEnabledProjects } = await import("@/lib/config/projects");
@@ -1611,7 +1615,6 @@ export async function getCrossProjectPackages(
     if (!manifest) continue;
 
     const ecosystem = language === "python" ? "python" : "javascript";
-
     const irLanguage = language === "python" ? "python" : "typescript";
 
     for (const pkg of manifest.packages) {
@@ -1628,33 +1631,82 @@ export async function getCrossProjectPackages(
       // slow navigations). The routing map is significantly smaller and still
       // contains enough info for type-linking (public, routable symbols).
       const routingMap = await getRoutingMapData(buildId, pkg.packageId, pkg.displayName, irLanguage);
-      const knownSymbolMap = new Map<string, string>();
+      const knownSymbols: [string, string][] = [];
       if (routingMap?.slugs) {
         for (const [slug, entry] of Object.entries(routingMap.slugs)) {
           if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
             // Map symbol name to its URL path (slug)
-            knownSymbolMap.set(entry.title, slug);
+            knownSymbols.push([entry.title, slug]);
           }
         }
       }
 
-      packages.set(modulePrefix, {
+      const serializedPackage: SerializableCrossProjectPackage = {
         slug: modulePrefix,
         language,
-        knownSymbols: knownSymbolMap,
-      });
+        knownSymbols,
+      };
+
+      packages.push([modulePrefix, serializedPackage]);
 
       // Also add the original published name as a key for lookups
       if (pkg.publishedName !== modulePrefix) {
-        packages.set(pkg.publishedName, {
-          slug: modulePrefix,
-          language,
-          knownSymbols: knownSymbolMap,
-        });
+        packages.push([pkg.publishedName, serializedPackage]);
       }
     }
   }
 
+  return packages;
+}
+
+/**
+ * Cached version of fetchCrossProjectPackagesData.
+ * Uses Next.js unstable_cache to persist data across function invocations.
+ * Revalidates every hour to pick up new builds.
+ */
+const getCachedCrossProjectPackagesData = unstable_cache(
+  fetchCrossProjectPackagesData,
+  ["cross-project-packages"],
+  {
+    revalidate: 3600, // 1 hour
+    tags: ["cross-project-packages"],
+  }
+);
+
+/**
+ * Get all packages across all projects for cross-referencing.
+ * Returns a map of module prefixes to package info.
+ *
+ * For Python: maps "langchain_core" -> { slug: "langchain_core", language: "python", knownSymbols }
+ * For JS: maps "@langchain/core" -> { slug: "langchain_core", language: "javascript", knownSymbols }
+ *
+ * OPTIMIZATION: Uses Next.js unstable_cache to persist cross-project data
+ * across serverless function invocations, eliminating repeated blob fetches
+ * on cold starts.
+ */
+export async function getCrossProjectPackages(
+  language: "python" | "javascript"
+): Promise<Map<string, CrossProjectPackage>> {
+  // Check in-memory cache first (fastest path for same-request reuse)
+  const cacheKey = language;
+  if (crossProjectPackageCache.has(cacheKey)) {
+    return crossProjectPackageCache.get(cacheKey)!;
+  }
+
+  // Fetch from Next.js data cache (persists across invocations)
+  const cachedData = await getCachedCrossProjectPackagesData(language);
+
+  // Convert serialized data back to Map structure
+  const packages = new Map<string, CrossProjectPackage>();
+  for (const [key, serialized] of cachedData) {
+    packages.set(key, {
+      slug: serialized.slug,
+      language: serialized.language,
+      knownSymbols: new Map(serialized.knownSymbols),
+    });
+  }
+
+  // Store in in-memory cache for same-request reuse
   crossProjectPackageCache.set(cacheKey, packages);
   return packages;
 }
