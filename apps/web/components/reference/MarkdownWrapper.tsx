@@ -8,6 +8,8 @@
  */
 
 import { useEffect, useRef } from "react";
+// Import markdown-specific styles only where needed to reduce critical CSS
+import "@/app/markdown.css";
 
 interface MarkdownWrapperProps {
   html: string;

@@ -29,6 +29,8 @@ const nextConfig: NextConfig = {
     // Inline critical CSS to reduce render-blocking resources
     // This uses Critters to extract and inline above-the-fold CSS
     optimizeCss: true,
+    // Enable strict CSS chunking to ensure CSS is split per route
+    cssChunking: "strict",
     // Tree-shake icon libraries to reduce bundle size
     optimizePackageImports: ["lucide-react"],
   },
