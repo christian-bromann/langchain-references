@@ -234,3 +234,27 @@
   background-color: var(--bg-secondary);
   border-color: var(--border-light);
 }
+
+/* =========================================
+   Admonition Headers - MkDocs Material style
+   ========================================= */
+
+.markdown-content .admonition-header {
+  font-size: 0.9375rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.markdown-content .admonition-header svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Content following admonition header gets slightly indented */
+.markdown-content .admonition-header + p,
+.markdown-content .admonition-header + table,
+.markdown-content .admonition-header + ul,
+.markdown-content .admonition-header + ol,
+.markdown-content .admonition-header + pre {
+  margin-top: 0.75rem;
+}
