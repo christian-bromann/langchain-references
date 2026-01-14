@@ -2,14 +2,14 @@
 /**
  * Upload IR Command
  *
- * Uploads IR artifacts from a local directory to Vercel Blob storage.
+ * Uploads IR artifacts for a single package to Vercel Blob storage.
  * This is a standalone CLI wrapper for the uploadIR function.
  *
  * Usage:
- *   upload-ir --build-id <buildId> --ir-path <path>
+ *   upload-ir --build-id <buildId> --ir-path <path> --package-id <packageId>
  *
  * Example:
- *   upload-ir --build-id abc123 --ir-path ./ir-output/abc123
+ *   upload-ir --build-id abc123 --ir-path ./ir-output/packages/pkg_py_langchain_openai/abc123 --package-id pkg_py_langchain_openai
  */
 
 import { Command } from "commander";
@@ -20,12 +20,14 @@ async function main(): Promise<void> {
 
   program
     .name("upload-ir")
-    .description("Upload IR artifacts to Vercel Blob storage")
+    .description("Upload IR artifacts for a package to Vercel Blob storage")
     .requiredOption("--build-id <buildId>", "Build ID for the artifacts")
     .requiredOption("--ir-path <path>", "Path to the IR output directory")
+    .requiredOption("--package-id <packageId>", "Package ID (e.g., pkg_py_langchain_openai)")
     .option("--dry-run", "Print what would be uploaded without making changes")
-    .action(async (options: { buildId: string; irPath: string; dryRun?: boolean }) => {
-      console.log(`\n☁️ Uploading IR artifacts for build: ${options.buildId}`);
+    .action(async (options: { buildId: string; irPath: string; packageId: string; dryRun?: boolean }) => {
+      console.log(`\n☁️ Uploading IR artifacts for package: ${options.packageId}`);
+      console.log(`   Build ID: ${options.buildId}`);
       console.log(`   Source path: ${options.irPath}`);
 
       if (options.dryRun) {
@@ -36,6 +38,8 @@ async function main(): Promise<void> {
         const result = await uploadIR({
           buildId: options.buildId,
           irOutputPath: options.irPath,
+          packageLevel: true,
+          packageId: options.packageId,
           dryRun: options.dryRun || false,
         });
 

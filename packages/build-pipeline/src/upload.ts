@@ -23,6 +23,10 @@ export interface UploadOptions {
   buildId: string;
   irOutputPath: string;
   dryRun?: boolean;
+  /** Enable package-level upload (new structure) */
+  packageLevel?: boolean;
+  /** Package ID for package-level uploads */
+  packageId?: string;
 }
 
 export interface UploadResult {
@@ -160,51 +164,6 @@ interface SymbolLookupEntry {
   id: string;
   kind: string;
   name: string;
-}
-
-/**
- * Symbol lookup index - maps qualifiedName to symbol info for efficient lookups
- */
-interface SymbolLookupIndex {
-  packageId: string;
-  symbolCount: number;
-  // Map of qualifiedName -> { id, kind, name }
-  symbols: Record<string, SymbolLookupEntry>;
-  // List of linkable symbol names (for type linking in UI)
-  knownSymbols: string[];
-}
-
-/**
- * Generate a symbol lookup index for efficient single-symbol fetching.
- * This is a small file (~50-100KB) that maps qualifiedName -> symbolId.
- */
-function generateSymbolLookupIndex(
-  packageId: string,
-  symbols: SymbolRecord[]
-): SymbolLookupIndex {
-  const symbolMap: Record<string, SymbolLookupEntry> = {};
-  const knownSymbols: string[] = [];
-  const linkableKinds = ["class", "interface", "typeAlias", "enum"];
-
-  for (const symbol of symbols) {
-    symbolMap[symbol.qualifiedName] = {
-      id: symbol.id,
-      kind: symbol.kind,
-      name: symbol.name,
-    };
-
-    // Track linkable symbol names for type linking
-    if (linkableKinds.includes(symbol.kind)) {
-      knownSymbols.push(symbol.name);
-    }
-  }
-
-  return {
-    packageId,
-    symbolCount: symbols.length,
-    symbols: symbolMap,
-    knownSymbols: [...new Set(knownSymbols)], // Dedupe
-  };
 }
 
 /**
@@ -568,9 +527,30 @@ function addToChangelogShard(
  * Upload all IR artifacts for a build.
  */
 export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
-  const { buildId, irOutputPath, dryRun = false } = options;
+  const { packageLevel, packageId } = options;
 
-  console.log(`\n☁️  Uploading IR artifacts for build ${buildId}`);
+  if (!packageLevel || !packageId) {
+    throw new Error("Package-level uploads require packageLevel: true and packageId");
+  }
+
+  return uploadPackageIR(options);
+}
+
+/**
+ * Upload IR artifacts for a single package with package-level structure.
+ * 
+ * New blob structure: ir/packages/{packageId}/{buildId}/...
+ * This allows independent package updates without affecting other packages.
+ */
+async function uploadPackageIR(options: UploadOptions): Promise<UploadResult> {
+  const { buildId, irOutputPath, dryRun = false, packageId } = options;
+
+  if (!packageId) {
+    throw new Error("packageId is required for package-level uploads");
+  }
+
+  console.log(`\n☁️  Uploading package IR artifacts for ${packageId}`);
+  console.log(`   Build ID: ${buildId}`);
   console.log(`   Concurrency: ${MAX_CONCURRENT_UPLOADS} parallel uploads`);
   if (dryRun) {
     console.log("   (dry-run mode - no actual uploads)\n");
@@ -579,190 +559,142 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
   let filesUploaded = 0;
   let totalSize = 0;
 
-  // Load manifest
-  const manifestPath = path.join(irOutputPath, "reference.manifest.json");
-  const manifestContent = await fs.readFile(manifestPath, "utf-8");
-  const manifest: Manifest = JSON.parse(manifestContent);
+  // For package-level builds, symbols.json is directly in irOutputPath
+  const symbolsPath = path.join(irOutputPath, "symbols.json");
+  let symbols: SymbolRecord[] = [];
 
-  // Upload manifest first (single file, quick)
-  console.log("\n📄 Uploading manifest...");
-  const manifestResult = await uploadFile(
-    `ir/${buildId}/reference.manifest.json`,
-    manifestContent,
-    dryRun
-  );
-  filesUploaded++;
-  totalSize += manifestResult.size;
-  console.log("   ✓ Manifest uploaded");
+  try {
+    const symbolsContent = await fs.readFile(symbolsPath, "utf-8");
+    const parsed = JSON.parse(symbolsContent);
+    symbols = Array.isArray(parsed) ? parsed : (parsed.symbols || []);
+  } catch {
+    console.log(`   ⚠️  No symbols file found at ${symbolsPath}`);
+    return { buildId, uploadedAt: new Date().toISOString(), files: 0, totalSize: 0 };
+  }
 
-  // Collect all upload tasks
-  console.log("\n📦 Preparing upload tasks...");
+  console.log(`   📦 ${packageId}: ${symbols.length} symbols`);
+
+  // Base path for package-level storage: ir/packages/{packageId}/{buildId}/
+  const basePath = `ir/packages/${packageId}/${buildId}`;
+
   const uploadTasks: UploadTask[] = [];
-  const packageSymbolCounts: Map<string, number> = new Map();
 
-  for (const pkg of manifest.packages) {
-    // Load symbols for this package
-    const symbolsPath = path.join(irOutputPath, "packages", pkg.packageId, "symbols.json");
-    let symbols: SymbolRecord[] = [];
-
-    try {
-      const symbolsContent = await fs.readFile(symbolsPath, "utf-8");
-      const parsed = JSON.parse(symbolsContent);
-      // Handle both formats: { symbols: [...] } or just [...]
-      symbols = Array.isArray(parsed) ? parsed : (parsed.symbols || []);
-    } catch {
-      console.log(`   ⚠️  No symbols file found for ${pkg.packageId}`);
-      continue;
-    }
-
-    packageSymbolCounts.set(pkg.displayName, symbols.length);
-
-    // Add package-level symbols.json (used by getPackageSymbols and getSymbolByPath)
+  // Upload package.json (package info, replaces manifest for package-level)
+  const packageInfoPath = path.join(irOutputPath, "package.json");
+  try {
+    const packageInfoContent = await fs.readFile(packageInfoPath, "utf-8");
     uploadTasks.push({
-      blobPath: `ir/${buildId}/packages/${pkg.packageId}/symbols.json`,
-      content: JSON.stringify({ symbols }, null, 2),
+      blobPath: `${basePath}/package.json`,
+      content: packageInfoContent,
     });
+  } catch {
+    // Package info is optional
+  }
 
-    // Add routing map task
-    const routingMap = generateRoutingMap(
-      pkg.packageId,
-      pkg.displayName,
-      pkg.language,
-      symbols
-    );
+  // Upload symbols.json
+  uploadTasks.push({
+    blobPath: `${basePath}/symbols.json`,
+    content: JSON.stringify({ symbols }, null, 2),
+  });
+
+  // Get language from package info or infer from packageId
+  const language = packageId.startsWith("pkg_py_") ? "python" : "typescript";
+
+  // Generate and upload routing map
+  // For package-level, we need displayName from package.json
+  let displayName = packageId;
+  try {
+    const packageInfoContent = await fs.readFile(packageInfoPath, "utf-8");
+    const packageInfo = JSON.parse(packageInfoContent);
+    displayName = packageInfo.displayName || packageInfo.publishedName || packageId;
+  } catch {
+    // Use packageId as fallback
+  }
+
+  const routingMap = generateRoutingMap(
+    packageId,
+    displayName,
+    language as "python" | "typescript",
+    symbols
+  );
+  uploadTasks.push({
+    blobPath: `${basePath}/routing.json`,
+    content: JSON.stringify(routingMap, null, 2),
+  });
+
+  // Generate and upload sharded lookup index
+  const { index: lookupIndex, shards: lookupShards } = generateShardedLookupIndex(packageId, symbols);
+  uploadTasks.push({
+    blobPath: `${basePath}/lookup/index.json`,
+    content: JSON.stringify(lookupIndex),
+  });
+  for (const [shardKey, shardData] of lookupShards) {
     uploadTasks.push({
-      blobPath: `ir/${buildId}/routing/${pkg.language}/${pkg.packageId}.json`,
-      content: JSON.stringify(routingMap, null, 2),
+      blobPath: `${basePath}/lookup/${shardKey}.json`,
+      content: JSON.stringify(shardData),
     });
+  }
 
-    // Add SHARDED symbol lookup index (replaces monolithic lookup.json)
-    const { index: lookupIndex, shards: lookupShards } = generateShardedLookupIndex(pkg.packageId, symbols);
-
-    // Upload lookup index manifest
+  // Generate and upload sharded catalog
+  const { index: catalogIndex, shards: catalogShards } = generateShardedCatalog(packageId, symbols);
+  uploadTasks.push({
+    blobPath: `${basePath}/catalog/index.json`,
+    content: JSON.stringify(catalogIndex),
+  });
+  for (const [shardKey, shardData] of catalogShards) {
     uploadTasks.push({
-      blobPath: `ir/${buildId}/packages/${pkg.packageId}/lookup/index.json`,
-      content: JSON.stringify(lookupIndex),
+      blobPath: `${basePath}/catalog/${shardKey}.json`,
+      content: JSON.stringify(shardData),
     });
+  }
 
-    // Upload lookup shards
-    for (const [shardKey, shardData] of lookupShards) {
+  // Upload individual symbols (sharded)
+  const shards = shardSymbols(symbols);
+  for (const [shardKey, shardSymbolList] of shards) {
+    for (const symbol of shardSymbolList) {
       uploadTasks.push({
-        blobPath: `ir/${buildId}/packages/${pkg.packageId}/lookup/${shardKey}.json`,
+        blobPath: `${basePath}/symbols/${shardKey}/${symbol.id}.json`,
+        content: JSON.stringify(symbol, null, 2),
+      });
+    }
+  }
+
+  // Upload changelog if it exists
+  const changelogPath = path.join(irOutputPath, "changelog.json");
+  let changelogContent: string | null = null;
+  try {
+    changelogContent = await fs.readFile(changelogPath, "utf-8");
+    const changelog: PackageChangelog = JSON.parse(changelogContent);
+
+    // Generate sharded changelog
+    const { index: changelogIndex, shards: changelogShards } = generateShardedChangelog(changelog);
+    uploadTasks.push({
+      blobPath: `${basePath}/changelog/index.json`,
+      content: JSON.stringify(changelogIndex),
+    });
+    for (const [shardKey, shardData] of changelogShards) {
+      uploadTasks.push({
+        blobPath: `${basePath}/changelog/${shardKey}.json`,
         content: JSON.stringify(shardData),
       });
     }
 
-    // Also upload legacy lookup.json for backward compatibility (can be removed later)
-    const legacyLookupIndex = generateSymbolLookupIndex(pkg.packageId, symbols);
-    uploadTasks.push({
-      blobPath: `ir/${buildId}/packages/${pkg.packageId}/lookup.json`,
-      content: JSON.stringify(legacyLookupIndex),
-    });
-
-    // Add SHARDED catalog for package overview pages
-    const { index: catalogIndex, shards: catalogShards } = generateShardedCatalog(pkg.packageId, symbols);
-
-    // Upload catalog index manifest
-    uploadTasks.push({
-      blobPath: `ir/${buildId}/packages/${pkg.packageId}/catalog/index.json`,
-      content: JSON.stringify(catalogIndex),
-    });
-
-    // Upload catalog shards
-    for (const [shardKey, shardData] of catalogShards) {
-      uploadTasks.push({
-        blobPath: `ir/${buildId}/packages/${pkg.packageId}/catalog/${shardKey}.json`,
-        content: JSON.stringify(shardData),
-      });
-    }
-
-    // Add individual symbol tasks (sharded for efficient single-symbol lookups)
-    const shards = shardSymbols(symbols);
-    for (const [shardKey, shardSymbols] of shards) {
-      for (const symbol of shardSymbols) {
-        uploadTasks.push({
-          blobPath: `ir/${buildId}/symbols/${shardKey}/${symbol.id}.json`,
-          content: JSON.stringify(symbol, null, 2),
-        });
-      }
-    }
-
-    // Add SHARDED changelog if it exists (generated with --with-versions)
-    const changelogPath = path.join(irOutputPath, "packages", pkg.packageId, "changelog.json");
-    try {
-      const changelogContent = await fs.readFile(changelogPath, "utf-8");
-      const changelog: PackageChangelog = JSON.parse(changelogContent);
-
-      // Generate sharded changelog
-      const { index: changelogIndex, shards: changelogShards } = generateShardedChangelog(changelog);
-
-      // Upload changelog index manifest
-      uploadTasks.push({
-        blobPath: `ir/${buildId}/packages/${pkg.packageId}/changelog/index.json`,
-        content: JSON.stringify(changelogIndex),
-      });
-
-      // Upload changelog shards
-      for (const [shardKey, shardData] of changelogShards) {
-        uploadTasks.push({
-          blobPath: `ir/${buildId}/packages/${pkg.packageId}/changelog/${shardKey}.json`,
-          content: JSON.stringify(shardData),
-        });
-      }
-
-      // Also upload legacy changelog.json for backward compatibility (can be removed later)
-      uploadTasks.push({
-        blobPath: `ir/${buildId}/packages/${pkg.packageId}/changelog.json`,
-        content: changelogContent,
-      });
-    } catch {
-      // No changelog file - skip
-    }
-
-    // Add versions.json if it exists (generated with --with-versions)
-    const versionsPath = path.join(irOutputPath, "packages", pkg.packageId, "versions.json");
-    try {
-      const versionsContent = await fs.readFile(versionsPath, "utf-8");
-      uploadTasks.push({
-        blobPath: `ir/${buildId}/packages/${pkg.packageId}/versions.json`,
-        content: versionsContent,
-      });
-    } catch {
-      // No versions file - skip
-    }
+  } catch {
+    // No changelog file - skip
   }
 
-  // Add search index tasks
-  for (const language of ["python", "typescript"] as const) {
-    const languageSymbols: SymbolRecord[] = [];
-
-    for (const p of manifest.packages.filter((p) => p.language === language)) {
-      try {
-        const symbolsPath = path.join(irOutputPath, "packages", p.packageId, "symbols.json");
-        const content = await fs.readFile(symbolsPath, "utf-8");
-        const parsed = JSON.parse(content);
-        // Handle both formats: { symbols: [...] } or just [...]
-        const symbols = Array.isArray(parsed) ? parsed : (parsed.symbols || []);
-        languageSymbols.push(...symbols);
-      } catch {
-        // Skip packages without symbols
-      }
-    }
-
-    if (languageSymbols.length === 0) continue;
-
-    const searchIndex = generateSearchIndex(buildId, language, languageSymbols);
+  // Upload versions.json if it exists
+  const versionsPath = path.join(irOutputPath, "versions.json");
+  try {
+    const versionsContent = await fs.readFile(versionsPath, "utf-8");
     uploadTasks.push({
-      blobPath: `ir/${buildId}/search/${language}.json`,
-      content: JSON.stringify(searchIndex),
+      blobPath: `${basePath}/versions.json`,
+      content: versionsContent,
     });
+  } catch {
+    // No versions file - skip
   }
 
-  // Log summary
-  console.log(`   Packages: ${packageSymbolCounts.size}`);
-  for (const [pkgName, count] of packageSymbolCounts) {
-    console.log(`     - ${pkgName}: ${count} symbols`);
-  }
   console.log(`   Total upload tasks: ${uploadTasks.length}`);
 
   // Upload all files in parallel
@@ -774,7 +706,6 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
     uploadTasks,
     dryRun,
     (completed, total) => {
-      // Log progress every 10% or every 100 files
       const progress = Math.floor((completed / total) * 100);
       if (progress >= lastProgressLog + 10 || completed === total) {
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -790,7 +721,7 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
   const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
   const uploadedAt = new Date().toISOString();
 
-  console.log(`\n✅ Upload complete!`);
+  console.log(`\n✅ Package upload complete!`);
   console.log(`   Files: ${filesUploaded}`);
   console.log(`   Total size: ${(totalSize / 1024).toFixed(1)} KB`);
   console.log(`   Time: ${totalTime}s`);

@@ -160,10 +160,12 @@ async function customBuild() {
 
   // Run your custom extraction logic...
 
-  // Upload results
+  // Upload results (package-level)
   await uploadIR({
     buildId: "my-build-id",
-    irOutputPath: "./ir-output/my-build-id",
+    irOutputPath: "./ir-output/packages/pkg_py_langchain_openai/my-build-id",
+    packageLevel: true,
+    packageId: "pkg_py_langchain_openai",
   });
 }
 ```

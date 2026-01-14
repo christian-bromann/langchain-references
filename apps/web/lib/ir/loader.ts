@@ -179,6 +179,44 @@ interface LatestLanguagePointer {
 }
 
 /**
+ * Package pointer for package-level builds.
+ * Path: pointers/packages/{ecosystem}/{packageName}.json
+ */
+interface PackagePointer {
+  buildId: string;
+  version: string;
+  sha: string;
+  repo: string;
+  updatedAt: string;
+  stats: {
+    total: number;
+    classes?: number;
+    functions?: number;
+    types?: number;
+  };
+}
+
+/**
+ * Project package index - aggregates all package pointers for a project/language.
+ * Path: pointers/index-{project}-{language}.json
+ */
+interface ProjectPackageIndex {
+  project: string;
+  language: "python" | "javascript";
+  updatedAt: string;
+  packages: Record<string, {
+    buildId: string;
+    version: string;
+    sha: string;
+  }>;
+}
+
+// Cache for package-level data
+const packagePointerCache = new Map<string, PackagePointer>();
+const projectPackageIndexCache = new Map<string, ProjectPackageIndex>();
+const packageSymbolsCacheV2 = new Map<string, { symbols: SymbolRecord[]; total: number }>();
+
+/**
  * Fetch a pointer JSON from Vercel Blob (public access) with retry logic
  *
  * Uses in-memory cache for deduplication. Pointers are small files
@@ -275,6 +313,117 @@ export async function getLatestBuildIdForLanguage(
     console.error(`Failed to get latest ${project} ${language} build ID:`, error);
     return null;
   }
+}
+
+// =============================================================================
+// PACKAGE-LEVEL BUILD SUPPORT
+// =============================================================================
+
+/**
+ * Get the package pointer for a specific package.
+ * This is the new package-level pointer that allows independent package updates.
+ * 
+ * Path: pointers/packages/{ecosystem}/{packageName}.json
+ */
+export async function getPackagePointer(
+  ecosystem: "python" | "javascript",
+  packageName: string
+): Promise<PackagePointer | null> {
+  const cacheKey = `${ecosystem}:${packageName}`;
+  if (packagePointerCache.has(cacheKey)) {
+    return packagePointerCache.get(cacheKey)!;
+  }
+
+  try {
+    const pointerName = `packages/${ecosystem}/${packageName}`;
+    const pointer = await fetchPointer<PackagePointer>(pointerName);
+    if (pointer) {
+      packagePointerCache.set(cacheKey, pointer);
+    }
+    return pointer;
+  } catch (error) {
+    console.error(`Failed to get package pointer for ${ecosystem}/${packageName}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get the build ID for a specific package.
+ * Uses the new package-level pointer system.
+ */
+export async function getPackageBuildId(
+  ecosystem: "python" | "javascript",
+  packageName: string
+): Promise<string | null> {
+  const pointer = await getPackagePointer(ecosystem, packageName);
+  return pointer?.buildId || null;
+}
+
+/**
+ * Get the project package index.
+ * This aggregates all package pointers for a project/language.
+ * 
+ * Path: pointers/index-{project}-{language}.json
+ */
+export async function getProjectPackageIndex(
+  project: string,
+  language: "python" | "javascript"
+): Promise<ProjectPackageIndex | null> {
+  const cacheKey = `${project}:${language}`;
+  if (projectPackageIndexCache.has(cacheKey)) {
+    return projectPackageIndexCache.get(cacheKey)!;
+  }
+
+  try {
+    const pointerName = `index-${project}-${language}`;
+    const index = await fetchPointer<ProjectPackageIndex>(pointerName);
+    if (index) {
+      projectPackageIndexCache.set(cacheKey, index);
+    }
+    return index;
+  } catch (error) {
+    console.error(`Failed to get project package index for ${project}-${language}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get package symbols using the package-level path structure.
+ * 
+ * Path: ir/packages/{packageId}/{buildId}/symbols.json
+ */
+export async function getPackageSymbolsV2(
+  packageId: string,
+  buildId?: string
+): Promise<{ symbols: SymbolRecord[]; total: number } | null> {
+  // If no buildId provided, try to get it from the package pointer
+  let actualBuildId = buildId;
+  if (!actualBuildId) {
+    const ecosystem = packageId.startsWith("pkg_py_") ? "python" : "javascript";
+    // Extract package name from packageId (e.g., pkg_py_langchain_openai -> langchain_openai)
+    const packageName = packageId.replace(/^pkg_(py|js)_/, "").replace(/_/g, "-");
+    actualBuildId = await getPackageBuildId(ecosystem, packageName) || undefined;
+  }
+
+  if (!actualBuildId) {
+    return null;
+  }
+
+  const cacheKey = `${packageId}:${actualBuildId}`;
+  if (packageSymbolsCacheV2.has(cacheKey)) {
+    return packageSymbolsCacheV2.get(cacheKey)!;
+  }
+
+  const blobPath = `${IR_BASE_PATH}/packages/${packageId}/${actualBuildId}/symbols.json`;
+  const response = await fetchBlobJson<{ symbols: SymbolRecord[] }>(blobPath);
+
+  if (!response?.symbols) {
+    return null;
+  }
+
+  const result = { symbols: response.symbols, total: response.symbols.length };
+  packageSymbolsCacheV2.set(cacheKey, result);
+  return result;
 }
 
 /**

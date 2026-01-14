@@ -403,7 +403,7 @@ jobs:
           cd packages/extractor-python
           pip install -e .
 
-      - name: Build IR for ${{ matrix.package }}
+      - name: Build and Upload IR for ${{ matrix.package }}
         id: build
         if: steps.check-existing.outputs.needs_compile == 'true'
         run: |
@@ -425,18 +425,19 @@ jobs:
           fi
 
           # Run via tsx directly with package filter for parallel execution
-          # Skip upload here - we'll do a combined upload later
+          # Package-level builds upload directly - no merge step needed!
+          # Still skip pointers - project index is updated at the end
           npx tsx packages/build-pipeline/src/commands/build-ir.ts \
             --config ./configs/${{ matrix.config }} \
             --package "${{ matrix.package }}" \
             --skip-pointers \
-            --skip-upload \
             $FLAGS
 
           echo "compiled=true" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BLOB_BASE_URL: ${{ secrets.BLOB_BASE_URL }}
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
 
       - name: Check result
         id: check-result
@@ -466,11 +467,13 @@ jobs:
           if-no-files-found: ignore
 
   # ============================================================================
-  # Step 4: Upload and update pointers (only if something was compiled)
+  # Step 4: Update project indexes (after all package builds complete)
   # ============================================================================
-  upload-and-update:
-    name: Upload & Update Pointers
-    needs: [download-blob, matrix, build]
+  # With package-level builds, each package uploads directly during its build job.
+  # This job just regenerates the project package indexes to include all packages.
+  update-indexes:
+    name: Update Project Indexes
+    needs: [matrix, build]
     runs-on: ubuntu-latest
     # Run if build succeeded (even if some were skipped)
     if: ${{ !cancelled() && needs.build.result == 'success' }}
@@ -493,226 +496,51 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Download blob cache
-        if: ${{ github.event.inputs.full_rebuild != 'true' && needs.download-blob.outputs.has_blob_data == 'true' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: blob-cache
-          path: blob-cache/
-        continue-on-error: true
-
-      - name: Download build artifacts
-        id: download
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts/
-          pattern: ir-*
-          merge-multiple: true
-        continue-on-error: true
-
-      - name: Check for new compilations
-        id: check-new
+      - name: Update project package indexes
         run: |
-          # Check if we have any newly compiled packages
-          if [ -d "artifacts" ] && [ "$(find artifacts -name 'symbols.json' 2>/dev/null | wc -l)" -gt 0 ]; then
-            echo "has_new_builds=true" >> $GITHUB_OUTPUT
-            echo "Found newly compiled packages:"
-            find artifacts -name "symbols.json" | head -20
+          echo "🔄 Regenerating project package indexes..."
+          
+          # Determine which projects/languages were built
+          PROJECT="${{ github.event.inputs.project }}"
+          LANGUAGE="${{ github.event.inputs.language }}"
+          
+          if [ -n "$PROJECT" ] && [ -n "$LANGUAGE" ]; then
+            # Specific project/language
+            echo "Updating index for $PROJECT-$LANGUAGE"
+            npx tsx packages/build-pipeline/src/commands/update-indexes.ts \
+              --project "$PROJECT" \
+              --language "$LANGUAGE"
+          elif [ -n "$PROJECT" ]; then
+            # All languages for a project
+            echo "Updating indexes for $PROJECT (all languages)"
+            npx tsx packages/build-pipeline/src/commands/update-indexes.ts \
+              --project "$PROJECT"
+          elif [ -n "$LANGUAGE" ]; then
+            # All projects for a language
+            echo "Updating indexes for $LANGUAGE (all projects)"
+            npx tsx packages/build-pipeline/src/commands/update-indexes.ts \
+              --language "$LANGUAGE"
           else
-            echo "has_new_builds=false" >> $GITHUB_OUTPUT
-            echo "No new compilations - nothing to upload"
+            # All projects and languages
+            echo "Updating all project indexes"
+            npx tsx packages/build-pipeline/src/commands/update-indexes.ts --all
           fi
-
-      - name: Merge and prepare upload
-        if: steps.check-new.outputs.has_new_builds == 'true'
-        id: merge
-        run: |
-          echo "📦 Merging new builds with existing blob data..."
-
-          # Determine IR path from artifacts
-          if [ -d "artifacts/ir-output" ]; then
-            IR_PATH="artifacts/ir-output"
-          else
-            IR_PATH="artifacts"
-          fi
-
-          # Process each build directory
-          for build_dir in "$IR_PATH"/*/; do
-            [ -d "$build_dir" ] || continue
-
-            BUILD_ID=$(basename "$build_dir")
-            [[ "$BUILD_ID" == latest-* ]] && continue
-            [ -L "$build_dir" ] && continue
-
-            manifest="$build_dir/reference.manifest.json"
-            [ -f "$manifest" ] || continue
-
-            echo ""
-            echo "Processing build: $BUILD_ID"
-
-            # Get project and language from manifest
-            base_manifest=$(cat "$manifest")
-            project=$(echo "$base_manifest" | jq -r '.project // "langchain"')
-            first_pkg_lang=$(echo "$base_manifest" | jq -r '.packages[0].language // "typescript"')
-            if [ "$first_pkg_lang" == "python" ]; then
-              ecosystem="python"
-            else
-              ecosystem="javascript"
-            fi
-
-            echo "  Project: $project, Language: $ecosystem"
-
-            # Collect new packages from this build
-            new_packages="[]"
-            new_package_ids="[]"
-            for symbols_file in "$build_dir"/packages/*/symbols.json; do
-              [ -f "$symbols_file" ] || continue
-              pkg_id=$(basename "$(dirname "$symbols_file")")
-
-              pkg_info=$(jq -c '.package' "$symbols_file" 2>/dev/null || echo '{}')
-              if [ "$pkg_info" != '{}' ] && [ "$pkg_info" != 'null' ]; then
-                total=$(jq '.symbols | length' "$symbols_file")
-                classes=$(jq '[.symbols[] | select(.kind == "class")] | length' "$symbols_file")
-                functions=$(jq '[.symbols[] | select(.kind == "function")] | length' "$symbols_file")
-                modules=$(jq '[.symbols[] | select(.kind == "module")] | length' "$symbols_file")
-                types=$(jq '[.symbols[] | select(.kind == "interface" or .kind == "typeAlias" or .kind == "enum")] | length' "$symbols_file")
-
-                pkg_entry=$(echo "$pkg_info" | jq -c --arg pid "$pkg_id" \
-                  --argjson total "$total" --argjson classes "$classes" \
-                  --argjson functions "$functions" --argjson modules "$modules" \
-                  --argjson types "$types" \
-                  '. + {
-                    packageId: $pid,
-                    stats: {total: $total, classes: $classes, functions: $functions, modules: $modules, types: $types},
-                    nav: {rootGroups: ["Classes", "Functions", "Types"]},
-                    entry: {kind: "module", refId: ""}
-                  }')
-                new_packages=$(echo "$new_packages" | jq -c ". + [$pkg_entry]")
-                new_package_ids=$(echo "$new_package_ids" | jq -c ". + [\"$pkg_id\"]")
-                echo "  + NEW: $pkg_id ($total symbols)"
-              fi
-            done
-
-            # Merge with existing packages from blob cache
-            merged_packages="$new_packages"
-            if [ -d "blob-cache" ]; then
-              # Find existing build for this project/language
-              pointer_file="blob-cache/pointers/latest-${project}-${ecosystem}.json"
-              if [ -f "$pointer_file" ]; then
-                existing_build_id=$(jq -r '.buildId // empty' "$pointer_file")
-                existing_manifest="blob-cache/ir/${existing_build_id}/reference.manifest.json"
-
-                if [ -f "$existing_manifest" ]; then
-                  existing_packages=$(jq -c '.packages // []' "$existing_manifest")
-
-                  # Add existing packages that weren't recompiled
-                  while IFS= read -r existing_pkg; do
-                    [ -z "$existing_pkg" ] && continue
-                    existing_id=$(echo "$existing_pkg" | jq -r '.packageId')
-                    is_updated=$(echo "$new_package_ids" | jq --arg id "$existing_id" 'any(. == $id)')
-
-                    if [ "$is_updated" == "false" ]; then
-                      merged_packages=$(echo "$merged_packages" | jq -c ". + [$existing_pkg]")
-
-                      # Also copy the existing package data to the new build directory
-                      existing_pkg_dir="blob-cache/ir/${existing_build_id}/packages/${existing_id}"
-                      new_pkg_dir="$build_dir/packages/${existing_id}"
-                      if [ -d "$existing_pkg_dir" ] && [ ! -d "$new_pkg_dir" ]; then
-                        mkdir -p "$new_pkg_dir"
-                        cp -r "$existing_pkg_dir"/* "$new_pkg_dir"/ 2>/dev/null || true
-                        echo "  = KEPT: $existing_id (from existing)"
-                      fi
-                    fi
-                  done < <(echo "$existing_packages" | jq -c '.[]')
-                fi
-              fi
-            fi
-
-            # Update manifest with merged packages
-            merged_count=$(echo "$merged_packages" | jq 'length')
-            echo "  Final manifest: $merged_count package(s)"
-            echo "$base_manifest" | jq --argjson pkgs "$merged_packages" '.packages = $pkgs' > "$manifest"
-          done
-
-          echo "prepared=true" >> $GITHUB_OUTPUT
-
-      - name: Upload to Vercel Blob
-        if: steps.check-new.outputs.has_new_builds == 'true'
-        run: |
-          echo "☁️ Uploading to Vercel Blob..."
-
-          # Determine IR path
-          if [ -d "artifacts/ir-output" ]; then
-            IR_PATH="artifacts/ir-output"
-          else
-            IR_PATH="artifacts"
-          fi
-
-          # Upload each build
-          for build_dir in "$IR_PATH"/*/; do
-            [ -d "$build_dir" ] || continue
-
-            BUILD_ID=$(basename "$build_dir")
-            [[ "$BUILD_ID" == latest-* ]] && continue
-            [ -L "$build_dir" ] && continue
-
-            manifest="$build_dir/reference.manifest.json"
-            [ -f "$manifest" ] || continue
-
-            echo ""
-            echo "Uploading build: $BUILD_ID"
-
-            # Use the upload command from build-pipeline
-            npx tsx packages/build-pipeline/src/commands/upload-ir.ts \
-              --build-id "$BUILD_ID" \
-              --ir-path "$build_dir"
-          done
         env:
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          BLOB_BASE_URL: ${{ secrets.BLOB_BASE_URL }}
 
-      - name: Update pointers
-        if: steps.check-new.outputs.has_new_builds == 'true'
+      - name: Report completion
         run: |
-          echo "🔗 Updating build pointers..."
-
-          # Determine IR path
-          if [ -d "artifacts/ir-output" ]; then
-            IR_PATH="artifacts/ir-output"
-          else
-            IR_PATH="artifacts"
-          fi
-
-          # Update pointers for each build
-          for build_dir in "$IR_PATH"/*/; do
-            [ -d "$build_dir" ] || continue
-
-            BUILD_ID=$(basename "$build_dir")
-            [[ "$BUILD_ID" == latest-* ]] && continue
-            [ -L "$build_dir" ] && continue
-
-            manifest="$build_dir/reference.manifest.json"
-            [ -f "$manifest" ] || continue
-
-            echo "Updating pointers for: $BUILD_ID"
-            npx tsx packages/build-pipeline/src/commands/update-pointers.ts "$BUILD_ID" "$manifest"
-          done
-        env:
-          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
-
-      - name: Report no updates
-        if: steps.check-new.outputs.has_new_builds == 'false'
-        run: |
-          echo "## No Updates Required" >> $GITHUB_STEP_SUMMARY
+          echo "## Build Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "All packages are already up to date in blob storage." >> $GITHUB_STEP_SUMMARY
-          echo "No new compilations or uploads were needed." >> $GITHUB_STEP_SUMMARY
+          echo "Package-level builds have been uploaded and project indexes updated." >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
   # Summary job
   # ============================================================================
   summary:
     name: Build Summary
-    needs: [download-blob, matrix, build, upload-and-update]
+    needs: [download-blob, matrix, build, update-indexes]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -724,8 +552,8 @@ jobs:
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Download Blob | ${{ needs.download-blob.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Matrix | ${{ needs.matrix.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Upload & Update | ${{ needs.upload-and-update.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build & Upload | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Update Indexes | ${{ needs.update-indexes.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Check for full rebuild mode
@@ -735,7 +563,7 @@ jobs:
           fi
 
           if [ "${{ needs.build.result }}" == "success" ]; then
-            echo "✅ All builds completed successfully!" >> $GITHUB_STEP_SUMMARY
+            echo "✅ All package builds completed successfully!" >> $GITHUB_STEP_SUMMARY
           elif [ "${{ needs.build.result }}" == "skipped" ]; then
             echo "⏭️ Builds were skipped (no updates needed)" >> $GITHUB_STEP_SUMMARY
           else

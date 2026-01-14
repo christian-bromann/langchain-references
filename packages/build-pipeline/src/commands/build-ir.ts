@@ -140,21 +140,15 @@ interface BuildConfig {
 }
 
 /**
- * Generate a deterministic build ID from configuration and sources.
+ * Generate a deterministic build ID for a single package.
+ * Package-level build IDs allow independent package updates.
  */
-function generateBuildId(
-  config: BuildConfig,
+function generatePackageBuildId(
+  repo: string,
   sha: string,
-  extractorVersions: { python: string; typescript: string }
+  packageName: string
 ): string {
-  const data = JSON.stringify({
-    repo: config.repo,
-    sha,
-    language: config.language,
-    packages: config.packages.map((p) => p.name).sort(),
-    extractors: extractorVersions,
-  });
-
+  const data = JSON.stringify({ repo, sha, packageName });
   return crypto.createHash("sha256").update(data).digest("hex").slice(0, 16);
 }
 
@@ -1294,6 +1288,313 @@ async function buildVersionHistory(
 }
 
 /**
+ * Build version history for a single package with package-level build structure.
+ * This is used when building a single package with --package flag.
+ *
+ * Unlike buildVersionHistory, this function expects:
+ * - symbols.json to be directly in irOutputPath (not in packages/{packageId}/)
+ * - changelog.json and versions.json to be written directly to irOutputPath
+ */
+async function buildVersionHistoryForPackage(
+  config: BuildConfig,
+  fetchResult: FetchResult,
+  irOutputPath: string,
+  forceFullRebuild: boolean | undefined,
+  pkgConfig: PackageConfig
+): Promise<void> {
+  const cachedVersions = await loadCachedVersions(
+    config.project || "langchain",
+    config.language === "python" ? "python" : "typescript"
+  );
+
+  if (!cachedVersions) {
+    console.log(`   ⚠️  No cached versions found. Run 'pnpm sync-versions' first.`);
+    return;
+  }
+
+  console.log(`   Using cached versions from ${cachedVersions.lastSynced.split("T")[0]}`);
+
+  if (!pkgConfig.versioning?.tagPattern) {
+    console.log(`   ⚠️  ${pkgConfig.name}: No versioning config. Skipping.`);
+    return;
+  }
+
+  if (pkgConfig.versioning.enabled === false) {
+    console.log(`   ⚠️  ${pkgConfig.name}: Versioning disabled. Skipping.`);
+    return;
+  }
+
+  const cachedPkg = cachedVersions.packages.find(
+    (p) => p.packageName === pkgConfig.name
+  );
+
+  if (!cachedPkg || cachedPkg.versions.length === 0) {
+    console.log(`   ⚠️  ${pkgConfig.name}: No cached versions. Run 'pnpm sync-versions'.`);
+    return;
+  }
+
+  const minVersion = pkgConfig.versioning.minVersion;
+  const versions = minVersion
+    ? cachedPkg.versions.filter((v) => semver.gte(v.version, minVersion))
+    : cachedPkg.versions;
+
+  if (versions.length === 0) {
+    console.log(`   ⚠️  ${pkgConfig.name}: No versions >= ${minVersion}. Skipping.`);
+    return;
+  }
+
+  const cacheDir = getCacheBaseDir();
+  const project = config.project || "langchain";
+  const language = config.language === "python" ? "python" : "javascript";
+  const packageId = normalizePackageId(pkgConfig.name, config.language);
+
+  // For package-level builds, symbols.json is directly in irOutputPath
+  const latestSymbolsPath = path.join(irOutputPath, "symbols.json");
+
+  // Check if latest extraction succeeded
+  try {
+    await fs.access(latestSymbolsPath);
+  } catch {
+    console.log(`      ⚠️ Skipping (latest extraction failed or package path not found)`);
+    return;
+  }
+
+  // Check for existing changelog in blob storage (incremental build)
+  let existingChangelog: DeployedChangelog | null = null;
+  let versionsToProcess: CachedVersionEntry[] = versions;
+
+  if (!forceFullRebuild) {
+    try {
+      existingChangelog = await fetchDeployedChangelog(project, language, packageId);
+
+      if (existingChangelog) {
+        const existingVersionSet = new Set(
+          existingChangelog.changelog.history.map((h) => h.version)
+        );
+
+        const newVersions = versions.filter((v) => !existingVersionSet.has(v.version));
+
+        if (newVersions.length === 0) {
+          console.log(`\n   📦 ${pkgConfig.name}: ⏭️  SKIPPED - changelog already exists in blob storage`);
+          console.log(`      Found ${existingChangelog.changelog.history.length} versions in existing changelog (latest: ${existingChangelog.versions.latest.version})`);
+
+          await annotateSymbolsFromChangelog(latestSymbolsPath, existingChangelog.changelog, versions);
+
+          await fs.writeFile(
+            path.join(irOutputPath, "changelog.json"),
+            JSON.stringify(existingChangelog.changelog, null, 2)
+          );
+          await fs.writeFile(
+            path.join(irOutputPath, "versions.json"),
+            JSON.stringify(existingChangelog.versions, null, 2)
+          );
+
+          console.log(`      ✓ Reused existing changelog, no extraction needed`);
+          return;
+        }
+
+        console.log(`\n   📦 ${pkgConfig.name}: Found ${newVersions.length} new version(s) to process (existing: ${existingVersionSet.size})`);
+        versionsToProcess = newVersions;
+      } else {
+        console.log(`\n   📦 ${pkgConfig.name}: No existing changelog found, building full history (${versions.length} versions)`);
+      }
+    } catch (error) {
+      console.log(`\n   📦 ${pkgConfig.name}: Failed to fetch existing changelog (${error}), building full history`);
+    }
+  } else {
+    console.log(`\n   📦 ${pkgConfig.name}: Force full rebuild requested, processing ${versions.length} version(s)`);
+  }
+
+  const versionSymbols = new Map<string, Map<string, SymbolRecord>>();
+
+  // Load latest symbols
+  console.log(`      ✓ ${versions[0].version} (latest, already extracted)`);
+  try {
+    const latestSymbols = await loadSymbolNames(latestSymbolsPath);
+    versionSymbols.set(versions[0].version, latestSymbols);
+  } catch (error) {
+    console.warn(`      ⚠️ Failed to load latest symbols: ${error}`);
+    return;
+  }
+
+  // Handle incremental build bridging
+  let bridgeVersion: CachedVersionEntry | null = null;
+  if (existingChangelog && versionsToProcess.length > 0 && versionsToProcess.length < versions.length) {
+    const oldestNewVersion = versionsToProcess[versionsToProcess.length - 1];
+    const oldestNewIdx = versions.findIndex((v) => v.version === oldestNewVersion.version);
+    if (oldestNewIdx < versions.length - 1) {
+      const previousVersion = versions[oldestNewIdx + 1];
+      bridgeVersion = previousVersion;
+
+      const result = await extractHistoricalVersion(
+        config,
+        pkgConfig,
+        previousVersion.sha,
+        previousVersion.version,
+        cacheDir
+      );
+      if (result) {
+        console.log(`      ✓ ${previousVersion.version} (previous version for diff, ${result.symbolCount} symbols)`);
+        const symbols = await loadSymbolNames(result.symbolsPath);
+        versionSymbols.set(previousVersion.version, symbols);
+      }
+    }
+  }
+
+  // Extract historical versions
+  const versionsToExtract = versionsToProcess.filter((v) =>
+    v.version !== versions[0].version && !versionSymbols.has(v.version)
+  );
+
+  for (const v of versionsToExtract) {
+    const result = await extractHistoricalVersion(
+      config,
+      pkgConfig,
+      v.sha,
+      v.version,
+      cacheDir
+    );
+
+    if (result) {
+      console.log(`      ✓ ${v.version} (${result.symbolCount} symbols)`);
+      const symbols = await loadSymbolNames(result.symbolsPath);
+      versionSymbols.set(v.version, symbols);
+    }
+  }
+
+  // Compute deltas
+  let finalDeltas: VersionDelta[];
+  let allVersionStats: Map<string, VersionStats>;
+
+  if (existingChangelog && versionsToProcess.length < versions.length) {
+    const versionsForDelta = bridgeVersion
+      ? [...versionsToProcess, bridgeVersion]
+      : versionsToProcess;
+
+    const { deltas: newDeltas, versionStats: newStats } = computeVersionDeltas(
+      versionSymbols,
+      versionsForDelta
+    );
+
+    const filteredDeltas = bridgeVersion
+      ? newDeltas.filter((d) => d.version !== bridgeVersion?.version)
+      : newDeltas;
+
+    finalDeltas = [...filteredDeltas, ...existingChangelog.changelog.history];
+
+    allVersionStats = new Map<string, VersionStats>();
+    for (const [v, stats] of newStats) {
+      allVersionStats.set(v, stats);
+    }
+    for (const vInfo of existingChangelog.versions.versions) {
+      if (!allVersionStats.has(vInfo.version)) {
+        allVersionStats.set(vInfo.version, vInfo.stats);
+      }
+    }
+
+    console.log(`      ✓ Merged ${filteredDeltas.length} new delta(s) with ${existingChangelog.changelog.history.length} existing`);
+  } else {
+    const { deltas, versionStats } = computeVersionDeltas(versionSymbols, versions);
+    finalDeltas = deltas;
+    allVersionStats = versionStats;
+  }
+
+  // Compute introductions and annotate
+  const introductions = computeSymbolIntroductions(versionSymbols, versions);
+
+  try {
+    const symbolsContent = await fs.readFile(latestSymbolsPath, "utf-8");
+    const symbolsData = JSON.parse(symbolsContent);
+
+    const modifiedInMap = new Map<string, string[]>();
+    for (const delta of finalDeltas) {
+      for (const mod of delta.modified) {
+        const modVersions = modifiedInMap.get(mod.qualifiedName) || [];
+        modVersions.push(delta.version);
+        modifiedInMap.set(mod.qualifiedName, modVersions);
+      }
+    }
+
+    let annotatedCount = 0;
+    if (symbolsData.symbols && Array.isArray(symbolsData.symbols)) {
+      for (const symbol of symbolsData.symbols) {
+        const since = introductions.get(symbol.qualifiedName);
+        const modifiedIn = modifiedInMap.get(symbol.qualifiedName);
+
+        symbol.versionInfo = {
+          since: since || versions[0].version,
+          ...(modifiedIn && modifiedIn.length > 0 ? { modifiedIn } : {}),
+        };
+        annotatedCount++;
+      }
+
+      await fs.writeFile(latestSymbolsPath, JSON.stringify(symbolsData, null, 2));
+      console.log(`      ✓ Annotated ${annotatedCount} symbols with version info`);
+    }
+  } catch (error) {
+    console.warn(`      ⚠️ Failed to annotate symbols: ${error}`);
+  }
+
+  // Write changelog directly to build dir
+  const changelog: PackageChangelog = {
+    packageId,
+    packageName: pkgConfig.displayName || pkgConfig.name,
+    generatedAt: new Date().toISOString(),
+    history: finalDeltas,
+  };
+
+  await fs.writeFile(
+    path.join(irOutputPath, "changelog.json"),
+    JSON.stringify(changelog, null, 2)
+  );
+
+  const totalAdded = finalDeltas.reduce((sum, d) => sum + d.added.length, 0);
+  const totalRemoved = finalDeltas.reduce((sum, d) => sum + d.removed.length, 0);
+  const totalModified = finalDeltas.reduce((sum, d) => sum + d.modified.length, 0);
+  console.log(`      ✓ Generated changelog: +${totalAdded} added, -${totalRemoved} removed, ~${totalModified} modified`);
+
+  // Write versions index directly to build dir
+  const latestStats = allVersionStats.get(versions[0].version) || {
+    added: 0,
+    removed: 0,
+    modified: 0,
+    breaking: 0,
+    totalSymbols: versionSymbols.get(versions[0].version)?.size ?? 0,
+  };
+
+  const versionsIndex: PackageVersionIndex = {
+    packageId,
+    packageName: pkgConfig.displayName || pkgConfig.name,
+    latest: {
+      version: versions[0].version,
+      sha: versions[0].sha,
+      tag: versions[0].tag,
+      releaseDate: versions[0].releaseDate,
+      extractedAt: new Date().toISOString(),
+      stats: latestStats,
+    },
+    versions: versions.map((v) => ({
+      version: v.version,
+      sha: v.sha,
+      tag: v.tag,
+      releaseDate: v.releaseDate,
+      stats: allVersionStats.get(v.version) || {
+        added: 0,
+        removed: 0,
+        modified: 0,
+        breaking: 0,
+        totalSymbols: versionSymbols.get(v.version)?.size ?? 0,
+      },
+    })),
+  };
+
+  await fs.writeFile(
+    path.join(irOutputPath, "versions.json"),
+    JSON.stringify(versionsIndex, null, 2)
+  );
+}
+
+/**
  * Annotate symbols with version info from an existing changelog.
  * Used when we skip extraction because the changelog is already complete.
  */
@@ -1420,15 +1721,33 @@ async function buildConfig(
   const sha = opts.sha || (await getLatestSha(config.repo));
   console.log(`\n📌 Target SHA: ${sha.substring(0, 7)}`);
 
-  const buildId = generateBuildId(config, sha, {
-    python: "0.1.0",
-    typescript: "0.1.0",
-  });
-  console.log(`🔑 Build ID: ${buildId}`);
-
-  const irOutputPath = path.resolve(opts.output, buildId);
-  await fs.mkdir(irOutputPath, { recursive: true });
-  await fs.mkdir(path.join(irOutputPath, "packages"), { recursive: true });
+  // All builds are now package-level builds
+  // This allows independent package updates without affecting other packages
+  const isSinglePackageBuild = packagesToProcess.length === 1;
+  
+  // For single package builds, we set the build ID upfront
+  // For multi-package builds, each package will get its own build ID
+  let buildId: string;
+  let irOutputPath: string;
+  
+  if (isSinglePackageBuild) {
+    // Single package build: ir-output/packages/{packageId}/{buildId}/
+    const pkgConfig = packagesToProcess[0];
+    const packageId = normalizePackageId(pkgConfig.name, config.language);
+    buildId = generatePackageBuildId(config.repo, sha, pkgConfig.name);
+    console.log(`🔑 Package Build ID: ${buildId} (for ${pkgConfig.name})`);
+    
+    irOutputPath = path.resolve(opts.output, "packages", packageId, buildId);
+    await fs.mkdir(irOutputPath, { recursive: true });
+  } else {
+    // Multi-package build: each package gets its own directory
+    // We'll create directories per-package during processing
+    buildId = generatePackageBuildId(config.repo, sha, "multi");
+    console.log(`🔑 Multi-package build (each package will have its own build ID)`);
+    
+    irOutputPath = path.resolve(opts.output, "packages");
+    await fs.mkdir(irOutputPath, { recursive: true });
+  }
 
   const cacheDir = opts.cache || getCacheBaseDir();
   console.log(`\n📥 Fetching source to: ${cacheDir}`);
@@ -1453,11 +1772,31 @@ async function buildConfig(
 
   const failedPackages = new Set<string>();
 
+  // Track package build info for package-level builds
+  const packageBuildInfo: Map<string, { packageId: string; buildId: string; outputDir: string }> = new Map();
+
   for (const pkgConfig of packagesToProcess) {
     const packagePath = path.join(fetchResult.extractedPath, pkgConfig.path);
-    const pkgOutputDir = path.join(irOutputPath, "packages", normalizePackageId(pkgConfig.name, config.language));
+    const packageId = normalizePackageId(pkgConfig.name, config.language);
+
+    let pkgOutputDir: string;
+    let pkgBuildId: string;
+
+    if (isSinglePackageBuild) {
+      // Single package: symbols.json goes directly in the build dir
+      pkgOutputDir = irOutputPath;
+      pkgBuildId = buildId;
+    } else {
+      // Multi-package: each package gets its own build ID and directory
+      pkgBuildId = generatePackageBuildId(config.repo, sha, pkgConfig.name);
+      pkgOutputDir = path.join(irOutputPath, packageId, pkgBuildId);
+    }
+
     await fs.mkdir(pkgOutputDir, { recursive: true });
     const outputPath = path.join(pkgOutputDir, "symbols.json");
+
+    // Store build info for later use
+    packageBuildInfo.set(pkgConfig.name, { packageId, buildId: pkgBuildId, outputDir: pkgOutputDir });
 
     // Check if package path exists before extraction
     try {
@@ -1494,15 +1833,57 @@ async function buildConfig(
     console.warn(`\n   ⚠️  ${failedPackages.size} package(s) failed extraction`);
   }
 
-  console.log("\n📋 Creating manifest...");
-  const manifest = await createManifest(buildId, config, fetchResult, irOutputPath, packagesToProcess);
-  const manifestPath = path.join(irOutputPath, "reference.manifest.json");
-  await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
-  console.log(`   ✓ ${manifest.packages.length} packages in manifest`);
+  const [owner, repoName] = config.repo.split("/");
+
+  // Create package info files for each package
+  console.log("\n📋 Creating package info files...");
+  
+  for (const pkgConfig of packagesToProcess) {
+    const pkgInfo = packageBuildInfo.get(pkgConfig.name);
+    if (!pkgInfo) continue;
+
+    // Read symbols to get stats
+    const symbolsPath = path.join(pkgInfo.outputDir, "symbols.json");
+    let symbolCount = 0;
+    let version = "unknown";
+    try {
+      const symbolsContent = await fs.readFile(symbolsPath, "utf-8");
+      const data = JSON.parse(symbolsContent);
+      symbolCount = data.symbols?.length || 0;
+      version = data.package?.version || "unknown";
+    } catch {
+      // Ignore errors
+    }
+
+    // Create package info file
+    const packageInfo = {
+      packageId: pkgInfo.packageId,
+      displayName: pkgConfig.displayName || pkgConfig.name,
+      publishedName: pkgConfig.name,
+      language: config.language,
+      ecosystem: config.language === "python" ? "python" : "javascript",
+      version,
+      buildId: pkgInfo.buildId,
+      project: config.project || "langchain",
+      repo: { owner, name: repoName, sha, path: pkgConfig.path },
+      stats: { total: symbolCount },
+      createdAt: new Date().toISOString(),
+    };
+
+    const packageInfoPath = path.join(pkgInfo.outputDir, "package.json");
+    await fs.writeFile(packageInfoPath, JSON.stringify(packageInfo, null, 2));
+    console.log(`   ✓ ${pkgInfo.packageId} (${symbolCount} symbols)`);
+  }
 
   if (opts.withVersions) {
     console.log("\n📜 Building version history...");
-    await buildVersionHistory(config, fetchResult, irOutputPath, opts.fullRebuild, packagesToProcess);
+    for (const pkgConfig of packagesToProcess) {
+      const pkgInfo = packageBuildInfo.get(pkgConfig.name);
+      if (!pkgInfo) continue;
+      
+      // Version history goes directly in each package's build dir
+      await buildVersionHistoryForPackage(config, fetchResult, pkgInfo.outputDir, opts.fullRebuild, pkgConfig);
+    }
   }
 
   // Clean up main extracted repository to save disk space in CI
@@ -1513,26 +1894,61 @@ async function buildConfig(
 
   if (!opts.skipUpload) {
     console.log("\n☁️  Uploading to Vercel Blob...");
-    await uploadIR({ buildId, irOutputPath, dryRun: false });
+    // Upload each package individually (all builds are now package-level)
+    for (const pkgConfig of packagesToProcess) {
+      const pkgInfo = packageBuildInfo.get(pkgConfig.name);
+      if (!pkgInfo) continue;
+      
+      console.log(`   Uploading ${pkgConfig.name}...`);
+      await uploadIR({
+        buildId: pkgInfo.buildId,
+        irOutputPath: pkgInfo.outputDir,
+        dryRun: false,
+        packageLevel: true,
+        packageId: pkgInfo.packageId,
+      });
+    }
   } else {
     console.log("\n⏭️  Skipping upload (--skip-upload)");
   }
 
   if (!opts.skipPointers) {
     console.log("\n🔄 Updating build pointers...");
-    await updatePointers({ buildId, manifest, dryRun: false });
+    const ecosystem = config.language === "python" ? "python" : "javascript";
+    
+    // Update pointers for each package individually (all builds are now package-level)
+    for (const pkgConfig of packagesToProcess) {
+      const pkgInfo = packageBuildInfo.get(pkgConfig.name);
+      if (!pkgInfo) continue;
+      
+      // Read package info for pointer data
+      const packageInfoPath = path.join(pkgInfo.outputDir, "package.json");
+      try {
+        const packageInfo = JSON.parse(await fs.readFile(packageInfoPath, "utf-8"));
+        
+        await updatePointers({
+          buildId: pkgInfo.buildId,
+          manifest: null as unknown as Manifest,
+          dryRun: false,
+          packageLevel: true,
+          packagePointer: {
+            packageId: pkgInfo.packageId,
+            packageName: pkgConfig.name,
+            ecosystem,
+            project: config.project || "langchain",
+            buildId: pkgInfo.buildId,
+            version: packageInfo.version,
+            sha,
+            repo: config.repo,
+            stats: packageInfo.stats,
+          },
+        });
+      } catch (error) {
+        console.warn(`   ⚠️  Could not update pointer for ${pkgConfig.name}: ${error}`);
+      }
+    }
   } else {
     console.log("\n⏭️  Skipping pointer update (--skip-pointers)");
-  }
-
-  const latestLinkName = `latest-${config.project || "langchain"}-${config.language === "python" ? "python" : "javascript"}`;
-  const latestLinkPath = path.resolve(opts.output, latestLinkName);
-  try {
-    await fs.unlink(latestLinkPath).catch(() => {});
-    await fs.symlink(buildId, latestLinkPath);
-    console.log(`\n🔗 Created symlink: ${latestLinkName} -> ${buildId}`);
-  } catch (error) {
-    console.warn(`   ⚠️  Failed to create symlink: ${error}`);
   }
 
   console.log(`\n✅ Build complete: ${buildId}`);

@@ -26,7 +26,8 @@
     "check-updates": "tsx src/commands/check-updates.ts",
     "sync-versions": "tsx src/commands/sync-versions.ts",
     "fetch-tarball": "tsx src/commands/fetch-tarball.ts",
-    "update-pointers": "tsx src/commands/update-pointers.ts"
+    "update-pointers": "tsx src/commands/update-pointers.ts",
+    "update-indexes": "tsx src/commands/update-indexes.ts"
   },
   "dependencies": {
     "@langchain/extractor-typescript": "workspace:*",

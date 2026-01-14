@@ -25,17 +25,22 @@ export {
 // Pointer management
 export {
   updatePointers,
-  updateKV, // Alias for backwards compatibility
   getLatestBuildId,
   getBuildMetadata,
   getLatestPackageVersion,
   getBuildHistory,
   markBuildFailed,
+  getPackagePointer,
+  getProjectPackageIndex,
+  regenerateProjectPackageIndex,
   type PointerUpdateOptions,
   type BuildMetadata,
   type LatestPointer,
   type LatestBuildPointer,
   type BuildHistory,
+  type PackagePointerData,
+  type PackagePointer,
+  type ProjectPackageIndex,
 } from "./pointers.js";
 
 // Version discovery
