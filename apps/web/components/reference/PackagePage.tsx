@@ -14,6 +14,7 @@ import type { UrlLanguage } from "@/lib/utils/url";
 import { buildSymbolUrl, getKindColor, getKindLabel } from "@/lib/utils/url";
 import { getBuildIdForLanguage, getCatalogEntries, type CatalogEntry } from "@/lib/ir/loader";
 import { getProjectForPackage } from "@/lib/config/projects";
+import { PackageTableOfContents, type PackageTOCSection } from "./PackageTableOfContents";
 
 interface PackagePageProps {
   language: UrlLanguage;
@@ -68,99 +69,128 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
   const interfaces = symbols.filter((s) => s.kind === "interface");
   const types = symbols.filter((s) => s.kind === "typeAlias" || s.kind === "enum");
 
+  // Build TOC sections for the sidebar
+  const tocSections: PackageTOCSection[] = [];
+  if (classes.length > 0) {
+    tocSections.push({ id: "section-classes", title: "Classes", icon: "class", count: classes.length });
+  }
+  if (functions.length > 0) {
+    tocSections.push({ id: "section-functions", title: "Functions", icon: "function", count: functions.length });
+  }
+  if (modules.length > 0) {
+    tocSections.push({ id: "section-modules", title: "Modules", icon: "module", count: modules.length });
+  }
+  if (interfaces.length > 0) {
+    tocSections.push({ id: "section-interfaces", title: "Interfaces", icon: "interface", count: interfaces.length });
+  }
+  if (types.length > 0) {
+    tocSections.push({ id: "section-types", title: "Types", icon: "type", count: types.length });
+  }
+
   return (
-    <div className="space-y-8">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center gap-2 text-sm text-foreground-secondary">
-        <Link
-          href={`/${language === "python" ? "python" : "javascript"}`}
-          className="hover:text-foreground transition-colors"
-        >
-          {language === "python" ? "Python" : "JavaScript"}
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <span className="text-foreground">{packageName}</span>
-      </nav>
+    <div className="flex gap-8">
+      {/* Main content */}
+      <div className="flex-1 min-w-0 space-y-8">
+        {/* Breadcrumbs */}
+        <nav className="flex items-center gap-2 text-sm text-foreground-secondary">
+          <Link
+            href={`/${language === "python" ? "python" : "javascript"}`}
+            className="hover:text-foreground transition-colors"
+          >
+            {language === "python" ? "Python" : "JavaScript"}
+          </Link>
+          <ChevronRight className="h-4 w-4" />
+          <span className="text-foreground">{packageName}</span>
+        </nav>
 
-      {/* Page header */}
-      <div>
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10 text-primary">
-            <Box className="h-6 w-6" />
+        {/* Page header */}
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <Box className="h-6 w-6" />
+            </div>
+            <h1 className="text-3xl font-heading font-bold text-foreground">
+              {packageName}
+            </h1>
           </div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">
-            {packageName}
-          </h1>
-        </div>
-        <p className="mt-3 text-foreground-secondary text-lg">
-          API reference for the {packageName} package.
-        </p>
-      </div>
-
-      {/* Classes section */}
-      {classes.length > 0 && (
-        <SymbolSection
-          title="Classes"
-          icon={<Box className="h-5 w-5" />}
-          symbols={classes}
-          language={language}
-          packageName={packageName}
-        />
-      )}
-
-      {/* Functions section */}
-      {functions.length > 0 && (
-        <SymbolSection
-          title="Functions"
-          icon={<Code className="h-5 w-5" />}
-          symbols={functions}
-          language={language}
-          packageName={packageName}
-        />
-      )}
-
-      {/* Modules section */}
-      {modules.length > 0 && (
-        <SymbolSection
-          title="Modules"
-          icon={<Folder className="h-5 w-5" />}
-          symbols={modules}
-          language={language}
-          packageName={packageName}
-        />
-      )}
-
-      {/* Interfaces section */}
-      {interfaces.length > 0 && (
-        <SymbolSection
-          title="Interfaces"
-          icon={<FileType className="h-5 w-5" />}
-          symbols={interfaces}
-          language={language}
-          packageName={packageName}
-        />
-      )}
-
-      {/* Types section */}
-      {types.length > 0 && (
-        <SymbolSection
-          title="Types"
-          icon={<FileType className="h-5 w-5" />}
-          symbols={types}
-          language={language}
-          packageName={packageName}
-        />
-      )}
-
-      {/* Empty state */}
-      {classes.length === 0 && functions.length === 0 && modules.length === 0 && interfaces.length === 0 && types.length === 0 && (
-        <div className="text-center py-12 text-foreground-secondary">
-          <p>No symbols found for this package.</p>
-          <p className="mt-2 text-sm">
-            This package may not have been extracted yet.
+          <p className="mt-3 text-foreground-secondary text-lg">
+            API reference for the {packageName} package.
           </p>
         </div>
-      )}
+
+        {/* Classes section */}
+        {classes.length > 0 && (
+          <SymbolSection
+            id="section-classes"
+            title="Classes"
+            icon={<Box className="h-5 w-5" />}
+            symbols={classes}
+            language={language}
+            packageName={packageName}
+          />
+        )}
+
+        {/* Functions section */}
+        {functions.length > 0 && (
+          <SymbolSection
+            id="section-functions"
+            title="Functions"
+            icon={<Code className="h-5 w-5" />}
+            symbols={functions}
+            language={language}
+            packageName={packageName}
+          />
+        )}
+
+        {/* Modules section */}
+        {modules.length > 0 && (
+          <SymbolSection
+            id="section-modules"
+            title="Modules"
+            icon={<Folder className="h-5 w-5" />}
+            symbols={modules}
+            language={language}
+            packageName={packageName}
+          />
+        )}
+
+        {/* Interfaces section */}
+        {interfaces.length > 0 && (
+          <SymbolSection
+            id="section-interfaces"
+            title="Interfaces"
+            icon={<FileType className="h-5 w-5" />}
+            symbols={interfaces}
+            language={language}
+            packageName={packageName}
+          />
+        )}
+
+        {/* Types section */}
+        {types.length > 0 && (
+          <SymbolSection
+            id="section-types"
+            title="Types"
+            icon={<FileType className="h-5 w-5" />}
+            symbols={types}
+            language={language}
+            packageName={packageName}
+          />
+        )}
+
+        {/* Empty state */}
+        {classes.length === 0 && functions.length === 0 && modules.length === 0 && interfaces.length === 0 && types.length === 0 && (
+          <div className="text-center py-12 text-foreground-secondary">
+            <p>No symbols found for this package.</p>
+            <p className="mt-2 text-sm">
+              This package may not have been extracted yet.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Table of Contents sidebar */}
+      <PackageTableOfContents sections={tocSections} />
     </div>
   );
 }
@@ -169,12 +199,14 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
  * Section for a group of symbols
  */
 function SymbolSection({
+  id,
   title,
   icon,
   symbols,
   language,
   packageName,
 }: {
+  id: string;
   title: string;
   icon: React.ReactNode;
   symbols: DisplaySymbol[];
@@ -182,7 +214,7 @@ function SymbolSection({
   packageName: string;
 }) {
   return (
-    <section>
+    <section id={id}>
       <h2 className="flex items-center gap-2 text-xl font-heading font-semibold text-foreground mb-4">
         {icon}
         {title}
