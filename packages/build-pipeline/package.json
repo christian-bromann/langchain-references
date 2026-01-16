@@ -38,6 +38,7 @@
     "@langchain/ir-schema": "workspace:*",
     "@vercel/blob": "^2.0.0",
     "commander": "^14.0.2",
+    "p-limit": "^7.2.0",
     "semver": "^7.6.0",
     "tar": "^7.5.2",
     "tinyglobby": "^0.2.14"

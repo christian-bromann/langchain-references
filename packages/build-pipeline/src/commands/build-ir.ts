@@ -58,6 +58,8 @@ import {
   type TypeDocProject,
 } from "@langchain/extractor-typescript";
 
+import pLimit from "p-limit";
+
 import { fetchTarball, getLatestSha, getCacheBaseDir, type FetchResult } from "../tarball.js";
 import { uploadIR } from "../upload.js";
 import { updatePointers } from "../pointers.js";
@@ -1038,18 +1040,40 @@ async function buildVersionHistoryForPackage(
     }
   }
 
-  // Extract historical versions
+  // Extract historical versions in parallel for faster builds
+  // Use concurrency of 3 to balance speed vs GitHub rate limits and disk I/O
   const versionsToExtract = versionsToProcess.filter(
     (v) => v.version !== versions[0].version && !versionSymbols.has(v.version),
   );
 
-  for (const v of versionsToExtract) {
-    const result = await extractHistoricalVersion(config, pkgConfig, v.sha, v.version, cacheDir);
+  if (versionsToExtract.length > 0) {
+    console.log(
+      `      Extracting ${versionsToExtract.length} historical version(s) in parallel (concurrency: 3)...`,
+    );
 
-    if (result) {
-      console.log(`      ✓ ${v.version} (${result.symbolCount} symbols)`);
-      const symbols = await loadSymbolNames(result.symbolsPath);
-      versionSymbols.set(v.version, symbols);
+    const limit = pLimit(3);
+    const extractionResults = await Promise.all(
+      versionsToExtract.map((v) =>
+        limit(async () => {
+          const result = await extractHistoricalVersion(
+            config,
+            pkgConfig,
+            v.sha,
+            v.version,
+            cacheDir,
+          );
+          return { version: v.version, result };
+        }),
+      ),
+    );
+
+    // Process results after all extractions complete
+    for (const { version, result } of extractionResults) {
+      if (result) {
+        console.log(`      ✓ ${version} (${result.symbolCount} symbols)`);
+        const symbols = await loadSymbolNames(result.symbolsPath);
+        versionSymbols.set(version, symbols);
+      }
     }
   }
 
