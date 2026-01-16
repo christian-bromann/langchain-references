@@ -1,10 +1,13 @@
 /**
- * IR Loader - Utilities for loading IR data from Vercel Blob or local filesystem
+ * IR Loader - Utilities for loading IR data via HTTP
  *
- * This module provides unified functions that automatically choose the right
- * data source based on the environment:
- * - Production (Vercel): Fetches from Vercel Blob storage (public blobs)
- * - Development: Reads from local ir-output directory
+ * This module fetches IR data from a blob storage URL (BLOB_URL environment variable).
+ * The same code path is used for both production and development:
+ * - Production: BLOB_URL points to Vercel Blob storage
+ * - Development: BLOB_URL points to local ir-server (http://localhost:3001)
+ *
+ * This unified approach eliminates environment-specific code paths and ensures
+ * consistent behavior between development and production.
  */
 
 import { unstable_cache } from "next/cache";
@@ -14,40 +17,21 @@ const IR_BASE_PATH = "ir";
 const POINTERS_PATH = "pointers";
 
 /**
- * Check if we should use blob storage (production) or local files.
+ * Get the blob store base URL.
  *
- * Set USE_LOCAL_IR=true to force local file reading even during production builds.
- * This is useful when running `pull-ir` before `next build` to avoid network issues.
- */
-export function isProduction(): boolean {
-  // Allow forcing local IR usage even in production
-  const useLocalIr = process.env.USE_LOCAL_IR === "true" || process.env.USE_LOCAL_IR === "1";
-  const isVercel = !!process.env.VERCEL;
-  const isProd = process.env.NODE_ENV === "production";
-
-  if (useLocalIr) {
-    return false;
-  }
-  return isProd || isVercel;
-}
-
-/**
- * Get the Vercel Blob store base URL.
- * For public blobs, we access them directly via this URL.
+ * Checks for environment variables:
+ * 1. BLOB_URL (primary - set this for both local dev and production)
+ * 2. NEXT_PUBLIC_BLOB_URL (client-side accessible fallback)
  *
- * Checks for environment variables in order:
- * 1. BLOB_URL (explicit blob URL)
- * 2. BLOB_BASE_URL (used by CI/build pipeline)
- * 3. NEXT_PUBLIC_BLOB_URL (client-side accessible)
- *
- * Example: https://xxxxxx.public.blob.vercel-storage.com
+ * Examples:
+ * - Production: https://xxxxxx.public.blob.vercel-storage.com
+ * - Development: http://localhost:3001 (local ir-server)
  */
 function getBlobUrl(path: string): string | null {
-  const baseUrl =
-    process.env.BLOB_URL || process.env.BLOB_BASE_URL || process.env.NEXT_PUBLIC_BLOB_URL;
+  const baseUrl = process.env.BLOB_URL || process.env.NEXT_PUBLIC_BLOB_URL;
   if (!baseUrl) {
     console.warn(
-      "[loader] No blob URL configured. Set BLOB_URL, BLOB_BASE_URL, or NEXT_PUBLIC_BLOB_URL.",
+      "[loader] No blob URL configured. Set BLOB_URL=http://localhost:3001 for local development or configure Vercel Blob for production.",
     );
     return null;
   }
@@ -344,6 +328,43 @@ export async function getPackageBuildId(
 }
 
 /**
+ * Convert a packageId to the published package name.
+ *
+ * @example packageIdToName("pkg_js_langchain_core") => "@langchain/core"
+ * @example packageIdToName("pkg_py_langchain_openai") => "langchain-openai"
+ */
+export function packageIdToName(packageId: string): string {
+  const isJs = packageId.startsWith("pkg_js_");
+  // Remove prefix: pkg_js_langchain_core -> langchain_core
+  const baseName = packageId.replace(/^pkg_(py|js)_/, "");
+
+  if (isJs) {
+    // JavaScript packages are scoped: langchain_core -> @langchain/core
+    // The packageId format uses underscores, first part is scope
+    const parts = baseName.split("_");
+    if (parts.length >= 2 && parts[0] === "langchain") {
+      // @langchain/core, @langchain/openai, etc.
+      return `@${parts[0]}/${parts.slice(1).join("-")}`;
+    }
+    // Fallback for non-scoped packages
+    return baseName.replace(/_/g, "-");
+  } else {
+    // Python packages use hyphens: langchain_openai -> langchain-openai
+    return baseName.replace(/_/g, "-");
+  }
+}
+
+/**
+ * Get the build ID for a package given its packageId.
+ * Convenience wrapper around getPackageBuildId that handles packageId-to-name conversion.
+ */
+export async function getBuildIdForPackageId(packageId: string): Promise<string | null> {
+  const ecosystem = packageId.startsWith("pkg_py_") ? "python" : "javascript";
+  const packageName = packageIdToName(packageId);
+  return getPackageBuildId(ecosystem, packageName);
+}
+
+/**
  * Get the project package index.
  * This aggregates all package pointers for a project/language.
  *
@@ -383,10 +404,7 @@ export async function getPackageSymbolsV2(
   // If no buildId provided, try to get it from the package pointer
   let actualBuildId = buildId;
   if (!actualBuildId) {
-    const ecosystem = packageId.startsWith("pkg_py_") ? "python" : "javascript";
-    // Extract package name from packageId (e.g., pkg_py_langchain_openai -> langchain_openai)
-    const packageName = packageId.replace(/^pkg_(py|js)_/, "").replace(/_/g, "-");
-    actualBuildId = (await getPackageBuildId(ecosystem, packageName)) || undefined;
+    actualBuildId = (await getBuildIdForPackageId(packageId)) || undefined;
   }
 
   if (!actualBuildId) {
@@ -416,10 +434,14 @@ export async function getPackageSymbolsV2(
 const packageInfoCacheV2 = new Map<string, Package>();
 
 /**
- * Extended package info that includes the description field.
+ * Extended package info that includes the description and buildId fields.
  */
 interface ExtendedPackageInfo extends Package {
   description?: string;
+  /** Build ID for this package (package-level architecture) */
+  buildId?: string;
+  /** Project this package belongs to */
+  project?: string;
 }
 
 /**
@@ -435,9 +457,7 @@ export async function getPackageInfoV2(
   // If no buildId provided, try to get it from the package pointer
   let actualBuildId = buildId;
   if (!actualBuildId) {
-    const ecosystem = packageId.startsWith("pkg_py_") ? "python" : "javascript";
-    const packageName = packageId.replace(/^pkg_(py|js)_/, "").replace(/_/g, "-");
-    actualBuildId = (await getPackageBuildId(ecosystem, packageName)) || undefined;
+    actualBuildId = (await getBuildIdForPackageId(packageId)) || undefined;
   }
 
   if (!actualBuildId) {
@@ -472,89 +492,8 @@ export async function getPackageDescription(
   packageId: string,
   buildId?: string,
 ): Promise<string | null> {
-  if (isProduction()) {
-    const packageInfo = await getPackageInfoV2(packageId, buildId);
-    return packageInfo?.description || null;
-  } else {
-    // In development, read from local package.json
-    return getLocalPackageDescription(packageId, buildId);
-  }
-}
-
-/**
- * Get local package description for development.
- */
-async function getLocalPackageDescription(
-  packageId: string,
-  buildId?: string,
-): Promise<string | null> {
-  try {
-    const fs = await import("fs/promises");
-    const path = await import("path");
-
-    // Find the build directory for this package
-    const basePath = getLocalIrBasePath();
-    let packageDir: string | null = null;
-
-    if (buildId) {
-      packageDir = path.join(basePath, buildId, "packages", packageId);
-    } else {
-      // Try to find the latest build with this package
-      const entries = await fs.readdir(basePath, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.isSymbolicLink() && entry.name.startsWith("latest-")) {
-          const linkPath = path.join(basePath, entry.name);
-          const realPath = await fs.realpath(linkPath);
-          const candidateDir = path.join(realPath, "packages", packageId);
-          try {
-            await fs.access(candidateDir);
-            packageDir = candidateDir;
-            break;
-          } catch {
-            continue;
-          }
-        }
-      }
-    }
-
-    if (!packageDir) {
-      return null;
-    }
-
-    // Look for package.json in the package directory or its build subdirectory
-    const packageJsonPaths = [
-      path.join(packageDir, "package.json"),
-      // Also try looking in subdirectories (build ID directories)
-    ];
-
-    // Find build subdirectories
-    try {
-      const subdirs = await fs.readdir(packageDir, { withFileTypes: true });
-      for (const subdir of subdirs) {
-        if (subdir.isDirectory()) {
-          packageJsonPaths.push(path.join(packageDir, subdir.name, "package.json"));
-        }
-      }
-    } catch {
-      // Directory might not exist
-    }
-
-    for (const pkgJsonPath of packageJsonPaths) {
-      try {
-        const content = await fs.readFile(pkgJsonPath, "utf-8");
-        const data = JSON.parse(content);
-        if (data.description) {
-          return data.description;
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
+  const packageInfo = await getPackageInfoV2(packageId, buildId);
+  return packageInfo?.description || null;
 }
 
 /**
@@ -722,40 +661,98 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
 }
 
 /**
- * Internal function to fetch manifest.
- * Wrapped with unstable_cache for persistence across invocations.
+ * Build a synthetic manifest from all available project package indexes.
+ *
+ * With the package-level architecture, there is no global manifest file.
+ * Instead, we build one dynamically from the package indexes.
  */
-async function fetchManifest(buildId: string): Promise<Manifest | null> {
-  const path = `${IR_BASE_PATH}/${buildId}/reference.manifest.json`;
-  return fetchBlobJson<Manifest>(path);
+async function buildManifestFromPackageIndexes(): Promise<Manifest | null> {
+  const projects = ["langchain", "langgraph", "deepagent", "integrations"] as const;
+  const languages = ["python", "javascript"] as const;
+
+  const packages: Package[] = [];
+  let latestBuildId = "";
+
+  // Fetch all project indexes in parallel
+  const indexPromises = projects.flatMap((project) =>
+    languages.map(async (language) => {
+      const index = await getProjectPackageIndex(project, language);
+      return { project, language, index };
+    }),
+  );
+
+  const results = await Promise.all(indexPromises);
+
+  for (const { language, index } of results) {
+    if (!index?.packages) continue;
+
+    for (const [pkgName, pkgInfo] of Object.entries(index.packages)) {
+      const packageId = normalizePackageId(pkgName, language);
+
+      // Get package details from the package.json file
+      const pkgDetails = await getPackageInfoV2(packageId, pkgInfo.buildId);
+
+      if (pkgDetails) {
+        // Use the full package details from the downloaded package.json
+        packages.push(pkgDetails as Package);
+      }
+
+      // Track latest build ID
+      if (!latestBuildId) {
+        latestBuildId = pkgInfo.buildId;
+      }
+    }
+  }
+
+  if (packages.length === 0) {
+    return null;
+  }
+
+  return {
+    irVersion: "1.0",
+    project: "all-packages",
+    build: {
+      buildId: latestBuildId,
+      createdAt: new Date().toISOString(),
+      baseUrl: "",
+    },
+    sources: [],
+    packages,
+  };
 }
 
 /**
- * Cached version of fetchManifest.
- * Uses Next.js unstable_cache to persist data across function invocations.
+ * Helper to normalize package name to packageId
  */
-const getCachedManifest = unstable_cache(fetchManifest, ["manifest"], {
-  revalidate: 3600, // 1 hour
-  tags: ["manifest"],
-});
+function normalizePackageId(pkgName: string, language: "python" | "javascript"): string {
+  const prefix = language === "python" ? "pkg_py_" : "pkg_js_";
+  const normalized = pkgName
+    .replace(/^@/, "")
+    .replace(/\//g, "_")
+    .replace(/-/g, "_");
+  return `${prefix}${normalized}`;
+}
 
 /**
  * Get the manifest for a build
  *
- * OPTIMIZATION: Uses Next.js unstable_cache to persist manifests
- * across serverless function invocations.
+ * With package-level architecture, we build a synthetic manifest
+ * from the package indexes instead of fetching a monolithic manifest file.
  */
-export async function getManifest(buildId: string): Promise<Manifest | null> {
+export async function getManifest(_buildId: string): Promise<Manifest | null> {
+  // Use a single cache key since manifest is now built from all packages
+  const cacheKey = "all-packages";
+
   // Check in-memory cache first (fastest path for same-request reuse)
-  if (manifestCache.has(buildId)) {
-    return manifestCache.get(buildId)!;
+  if (manifestCache.has(cacheKey)) {
+    return manifestCache.get(cacheKey)!;
   }
 
-  // Fetch from Next.js data cache (persists across invocations)
-  const manifest = await getCachedManifest(buildId);
+  // Build manifest from package indexes
+  const manifest = await buildManifestFromPackageIndexes();
 
   if (manifest) {
-    manifestCache.set(buildId, manifest);
+    manifestCache.set(cacheKey, manifest);
   }
 
   return manifest;
@@ -768,10 +765,9 @@ export async function getManifest(buildId: string): Promise<Manifest | null> {
 async function fetchRoutingMap(
   buildId: string,
   packageId: string,
-  language: "python" | "typescript",
 ): Promise<RoutingMap | null> {
-  // Routing maps are stored at ir/{buildId}/routing/{language}/{packageId}.json
-  const path = `${IR_BASE_PATH}/${buildId}/routing/${language}/${packageId}.json`;
+  // Routing maps are stored at ir/packages/{packageId}/{buildId}/routing.json
+  const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/routing.json`;
   return fetchBlobJson<RoutingMap>(path);
 }
 
@@ -795,7 +791,6 @@ const getCachedRoutingMap = unstable_cache(fetchRoutingMap, ["routing-map"], {
 export async function getRoutingMap(
   buildId: string,
   packageId: string,
-  language: "python" | "typescript",
 ): Promise<RoutingMap | null> {
   const cacheKey = `${buildId}:${packageId}`;
 
@@ -805,7 +800,7 @@ export async function getRoutingMap(
   }
 
   // Fetch from Next.js data cache (persists across invocations)
-  const routingMap = await getCachedRoutingMap(buildId, packageId, language);
+  const routingMap = await getCachedRoutingMap(buildId, packageId);
 
   if (routingMap) {
     routingCache.set(cacheKey, routingMap);
@@ -883,7 +878,7 @@ export async function getPackageSymbols(
     return packageSymbolsCache.get(cacheKey)!;
   }
 
-  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/symbols.json`;
+  const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/symbols.json`;
   const response = await fetchBlobJson<{ symbols: SymbolRecord[] }>(path);
 
   if (!response?.symbols) {
@@ -907,7 +902,7 @@ async function fetchSymbolLookupIndex(
   buildId: string,
   packageId: string,
 ): Promise<SymbolLookupIndex | null> {
-  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/lookup.json`;
+  const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/lookup.json`;
   return fetchBlobJson<SymbolLookupIndex>(path);
 }
 
@@ -1092,532 +1087,106 @@ export async function getPackagesForLanguage(
   return manifest.packages.filter((p) => p.language === language);
 }
 
-/**
- * Get the local IR output path
- */
-function getLocalIrBasePath(): string {
-  // From apps/web, go up to the root and into ir-output
-  const path = require("path");
-  return path.join(process.cwd(), "..", "..", "ir-output");
-}
-
-/**
- * Cache for local package index
- */
-const localPackageIndexCache = new Map<string, ProjectPackageIndex>();
-
-/**
- * Get the local package index for a project/language
- * With the new architecture, there are no build IDs at the project level.
- * Instead, we need to scan the packages directory to find available packages.
- */
-export async function getLocalPackageIndex(
-  language: "python" | "javascript",
-  project: string = "langchain",
-): Promise<ProjectPackageIndex | null> {
-  const cacheKey = `${project}-${language}`;
-  if (localPackageIndexCache.has(cacheKey)) {
-    return localPackageIndexCache.get(cacheKey)!;
-  }
-
-  try {
-    const fs = await import("fs/promises");
-    const path = await import("path");
-    const basePath = getLocalIrBasePath();
-    const packagesDir = path.join(basePath, "packages");
-
-    // Check if packages directory exists
-    try {
-      await fs.access(packagesDir);
-    } catch {
-      console.log(`[loader] No local packages directory found at ${packagesDir}`);
-      return null;
-    }
-
-    // Scan for packages matching the language prefix
-    const prefix = language === "python" ? "pkg_py_" : "pkg_js_";
-    const entries = await fs.readdir(packagesDir, { withFileTypes: true });
-    
-    const packages: ProjectPackageIndex["packages"] = {};
-
-    for (const entry of entries) {
-      if (!entry.isDirectory() || !entry.name.startsWith(prefix)) {
-        continue;
-      }
-
-      const packageId = entry.name;
-      const packageDir = path.join(packagesDir, packageId);
-
-      // Find the latest build for this package (first directory found)
-      const buildDirs = await fs.readdir(packageDir, { withFileTypes: true });
-      const buildDir = buildDirs.find((d) => d.isDirectory());
-      
-      if (!buildDir) continue;
-
-      const buildId = buildDir.name;
-      
-      // Try to read package.json for version info
-      const packageJsonPath = path.join(packageDir, buildId, "package.json");
-      try {
-        const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
-        const packageJson = JSON.parse(packageJsonContent);
-        
-        // Convert packageId back to package name
-        const packageName = packageJson.publishedName || packageId.replace(prefix, "").replace(/_/g, "-");
-        
-        packages[packageName] = {
-          buildId,
-          version: packageJson.version || "unknown",
-          sha: packageJson.repo?.sha || "unknown",
-        };
-      } catch {
-        // If no package.json, still include the package with unknown version
-        const packageName = packageId.replace(prefix, "").replace(/_/g, "-");
-        packages[packageName] = {
-          buildId,
-          version: "unknown",
-          sha: "unknown",
-        };
-      }
-    }
-
-    if (Object.keys(packages).length === 0) {
-      return null;
-    }
-
-    const index: ProjectPackageIndex = {
-      project,
-      language,
-      updatedAt: new Date().toISOString(),
-      packages,
-    };
-
-    localPackageIndexCache.set(cacheKey, index);
-    return index;
-  } catch (error) {
-    console.error(`[loader] getLocalPackageIndex ERROR for ${project}/${language}:`, error);
-    return null;
-  }
-}
+// =============================================================================
+// Public API Functions
+// =============================================================================
+// These functions are the primary interface for loading IR data.
 
 /**
  * Get the latest build ID for a language and project.
- * With package-level architecture, this returns the first available build ID
- * from the package index (for backward compatibility with code that expects a single build ID).
- * 
- * @deprecated Use getLocalPackageIndex instead for new code
- */
-let localBuildIdLoggedOnce = false;
-export async function getLocalLatestBuildId(
-  language: "python" | "javascript",
-  project: string = "langchain",
-): Promise<string | null> {
-  try {
-    // First try the old symlink approach for backward compatibility
-    const fs = await import("fs/promises");
-    const path = await import("path");
-    const basePath = getLocalIrBasePath();
-    const languageId = language === "python" ? "python" : "javascript";
-
-    const symlink = path.join(basePath, `latest-${project}-${languageId}`);
-
-    // Log once to debug path issues
-    if (!localBuildIdLoggedOnce) {
-      localBuildIdLoggedOnce = true;
-      try {
-        await fs.readdir(basePath);
-      } catch (e) {
-        console.log(`[loader] ir-output not found or not readable: ${e}`);
-      }
-    }
-
-    try {
-      const target = await fs.readlink(symlink);
-      return target;
-    } catch {
-      // No symlink, try to get from package index
-      const index = await getLocalPackageIndex(language, project);
-      if (index && Object.keys(index.packages).length > 0) {
-        // Return the first package's build ID
-        return Object.values(index.packages)[0].buildId;
-      }
-      return null;
-    }
-  } catch (error) {
-    console.error(`[loader] getLocalLatestBuildId ERROR for ${project}/${language}:`, error);
-    return null;
-  }
-}
-
-/**
- * Local file-based loader for development
- * Falls back to reading from ir-output directory
- * 
- * @deprecated With package-level architecture, there's no project-level manifest.
- * Use getLocalPackageIndex instead to get package information.
- */
-export async function getLocalManifest(buildId: string): Promise<Manifest | null> {
-  try {
-    const fs = await import("fs/promises");
-    const path = await import("path");
-    const manifestPath = path.join(getLocalIrBasePath(), buildId, "reference.manifest.json");
-    const content = await fs.readFile(manifestPath, "utf-8");
-    return JSON.parse(content);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Cache for local package symbols (in-memory for the dev server lifecycle)
- */
-const localPackageSymbolsCache = new Map<string, { symbols: SymbolRecord[]; total: number }>();
-
-/**
- * Get local symbols for development using package-level structure
+ * Uses the project package index to get the first available build ID.
  *
- * New path: ir-output/packages/{packageId}/{buildId}/symbols.json
- * Fallback: ir-output/{buildId}/packages/{packageId}/symbols.json (old structure)
- *
- * OPTIMIZATION: Uses in-memory cache to prevent duplicate file reads.
- */
-export async function getLocalPackageSymbols(
-  buildId: string,
-  packageId: string,
-): Promise<{ symbols: SymbolRecord[]; total: number } | null> {
-  const cacheKey = `local:${buildId}:${packageId}`;
-
-  // Check cache first
-  if (localPackageSymbolsCache.has(cacheKey)) {
-    return localPackageSymbolsCache.get(cacheKey)!;
-  }
-
-  try {
-    const fs = await import("fs/promises");
-    const path = await import("path");
-    const basePath = getLocalIrBasePath();
-    
-    // Try new path first: ir-output/packages/{packageId}/{buildId}/symbols.json
-    let symbolsPath = path.join(basePath, "packages", packageId, buildId, "symbols.json");
-    
-    try {
-      await fs.access(symbolsPath);
-    } catch {
-      // Fallback to old path: ir-output/{buildId}/packages/{packageId}/symbols.json
-      symbolsPath = path.join(basePath, buildId, "packages", packageId, "symbols.json");
-    }
-    
-    const content = await fs.readFile(symbolsPath, "utf-8");
-    const data = JSON.parse(content);
-    const symbols = data.symbols || data;
-    const result = { symbols, total: symbols.length };
-    localPackageSymbolsCache.set(cacheKey, result);
-    return result;
-  } catch (error) {
-    console.error(`[loader] getLocalPackageSymbols ERROR for ${buildId}/${packageId}:`, error);
-    return null;
-  }
-}
-
-/**
- * Get symbol by path from local storage
- */
-export async function getLocalSymbolByPath(
-  buildId: string,
-  packageId: string,
-  symbolPath: string,
-): Promise<SymbolRecord | null> {
-  const result = await getLocalPackageSymbols(buildId, packageId);
-  if (!result?.symbols) {
-    return null;
-  }
-  return result.symbols.find((s) => s.qualifiedName === symbolPath) || null;
-}
-
-/**
- * Get local symbol lookup index (generates from symbols for development)
- */
-export async function getLocalSymbolLookupIndex(
-  buildId: string,
-  packageId: string,
-): Promise<SymbolLookupIndex | null> {
-  const result = await getLocalPackageSymbols(buildId, packageId);
-  if (!result?.symbols) {
-    return null;
-  }
-
-  const symbolMap: Record<string, SymbolLookupEntry> = {};
-  const knownSymbols: string[] = [];
-  const linkableKinds = ["class", "interface", "typeAlias", "enum"];
-
-  for (const symbol of result.symbols) {
-    symbolMap[symbol.qualifiedName] = {
-      id: symbol.id,
-      kind: symbol.kind,
-      name: symbol.name,
-    };
-
-    if (linkableKinds.includes(symbol.kind)) {
-      knownSymbols.push(symbol.name);
-    }
-  }
-
-  return {
-    packageId,
-    symbolCount: result.symbols.length,
-    symbols: symbolMap,
-    knownSymbols: [...new Set(knownSymbols)],
-  };
-}
-
-/**
- * Get local known symbol names for type linking
- */
-export async function getLocalKnownSymbolNames(
-  buildId: string,
-  packageId: string,
-): Promise<string[]> {
-  const result = await getLocalPackageSymbols(buildId, packageId);
-  if (!result?.symbols) {
-    return [];
-  }
-
-  const linkableKinds = ["class", "interface", "typeAlias", "enum"];
-  const names = result.symbols.filter((s) => linkableKinds.includes(s.kind)).map((s) => s.name);
-
-  return [...new Set(names)];
-}
-
-/**
- * Get local individual symbol by ID (for development)
- * This matches the behavior of getIndividualSymbol for blob storage.
- */
-export async function getLocalIndividualSymbol(
-  buildId: string,
-  symbolId: string,
-  packageId?: string,
-): Promise<SymbolRecord | null> {
-  // If we have a packageId, look up in that package's symbols
-  if (packageId) {
-    const result = await getLocalPackageSymbols(buildId, packageId);
-    if (result?.symbols) {
-      const symbol = result.symbols.find((s) => s.id === symbolId);
-      if (symbol) return symbol;
-    }
-    return null;
-  }
-
-  // Without packageId, we'd need to scan all packages which is expensive
-  // For local dev, this is rarely used - just return null and let caller fall back
-  return null;
-}
-
-/**
- * Get local symbol by qualified name (for development)
- */
-export async function getLocalSymbolByQualifiedName(
-  buildId: string,
-  packageId: string,
-  qualifiedName: string,
-): Promise<SymbolRecord | null> {
-  const result = await getLocalPackageSymbols(buildId, packageId);
-  if (!result?.symbols) {
-    return null;
-  }
-
-  // Try exact match
-  let symbol = result.symbols.find((s) => s.qualifiedName === qualifiedName);
-  if (symbol) return symbol;
-
-  // Try variations
-  const variations = [qualifiedName.replace(/\//g, "."), qualifiedName.replace(/\./g, "/")];
-
-  for (const variation of variations) {
-    symbol = result.symbols.find((s) => s.qualifiedName === variation);
-    if (symbol) return symbol;
-  }
-
-  return null;
-}
-
-/**
- * Generate a lightweight routing map from local symbols for development.
- * This mimics what upload-ir.ts generates for production.
- */
-export async function getLocalRoutingMap(
-  buildId: string,
-  packageId: string,
-  displayName: string,
-  language: "python" | "typescript",
-): Promise<RoutingMap | null> {
-  const cacheKey = `local:${buildId}:${packageId}`;
-  if (routingCache.has(cacheKey)) {
-    return routingCache.get(cacheKey)!;
-  }
-
-  const result = await getLocalPackageSymbols(buildId, packageId);
-  if (!result?.symbols) {
-    return null;
-  }
-
-  // Generate routing map from symbols (same logic as upload-ir.ts)
-  const slugs: RoutingMap["slugs"] = {};
-  for (const symbol of result.symbols) {
-    // Only include routable symbol kinds
-    if (
-      !["class", "function", "interface", "module", "typeAlias", "enum", "method"].includes(
-        symbol.kind,
-      )
-    ) {
-      continue;
-    }
-
-    // Only include public symbols
-    if (symbol.tags?.visibility !== "public") {
-      continue;
-    }
-
-    slugs[symbol.qualifiedName] = {
-      refId: symbol.id,
-      kind: symbol.kind,
-      pageType: mapKindToPageType(symbol.kind),
-      title: symbol.name,
-    };
-  }
-
-  const routingMap: RoutingMap = {
-    packageId,
-    displayName,
-    language,
-    slugs,
-  };
-
-  routingCache.set(cacheKey, routingMap);
-  return routingMap;
-}
-
-/**
- * Map symbol kind to page type for routing.
- */
-function mapKindToPageType(kind: string): RoutingMap["slugs"][string]["pageType"] {
-  switch (kind) {
-    case "class":
-      return "class";
-    case "function":
-    case "method":
-      return "function";
-    case "interface":
-      return "interface";
-    case "typeAlias":
-      return "type";
-    case "enum":
-      return "enum";
-    case "variable":
-      return "variable";
-    default:
-      return "module";
-  }
-}
-
-// =============================================================================
-// Unified Environment-Aware Functions
-// =============================================================================
-// These functions automatically choose the right data source based on environment
-
-/**
- * Get the latest build ID for a language and project (unified - works in prod and dev)
+ * With package-level architecture, each package has its own build ID.
+ * This function returns the first available build ID for backwards compatibility.
  */
 export async function getBuildIdForLanguage(
   language: "python" | "javascript",
   project: string = "langchain",
 ): Promise<string | null> {
-  const buildId = await (isProduction()
-    ? getLatestBuildIdForLanguage(language, project)
-    : getLocalLatestBuildId(language, project));
+  // First, try the project package index (new architecture)
+  const packageIndex = await getProjectPackageIndex(project, language);
+  if (packageIndex && Object.keys(packageIndex.packages).length > 0) {
+    // Return the first package's build ID
+    return Object.values(packageIndex.packages)[0].buildId;
+  }
 
+  // Fallback to old-style project pointer
+  const buildId = await getLatestBuildIdForLanguage(language, project);
   if (!buildId) {
-    console.log(
-      `[loader] getBuildIdForLanguage: No build ID found for ${project}/${language} (isProduction=${isProduction()})`,
-    );
+    console.log(`[loader] getBuildIdForLanguage: No build ID found for ${project}/${language}`);
   }
   return buildId;
 }
 
 /**
- * Get the manifest for a build (unified - works in prod and dev)
+ * Get the manifest for a build.
+ * Fetches the manifest from blob storage.
  */
-export async function getManifestData(buildId: string): Promise<Manifest | null> {
-  return isProduction() ? getManifest(buildId) : getLocalManifest(buildId);
+export async function getManifestData(
+  buildId: string,
+  _language?: "python" | "javascript",
+  _project?: string,
+): Promise<Manifest | null> {
+  return getManifest(buildId);
 }
 
 /**
- * Get all symbols for a package (unified - works in prod and dev)
+ * Get all symbols for a package.
+ * Fetches the complete symbols.json file.
  */
 export async function getSymbols(
   buildId: string,
   packageId: string,
 ): Promise<{ symbols: SymbolRecord[]; total: number } | null> {
-  return isProduction()
-    ? getPackageSymbols(buildId, packageId)
-    : getLocalPackageSymbols(buildId, packageId);
+  return getPackageSymbols(buildId, packageId);
 }
 
 /**
- * Get a symbol by its path (unified - works in prod and dev)
+ * Get a symbol by its path (qualified name).
  */
 export async function getSymbolData(
   buildId: string,
   packageId: string,
   symbolPath: string,
 ): Promise<SymbolRecord | null> {
-  return isProduction()
-    ? getSymbolByPath(buildId, packageId, symbolPath)
-    : getLocalSymbolByPath(buildId, packageId, symbolPath);
+  return getSymbolByPath(buildId, packageId, symbolPath);
 }
 
 /**
- * Get routing map for a package (unified - works in prod and dev)
+ * Get routing map for a package.
  * Uses lightweight routing maps (~100KB) instead of full symbols (~14MB)
  * for efficient static generation.
  */
 export async function getRoutingMapData(
   buildId: string,
   packageId: string,
-  displayName: string,
-  language: "python" | "typescript",
 ): Promise<RoutingMap | null> {
-  return isProduction()
-    ? getRoutingMap(buildId, packageId, language)
-    : getLocalRoutingMap(buildId, packageId, displayName, language);
+  return getRoutingMap(buildId, packageId);
 }
 
 /**
- * Get known symbol names for type linking (unified - works in prod and dev)
+ * Get known symbol names for type linking.
  * Uses lightweight lookup index (~50KB) instead of full symbols (~14MB)
  */
 export async function getKnownSymbolNamesData(
   buildId: string,
   packageId: string,
 ): Promise<string[]> {
-  return isProduction()
-    ? getKnownSymbolNames(buildId, packageId)
-    : getLocalKnownSymbolNames(buildId, packageId);
+  return getKnownSymbolNames(buildId, packageId);
 }
 
 /**
- * Get the symbol lookup index (unified - works in prod and dev)
+ * Get the symbol lookup index.
  */
 export async function getSymbolLookupIndexData(
   buildId: string,
   packageId: string,
 ): Promise<SymbolLookupIndex | null> {
-  return isProduction()
-    ? getSymbolLookupIndex(buildId, packageId)
-    : getLocalSymbolLookupIndex(buildId, packageId);
+  return getSymbolLookupIndex(buildId, packageId);
 }
 
 /**
- * Get a symbol by qualified name using optimized lookup (unified - works in prod and dev)
+ * Get a symbol by qualified name using optimized lookup.
  * Fetches only the specific symbol (~1-5KB) instead of all symbols (~14MB)
  */
 export async function getSymbolOptimized(
@@ -1625,26 +1194,29 @@ export async function getSymbolOptimized(
   packageId: string,
   qualifiedName: string,
 ): Promise<SymbolRecord | null> {
-  return isProduction()
-    ? getSymbolByQualifiedName(buildId, packageId, qualifiedName)
-    : getLocalSymbolByQualifiedName(buildId, packageId, qualifiedName);
+  return getSymbolByQualifiedName(buildId, packageId, qualifiedName);
 }
 
 /**
- * Get an individual symbol by ID (unified - works in prod and dev)
- * In production, fetches from blob. In dev, looks up in local symbols.
- *
- * Note: For local mode without packageId, this may return null.
- * Callers should fall back to other methods if needed.
+ * Get an individual symbol by ID.
+ * With package-level architecture, searches the package's symbols.json.
  */
 export async function getIndividualSymbolData(
   buildId: string,
   symbolId: string,
   packageId?: string,
 ): Promise<SymbolRecord | null> {
-  return isProduction()
-    ? getIndividualSymbol(buildId, symbolId)
-    : getLocalIndividualSymbol(buildId, symbolId, packageId);
+  // With package-level architecture, we need packageId to locate the symbol
+  if (!packageId) {
+    // Fall back to old approach if no packageId (shouldn't happen in practice)
+    return getIndividualSymbol(buildId, symbolId);
+  }
+
+  // Search in the package's symbols.json
+  const symbols = await getPackageSymbols(buildId, packageId);
+  if (!symbols) return null;
+
+  return symbols.symbols.find((s) => s.id === symbolId) || null;
 }
 
 // =============================================================================
@@ -1666,7 +1238,7 @@ async function getLookupShard(
     return lookupShardCache.get(cacheKey)!;
   }
 
-  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/lookup/${shardKey}.json`;
+  const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/lookup/${shardKey}.json`;
   const shard = await fetchBlobJson<LookupShard>(path);
 
   if (shard) {
@@ -1707,7 +1279,7 @@ async function getShardedCatalogIndexManifest(
     return shardedCatalogIndexCache.get(cacheKey)!;
   }
 
-  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/catalog/index.json`;
+  const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/catalog/index.json`;
   const index = await fetchBlobJson<ShardedCatalogIndex>(path);
 
   if (index) {
@@ -1730,7 +1302,7 @@ async function getCatalogShard(
     return catalogShardCache.get(cacheKey)!;
   }
 
-  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/catalog/${shardKey}.json`;
+  const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/catalog/${shardKey}.json`;
   const shard = await fetchBlobJson<CatalogEntry[]>(path);
 
   if (shard) {
@@ -1748,48 +1320,26 @@ export async function getCatalogEntries(
   buildId: string,
   packageId: string,
 ): Promise<CatalogEntry[]> {
-  if (isProduction()) {
-    const manifest = await getShardedCatalogIndexManifest(buildId, packageId);
-    if (!manifest?.shards) {
-      return [];
-    }
-
-    // Fetch all shards in parallel
-    const shardPromises = manifest.shards.map((shardKey) =>
-      getCatalogShard(buildId, packageId, shardKey),
-    );
-    const shards = await Promise.all(shardPromises);
-
-    // Flatten results
-    const entries: CatalogEntry[] = [];
-    for (const shard of shards) {
-      if (shard) {
-        entries.push(...shard);
-      }
-    }
-
-    return entries;
-  } else {
-    // In development, generate catalog from local symbols
-    const result = await getLocalPackageSymbols(buildId, packageId);
-    if (!result?.symbols) {
-      return [];
-    }
-
-    return result.symbols
-      .filter((s) => s.tags?.visibility === "public")
-      .filter((s) =>
-        ["class", "function", "interface", "module", "typeAlias", "enum"].includes(s.kind),
-      )
-      .map((s) => ({
-        id: s.id,
-        kind: s.kind,
-        name: s.name,
-        qualifiedName: s.qualifiedName,
-        summary: s.docs?.summary?.substring(0, 200),
-        signature: s.signature?.substring(0, 300),
-      }));
+  const manifest = await getShardedCatalogIndexManifest(buildId, packageId);
+  if (!manifest?.shards) {
+    return [];
   }
+
+  // Fetch all shards in parallel
+  const shardPromises = manifest.shards.map((shardKey) =>
+    getCatalogShard(buildId, packageId, shardKey),
+  );
+  const shards = await Promise.all(shardPromises);
+
+  // Flatten results
+  const entries: CatalogEntry[] = [];
+  for (const shard of shards) {
+    if (shard) {
+      entries.push(...shard);
+    }
+  }
+
+  return entries;
 }
 
 /**
@@ -1805,7 +1355,7 @@ async function getChangelogShard(
     return changelogShardCache.get(cacheKey)!;
   }
 
-  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/changelog/${shardKey}.json`;
+  const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/changelog/${shardKey}.json`;
   const shard = await fetchBlobJson<ChangelogShard>(path);
 
   if (shard) {
@@ -1928,9 +1478,12 @@ export async function getStaticParamsForLanguage(
     // Add package-level route (e.g., /javascript/langchain-core)
     params.push({ slug: [packageSlug] });
 
+    // Use each package's own buildId (package-level architecture)
+    const pkgBuildId = (pkg as ExtendedPackageInfo).buildId || buildId;
+
     // Use routing map instead of full symbols (~100KB vs ~14MB)
     // Routing maps are small enough to be cached by Next.js data cache
-    const routingMap = await getRoutingMapData(buildId, pkg.packageId, pkg.displayName, irLanguage);
+    const routingMap = await getRoutingMapData(pkgBuildId, pkg.packageId);
     if (!routingMap?.slugs) continue;
 
     // Add symbol routes from routing map
@@ -2030,6 +1583,9 @@ async function fetchCrossProjectPackagesData(
         .replace(/^@/, "")
         .replace(/\//g, "_");
 
+      // Use each package's own buildId (package-level architecture)
+      const pkgBuildId = (pkg as ExtendedPackageInfo).buildId || buildId;
+
       // Load known symbols for this package.
       //
       // IMPORTANT:
@@ -2037,12 +1593,7 @@ async function fetchCrossProjectPackagesData(
       // exceed Next.js' 2MB data cache limit (leading to cache failures and
       // slow navigations). The routing map is significantly smaller and still
       // contains enough info for type-linking (public, routable symbols).
-      const routingMap = await getRoutingMapData(
-        buildId,
-        pkg.packageId,
-        pkg.displayName,
-        irLanguage,
-      );
+      const routingMap = await getRoutingMapData(pkgBuildId, pkg.packageId);
       const knownSymbols: [string, string][] = [];
       if (routingMap?.slugs) {
         for (const [slug, entry] of Object.entries(routingMap.slugs)) {

@@ -195,8 +195,7 @@ Build configurations are JSON files in the `configs/` directory:
 | ----------------------- | --------------------------------------------------------- |
 | `GITHUB_TOKEN`          | GitHub personal access token for API access (recommended) |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob storage token for uploads                     |
-| `BLOB_URL`              | Vercel Blob storage URL                                   |
-| `BLOB_BASE_URL`         | Base URL for fetching existing changelogs                 |
+| `BLOB_URL`              | Vercel Blob storage URL (for both reading and writing)    |
 
 ## Architecture
 

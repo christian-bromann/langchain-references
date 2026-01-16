@@ -1404,7 +1404,7 @@ async function buildConfig(
   // Check if update is needed (unless --force is specified)
   // We can check updates even in local mode - we just need read access to blob storage
   const hasBlobAccess =
-    process.env.BLOB_BASE_URL || process.env.BLOB_URL || process.env.BLOB_READ_WRITE_TOKEN;
+    process.env.BLOB_URL || process.env.BLOB_READ_WRITE_TOKEN;
 
   if (!opts.force && hasBlobAccess) {
     console.log(`\n🔍 Checking for updates...`);

@@ -18,7 +18,7 @@ import type {
 } from "@/lib/ir/types";
 import type { PackageChangelog, SymbolSnapshot } from "@langchain/ir-schema";
 import {
-  getBuildIdForLanguage,
+  getPackageBuildId,
   getManifestData,
   getSymbols,
   getSymbolData,
@@ -28,9 +28,7 @@ import {
   getPackageInfo,
   getRoutingMapData,
   getSymbolViaShardedLookup,
-  isProduction,
 } from "@/lib/ir/loader";
-import { getProjectForPackage } from "@/lib/config/projects";
 import { CodeBlock } from "./CodeBlock";
 import { SignatureBlock } from "./SignatureBlock";
 import { MarkdownContent } from "./MarkdownContent";
@@ -491,7 +489,7 @@ async function loadChangelog(
   }
 
   // Fallback to blob storage
-  const blobBaseUrl = process.env.BLOB_BASE_URL || process.env.BLOB_URL;
+  const blobBaseUrl = process.env.BLOB_URL;
   if (blobBaseUrl) {
     const buildId = await fetchLatestBuildId(blobBaseUrl, project, language);
     if (buildId) {
@@ -804,9 +802,8 @@ async function findSymbolOptimized(
   // Prefer the routing map + individual symbol files.
   // This avoids downloading `lookup.json` which can exceed Next.js' 2MB cache limit.
   const pkgInfo = await getPackageInfo(buildId, packageId);
-  const irLanguage = pkgInfo?.language === "python" ? "python" : "typescript";
   const routingMap = pkgInfo
-    ? await getRoutingMapData(buildId, packageId, pkgInfo.displayName, irLanguage)
+    ? await getRoutingMapData(buildId, packageId)
     : null;
 
   if (routingMap?.slugs) {
@@ -829,20 +826,16 @@ async function findSymbolOptimized(
     }
   }
 
-  // In production, try the sharded lookup as a second attempt
+  // Try the sharded lookup as a second attempt
   // This avoids loading the full symbols.json file
-  if (isProduction()) {
-    for (const path of pathVariations) {
-      const symbol = await getSymbolViaShardedLookup(buildId, packageId, path);
-      if (symbol) return symbol;
-    }
-    // In production, don't fall back to getSymbols - return null instead
-    // This prevents loading multi-MB files on the hot path
-    return null;
+  for (const path of pathVariations) {
+    const symbol = await getSymbolViaShardedLookup(buildId, packageId, path);
+    if (symbol) return symbol;
   }
 
-  // In development, fall back to the original method for debugging
-  return findSymbol(buildId, packageId, symbolPath);
+  // Don't fall back to getSymbols - return null instead
+  // This prevents loading multi-MB files on the hot path
+  return null;
 }
 
 /**
@@ -1187,26 +1180,24 @@ export async function SymbolPage({
   symbolPath,
   version,
 }: SymbolPageProps) {
-  const irLanguage = language === "python" ? "python" : "javascript";
+  const ecosystem = language === "python" ? "python" : "javascript";
+  const irLanguage = ecosystem; // alias for backwards compatibility
 
-  // Determine which project this package belongs to
+  // Get the package-specific buildId
+  const buildId = await getPackageBuildId(ecosystem, packageName);
+
+  // Get project info for version history/switching
+  const { getProjectForPackage } = await import("@/lib/config/projects");
   const project = getProjectForPackage(packageName);
-  const buildId = await getBuildIdForLanguage(irLanguage, project.id);
 
   let symbol: DisplaySymbol | null = null;
   let irSymbolForMarkdown: SymbolRecord | null = null;
   let knownSymbols = new Map<string, string>();
 
   if (buildId) {
-    // OPTIMIZATION: avoid `lookup.json` (can be >2MB). Use routing map for known symbols.
     const pkgInfo = await getPackageInfo(buildId, packageId);
     const routingMap = pkgInfo
-      ? await getRoutingMapData(
-          buildId,
-          packageId,
-          pkgInfo.displayName,
-          language === "python" ? "python" : "typescript",
-        )
+      ? await getRoutingMapData(buildId, packageId)
       : null;
 
     if (routingMap?.slugs) {

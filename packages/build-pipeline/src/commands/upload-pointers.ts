@@ -23,7 +23,7 @@ import { put } from "@vercel/blob";
 // CONFIGURATION
 // =============================================================================
 
-const PROJECTS = ["langchain", "langgraph", "deepagent"] as const;
+const PROJECTS = ["langchain", "langgraph", "deepagent", "integrations"] as const;
 const LANGUAGES = ["python", "javascript"] as const;
 const POINTERS_PATH = "pointers";
 

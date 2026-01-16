@@ -14,7 +14,7 @@ import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { SymbolKind } from "@/lib/ir/types";
 import { LanguageDropdown } from "./LanguageDropdown";
-import { getProjectFromPathname, packageBelongsToProject } from "@/lib/config/projects";
+import { getProjectFromPathname } from "@/lib/config/projects";
 
 /**
  * Navigation item structure
@@ -34,6 +34,7 @@ export interface SidebarPackage {
   name: string;
   path: string;
   items: NavItem[];
+  project: string;
 }
 
 interface SidebarProps {
@@ -52,11 +53,10 @@ export function Sidebar({ pythonPackages = [], javascriptPackages = [] }: Sideba
   // Filter packages by language first
   const languagePackages = isPython ? pythonPackages : isJavaScript ? javascriptPackages : [];
 
-  // Then filter by project
+  // Then filter by project using the project field passed from SidebarLoader
   const packages = useMemo(() => {
     if (!currentProject) return languagePackages;
-
-    return languagePackages.filter((pkg) => packageBelongsToProject(pkg.name, currentProject.id));
+    return languagePackages.filter((pkg) => pkg.project === currentProject.id);
   }, [languagePackages, currentProject]);
 
   return (

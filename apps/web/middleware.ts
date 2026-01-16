@@ -94,7 +94,7 @@ async function resolveV03VersionFromChangelog(params: {
     return v03VersionCache.get(params.packageId) ?? null;
   }
 
-  const blobBaseUrl = process.env.BLOB_BASE_URL || process.env.BLOB_URL;
+  const blobBaseUrl = process.env.BLOB_URL;
   if (!blobBaseUrl) {
     v03VersionCache.set(params.packageId, null);
     return null;

@@ -30,7 +30,7 @@ import { regenerateProjectPackageIndex } from "../pointers.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** Available projects */
-const PROJECTS = ["langchain", "langgraph", "deepagent"] as const;
+const PROJECTS = ["langchain", "langgraph", "deepagent", "integrations"] as const;
 
 /** Available languages */
 const LANGUAGES = ["python", "javascript"] as const;

@@ -14,15 +14,15 @@ import { getEnabledProjects } from "@/lib/config/projects";
 import type { Package, RoutingMap, SymbolKind } from "@/lib/ir/types";
 
 /**
- * Get package URL slug from display name
+ * Get package URL slug from published name
  */
 function getPackageSlug(pkg: Package, language: "python" | "javascript"): string {
   if (language === "javascript") {
     // Convert @langchain/core -> langchain-core
-    return pkg.displayName.replace(/^@/, "").replace(/\//g, "-");
+    return pkg.publishedName.replace(/^@/, "").replace(/\//g, "-").replace(/_/g, "-").toLowerCase();
   }
   // Convert langchain_core -> langchain-core
-  return pkg.displayName.replace(/_/g, "-");
+  return pkg.publishedName.replace(/_/g, "-").toLowerCase();
 }
 
 /**
@@ -106,29 +106,34 @@ async function loadSidebarPackagesForProject(
   const manifest = await getManifestData(buildId);
   if (!manifest) return [];
 
-  const packages = manifest.packages.filter((p) =>
-    language === "python"
-      ? p.language === "python"
-      : p.language === "typescript" || p.ecosystem === "javascript",
-  );
+  // Filter by language/ecosystem AND by project
+  const packages = manifest.packages.filter((p) => {
+    const matchesLanguage =
+      language === "python"
+        ? p.language === "python"
+        : p.language === "typescript" || p.ecosystem === "javascript";
 
-  const irLanguage = language === "python" ? "python" : "typescript";
+    // Filter by project (using extended package info)
+    const pkg = p as { project?: string };
+    const matchesProject = pkg.project === projectId;
+
+    return matchesLanguage && matchesProject;
+  });
+
   const sidebarPackages: SidebarPackage[] = [];
 
   for (const pkg of packages) {
     const slug = getPackageSlug(pkg, language);
+
+    // Use each package's own buildId (package-level architecture)
+    const pkgBuildId = (pkg as { buildId?: string }).buildId || buildId;
 
     // For Python, only show package names in sidebar (no sub-module listing)
     // since Python packages have a different export structure with many modules
     let items: SidebarPackage["items"] = [];
     if (language === "javascript") {
       // Use routing map instead of full symbols (~100KB vs ~14MB)
-      const routingMap = await getRoutingMapData(
-        buildId,
-        pkg.packageId,
-        pkg.displayName,
-        irLanguage,
-      );
+      const routingMap = await getRoutingMapData(pkgBuildId, pkg.packageId);
       items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
     }
 
@@ -137,6 +142,7 @@ async function loadSidebarPackagesForProject(
       name: pkg.displayName,
       path: `/${language}/${slug}`,
       items,
+      project: projectId,
     });
   }
 
@@ -148,15 +154,24 @@ async function loadSidebarPackagesForProject(
  */
 async function loadSidebarPackages(language: "python" | "javascript"): Promise<SidebarPackage[]> {
   const projects = getEnabledProjects();
-  const allPackages: SidebarPackage[] = [];
 
   // Load packages from all projects in parallel
   const projectPackages = await Promise.all(
     projects.map((project) => loadSidebarPackagesForProject(language, project.id)),
   );
 
+  // Deduplicate packages by id - the same package (e.g., @langchain/core) may exist
+  // in multiple project manifests, but we only want to show it once in the sidebar
+  const seen = new Set<string>();
+  const allPackages: SidebarPackage[] = [];
+
   for (const packages of projectPackages) {
-    allPackages.push(...packages);
+    for (const pkg of packages) {
+      if (!seen.has(pkg.id)) {
+        seen.add(pkg.id);
+        allPackages.push(pkg);
+      }
+    }
   }
 
   return allPackages;

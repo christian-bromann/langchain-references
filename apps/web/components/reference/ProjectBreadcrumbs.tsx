@@ -9,6 +9,7 @@ import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
 import type { ProjectConfig } from "@langchain/ir-schema";
 import { cn } from "@/lib/utils/cn";
+import { getDefaultPackageSlug } from "@/lib/config/projects";
 
 interface BreadcrumbItem {
   label: string;
@@ -28,8 +29,10 @@ export function ProjectBreadcrumbs({
   items = [],
   className,
 }: ProjectBreadcrumbsProps) {
+  // Use the default package slug for this project/language
+  const packageSlug = getDefaultPackageSlug(project.id, language);
   const allItems: BreadcrumbItem[] = [
-    { label: project.displayName, href: `/${language}/${project.slug}` },
+    { label: project.displayName, href: `/${language}/${packageSlug}` },
     { label: language === "python" ? "Python" : "JavaScript" },
     ...items,
   ];

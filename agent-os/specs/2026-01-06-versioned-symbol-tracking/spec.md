@@ -618,7 +618,7 @@ type TagPattern =
 async function discoverVersions(
   repo: string,
   tagPattern: string,
-  options: VersionDiscoveryOptions,
+  options: VersionDiscoveryOptions
 ): Promise<DiscoveredVersion[]> {
   // 1. Fetch all tags matching the pattern
   const tags = await fetchGitTags(repo, tagPattern);
@@ -672,7 +672,9 @@ interface VersionDiscoveryOptions {
  * Keep only the latest patch release for each minor version.
  * Example: [0.2.15, 0.2.14, 0.2.13, 0.1.5, 0.1.4] → [0.2.15, 0.1.5]
  */
-function filterToMinorVersions(versions: DiscoveredVersion[]): DiscoveredVersion[] {
+function filterToMinorVersions(
+  versions: DiscoveredVersion[]
+): DiscoveredVersion[] {
   const seen = new Map<string, DiscoveredVersion>();
 
   for (const v of versions) {
@@ -747,7 +749,7 @@ interface MinimalExtractionOptions {
 async function extractMinimalIR(
   source: string,
   sha: string,
-  options: MinimalExtractionOptions,
+  options: MinimalExtractionOptions
 ): Promise<MinimalIR> {
   // Extract just enough for diffing:
   // - Symbol qualified names
@@ -769,7 +771,7 @@ async function computeVersionDelta(
   olderIR: MinimalIR,
   newerIR: MinimalIR,
   olderVersion: string,
-  newerVersion: string,
+  newerVersion: string
 ): Promise<VersionDelta> {
   const delta: VersionDelta = {
     version: newerVersion,
@@ -782,8 +784,12 @@ async function computeVersionDelta(
     deprecated: [],
   };
 
-  const olderSymbols = new Map(olderIR.symbols.map((s) => [s.qualifiedName, s]));
-  const newerSymbols = new Map(newerIR.symbols.map((s) => [s.qualifiedName, s]));
+  const olderSymbols = new Map(
+    olderIR.symbols.map((s) => [s.qualifiedName, s])
+  );
+  const newerSymbols = new Map(
+    newerIR.symbols.map((s) => [s.qualifiedName, s])
+  );
 
   // Find added symbols
   for (const [name, symbol] of newerSymbols) {
@@ -847,7 +853,10 @@ async function computeVersionDelta(
 /**
  * Detect specific changes between two versions of a symbol.
  */
-function detectChanges(older: MinimalSymbol, newer: MinimalSymbol): ChangeRecord[] {
+function detectChanges(
+  older: MinimalSymbol,
+  newer: MinimalSymbol
+): ChangeRecord[] {
   const changes: ChangeRecord[] = [];
 
   // Signature changes (overall)
@@ -865,7 +874,9 @@ function detectChanges(older: MinimalSymbol, newer: MinimalSymbol): ChangeRecord
   if (!arraysEqual(older.extends, newer.extends)) {
     changes.push({
       type: "extends-changed",
-      description: `Base class changed from ${formatList(older.extends)} to ${formatList(newer.extends)}`,
+      description: `Base class changed from ${formatList(
+        older.extends
+      )} to ${formatList(newer.extends)}`,
       breaking: true,
       before: formatList(older.extends),
       after: formatList(newer.extends),
@@ -903,7 +914,7 @@ function detectChanges(older: MinimalSymbol, newer: MinimalSymbol): ChangeRecord
  */
 function detectMemberChanges(
   olderMembers: MemberSnapshot[],
-  newerMembers: MemberSnapshot[],
+  newerMembers: MemberSnapshot[]
 ): ChangeRecord[] {
   const changes: ChangeRecord[] = [];
   const olderMap = new Map(olderMembers.map((m) => [m.name, m]));
@@ -956,7 +967,9 @@ function detectMemberChanges(
         const becameRequired = olderMember.optional && !newerMember.optional;
         changes.push({
           type: "member-optionality-changed",
-          description: `'${name}' ${becameRequired ? "became required" : "became optional"}`,
+          description: `'${name}' ${
+            becameRequired ? "became required" : "became optional"
+          }`,
           breaking: becameRequired,
           target: name,
           before: olderMember.optional ? "optional" : "required",
@@ -969,7 +982,10 @@ function detectMemberChanges(
         changes.push({
           type: "member-visibility-changed",
           description: `Visibility of '${name}' changed from ${olderMember.visibility} to ${newerMember.visibility}`,
-          breaking: isVisibilityChangeBreaking(olderMember.visibility, newerMember.visibility),
+          breaking: isVisibilityChangeBreaking(
+            olderMember.visibility,
+            newerMember.visibility
+          ),
           target: name,
           before: olderMember.visibility,
           after: newerMember.visibility,
@@ -980,7 +996,9 @@ function detectMemberChanges(
       if (olderMember.readonly !== newerMember.readonly) {
         changes.push({
           type: "member-readonly-changed",
-          description: `'${name}' ${newerMember.readonly ? "became readonly" : "is no longer readonly"}`,
+          description: `'${name}' ${
+            newerMember.readonly ? "became readonly" : "is no longer readonly"
+          }`,
           breaking: newerMember.readonly === true, // Adding readonly is breaking
           target: name,
           before: olderMember.readonly ? "readonly" : "mutable",
@@ -992,7 +1010,9 @@ function detectMemberChanges(
       if (olderMember.static !== newerMember.static) {
         changes.push({
           type: "member-static-changed",
-          description: `'${name}' ${newerMember.static ? "became static" : "is no longer static"}`,
+          description: `'${name}' ${
+            newerMember.static ? "became static" : "is no longer static"
+          }`,
           breaking: true,
           target: name,
           before: olderMember.static ? "static" : "instance",
@@ -1014,7 +1034,10 @@ After generating the changelog, annotate the latest IR with version information:
 /**
  * Add version information to symbols in the latest IR.
  */
-function annotateLatestIR(latestIR: SymbolRecord[], changelog: PackageChangelog): void {
+function annotateLatestIR(
+  latestIR: SymbolRecord[],
+  changelog: PackageChangelog
+): void {
   // Build a map of when each symbol was introduced
   const introductionMap = new Map<string, string>();
   const modificationMap = new Map<string, string[]>();
@@ -1119,9 +1142,12 @@ For efficiency, the build pipeline downloads existing changelogs from deployed s
 async function fetchDeployedChangelog(
   project: string,
   language: string,
-  packageId: string,
-): Promise<{ changelog: PackageChangelog; versions: PackageVersionIndex } | null> {
-  const baseUrl = process.env.BLOB_BASE_URL;
+  packageId: string
+): Promise<{
+  changelog: PackageChangelog;
+  versions: PackageVersionIndex;
+} | null> {
+  const baseUrl = process.env.BLOB_URL;
 
   try {
     const [changelogRes, versionsRes] = await Promise.all([
@@ -1130,7 +1156,9 @@ async function fetchDeployedChangelog(
     ]);
 
     if (!changelogRes.ok || !versionsRes.ok) {
-      console.log(`No existing changelog found for ${packageId} - will do full build`);
+      console.log(
+        `No existing changelog found for ${packageId} - will do full build`
+      );
       return null;
     }
 
@@ -1139,7 +1167,9 @@ async function fetchDeployedChangelog(
       versions: await versionsRes.json(),
     };
   } catch (error) {
-    console.log(`Failed to fetch existing changelog: ${error} - will do full build`);
+    console.log(
+      `Failed to fetch existing changelog: ${error} - will do full build`
+    );
     return null;
   }
 }
@@ -1152,29 +1182,37 @@ async function incrementalBuild(
   project: string,
   language: string,
   packageId: string,
-  config: VersioningConfig,
+  config: VersioningConfig
 ): Promise<{ changelog: PackageChangelog; versions: PackageVersionIndex }> {
   // Step 1: Fetch existing deployed changelog
   const existing = await fetchDeployedChangelog(project, language, packageId);
 
   // Step 2: Discover current versions from git tags
-  const discoveredVersions = await discoverVersions(config.repo, config.tagPattern, {
-    maxVersions: config.maxVersions ?? 10,
-    alwaysInclude: config.alwaysInclude,
-    minVersion: config.minVersion,
-  });
+  const discoveredVersions = await discoverVersions(
+    config.repo,
+    config.tagPattern,
+    {
+      maxVersions: config.maxVersions ?? 10,
+      alwaysInclude: config.alwaysInclude,
+      minVersion: config.minVersion,
+    }
+  );
 
   // Step 3: If no existing changelog, do full build
   if (!existing) {
     console.log(
-      `First build for ${packageId} - extracting all ${discoveredVersions.length} versions`,
+      `First build for ${packageId} - extracting all ${discoveredVersions.length} versions`
     );
     return fullChangelogBuild(packageId, discoveredVersions);
   }
 
   // Step 4: Find versions not already in changelog
-  const existingVersionSet = new Set(existing.changelog.history.map((h) => h.version));
-  const newVersions = discoveredVersions.filter((v) => !existingVersionSet.has(v.version));
+  const existingVersionSet = new Set(
+    existing.changelog.history.map((h) => h.version)
+  );
+  const newVersions = discoveredVersions.filter(
+    (v) => !existingVersionSet.has(v.version)
+  );
 
   if (newVersions.length === 0) {
     console.log(`No new versions for ${packageId} - using existing changelog`);
@@ -1182,7 +1220,9 @@ async function incrementalBuild(
   }
 
   console.log(
-    `Found ${newVersions.length} new version(s) for ${packageId}: ${newVersions.map((v) => v.version).join(", ")}`,
+    `Found ${newVersions.length} new version(s) for ${packageId}: ${newVersions
+      .map((v) => v.version)
+      .join(", ")}`
   );
 
   // Step 5: Only extract and diff new versions
@@ -1192,7 +1232,7 @@ async function incrementalBuild(
   const newDeltas = await computeDeltasForVersions(
     packageId,
     newVersions,
-    mostRecentExisting, // Base for diffing
+    mostRecentExisting // Base for diffing
   );
 
   // Step 6: Merge new deltas into existing changelog
@@ -1218,7 +1258,9 @@ async function incrementalBuild(
         sha: v.sha,
         tag: v.tag,
         releaseDate: v.releaseDate,
-        stats: computeVersionStats(newDeltas.find((d) => d.version === v.version)!),
+        stats: computeVersionStats(
+          newDeltas.find((d) => d.version === v.version)!
+        ),
       })),
       ...existing.versions.versions,
     ],
@@ -1263,7 +1305,7 @@ When extracting multiple historical versions (full build or catching up on sever
 async function extractVersionsParallel(
   repo: string,
   versions: DiscoveredVersion[],
-  options: { concurrency?: number } = {},
+  options: { concurrency?: number } = {}
 ): Promise<Map<string, MinimalIR>> {
   const concurrency = options.concurrency ?? 4; // Limit parallel extractions
   const results = new Map<string, MinimalIR>();
@@ -1274,10 +1316,12 @@ async function extractVersionsParallel(
 
     const batchResults = await Promise.all(
       batch.map(async (version) => {
-        console.log(`Extracting ${version.version} (${version.sha.slice(0, 7)})...`);
+        console.log(
+          `Extracting ${version.version} (${version.sha.slice(0, 7)})...`
+        );
         const ir = await extractMinimalIR(repo, version.sha);
         return { version: version.version, ir };
-      }),
+      })
     );
 
     for (const { version, ir } of batchResults) {
@@ -1376,7 +1420,7 @@ on:
       $FLAGS
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    BLOB_BASE_URL: ${{ vars.BLOB_BASE_URL }}
+    BLOB_URL: ${{ vars.BLOB_URL }}
 ```
 
 #### 4.8.3 Full Rebuild Mode
@@ -1465,7 +1509,7 @@ export function VersionBadge({ since, className }: VersionBadgeProps) {
         "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
         "bg-emerald-100 text-emerald-800",
         "dark:bg-emerald-900/30 dark:text-emerald-400",
-        className,
+        className
       )}
     >
       Since {since}
@@ -1502,7 +1546,11 @@ export function DeprecationBanner({
           <h4 className="font-semibold text-amber-800 dark:text-amber-200">
             Deprecated since {since}
           </h4>
-          {message && <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">{message}</p>}
+          {message && (
+            <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
+              {message}
+            </p>
+          )}
           {replacement && (
             <p className="mt-2 text-sm">
               <span className="text-amber-700 dark:text-amber-300">Use </span>
@@ -1514,9 +1562,14 @@ export function DeprecationBanner({
                   {replacement}
                 </Link>
               ) : (
-                <code className="font-mono text-amber-900 dark:text-amber-100">{replacement}</code>
+                <code className="font-mono text-amber-900 dark:text-amber-100">
+                  {replacement}
+                </code>
               )}
-              <span className="text-amber-700 dark:text-amber-300"> instead.</span>
+              <span className="text-amber-700 dark:text-amber-300">
+                {" "}
+                instead.
+              </span>
             </p>
           )}
         </div>
@@ -1610,7 +1663,7 @@ export function VersionHistory({
       (delta) =>
         delta.added.some((a) => a.qualifiedName === qualifiedName) ||
         delta.modified.some((m) => m.qualifiedName === qualifiedName) ||
-        delta.deprecated.some((d) => d.qualifiedName === qualifiedName),
+        delta.deprecated.some((d) => d.qualifiedName === qualifiedName)
     ) ?? [];
 
   return (
@@ -1622,7 +1675,9 @@ export function VersionHistory({
         <History className="h-4 w-4" />
         Version History
         {versionInfo?.modifiedIn && (
-          <span className="text-xs text-gray-500">({versionInfo.modifiedIn.length} changes)</span>
+          <span className="text-xs text-gray-500">
+            ({versionInfo.modifiedIn.length} changes)
+          </span>
         )}
         {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
@@ -1659,7 +1714,9 @@ export function VersionHistory({
 
           {/* No history for this symbol */}
           {changelog && relevantHistory.length === 0 && (
-            <div className="text-sm text-gray-500">No recorded changes for this symbol.</div>
+            <div className="text-sm text-gray-500">
+              No recorded changes for this symbol.
+            </div>
           )}
         </div>
       )}
@@ -1673,7 +1730,7 @@ export function VersionHistory({
 async function fetchChangelog(
   project: string,
   language: string,
-  packageId: string,
+  packageId: string
 ): Promise<PackageChangelog> {
   const res = await fetch(`/api/changelog/${project}/${language}/${packageId}`);
   if (!res.ok) {
@@ -1687,13 +1744,20 @@ interface VersionHistoryEntryProps {
   qualifiedName: string;
 }
 
-function VersionHistoryEntry({ delta, qualifiedName }: VersionHistoryEntryProps) {
+function VersionHistoryEntry({
+  delta,
+  qualifiedName,
+}: VersionHistoryEntryProps) {
   const [showSnapshot, setShowSnapshot] = useState(false);
 
   // Find the relevant change for this symbol
   const added = delta.added.find((a) => a.qualifiedName === qualifiedName);
-  const modified = delta.modified.find((m) => m.qualifiedName === qualifiedName);
-  const deprecated = delta.deprecated.find((d) => d.qualifiedName === qualifiedName);
+  const modified = delta.modified.find(
+    (m) => m.qualifiedName === qualifiedName
+  );
+  const deprecated = delta.deprecated.find(
+    (d) => d.qualifiedName === qualifiedName
+  );
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
@@ -1702,7 +1766,9 @@ function VersionHistoryEntry({ delta, qualifiedName }: VersionHistoryEntryProps)
           <span className="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100">
             v{delta.version}
           </span>
-          <span className="text-xs text-gray-500">{formatDate(delta.releaseDate)}</span>
+          <span className="text-xs text-gray-500">
+            {formatDate(delta.releaseDate)}
+          </span>
         </div>
         <a
           href={`https://github.com/.../${delta.sha}`}
@@ -1743,7 +1809,9 @@ function VersionHistoryEntry({ delta, qualifiedName }: VersionHistoryEntryProps)
               {showSnapshot ? "Hide" : "View"} full interface at this version
             </button>
 
-            {showSnapshot && <SnapshotViewer snapshot={modified.snapshotBefore} />}
+            {showSnapshot && (
+              <SnapshotViewer snapshot={modified.snapshotBefore} />
+            )}
           </div>
         )}
 
@@ -1769,9 +1837,13 @@ function ChangeDescription({ change }: { change: ChangeRecord }) {
           {change.memberName}
         </code>
       )}
-      <span className="text-gray-700 dark:text-gray-300">{change.description}</span>
+      <span className="text-gray-700 dark:text-gray-300">
+        {change.description}
+      </span>
       {change.breaking && (
-        <span className="text-xs text-red-600 dark:text-red-400 font-medium">Breaking</span>
+        <span className="text-xs text-red-600 dark:text-red-400 font-medium">
+          Breaking
+        </span>
       )}
     </div>
   );
@@ -1826,7 +1898,7 @@ export function SignatureDiff({ before, after }: SignatureDiffProps) {
               "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200",
             line.type === "added" &&
               "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200",
-            line.type === "unchanged" && "text-gray-600 dark:text-gray-400",
+            line.type === "unchanged" && "text-gray-600 dark:text-gray-400"
           )}
         >
           <span className="select-none mr-2">
@@ -1853,13 +1925,19 @@ interface SnapshotViewerProps {
   sha: string;
 }
 
-export function SnapshotViewer({ snapshot, repoUrl, sha }: SnapshotViewerProps) {
+export function SnapshotViewer({
+  snapshot,
+  repoUrl,
+  sha,
+}: SnapshotViewerProps) {
   /**
    * Render interface from stored snapshot.
    * The member signatures are already in the snapshot data.
    */
   const renderInterface = (snapshot: SymbolSnapshot): string => {
-    const members = snapshot.members?.map((m) => `  ${m.signature};`).join("\n");
+    const members = snapshot.members
+      ?.map((m) => `  ${m.signature};`)
+      .join("\n");
     return `${snapshot.signature} {\n${members}\n}`;
   };
 
@@ -1869,7 +1947,9 @@ export function SnapshotViewer({ snapshot, repoUrl, sha }: SnapshotViewerProps) 
     <div className="mt-3 space-y-3">
       {/* Rendered from snapshot - no fetch needed! */}
       <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-4 font-mono text-sm overflow-x-auto">
-        <pre className="text-gray-800 dark:text-gray-200">{renderInterface(snapshot)}</pre>
+        <pre className="text-gray-800 dark:text-gray-200">
+          {renderInterface(snapshot)}
+        </pre>
       </div>
 
       {/* Link to GitHub for full source with docs */}
@@ -2140,12 +2220,14 @@ interface VersioningConfig {
 ### 7.1 Phase 1: Schema & Types (Days 1-2)
 
 1. **Add Versioning Types to IR Schema**
+
    - Create `packages/ir-schema/src/versioning.ts`
    - Define `PackageVersionIndex`, `PackageChangelog`, `VersionDelta`, etc.
    - Define `SymbolSnapshot` and `ChangeRecord` types
    - Export from package index
 
 2. **Extend SymbolRecord**
+
    - Add optional `versionInfo` field
    - Update type exports
 
@@ -2156,6 +2238,7 @@ interface VersioningConfig {
 ### 7.2 Phase 2: Version Discovery (Days 3-4)
 
 4. **Create Version Discovery Utilities**
+
    - Implement `discoverVersions()` function
    - Add tag pattern parsing
    - Implement minor version filtering
@@ -2169,11 +2252,13 @@ interface VersioningConfig {
 ### 7.3 Phase 3: Diff Computation (Days 5-7)
 
 6. **Create Minimal Extraction Mode**
+
    - Add flags for minimal extraction
    - Skip documentation parsing
    - Output lightweight symbol structure
 
 7. **Implement Diff Engine**
+
    - Create `computeVersionDelta()` function
    - Implement `detectChanges()` for symbols
    - Implement `detectMemberChanges()` for classes/interfaces
@@ -2186,12 +2271,14 @@ interface VersioningConfig {
 ### 7.4 Phase 4: Build Pipeline (Days 8-10)
 
 9. **Update Build Script**
+
    - Add versioned extraction flow
    - Implement incremental changelog updates
    - Add `versions.json` generation
    - Add `changelog.json` generation
 
 10. **Annotate Latest IR**
+
     - Implement `annotateLatestIR()` function
     - Add `versionInfo` to all symbols
     - Test with full extraction
@@ -2204,14 +2291,17 @@ interface VersioningConfig {
 ### 7.5 Phase 5: UI Components (Days 11-14)
 
 12. **Create Version Badge Component**
+
     - Implement `VersionBadge.tsx`
     - Style for light/dark modes
 
 13. **Create Deprecation Banner**
+
     - Implement `DeprecationBanner.tsx`
     - Add replacement linking
 
 14. **Create Version History Panel**
+
     - Implement `VersionHistory.tsx`
     - Add expandable entries
     - Add snapshot viewer
@@ -2223,12 +2313,14 @@ interface VersioningConfig {
 ### 7.6 Phase 6: Integration & Polish (Days 15-17)
 
 16. **Update SymbolPage**
+
     - Add version badge to header
     - Add deprecation banner
     - Add version history section
     - Load changelog data
 
 17. **Update IR Loader**
+
     - Add `getChangelog()` function
     - Add `getVersionIndex()` function
     - Cache changelog loading

@@ -52,11 +52,11 @@ import { getBuildIdForLanguage, getManifestData } from "@/lib/ir/loader";
 import type { Package } from "@/lib/ir/types";
 
 /**
- * Get package URL slug from display name
+ * Get package URL slug from published name
  */
 function getPackageSlug(pkg: Package): string {
   // Convert langchain_core -> langchain-core
-  return pkg.displayName.replace(/_/g, "-");
+  return pkg.publishedName.replace(/_/g, "-").toLowerCase();
 }
 
 export default async function PythonIndexPage() {

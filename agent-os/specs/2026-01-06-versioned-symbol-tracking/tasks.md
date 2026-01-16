@@ -462,7 +462,7 @@ Add versioning support to the build workflow:
 - [x] Add `full_rebuild` boolean input (default: false)
 - [x] Pass `--with-versions` flag to build script when enabled
 - [x] Pass `--full` flag when full_rebuild is true
-- [x] Add `BLOB_BASE_URL` to environment for changelog fetching
+- [x] Add `BLOB_URL` to environment for changelog fetching
 - [x] Update build step to use new flags
 - [x] Update artifact upload to include `changelog.json` and `versions.json`
 

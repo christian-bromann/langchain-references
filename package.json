@@ -11,7 +11,9 @@
     "url": "https://github.com/langchain-ai/langchain-reference-docs.git"
   },
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "dotenv -e .env.local -- concurrently --names ir,web --prefix-colors cyan,magenta \"pnpm serve-ir\" \"pnpm --filter @langchain/reference-web dev\"",
+    "dev:web": "turbo dev",
+    "serve-ir": "tsx packages/ir-server/src/index.ts",
     "build": "turbo build",
     "build:ir": "tsx packages/build-pipeline/src/commands/build-ir.ts",
     "pull-ir": "dotenv -e .env.local -- tsx packages/build-pipeline/src/commands/pull-ir.ts",
@@ -30,6 +32,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.0.3",
+    "concurrently": "^9.1.0",
     "dotenv-cli": "^8.0.0",
     "oxfmt": "^0.24.0",
     "oxlint": "^1.39.0",

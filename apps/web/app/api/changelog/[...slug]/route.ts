@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
-import type { PackageChangelog, ChangeRecord } from "@langchain/ir-schema";
 import {
-  getBuildIdForLanguage,
+  getBuildIdForPackageId,
   getSymbolChangelog,
-  isProduction,
   type SymbolChangelogEntry,
 } from "@/lib/ir/loader";
 
@@ -13,19 +9,6 @@ interface VersionChange {
   version: string;
   releaseDate: string;
   type: "added" | "modified" | "deprecated" | "removed";
-  changes?: ChangeRecord[];
-  snapshotBefore?: string;
-  snapshotAfter?: string;
-  /** If this change is from a member/child symbol, this contains the member name */
-  affectedMember?: string;
-}
-
-/**
- * Map project+language to the local IR output symlink name.
- */
-function getLocalIrPath(project: string, language: string): string {
-  const langSuffix = language === "python" ? "python" : "javascript";
-  return `latest-${project}-${langSuffix}`;
 }
 
 /**
@@ -33,6 +16,9 @@ function getLocalIrPath(project: string, language: string): string {
  *
  * Lazy-load changelog data for a specific symbol.
  * Query param: ?symbol=QualifiedName
+ *
+ * Note: project and language in the URL are kept for backwards compatibility
+ * but only packageId is used to look up the buildId.
  *
  * OPTIMIZATION: Uses sharded changelog files (<500KB each) instead of
  * full changelog.json (which can be 18MB+). This enables CDN caching
@@ -53,7 +39,7 @@ export async function GET(
     );
   }
 
-  const [project, language, packageId] = slug;
+  const [, , packageId] = slug;
   const symbolName = request.nextUrl.searchParams.get("symbol");
 
   if (!symbolName) {
@@ -61,253 +47,30 @@ export async function GET(
   }
 
   try {
-    const irLanguage = language === "python" ? "python" : "javascript";
-
-    // In production, use sharded changelog (fast path)
-    if (isProduction()) {
-      const buildId = await getBuildIdForLanguage(irLanguage, project);
-      if (!buildId) {
-        return NextResponse.json([], { status: 200 });
-      }
-
-      // Fetch only the shard containing this symbol's changelog (~50-200KB)
-      const shardedChanges = await getSymbolChangelog(buildId, packageId, symbolName);
-
-      // Convert to VersionChange format
-      const changes: VersionChange[] = shardedChanges.map((entry: SymbolChangelogEntry) => ({
-        version: entry.version,
-        releaseDate: entry.releaseDate,
-        type: entry.type,
-      }));
-
-      return NextResponse.json(changes, {
-        status: 200,
-        headers: {
-          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
-        },
-      });
-    }
-
-    // In development, use local changelog.json (full file is fine locally)
-    const localIrPath = getLocalIrPath(project, language);
-    const localChangelogPath = path.join(
-      process.cwd(),
-      "..",
-      "..",
-      "ir-output",
-      localIrPath,
-      "packages",
-      packageId,
-      "changelog.json",
-    );
-
-    try {
-      const localContent = await fs.readFile(localChangelogPath, "utf-8");
-      const changelog: PackageChangelog = JSON.parse(localContent);
-      const symbolChanges = extractSymbolChanges(changelog, symbolName);
-
-      return NextResponse.json(symbolChanges, {
-        status: 200,
-        headers: {
-          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
-        },
-      });
-    } catch {
-      // No local changelog
+    // Get the package-specific buildId
+    const buildId = await getBuildIdForPackageId(packageId);
+    if (!buildId) {
       return NextResponse.json([], { status: 200 });
     }
+
+    // Fetch only the shard containing this symbol's changelog (~50-200KB)
+    const shardedChanges = await getSymbolChangelog(buildId, packageId, symbolName);
+
+    // Convert to VersionChange format
+    const changes: VersionChange[] = shardedChanges.map((entry: SymbolChangelogEntry) => ({
+      version: entry.version,
+      releaseDate: entry.releaseDate,
+      type: entry.type,
+    }));
+
+    return NextResponse.json(changes, {
+      status: 200,
+      headers: {
+        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+      },
+    });
   } catch (error) {
     console.error("Failed to load changelog:", error);
     return NextResponse.json({ error: "Failed to load changelog" }, { status: 500 });
   }
-}
-
-/**
- * Check if a qualified name is a member/child of a parent symbol.
- * e.g., "CreateAgentParams.systemPrompt" is a member of "CreateAgentParams"
- */
-function isMemberOf(qualifiedName: string, parentName: string): boolean {
-  return qualifiedName.startsWith(parentName + ".");
-}
-
-/**
- * Extract the member name from a qualified name relative to a parent.
- * e.g., getMemberName("CreateAgentParams.systemPrompt", "CreateAgentParams") => "systemPrompt"
- */
-function getMemberName(qualifiedName: string, parentName: string): string {
-  return qualifiedName.slice(parentName.length + 1);
-}
-
-/**
- * Extract changes relevant to a specific symbol from the full changelog.
- * Also includes changes to member/child symbols (e.g., properties of an interface).
- */
-function extractSymbolChanges(changelog: PackageChangelog, symbolName: string): VersionChange[] {
-  const changes: VersionChange[] = [];
-  // Track which versions we've already added to avoid duplicates
-  const addedVersions = new Set<string>();
-
-  for (const delta of changelog.history) {
-    // Check if symbol was added in this version
-    const added = delta.added.find((a) => a.qualifiedName === symbolName);
-    if (added) {
-      changes.push({
-        version: delta.version,
-        releaseDate: delta.releaseDate,
-        type: "added",
-      });
-      addedVersions.add(delta.version);
-      continue;
-    }
-
-    // Check if symbol was modified in this version
-    const modified = delta.modified.find((m) => m.qualifiedName === symbolName);
-    if (modified) {
-      changes.push({
-        version: delta.version,
-        releaseDate: delta.releaseDate,
-        type: "modified",
-        changes: modified.changes,
-        snapshotBefore: modified.snapshotBefore
-          ? renderSnapshot(modified.snapshotBefore)
-          : undefined,
-        snapshotAfter: modified.snapshotAfter ? renderSnapshot(modified.snapshotAfter) : undefined,
-      });
-      addedVersions.add(delta.version);
-      continue;
-    }
-
-    // Check if symbol was deprecated in this version
-    const deprecated = delta.deprecated.find((d) => d.qualifiedName === symbolName);
-    if (deprecated) {
-      changes.push({
-        version: delta.version,
-        releaseDate: delta.releaseDate,
-        type: "deprecated",
-        changes: deprecated.message
-          ? [
-              {
-                type: "deprecated",
-                description: deprecated.message,
-                breaking: false,
-              },
-            ]
-          : undefined,
-      });
-      addedVersions.add(delta.version);
-      continue;
-    }
-
-    // Check if symbol was removed in this version
-    const removed = delta.removed.find((r) => r.qualifiedName === symbolName);
-    if (removed) {
-      changes.push({
-        version: delta.version,
-        releaseDate: delta.releaseDate,
-        type: "removed",
-      });
-      addedVersions.add(delta.version);
-      continue;
-    }
-
-    // If we haven't found a direct change, check for member/child changes
-    // This allows parent symbols (like interfaces) to show changes to their properties
-    if (!addedVersions.has(delta.version)) {
-      const memberChanges: {
-        memberName: string;
-        type: VersionChange["type"];
-        changes?: ChangeRecord[];
-      }[] = [];
-
-      // Check for added members
-      for (const a of delta.added) {
-        if (isMemberOf(a.qualifiedName, symbolName)) {
-          memberChanges.push({
-            memberName: getMemberName(a.qualifiedName, symbolName),
-            type: "added",
-          });
-        }
-      }
-
-      // Check for modified members
-      for (const m of delta.modified) {
-        if (isMemberOf(m.qualifiedName, symbolName)) {
-          memberChanges.push({
-            memberName: getMemberName(m.qualifiedName, symbolName),
-            type: "modified",
-            changes: m.changes,
-          });
-        }
-      }
-
-      // Check for deprecated members
-      for (const d of delta.deprecated) {
-        if (isMemberOf(d.qualifiedName, symbolName)) {
-          memberChanges.push({
-            memberName: getMemberName(d.qualifiedName, symbolName),
-            type: "deprecated",
-          });
-        }
-      }
-
-      // Check for removed members
-      for (const r of delta.removed) {
-        if (isMemberOf(r.qualifiedName, symbolName)) {
-          memberChanges.push({
-            memberName: getMemberName(r.qualifiedName, symbolName),
-            type: "removed",
-          });
-        }
-      }
-
-      // If we found member changes, add a "modified" entry for the parent
-      if (memberChanges.length > 0) {
-        // Create aggregated change records for the member changes
-        const aggregatedChanges: ChangeRecord[] = memberChanges.map((mc) => ({
-          type:
-            mc.type === "added"
-              ? ("member-added" as const)
-              : mc.type === "removed"
-                ? ("member-removed" as const)
-                : mc.type === "deprecated"
-                  ? ("deprecated" as const)
-                  : ("member-type-changed" as const),
-          description: `${mc.memberName} was ${mc.type}`,
-          breaking: mc.changes?.some((c) => c.breaking) || mc.type === "removed",
-          memberName: mc.memberName,
-        }));
-
-        changes.push({
-          version: delta.version,
-          releaseDate: delta.releaseDate,
-          type: "modified",
-          changes: aggregatedChanges,
-          affectedMember: memberChanges.map((mc) => mc.memberName).join(", "),
-        });
-        addedVersions.add(delta.version);
-      }
-    }
-  }
-
-  return changes;
-}
-
-/**
- * Render a symbol snapshot to a string for display.
- */
-function renderSnapshot(snapshot: any): string {
-  if (!snapshot) return "";
-
-  // For classes/interfaces, show full structure
-  if (snapshot.members && snapshot.members.length > 0) {
-    const lines = [snapshot.signature + " {"];
-    for (const member of snapshot.members) {
-      lines.push(`  ${member.signature};`);
-    }
-    lines.push("}");
-    return lines.join("\n");
-  }
-
-  // For functions and other types, just show signature
-  return snapshot.signature;
 }

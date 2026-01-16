@@ -136,12 +136,43 @@ pip install griffe
 
 ### Development
 
+First, you need to download the IR data from Vercel Blob storage:
+
 ```bash
-# Start the development server
+# Download IR data (requires BLOB_URL or BLOB_READ_WRITE_TOKEN in .env.local)
+pnpm pull-ir
+```
+
+Then start the development environment:
+
+```bash
+# Start both the IR server and Next.js dev server
 pnpm dev
 
 # The app will be available at http://localhost:3000
+# The IR server runs at http://localhost:3001
 ```
+
+**Environment Setup:**
+
+Create a `.env.local` file with:
+
+```bash
+# Local development - points to the local IR server
+BLOB_URL=http://localhost:3001
+
+# For pull-ir command (to download data)
+# Get this from Vercel Blob settings
+BLOB_READ_WRITE_TOKEN=vercel_blob_rw_xxxxx
+```
+
+**Architecture:**
+
+The development environment uses the same HTTP-based loading as production:
+
+- `pnpm serve-ir` runs a local Express server that serves files from `ir-output/`
+- `BLOB_URL=http://localhost:3001` tells the loader to fetch from the local server
+- This unified approach eliminates environment-specific code paths
 
 ### Building IR Locally
 

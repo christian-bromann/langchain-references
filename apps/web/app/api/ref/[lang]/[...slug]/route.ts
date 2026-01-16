@@ -21,7 +21,6 @@ import {
   getPackageInfo,
   getCatalogEntries,
   getSymbolViaShardedLookup,
-  isProduction,
 } from "@/lib/ir/loader";
 import { symbolToMarkdown, packageToMarkdownFromCatalog } from "@/lib/ir/markdown-generator";
 import { getContentTypeForFormat, getCacheHeaders } from "@/lib/utils/content-negotiation";
@@ -114,8 +113,8 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
   // OPTIMIZATION: Use optimized lookup for single symbol (~1-5KB instead of 11MB)
   let symbol = await getSymbolOptimized(buildId, parsed.packageId, parsed.fullPath);
 
-  // Fall back to sharded lookup in production (avoids loading symbols.json)
-  if (!symbol && isProduction()) {
+  // Fall back to sharded lookup (avoids loading symbols.json)
+  if (!symbol) {
     symbol = await getSymbolViaShardedLookup(buildId, parsed.packageId, parsed.fullPath);
   }
 

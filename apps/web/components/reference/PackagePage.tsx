@@ -13,12 +13,11 @@ import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
 import { buildSymbolUrl, getKindColor, getKindLabel } from "@/lib/utils/url";
 import {
-  getBuildIdForLanguage,
+  getPackageBuildId,
   getCatalogEntries,
   getPackageDescription,
   type CatalogEntry,
 } from "@/lib/ir/loader";
-import { getProjectForPackage } from "@/lib/config/projects";
 import { PackageTableOfContents, type PackageTOCSection } from "./PackageTableOfContents";
 import { MarkdownContent } from "./MarkdownContent";
 
@@ -63,17 +62,36 @@ function toDisplaySymbol(entry: CatalogEntry): DisplaySymbol {
 }
 
 export async function PackagePage({ language, packageId, packageName }: PackagePageProps) {
-  const irLanguage = language === "python" ? "python" : "javascript";
+  const ecosystem = language === "python" ? "python" : "javascript";
 
-  // Determine which project this package belongs to
-  const project = getProjectForPackage(packageName);
-  const buildId = await getBuildIdForLanguage(irLanguage, project.id);
+  // Validate that packageName looks like a real package (not a project name)
+  // Real packages have prefixes like "langchain-", "@langchain/", etc.
+  const isLikelyPackage =
+    packageName.startsWith("langchain") ||
+    packageName.startsWith("@langchain/") ||
+    packageName.startsWith("langgraph") ||
+    packageName.startsWith("deepagent");
+
+  if (!isLikelyPackage) {
+    // This is likely a project name or invalid URL, not a package
+    const { notFound } = await import("next/navigation");
+    notFound();
+  }
+
+  // Get the package-specific buildId
+  const buildId = await getPackageBuildId(ecosystem, packageName);
 
   // Fetch package description and catalog entries in parallel
   const [catalogEntries, description] = await Promise.all([
     buildId ? getCatalogEntries(buildId, packageId) : Promise.resolve([]),
     buildId ? getPackageDescription(packageId, buildId) : Promise.resolve(null),
   ]);
+
+  // If no catalog entries found, the package doesn't exist
+  if (!catalogEntries || catalogEntries.length === 0) {
+    const { notFound } = await import("next/navigation");
+    notFound();
+  }
 
   // Convert to display symbols (catalog already filters to public symbols)
   const symbols: DisplaySymbol[] = catalogEntries.map(toDisplaySymbol);

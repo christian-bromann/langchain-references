@@ -110,6 +110,42 @@ export function getEnabledProjects(): ProjectConfig[] {
 }
 
 /**
+ * Default package slugs for each project/language combination.
+ * Used to redirect from project URLs to the first package.
+ *
+ * Maps: projectId -> language -> packageSlug
+ */
+const DEFAULT_PACKAGE_SLUGS: Record<string, Record<string, string>> = {
+  langchain: {
+    python: "langchain",
+    javascript: "langchain",
+  },
+  langgraph: {
+    python: "langgraph",
+    javascript: "langchain-langgraph",
+  },
+  deepagent: {
+    python: "deepagents",
+    javascript: "deepagents",
+  },
+  integrations: {
+    python: "langchain-anthropic",
+    javascript: "langchain-community",
+  },
+};
+
+/**
+ * Get the default package slug for a project.
+ * This is the package that should be shown when navigating to a project.
+ */
+export function getDefaultPackageSlug(
+  projectId: string,
+  language: "python" | "javascript",
+): string {
+  return DEFAULT_PACKAGE_SLUGS[projectId]?.[language] || projectId;
+}
+
+/**
  * Get a project by its URL slug.
  */
 export function getProjectBySlug(slug: string): ProjectConfig | undefined {
@@ -176,16 +212,6 @@ const PROJECT_PACKAGE_PATTERNS: Record<string, RegExp[]> = {
     /^langchain(?!-langgraph|-anthropic|-openai|-aws|-azure|-google|-groq|-mistral|-cohere|-ollama|-huggingface|-fireworks|-together|-nvidia|-pinecone|-chroma|-weaviate|-qdrant|-milvus|-neo4j|-mongodb|-postgres|-redis|-elasticsearch|-astradb|-cerebras|-deepseek|-exa|-ibm|-nomic|-perplexity|-snowflake|-sqlserver|-tavily|-unstructured|-upstage|-xai|-sema4|-prompty|-db2|-community|-parallel)/i,
   ],
 };
-
-/**
- * Check if a package name belongs to a specific project.
- */
-export function packageBelongsToProject(packageName: string, projectId: string): boolean {
-  const patterns = PROJECT_PACKAGE_PATTERNS[projectId];
-  if (!patterns) return false;
-
-  return patterns.some((pattern) => pattern.test(packageName));
-}
 
 /**
  * Infer which project a package belongs to based on its name.

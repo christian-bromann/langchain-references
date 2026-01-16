@@ -23,19 +23,14 @@ export interface DeployedChangelog {
 
 /**
  * Get the Vercel Blob base URL from environment.
- * Supports multiple sources:
- * 1. BLOB_BASE_URL (explicit, preferred for CI)
- * 2. BLOB_URL (used by the web app)
- * 3. Derived from BLOB_READ_WRITE_TOKEN (fallback)
+ * Supports:
+ * 1. BLOB_URL (primary)
+ * 2. Derived from BLOB_READ_WRITE_TOKEN (fallback)
  *
  * The token format is: vercel_blob_rw_{store_id}_{secret}
  * The public URL is: https://{store_id}.public.blob.vercel-storage.com
  */
 function getBlobBaseUrl(): string | null {
-  if (process.env.BLOB_BASE_URL) {
-    return process.env.BLOB_BASE_URL;
-  }
-
   if (process.env.BLOB_URL) {
     return process.env.BLOB_URL;
   }
@@ -99,7 +94,7 @@ export async function fetchDeployedChangelog(
 
   if (!blobBaseUrl) {
     console.log(
-      "No blob storage URL available (BLOB_BASE_URL, BLOB_URL, or BLOB_READ_WRITE_TOKEN not set) - will do full build",
+      "No blob storage URL available (BLOB_URL or BLOB_READ_WRITE_TOKEN not set) - will do full build",
     );
     return null;
   }

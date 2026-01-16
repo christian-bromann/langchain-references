@@ -12,6 +12,7 @@ import Link from "next/link";
 import { X, ChevronRight } from "lucide-react";
 import type { ProjectConfig } from "@langchain/ir-schema";
 import { cn } from "@/lib/utils/cn";
+import { getDefaultPackageSlug } from "@/lib/config/projects";
 
 interface MobileProjectMenuProps {
   open: boolean;
@@ -65,7 +66,9 @@ export function MobileProjectMenu({
             <ul className="divide-y divide-gray-200 dark:divide-gray-800">
               {projects.map((project) => {
                 const isActive = currentProject?.id === project.id;
-                const href = `/${currentLanguage}/${project.slug}`;
+                // Use the default package slug for this project/language
+                const packageSlug = getDefaultPackageSlug(project.id, currentLanguage);
+                const href = `/${currentLanguage}/${packageSlug}`;
 
                 return (
                   <li key={project.id}>

@@ -10,6 +10,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
 import type { ProjectConfig } from "@langchain/ir-schema";
+import { getDefaultPackageSlug } from "@/lib/config/projects";
 
 interface ProjectTabsProps {
   projects: ProjectConfig[];
@@ -23,7 +24,9 @@ export function ProjectTabs({ projects, currentProject, currentLanguage }: Proje
       <nav className="h-full flex text-sm gap-x-6" aria-label="Project navigation">
         {projects.map((project) => {
           const isActive = currentProject?.id === project.id;
-          const href = `/${currentLanguage}/${project.slug}`;
+          // Use the default package slug for this project/language
+          const packageSlug = getDefaultPackageSlug(project.id, currentLanguage);
+          const href = `/${currentLanguage}/${packageSlug}`;
 
           return (
             <Link
