@@ -236,25 +236,312 @@
 }
 
 /* =========================================
-   Admonition Headers - MkDocs Material style
+   Callouts - Mintlify style
    ========================================= */
 
-.markdown-content .admonition-header {
-  font-size: 0.9375rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-light);
+/* Callout container base styles */
+.markdown-content .callout {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 1rem;
+  border-width: 1px;
+  border-style: solid;
+  overflow: hidden;
+  /* Default colors (zinc/gray) */
+  border-color: rgb(113 113 122 / 0.2);
+  background-color: rgb(113 113 122 / 0.05);
 }
 
-.markdown-content .admonition-header svg {
-  width: 18px;
-  height: 18px;
+.dark .markdown-content .callout {
+  border-color: rgb(113 113 122 / 0.3);
+  background-color: rgb(113 113 122 / 0.1);
 }
 
-/* Content following admonition header gets slightly indented */
-.markdown-content .admonition-header + p,
-.markdown-content .admonition-header + table,
-.markdown-content .admonition-header + ul,
-.markdown-content .admonition-header + ol,
-.markdown-content .admonition-header + pre {
+/* Callout icon */
+.markdown-content .callout-icon {
+  flex-shrink: 0;
+  width: 1rem;
+  margin-top: 0.125rem;
+  color: rgb(113 113 122);
+}
+
+.dark .markdown-content .callout-icon {
+  color: rgb(161 161 170);
+}
+
+.markdown-content .callout-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Callout content */
+.markdown-content .callout-content {
+  min-width: 0;
+  width: 100%;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: rgb(24 24 27);
+}
+
+.dark .markdown-content .callout-content {
+  color: rgb(228 228 231);
+}
+
+/* Callout title */
+.markdown-content .callout-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+/* Consistent spacing between consecutive callouts */
+.markdown-content .callout + .callout {
   margin-top: 0.75rem;
+}
+
+/* Reset margins for content inside callouts */
+.markdown-content .callout p {
+  margin-bottom: 0.5rem;
+}
+
+.markdown-content .callout p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content .callout ul,
+.markdown-content .callout ol {
+  margin-bottom: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.markdown-content .callout pre {
+  margin: 0.75rem 0;
+}
+
+/* Callout code styling - inherit text color */
+.markdown-content .callout code:not(pre code) {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark .markdown-content .callout code:not(pre code) {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* =========================================
+   Callout Type Variants - Mintlify colors
+   ========================================= */
+
+/* Note - Sky blue */
+.markdown-content .callout[data-callout-type="note"] {
+  border-color: rgb(14 165 233 / 0.2);
+  background-color: rgb(14 165 233 / 0.05);
+}
+.dark .markdown-content .callout[data-callout-type="note"] {
+  border-color: rgb(14 165 233 / 0.3);
+  background-color: rgb(14 165 233 / 0.1);
+}
+.markdown-content .callout[data-callout-type="note"] .callout-icon {
+  color: rgb(14 165 233) !important;
+}
+.markdown-content .callout[data-callout-type="note"] .callout-content {
+  color: rgb(12 74 110);
+}
+.dark .markdown-content .callout[data-callout-type="note"] .callout-content {
+  color: rgb(186 230 253);
+}
+
+/* Tip - Emerald green */
+.markdown-content .callout[data-callout-type="tip"] {
+  border-color: rgb(16 185 129 / 0.2);
+  background-color: rgb(16 185 129 / 0.05);
+}
+.dark .markdown-content .callout[data-callout-type="tip"] {
+  border-color: rgb(16 185 129 / 0.3);
+  background-color: rgb(16 185 129 / 0.1);
+}
+.markdown-content .callout[data-callout-type="tip"] .callout-icon {
+  color: rgb(5 150 105) !important;
+}
+.dark .markdown-content .callout[data-callout-type="tip"] .callout-icon {
+  color: rgb(52 211 153 / 0.8) !important;
+}
+.markdown-content .callout[data-callout-type="tip"] .callout-content {
+  color: rgb(6 78 59);
+}
+.dark .markdown-content .callout[data-callout-type="tip"] .callout-content {
+  color: rgb(167 243 208);
+}
+
+/* Warning - Amber */
+.markdown-content .callout[data-callout-type="warning"] {
+  border-color: rgb(245 158 11 / 0.2);
+  background-color: rgb(245 158 11 / 0.05);
+}
+.dark .markdown-content .callout[data-callout-type="warning"] {
+  border-color: rgb(245 158 11 / 0.3);
+  background-color: rgb(245 158 11 / 0.1);
+}
+.markdown-content .callout[data-callout-type="warning"] .callout-icon,
+.markdown-content .callout[data-callout-type="version-deprecated"] .callout-icon {
+  color: rgb(251 191 36) !important;
+}
+.dark .markdown-content .callout[data-callout-type="warning"] .callout-icon,
+.dark .markdown-content .callout[data-callout-type="version-deprecated"] .callout-icon {
+  color: rgb(252 211 77 / 0.8) !important;
+}
+.markdown-content .callout[data-callout-type="warning"] .callout-content {
+  color: rgb(120 53 15);
+}
+.dark .markdown-content .callout[data-callout-type="warning"] .callout-content {
+  color: rgb(254 243 199);
+}
+
+/* Danger - Red */
+.markdown-content .callout[data-callout-type="danger"] {
+  border-color: rgb(239 68 68 / 0.2);
+  background-color: rgb(239 68 68 / 0.05);
+}
+.dark .markdown-content .callout[data-callout-type="danger"] {
+  border-color: rgb(239 68 68 / 0.3);
+  background-color: rgb(239 68 68 / 0.1);
+}
+.markdown-content .callout[data-callout-type="danger"] .callout-icon {
+  color: rgb(220 38 38) !important;
+}
+.dark .markdown-content .callout[data-callout-type="danger"] .callout-icon {
+  color: rgb(248 113 113 / 0.8) !important;
+}
+.markdown-content .callout[data-callout-type="danger"] .callout-content {
+  color: rgb(127 29 29);
+}
+.dark .markdown-content .callout[data-callout-type="danger"] .callout-content {
+  color: rgb(254 202 202);
+}
+
+/* Info - Zinc/Gray */
+.markdown-content .callout[data-callout-type="info"] {
+  border-color: rgb(113 113 122 / 0.2);
+  background-color: rgb(113 113 122 / 0.05);
+}
+.dark .markdown-content .callout[data-callout-type="info"] {
+  border-color: rgb(113 113 122 / 0.3);
+  background-color: rgb(113 113 122 / 0.1);
+}
+.markdown-content .callout[data-callout-type="info"] .callout-icon {
+  color: rgb(161 161 170) !important;
+}
+.dark .markdown-content .callout[data-callout-type="info"] .callout-icon {
+  color: rgb(212 212 216) !important;
+}
+.markdown-content .callout[data-callout-type="info"] .callout-content {
+  color: rgb(24 24 27);
+}
+.dark .markdown-content .callout[data-callout-type="info"] .callout-content {
+  color: rgb(228 228 231);
+}
+
+/* Check - Green */
+.markdown-content .callout[data-callout-type="check"] {
+  border-color: rgb(16 185 129 / 0.2);
+  background-color: rgb(16 185 129 / 0.05);
+}
+.dark .markdown-content .callout[data-callout-type="check"] {
+  border-color: rgb(16 185 129 / 0.3);
+  background-color: rgb(16 185 129 / 0.1);
+}
+.markdown-content .callout[data-callout-type="check"] .callout-icon {
+  color: rgb(22 163 74) !important;
+}
+.dark .markdown-content .callout[data-callout-type="check"] .callout-icon {
+  color: rgb(74 222 128 / 0.8) !important;
+}
+.markdown-content .callout[data-callout-type="check"] .callout-content {
+  color: rgb(6 78 59);
+}
+.dark .markdown-content .callout[data-callout-type="check"] .callout-content {
+  color: rgb(167 243 208);
+}
+
+/* Example - Purple */
+.markdown-content .callout[data-callout-type="example"] {
+  border-color: rgb(168 85 247 / 0.2);
+  background-color: rgb(168 85 247 / 0.05);
+}
+.dark .markdown-content .callout[data-callout-type="example"] {
+  border-color: rgb(168 85 247 / 0.3);
+  background-color: rgb(168 85 247 / 0.1);
+}
+.markdown-content .callout[data-callout-type="example"] .callout-icon {
+  color: rgb(147 51 234) !important;
+}
+.dark .markdown-content .callout[data-callout-type="example"] .callout-icon {
+  color: rgb(192 132 252) !important;
+}
+.markdown-content .callout[data-callout-type="example"] .callout-content {
+  color: rgb(88 28 135);
+}
+.dark .markdown-content .callout[data-callout-type="example"] .callout-content {
+  color: rgb(233 213 255);
+}
+
+/* Version Added - Emerald */
+.markdown-content .callout[data-callout-type="version-added"] {
+  border-color: rgb(16 185 129 / 0.2);
+  background-color: rgb(16 185 129 / 0.05);
+}
+.dark .markdown-content .callout[data-callout-type="version-added"] {
+  border-color: rgb(16 185 129 / 0.3);
+  background-color: rgb(16 185 129 / 0.1);
+}
+.markdown-content .callout[data-callout-type="version-added"] .callout-icon {
+  color: rgb(5 150 105) !important;
+}
+.dark .markdown-content .callout[data-callout-type="version-added"] .callout-icon {
+  color: rgb(52 211 153) !important;
+}
+.markdown-content .callout[data-callout-type="version-added"] .callout-content {
+  color: rgb(6 78 59);
+}
+.dark .markdown-content .callout[data-callout-type="version-added"] .callout-content {
+  color: rgb(167 243 208);
+}
+
+/* Version Changed - Sky */
+.markdown-content .callout[data-callout-type="version-changed"] {
+  border-color: rgb(14 165 233 / 0.2);
+  background-color: rgb(14 165 233 / 0.05);
+}
+.dark .markdown-content .callout[data-callout-type="version-changed"] {
+  border-color: rgb(14 165 233 / 0.3);
+  background-color: rgb(14 165 233 / 0.1);
+}
+.markdown-content .callout[data-callout-type="version-changed"] .callout-icon {
+  color: rgb(14 165 233) !important;
+}
+.markdown-content .callout[data-callout-type="version-changed"] .callout-content {
+  color: rgb(12 74 110);
+}
+.dark .markdown-content .callout[data-callout-type="version-changed"] .callout-content {
+  color: rgb(186 230 253);
+}
+
+/* Version Deprecated - Amber */
+.markdown-content .callout[data-callout-type="version-deprecated"] {
+  border-color: rgb(245 158 11 / 0.2);
+  background-color: rgb(245 158 11 / 0.05);
+}
+.dark .markdown-content .callout[data-callout-type="version-deprecated"] {
+  border-color: rgb(245 158 11 / 0.3);
+  background-color: rgb(245 158 11 / 0.1);
+}
+.markdown-content .callout[data-callout-type="version-deprecated"] .callout-content {
+  color: rgb(120 53 15);
+}
+.dark .markdown-content .callout[data-callout-type="version-deprecated"] .callout-content {
+  color: rgb(254 243 199);
 }
