@@ -17,15 +17,13 @@ export function WebsiteJsonLd() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "LangChain Reference Docs",
-    description:
-      "API reference documentation for LangChain, LangGraph, and LangSmith",
+    description: "API reference documentation for LangChain, LangGraph, and LangSmith",
     url: BASE_URL,
     potentialAction: {
       "@type": "SearchAction",
       target: {
         "@type": "EntryPoint",
-        urlTemplate:
-          `${BASE_URL}/search?q={search_term_string}`,
+        urlTemplate: `${BASE_URL}/search?q={search_term_string}`,
       },
       "query-input": "required name=search_term_string",
     },
@@ -143,8 +141,7 @@ export function SoftwareSourceCodeJsonLd({
       name: programmingLanguage === "python" ? "Python" : "TypeScript",
     },
     runtimePlatform:
-      runtimePlatform ||
-      (programmingLanguage === "python" ? "Python 3.9+" : "Node.js 18+"),
+      runtimePlatform || (programmingLanguage === "python" ? "Python 3.9+" : "Node.js 18+"),
     author: {
       "@type": "Organization",
       name: "LangChain",

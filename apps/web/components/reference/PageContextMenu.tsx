@@ -52,8 +52,7 @@ export function PageContextMenu({
   // not the HTML page (which ignores `?format=md`).
   const markdownUrl = (() => {
     try {
-      const origin =
-        typeof window !== "undefined" ? window.location.origin : "http://localhost";
+      const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost";
       const url = new URL(pageUrl, origin);
 
       // Rewrite `/python/...` -> `/api/ref/python/...`
@@ -71,18 +70,15 @@ export function PageContextMenu({
     }
   })();
 
-  const copyToClipboard = useCallback(
-    async (text: string, itemId: CopiedItem) => {
-      try {
-        await navigator.clipboard.writeText(text);
-        setCopiedItem(itemId);
-        setTimeout(() => setCopiedItem(null), 2000);
-      } catch (err) {
-        console.error("Failed to copy:", err);
-      }
-    },
-    []
-  );
+  const copyToClipboard = useCallback(async (text: string, itemId: CopiedItem) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedItem(itemId);
+      setTimeout(() => setCopiedItem(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  }, []);
 
   const openInChatGPT = useCallback(() => {
     // ChatGPT doesn't support pre-filled prompts via URL in the same way
@@ -128,15 +124,12 @@ export function PageContextMenu({
             // Transition
             "transition-colors duration-150",
             // Focus
-            "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-1"
+            "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-1",
           )}
           aria-label="More actions"
         >
           <ChevronDown
-            className={cn(
-              "w-4 h-4 transition-transform duration-200",
-              open && "rotate-180"
-            )}
+            className={cn("w-4 h-4 transition-transform duration-200", open && "rotate-180")}
           />
         </button>
       </DropdownMenu.Trigger>
@@ -154,7 +147,7 @@ export function PageContextMenu({
             // Animation
             "animate-in fade-in-0 zoom-in-95",
             "data-[side=bottom]:slide-in-from-top-2",
-            "data-[side=top]:slide-in-from-bottom-2"
+            "data-[side=top]:slide-in-from-bottom-2",
           )}
         >
           {/* Copy Page */}
@@ -250,14 +243,7 @@ interface MenuItemProps {
   onClick: () => void;
 }
 
-function MenuItem({
-  icon,
-  label,
-  description,
-  checked,
-  external,
-  onClick,
-}: MenuItemProps) {
+function MenuItem({ icon, label, description, checked, external, onClick }: MenuItemProps) {
   return (
     <DropdownMenu.Item
       className={cn(
@@ -272,7 +258,7 @@ function MenuItem({
         // Cursor and outline
         "cursor-pointer select-none outline-none",
         // Transition
-        "transition-colors duration-100"
+        "transition-colors duration-100",
       )}
       onSelect={onClick}
     >
@@ -283,20 +269,16 @@ function MenuItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200">
           {label}
-          {external && (
-            <ExternalLinkIcon className="w-3 h-3 text-gray-400 dark:text-gray-500" />
-          )}
+          {external && <ExternalLinkIcon className="w-3 h-3 text-gray-400 dark:text-gray-500" />}
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-          {description}
-        </div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{description}</div>
       </div>
 
       <CheckIcon
         className={cn(
           "w-4 h-4 shrink-0 text-green-500 dark:text-green-400",
           "transition-opacity duration-150",
-          checked ? "opacity-100" : "opacity-0"
+          checked ? "opacity-100" : "opacity-0",
         )}
       />
     </DropdownMenu.Item>
@@ -314,13 +296,7 @@ interface MenuItemLinkProps {
   external?: boolean;
 }
 
-function MenuItemLink({
-  icon,
-  label,
-  description,
-  href,
-  external,
-}: MenuItemLinkProps) {
+function MenuItemLink({ icon, label, description, href, external }: MenuItemLinkProps) {
   return (
     <DropdownMenu.Item asChild>
       <a
@@ -341,7 +317,7 @@ function MenuItemLink({
           // Transition
           "transition-colors duration-100",
           // No underline
-          "no-underline"
+          "no-underline",
         )}
       >
         <div className="flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 dark:border-white/[0.07] bg-gray-50 dark:bg-gray-800">
@@ -351,13 +327,9 @@ function MenuItemLink({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200">
             {label}
-            {external && (
-              <ExternalLinkIcon className="w-3 h-3 text-gray-400 dark:text-gray-500" />
-            )}
+            {external && <ExternalLinkIcon className="w-3 h-3 text-gray-400 dark:text-gray-500" />}
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-            {description}
-          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{description}</div>
         </div>
 
         {/* Empty space to align with other items that have check icon */}
@@ -366,4 +338,3 @@ function MenuItemLink({
     </DropdownMenu.Item>
   );
 }
-

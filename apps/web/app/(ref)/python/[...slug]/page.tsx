@@ -32,7 +32,7 @@ export async function generateStaticParams(): Promise<{ slug: string[] }[]> {
 
   // Generate params for all projects in parallel
   const projectParams = await Promise.all(
-    projects.map((project) => getStaticParamsForLanguage("python", project.id))
+    projects.map((project) => getStaticParamsForLanguage("python", project.id)),
   );
 
   for (const params of projectParams) {
@@ -119,9 +119,10 @@ export async function generateMetadata({ params }: Props) {
     return { title: "Not Found" };
   }
 
-  const symbolName = parsed.symbolPath.length > 0
-    ? parsed.symbolPath[parsed.symbolPath.length - 1]
-    : parsed.packageName;
+  const symbolName =
+    parsed.symbolPath.length > 0
+      ? parsed.symbolPath[parsed.symbolPath.length - 1]
+      : parsed.packageName;
 
   const title = `${symbolName} | ${parsed.packageName}`;
   const description = parsed.fullPath
@@ -159,6 +160,3 @@ export async function generateMetadata({ params }: Props) {
     },
   };
 }
-
-
-

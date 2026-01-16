@@ -32,7 +32,7 @@ interface SearchResponse {
 export async function search(
   query: string,
   language: SearchLanguage,
-  options: SearchOptions = {}
+  options: SearchOptions = {},
 ): Promise<SearchResult[]> {
   const { limit = 20, kind, packageId, project } = options;
 
@@ -78,9 +78,7 @@ export async function search(
  * Preload is now a no-op since search is handled server-side.
  * Kept for API compatibility.
  */
-export async function preloadIndex(
-  _language: SearchLanguage
-): Promise<void> {
+export async function preloadIndex(_language: SearchLanguage): Promise<void> {
   // No-op: search is handled server-side
 }
 

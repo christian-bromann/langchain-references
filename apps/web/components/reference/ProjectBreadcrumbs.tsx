@@ -38,7 +38,7 @@ export function ProjectBreadcrumbs({
     <nav
       className={cn(
         "flex items-center text-sm text-gray-500 dark:text-gray-400 mb-6 flex-wrap gap-y-1",
-        className
+        className,
       )}
       aria-label="Breadcrumb"
     >
@@ -91,7 +91,7 @@ export function SimpleBreadcrumbs({
     <nav
       className={cn(
         "flex items-center text-sm text-gray-500 dark:text-gray-400 mb-6 flex-wrap gap-y-1",
-        className
+        className,
       )}
       aria-label="Breadcrumb"
     >
@@ -128,5 +128,3 @@ export function SimpleBreadcrumbs({
     </nav>
   );
 }
-
-

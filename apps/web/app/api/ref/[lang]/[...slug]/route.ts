@@ -23,14 +23,8 @@ import {
   getSymbolViaShardedLookup,
   isProduction,
 } from "@/lib/ir/loader";
-import {
-  symbolToMarkdown,
-  packageToMarkdownFromCatalog,
-} from "@/lib/ir/markdown-generator";
-import {
-  getContentTypeForFormat,
-  getCacheHeaders,
-} from "@/lib/utils/content-negotiation";
+import { symbolToMarkdown, packageToMarkdownFromCatalog } from "@/lib/ir/markdown-generator";
+import { getContentTypeForFormat, getCacheHeaders } from "@/lib/utils/content-negotiation";
 import type { UrlLanguage } from "@/lib/utils/url";
 
 interface RouteParams {
@@ -40,17 +34,14 @@ interface RouteParams {
   }>;
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-): Promise<Response> {
+export async function GET(request: NextRequest, { params }: RouteParams): Promise<Response> {
   const { lang, slug } = await params;
 
   // Validate language
   if (lang !== "python" && lang !== "javascript") {
     return NextResponse.json(
       { error: "Invalid language. Use 'python' or 'javascript'." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -69,28 +60,20 @@ export async function GET(
   // Get build ID for this language
   const buildId = await getBuildIdForLanguage(language);
   if (!buildId) {
-    return NextResponse.json(
-      { error: "No build available for this language" },
-      { status: 503 }
-    );
+    return NextResponse.json({ error: "No build available for this language" }, { status: 503 });
   }
 
   // Get package info from manifest
   const manifest = await getManifestData(buildId);
   if (!manifest) {
-    return NextResponse.json(
-      { error: "Failed to load manifest" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to load manifest" }, { status: 500 });
   }
 
-  const packageInfo = manifest.packages.find(
-    (p) => p.packageId === parsed.packageId
-  );
+  const packageInfo = manifest.packages.find((p) => p.packageId === parsed.packageId);
   if (!packageInfo) {
     return NextResponse.json(
       { error: `Package not found: ${parsed.packageName}` },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
@@ -99,10 +82,7 @@ export async function GET(
   if (parsed.symbolPath.length === 0) {
     const catalogEntries = await getCatalogEntries(buildId, parsed.packageId);
     if (!catalogEntries || catalogEntries.length === 0) {
-      return NextResponse.json(
-        { error: "Failed to load symbols" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to load symbols" }, { status: 500 });
     }
 
     if (wantsJson) {
@@ -116,16 +96,12 @@ export async function GET(
             summary: e.summary,
           })),
         },
-        { headers: getCacheHeaders() }
+        { headers: getCacheHeaders() },
       );
     }
 
     const irLanguage = language === "python" ? "python" : "typescript";
-    const markdown = packageToMarkdownFromCatalog(
-      parsed.packageName,
-      catalogEntries,
-      irLanguage
-    );
+    const markdown = packageToMarkdownFromCatalog(parsed.packageName, catalogEntries, irLanguage);
 
     return new Response(markdown, {
       headers: {
@@ -144,10 +120,7 @@ export async function GET(
   }
 
   if (!symbol) {
-    return NextResponse.json(
-      { error: `Symbol not found: ${parsed.fullPath}` },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: `Symbol not found: ${parsed.fullPath}` }, { status: 404 });
   }
 
   // Return JSON or markdown
@@ -167,4 +140,3 @@ export async function GET(
     },
   });
 }
-

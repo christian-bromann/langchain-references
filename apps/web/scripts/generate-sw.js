@@ -20,7 +20,7 @@ let swContent = fs.readFileSync(swTemplatePath, "utf8");
 // Replace the version placeholder
 swContent = swContent.replace(
   /const CACHE_VERSION = "[^"]+";/,
-  `const CACHE_VERSION = "${buildVersion}";`
+  `const CACHE_VERSION = "${buildVersion}";`,
 );
 
 // Add build timestamp comment
@@ -32,10 +32,7 @@ const header = `/**
 
 `;
 
-swContent = swContent.replace(
-  /^\/\*\*\s*\n \* Service Worker/,
-  `${header}/**\n * Service Worker`
-);
+swContent = swContent.replace(/^\/\*\*\s*\n \* Service Worker/, `${header}/**\n * Service Worker`);
 
 // Write output
 fs.writeFileSync(swOutputPath, swContent);

@@ -24,19 +24,19 @@ extract-typescript \
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--package` | Package name (required) | - |
-| `--path` | Path to package source (required) | - |
-| `--output` | Output JSON file (required) | - |
-| `--repo` | Repository URL | "" |
-| `--sha` | Git commit SHA | "" |
-| `--entry-points` | Entry points (space-separated) | `src/index.ts` |
-| `--tsconfig` | Path to tsconfig.json | `tsconfig.json` |
-| `--include-private` | Include private members | false |
-| `--include-internal` | Include @internal members | false |
-| `--raw` | Output raw TypeDoc JSON | false |
-| `-v, --verbose` | Enable verbose output | false |
+| Option               | Description                       | Default         |
+| -------------------- | --------------------------------- | --------------- |
+| `--package`          | Package name (required)           | -               |
+| `--path`             | Path to package source (required) | -               |
+| `--output`           | Output JSON file (required)       | -               |
+| `--repo`             | Repository URL                    | ""              |
+| `--sha`              | Git commit SHA                    | ""              |
+| `--entry-points`     | Entry points (space-separated)    | `src/index.ts`  |
+| `--tsconfig`         | Path to tsconfig.json             | `tsconfig.json` |
+| `--include-private`  | Include private members           | false           |
+| `--include-internal` | Include @internal members         | false           |
+| `--raw`              | Output raw TypeDoc JSON           | false           |
+| `-v, --verbose`      | Enable verbose output             | false           |
 
 ### Programmatic API
 
@@ -57,12 +57,7 @@ const config = createConfig({
 const extractor = new TypeScriptExtractor(config);
 const rawJson = await extractor.extractToJson();
 
-const transformer = new TypeDocTransformer(
-  rawJson,
-  config.packageName,
-  config.repo,
-  config.sha
-);
+const transformer = new TypeDocTransformer(rawJson, config.packageName, config.repo, config.sha);
 
 const irSymbols = transformer.transform();
 ```
@@ -75,8 +70,3 @@ const irSymbols = transformer.transform();
 - Full JSDoc/TSDoc comment parsing
 - Type parameter and generic support
 - Class inheritance and interface implementation tracking
-
-
-
-
-

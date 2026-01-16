@@ -50,7 +50,7 @@ let onCacheStatsCallback: ((stats: SWCacheStats) => void) | null = null;
  * Register the Service Worker
  */
 export async function registerServiceWorker(
-  options: SWRegistrationOptions = {}
+  options: SWRegistrationOptions = {},
 ): Promise<ServiceWorkerRegistration | null> {
   // Only run in browser
   if (typeof window === "undefined") return null;

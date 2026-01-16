@@ -9,7 +9,7 @@ import { put, list, del } from "@vercel/blob";
 import { createHash } from "crypto";
 import fs from "fs/promises";
 import path from "path";
-import type { Manifest, SymbolRecord, RoutingMap, SearchIndex, PackageChangelog } from "@langchain/ir-schema";
+import type { SymbolRecord, RoutingMap, PackageChangelog } from "@langchain/ir-schema";
 
 // Maximum concurrent uploads to avoid overwhelming the Vercel Blob API
 // Vercel Blob has rate limits, so we keep this conservative
@@ -54,7 +54,7 @@ function sleep(ms: number): Promise<void> {
 async function uploadFile(
   blobPath: string,
   content: string | Buffer,
-  dryRun: boolean
+  dryRun: boolean,
 ): Promise<{ url: string; size: number }> {
   const size = Buffer.byteLength(content);
 
@@ -84,10 +84,12 @@ async function uploadFile(
 
         // Use exponential backoff, but respect the API's suggested wait time if provided
         const backoffDelay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
-        const delay = waitSeconds ? (waitSeconds * 1000) + 1000 : backoffDelay;
+        const delay = waitSeconds ? waitSeconds * 1000 + 1000 : backoffDelay;
 
         if (attempt < MAX_RETRIES - 1) {
-          console.log(`   ⏳ Rate limited, waiting ${(delay / 1000).toFixed(0)}s before retry (attempt ${attempt + 1}/${MAX_RETRIES})...`);
+          console.log(
+            `   ⏳ Rate limited, waiting ${(delay / 1000).toFixed(0)}s before retry (attempt ${attempt + 1}/${MAX_RETRIES})...`,
+          );
           await sleep(delay);
           continue;
         }
@@ -107,7 +109,7 @@ async function uploadFile(
 async function uploadFilesInParallel(
   tasks: UploadTask[],
   dryRun: boolean,
-  onProgress?: (completed: number, total: number) => void
+  onProgress?: (completed: number, total: number) => void,
 ): Promise<{ filesUploaded: number; totalSize: number }> {
   let filesUploaded = 0;
   let totalSize = 0;
@@ -123,7 +125,7 @@ async function uploadFilesInParallel(
         completed++;
         onProgress?.(completed, tasks.length);
         return result;
-      })
+      }),
     );
 
     for (const result of results) {
@@ -179,13 +181,17 @@ function generateRoutingMap(
   packageId: string,
   displayName: string,
   language: "python" | "typescript",
-  symbols: SymbolRecord[]
+  symbols: SymbolRecord[],
 ): RoutingMap {
   const slugs: RoutingMap["slugs"] = {};
 
   for (const symbol of symbols) {
     // Only include routable symbol kinds
-    if (!["class", "function", "interface", "module", "typeAlias", "enum", "method"].includes(symbol.kind)) {
+    if (
+      !["class", "function", "interface", "module", "typeAlias", "enum", "method"].includes(
+        symbol.kind,
+      )
+    ) {
       continue;
     }
 
@@ -234,55 +240,6 @@ function mapKindToPageType(kind: string): RoutingMap["slugs"][string]["pageType"
   }
 }
 
-/**
- * Generate search index from symbols.
- */
-function generateSearchIndex(
-  buildId: string,
-  language: "python" | "typescript",
-  symbols: SymbolRecord[]
-): SearchIndex {
-  const records = symbols
-    .filter((s) => ["class", "function", "interface", "module", "method", "typeAlias"].includes(s.kind))
-    .map((symbol) => ({
-      id: symbol.id,
-      url: symbol.urls.canonical,
-      title: symbol.name,
-      breadcrumbs: symbol.qualifiedName.split("."),
-      excerpt: symbol.docs.summary.substring(0, 150),
-      keywords: extractKeywords(symbol),
-      kind: symbol.kind,
-      language,
-      packageId: symbol.packageId,
-    }));
-
-  return {
-    version: "1.0",
-    buildId,
-    createdAt: new Date().toISOString(),
-    language,
-    totalRecords: records.length,
-    records,
-  };
-}
-
-/**
- * Extract keywords from symbol for search boosting.
- */
-function extractKeywords(symbol: SymbolRecord): string[] {
-  const keywords: string[] = [symbol.name.toLowerCase()];
-
-  // Add name parts (e.g., "ChatOpenAI" -> ["chat", "openai"])
-  const parts = symbol.name.split(/(?=[A-Z])/).map((p) => p.toLowerCase());
-  keywords.push(...parts);
-
-  // Add from qualified name
-  const qualifiedParts = symbol.qualifiedName.split(".");
-  keywords.push(...qualifiedParts.map((p) => p.toLowerCase()));
-
-  return [...new Set(keywords)];
-}
-
 // =============================================================================
 // SHARDED INDEX GENERATION
 // =============================================================================
@@ -320,7 +277,7 @@ type LookupShard = Record<string, SymbolLookupEntry>;
  */
 function generateShardedLookupIndex(
   packageId: string,
-  symbols: SymbolRecord[]
+  symbols: SymbolRecord[],
 ): { index: ShardedLookupIndex; shards: Map<string, LookupShard> } {
   const shards = new Map<string, LookupShard>();
   const knownSymbols: string[] = [];
@@ -382,14 +339,15 @@ interface ShardedCatalogIndex {
  */
 function generateShardedCatalog(
   packageId: string,
-  symbols: SymbolRecord[]
+  symbols: SymbolRecord[],
 ): { index: ShardedCatalogIndex; shards: Map<string, CatalogEntry[]> } {
   const shards = new Map<string, CatalogEntry[]>();
 
   for (const symbol of symbols) {
     // Only include public symbols that should appear in package overview
     if (symbol.tags?.visibility !== "public") continue;
-    if (!["class", "function", "interface", "module", "typeAlias", "enum"].includes(symbol.kind)) continue;
+    if (!["class", "function", "interface", "module", "typeAlias", "enum"].includes(symbol.kind))
+      continue;
 
     const shardKey = computeShardKey(symbol.qualifiedName);
 
@@ -444,9 +402,10 @@ type ChangelogShard = Record<string, SymbolChangelogEntry[]>;
  * Generate sharded changelog files.
  * Each shard contains symbol histories keyed by qualifiedName.
  */
-function generateShardedChangelog(
-  changelog: PackageChangelog
-): { index: ShardedChangelogIndex; shards: Map<string, ChangelogShard> } {
+function generateShardedChangelog(changelog: PackageChangelog): {
+  index: ShardedChangelogIndex;
+  shards: Map<string, ChangelogShard>;
+} {
   const shards = new Map<string, ChangelogShard>();
   const versions: Array<{ version: string; releaseDate: string }> = [];
 
@@ -507,7 +466,7 @@ function generateShardedChangelog(
 function addToChangelogShard(
   shards: Map<string, ChangelogShard>,
   qualifiedName: string,
-  entry: SymbolChangelogEntry
+  entry: SymbolChangelogEntry,
 ): void {
   const shardKey = computeShardKey(qualifiedName);
 
@@ -538,7 +497,7 @@ export async function uploadIR(options: UploadOptions): Promise<UploadResult> {
 
 /**
  * Upload IR artifacts for a single package with package-level structure.
- * 
+ *
  * New blob structure: ir/packages/{packageId}/{buildId}/...
  * This allows independent package updates without affecting other packages.
  */
@@ -566,7 +525,7 @@ async function uploadPackageIR(options: UploadOptions): Promise<UploadResult> {
   try {
     const symbolsContent = await fs.readFile(symbolsPath, "utf-8");
     const parsed = JSON.parse(symbolsContent);
-    symbols = Array.isArray(parsed) ? parsed : (parsed.symbols || []);
+    symbols = Array.isArray(parsed) ? parsed : parsed.symbols || [];
   } catch {
     console.log(`   ⚠️  No symbols file found at ${symbolsPath}`);
     return { buildId, uploadedAt: new Date().toISOString(), files: 0, totalSize: 0 };
@@ -615,7 +574,7 @@ async function uploadPackageIR(options: UploadOptions): Promise<UploadResult> {
     packageId,
     displayName,
     language as "python" | "typescript",
-    symbols
+    symbols,
   );
   uploadTasks.push({
     blobPath: `${basePath}/routing.json`,
@@ -623,7 +582,10 @@ async function uploadPackageIR(options: UploadOptions): Promise<UploadResult> {
   });
 
   // Generate and upload sharded lookup index
-  const { index: lookupIndex, shards: lookupShards } = generateShardedLookupIndex(packageId, symbols);
+  const { index: lookupIndex, shards: lookupShards } = generateShardedLookupIndex(
+    packageId,
+    symbols,
+  );
   uploadTasks.push({
     blobPath: `${basePath}/lookup/index.json`,
     content: JSON.stringify(lookupIndex),
@@ -678,7 +640,6 @@ async function uploadPackageIR(options: UploadOptions): Promise<UploadResult> {
         content: JSON.stringify(shardData),
       });
     }
-
   } catch {
     // No changelog file - skip
   }
@@ -702,18 +663,14 @@ async function uploadPackageIR(options: UploadOptions): Promise<UploadResult> {
   const startTime = Date.now();
   let lastProgressLog = 0;
 
-  const result = await uploadFilesInParallel(
-    uploadTasks,
-    dryRun,
-    (completed, total) => {
-      const progress = Math.floor((completed / total) * 100);
-      if (progress >= lastProgressLog + 10 || completed === total) {
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-        console.log(`   Progress: ${completed}/${total} (${progress}%) - ${elapsed}s elapsed`);
-        lastProgressLog = progress;
-      }
+  const result = await uploadFilesInParallel(uploadTasks, dryRun, (completed, total) => {
+    const progress = Math.floor((completed / total) * 100);
+    if (progress >= lastProgressLog + 10 || completed === total) {
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`   Progress: ${completed}/${total} (${progress}%) - ${elapsed}s elapsed`);
+      lastProgressLog = progress;
     }
-  );
+  });
 
   filesUploaded += result.filesUploaded;
   totalSize += result.totalSize;
@@ -738,10 +695,7 @@ async function uploadPackageIR(options: UploadOptions): Promise<UploadResult> {
 /**
  * Delete old builds from Vercel Blob to save storage.
  */
-export async function cleanupOldBuilds(
-  keepBuilds: string[],
-  dryRun = false
-): Promise<number> {
+export async function cleanupOldBuilds(keepBuilds: string[], dryRun = false): Promise<number> {
   console.log("\n🧹 Cleaning up old builds...");
 
   const { blobs } = await list({ prefix: "ir/" });
@@ -776,4 +730,3 @@ export async function cleanupOldBuilds(
 
   return deletedCount;
 }
-

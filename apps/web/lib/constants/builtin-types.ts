@@ -231,14 +231,10 @@ export const JS_BUILTIN_TYPES: Record<string, string> = {
  */
 export function getBuiltinTypeDocUrl(
   typeName: string,
-  language: "python" | "typescript" | "javascript"
+  language: "python" | "typescript" | "javascript",
 ): string | null {
   if (language === "python") {
-    return Object.hasOwn(PYTHON_BUILTIN_TYPES, typeName)
-      ? PYTHON_BUILTIN_TYPES[typeName]
-      : null;
+    return Object.hasOwn(PYTHON_BUILTIN_TYPES, typeName) ? PYTHON_BUILTIN_TYPES[typeName] : null;
   }
-  return Object.hasOwn(JS_BUILTIN_TYPES, typeName)
-    ? JS_BUILTIN_TYPES[typeName]
-    : null;
+  return Object.hasOwn(JS_BUILTIN_TYPES, typeName) ? JS_BUILTIN_TYPES[typeName] : null;
 }

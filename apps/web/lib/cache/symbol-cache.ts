@@ -114,7 +114,7 @@ function openDatabase(): Promise<IDBDatabase> {
 export function getSymbolCacheKey(
   language: "python" | "javascript",
   packageSlug: string,
-  symbolPath: string
+  symbolPath: string,
 ): string {
   return `${language}/${packageSlug}/${symbolPath}`;
 }
@@ -122,10 +122,7 @@ export function getSymbolCacheKey(
 /**
  * Generate cache key for a catalog
  */
-export function getCatalogCacheKey(
-  language: "python" | "javascript",
-  packageSlug: string
-): string {
+export function getCatalogCacheKey(language: "python" | "javascript", packageSlug: string): string {
   return `${language}/${packageSlug}`;
 }
 
@@ -159,11 +156,7 @@ export class SymbolCache {
   /**
    * Store a symbol in the cache
    */
-  async setSymbol(
-    key: string,
-    data: SymbolRecord,
-    buildId: string
-  ): Promise<void> {
+  async setSymbol(key: string, data: SymbolRecord, buildId: string): Promise<void> {
     try {
       const db = await this.getDb();
       const now = Date.now();
@@ -242,11 +235,7 @@ export class SymbolCache {
   /**
    * Store a catalog in the cache
    */
-  async setCatalog(
-    key: string,
-    entries: CatalogEntry[],
-    buildId: string
-  ): Promise<void> {
+  async setCatalog(key: string, entries: CatalogEntry[], buildId: string): Promise<void> {
     try {
       const db = await this.getDb();
       const now = Date.now();
@@ -336,7 +325,9 @@ export class SymbolCache {
     try {
       const db = await this.getDb();
 
-      const getStoreStats = (storeName: string): Promise<{
+      const getStoreStats = (
+        storeName: string,
+      ): Promise<{
         count: number;
         size: number;
         oldest: number | null;
@@ -351,7 +342,7 @@ export class SymbolCache {
             const entries = request.result as Array<{ size: number; cachedAt: number }>;
             const size = entries.reduce((sum, e) => sum + (e.size || 0), 0);
             const timestamps = entries.map((e) => e.cachedAt).filter(Boolean);
-            
+
             resolve({
               count: entries.length,
               size,
@@ -441,7 +432,9 @@ export class SymbolCache {
   /**
    * Get the least recently used entries
    */
-  async getLRUEntries(limit: number): Promise<Array<{ key: string; accessedAt: number; size: number }>> {
+  async getLRUEntries(
+    limit: number,
+  ): Promise<Array<{ key: string; accessedAt: number; size: number }>> {
     try {
       const db = await this.getDb();
       const entries: Array<{ key: string; accessedAt: number; size: number }> = [];
@@ -471,10 +464,7 @@ export class SymbolCache {
         });
       };
 
-      await Promise.all([
-        getFromStore(SYMBOLS_STORE),
-        getFromStore(CATALOGS_STORE),
-      ]);
+      await Promise.all([getFromStore(SYMBOLS_STORE), getFromStore(CATALOGS_STORE)]);
 
       // Sort by accessedAt and take the limit
       return entries.sort((a, b) => a.accessedAt - b.accessedAt).slice(0, limit);
@@ -516,10 +506,7 @@ export class SymbolCache {
         });
       };
 
-      await Promise.all([
-        deleteFromStore(SYMBOLS_STORE),
-        deleteFromStore(CATALOGS_STORE),
-      ]);
+      await Promise.all([deleteFromStore(SYMBOLS_STORE), deleteFromStore(CATALOGS_STORE)]);
     } catch (error) {
       console.warn("[SymbolCache] Failed to delete entries:", error);
     }
@@ -543,10 +530,7 @@ export class SymbolCache {
         });
       };
 
-      await Promise.all([
-        clearStore(SYMBOLS_STORE),
-        clearStore(CATALOGS_STORE),
-      ]);
+      await Promise.all([clearStore(SYMBOLS_STORE), clearStore(CATALOGS_STORE)]);
     } catch (error) {
       console.warn("[SymbolCache] Failed to clear cache:", error);
     }

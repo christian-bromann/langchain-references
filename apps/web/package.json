@@ -7,7 +7,10 @@
     "dev": "npm run generate-sw && next dev",
     "build": "npm run generate-sw && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
     "test": "tsx --test",
     "typecheck": "tsc --noEmit"
   },

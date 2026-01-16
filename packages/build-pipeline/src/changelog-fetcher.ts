@@ -5,10 +5,7 @@
  * This allows the build pipeline to only process new versions.
  */
 
-import type {
-  PackageChangelog,
-  PackageVersionIndex,
-} from "@langchain/ir-schema";
+import type { PackageChangelog, PackageVersionIndex } from "@langchain/ir-schema";
 import type { LatestBuildPointer } from "./pointers.js";
 
 // =============================================================================
@@ -67,7 +64,7 @@ function getBlobBaseUrl(): string | null {
 async function fetchLatestBuildId(
   blobBaseUrl: string,
   project: string,
-  language: string
+  language: string,
 ): Promise<string | null> {
   const langSuffix = language === "python" ? "python" : "javascript";
   const pointerUrl = `${blobBaseUrl}/pointers/latest-${project}-${langSuffix}.json`;
@@ -96,12 +93,14 @@ export async function fetchDeployedChangelog(
   project: string,
   language: string,
   packageId: string,
-  baseUrl?: string
+  baseUrl?: string,
 ): Promise<DeployedChangelog | null> {
   const blobBaseUrl = baseUrl ?? getBlobBaseUrl();
 
   if (!blobBaseUrl) {
-    console.log("No blob storage URL available (BLOB_BASE_URL, BLOB_URL, or BLOB_READ_WRITE_TOKEN not set) - will do full build");
+    console.log(
+      "No blob storage URL available (BLOB_BASE_URL, BLOB_URL, or BLOB_READ_WRITE_TOKEN not set) - will do full build",
+    );
     return null;
   }
 
@@ -128,17 +127,15 @@ export async function fetchDeployedChangelog(
         console.log(`No existing changelog found for ${packageId} - will do full build`);
         return null;
       }
-      throw new Error(
-        `Failed to fetch changelog: ${changelogRes.status} / ${versionsRes.status}`
-      );
+      throw new Error(`Failed to fetch changelog: ${changelogRes.status} / ${versionsRes.status}`);
     }
 
-    const changelog = await changelogRes.json() as PackageChangelog;
-    const versions = await versionsRes.json() as PackageVersionIndex;
+    const changelog = (await changelogRes.json()) as PackageChangelog;
+    const versions = (await versionsRes.json()) as PackageVersionIndex;
 
     console.log(
       `Found existing changelog with ${changelog.history.length} version(s), ` +
-        `latest: ${versions.latest.version}`
+        `latest: ${versions.latest.version}`,
     );
 
     return { changelog, versions };
@@ -156,11 +153,7 @@ export async function fetchDeployedChangelog(
 /**
  * Fetch with retry logic for transient failures.
  */
-async function fetchWithRetry(
-  url: string,
-  retries = 3,
-  delay = 1000
-): Promise<Response> {
+async function fetchWithRetry(url: string, retries = 3, delay = 1000): Promise<Response> {
   let lastError: Error | undefined;
 
   for (let i = 0; i < retries; i++) {
@@ -187,4 +180,3 @@ async function fetchWithRetry(
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-

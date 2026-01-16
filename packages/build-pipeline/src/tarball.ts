@@ -69,7 +69,7 @@ async function getDefaultBranch(repo: string): Promise<string> {
     return "main";
   }
 
-  const data = await response.json() as { default_branch: string };
+  const data = (await response.json()) as { default_branch: string };
   return data.default_branch || "main";
 }
 
@@ -101,7 +101,7 @@ export async function getLatestSha(repo: string): Promise<string> {
 
     throw new Error(
       `Failed to get latest SHA: ${response.status} ${response.statusText}. ` +
-      `Consider setting GITHUB_TOKEN environment variable to avoid rate limits.`
+        `Consider setting GITHUB_TOKEN environment variable to avoid rate limits.`,
     );
   }
 
@@ -132,7 +132,7 @@ async function isYarnBerry(dir: string): Promise<boolean> {
  * Detect the package manager used in a directory by checking for lock files.
  */
 async function detectPackageManager(
-  dir: string
+  dir: string,
 ): Promise<{ name: "pnpm" | "yarn" | "npm"; installCmd: string; buildCmd: string }> {
   // Check for lock files in order of preference
   const lockFiles = [
@@ -171,7 +171,8 @@ async function detectPackageManager(
           // --frozen-lockfile: don't update lockfile
           // --config.engine-strict=false: ignore engine requirements (e.g., Node >= 24)
           // Note: don't use --no-optional as it breaks esbuild (needs platform binaries)
-          installCmd: "pnpm install --frozen-lockfile --ignore-scripts --config.engine-strict=false",
+          installCmd:
+            "pnpm install --frozen-lockfile --ignore-scripts --config.engine-strict=false",
           buildCmd: "pnpm run build",
         };
       }
@@ -203,7 +204,10 @@ async function detectPackageManager(
  * @param extractedPath - Path to the extracted repository
  * @param targetPackages - Optional list of packages to filter (builds only these + deps)
  */
-async function installDependencies(extractedPath: string, targetPackages?: string[]): Promise<void> {
+async function installDependencies(
+  extractedPath: string,
+  targetPackages?: string[],
+): Promise<void> {
   const { execSync } = await import("child_process");
 
   // Check if package.json exists
@@ -270,7 +274,7 @@ async function installDependencies(extractedPath: string, targetPackages?: strin
 async function buildTypeDeclarations(
   extractedPath: string,
   pmInfo: { name: string; buildCmd: string },
-  targetPackages?: string[]
+  targetPackages?: string[],
 ): Promise<void> {
   const { execSync } = await import("child_process");
 
@@ -308,7 +312,7 @@ async function buildTypeDeclarations(
     }
 
     // Check if Yarn Berry for workspace commands
-    const isBerry = pmInfo.name === "yarn" && await isYarnBerry(extractedPath);
+    const isBerry = pmInfo.name === "yarn" && (await isYarnBerry(extractedPath));
 
     // Construct build command with optional filtering
     let buildCmd: string;
@@ -316,12 +320,12 @@ async function buildTypeDeclarations(
     if (hasTargetFilter && pmInfo.name === "pnpm") {
       // pnpm: use --filter with ... suffix to include dependencies
       // e.g., pnpm --filter @langchain/openai... run build
-      const filters = targetPackages.map(pkg => `--filter "${pkg}..."`).join(" ");
+      const filters = targetPackages.map((pkg) => `--filter "${pkg}..."`).join(" ");
       const scriptName = scripts["build:types"] ? "build:types" : "build";
       buildCmd = `pnpm ${filters} run ${scriptName}`;
     } else if (hasTargetFilter && pmInfo.name === "yarn" && isBerry) {
       // Yarn Berry (v2+): use workspaces foreach with --from to include deps
-      const pkgList = targetPackages.map(pkg => `"${pkg}"`).join(" ");
+      const pkgList = targetPackages.map((pkg) => `"${pkg}"`).join(" ");
       const scriptName = scripts["build:types"] ? "build:types" : "build";
       buildCmd = `yarn workspaces foreach --from ${pkgList} -R run ${scriptName}`;
     } else if (hasTargetFilter && pmInfo.name === "yarn" && !isBerry) {
@@ -330,13 +334,11 @@ async function buildTypeDeclarations(
       const scriptName = scripts["build:types"] ? "build:types" : "build";
       // For yarn classic, we need to build each package individually
       // Use && to chain commands
-      const cmds = targetPackages.map(pkg => `yarn workspace ${pkg} run ${scriptName}`);
+      const cmds = targetPackages.map((pkg) => `yarn workspace ${pkg} run ${scriptName}`);
       buildCmd = cmds.join(" && ");
     } else {
       // No filter or npm - build everything
-      buildCmd = scripts["build:types"]
-        ? `${pmInfo.name} run build:types`
-        : pmInfo.buildCmd;
+      buildCmd = scripts["build:types"] ? `${pmInfo.name} run build:types` : pmInfo.buildCmd;
     }
 
     try {
@@ -438,7 +440,7 @@ export async function fetchTarball(options: FetchOptions): Promise<FetchResult> 
 
   await pipeline(
     Readable.fromWeb(body as Parameters<typeof Readable.fromWeb>[0]),
-    createWriteStream(tarballPath)
+    createWriteStream(tarballPath),
   );
 
   console.log(`💾 Saved tarball: ${tarballPath}`);
@@ -461,7 +463,7 @@ export async function fetchTarball(options: FetchOptions): Promise<FetchResult> 
   const fetchedAt = new Date().toISOString();
   await fs.writeFile(
     path.join(extractedPath, ".fetch-complete"),
-    JSON.stringify({ repo, sha, fetchedAt }, null, 2)
+    JSON.stringify({ repo, sha, fetchedAt }, null, 2),
   );
 
   console.log(`✅ Extraction complete`);
@@ -482,14 +484,13 @@ export async function fetchTarball(options: FetchOptions): Promise<FetchResult> 
  */
 export async function fetchMultiple(
   repos: Array<{ repo: string; sha?: string }>,
-  output: string
+  output: string,
 ): Promise<FetchResult[]> {
   const results = await Promise.all(
     repos.map(async ({ repo, sha }) => {
       const resolvedSha = sha || (await getLatestSha(repo));
       return fetchTarball({ repo, sha: resolvedSha, output });
-    })
+    }),
   );
   return results;
 }
-

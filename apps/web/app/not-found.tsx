@@ -24,18 +24,14 @@ export default function NotFound() {
       <div className="max-w-lg text-center">
         {/* 404 indicator */}
         <div className="mb-8">
-          <span className="text-8xl font-heading font-bold text-primary/20">
-            404
-          </span>
+          <span className="text-8xl font-heading font-bold text-primary/20">404</span>
         </div>
 
         {/* Message */}
-        <h1 className="text-2xl font-heading font-bold text-foreground mb-4">
-          Page not found
-        </h1>
+        <h1 className="text-2xl font-heading font-bold text-foreground mb-4">Page not found</h1>
         <p className="text-foreground-secondary mb-8">
-          The page you&apos;re looking for doesn&apos;t exist or has been moved.
-          Try searching for what you need or navigate back to the documentation.
+          The page you&apos;re looking for doesn&apos;t exist or has been moved. Try searching for
+          what you need or navigate back to the documentation.
         </p>
 
         {/* Quick actions */}
@@ -58,9 +54,7 @@ export default function NotFound() {
 
         {/* Helpful links */}
         <div className="border-t border-border pt-8">
-          <p className="text-sm text-foreground-muted mb-4">
-            Popular destinations
-          </p>
+          <p className="text-sm text-foreground-muted mb-4">Popular destinations</p>
           <div className="grid grid-cols-2 gap-4 text-left">
             <Link
               href="/python"

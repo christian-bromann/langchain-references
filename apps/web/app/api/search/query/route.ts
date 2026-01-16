@@ -30,7 +30,7 @@ function symbolToSearchRecord(
   },
   packageId: string,
   packageName: string,
-  language: Language
+  language: Language,
 ): SearchRecord | null {
   // Skip private symbols
   if (symbol.tags?.visibility === "private") {
@@ -84,12 +84,10 @@ function symbolToSearchRecord(
  * Build or get cached MiniSearch index for a language.
  * Searches across ALL enabled projects (langchain, langgraph, deepagent).
  */
-async function getSearchIndex(
-  language: Language
-): Promise<MiniSearch<SearchRecord> | null> {
+async function getSearchIndex(language: Language): Promise<MiniSearch<SearchRecord> | null> {
   const irLanguage = language === "python" ? "python" : "javascript";
   const projects = getEnabledProjects();
-  
+
   // Collect all build IDs for cache key
   const buildIds: string[] = [];
   for (const project of projects) {
@@ -109,16 +107,7 @@ async function getSearchIndex(
   // Create MiniSearch index
   const index = new MiniSearch<SearchRecord>({
     fields: ["title", "excerpt", "keywords"],
-    storeFields: [
-      "id",
-      "url",
-      "title",
-      "breadcrumbs",
-      "excerpt",
-      "kind",
-      "language",
-      "packageId",
-    ],
+    storeFields: ["id", "url", "title", "breadcrumbs", "excerpt", "kind", "language", "packageId"],
     searchOptions: {
       boost: { title: 3, keywords: 2, excerpt: 1 },
       fuzzy: 0.2,
@@ -140,7 +129,7 @@ async function getSearchIndex(
     const packages = manifest.packages.filter((p) =>
       language === "python"
         ? p.language === "python"
-        : p.language === "typescript" || p.ecosystem === "javascript"
+        : p.language === "typescript" || p.ecosystem === "javascript",
     );
 
     for (const pkg of packages) {
@@ -148,12 +137,7 @@ async function getSearchIndex(
 
       if (result?.symbols) {
         for (const symbol of result.symbols) {
-          const record = symbolToSearchRecord(
-            symbol,
-            pkg.packageId,
-            pkg.displayName,
-            language
-          );
+          const record = symbolToSearchRecord(symbol, pkg.packageId, pkg.displayName, language);
           if (record && !recordsMap.has(record.id)) {
             recordsMap.set(record.id, record);
           }
@@ -181,16 +165,13 @@ export async function GET(request: NextRequest) {
 
   // Validate required parameters
   if (!query) {
-    return NextResponse.json(
-      { error: "Missing required 'q' parameter" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing required 'q' parameter" }, { status: 400 });
   }
 
   if (!languageParam || !["python", "javascript"].includes(languageParam)) {
     return NextResponse.json(
       { error: "Invalid language parameter. Must be 'python' or 'javascript'" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -203,7 +184,7 @@ export async function GET(request: NextRequest) {
     if (!index) {
       return NextResponse.json(
         { error: `No search index available for ${languageParam}` },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -241,13 +222,10 @@ export async function GET(request: NextRequest) {
           // Short cache for search results
           "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
         },
-      }
+      },
     );
   } catch (error) {
     console.error("Search failed:", error);
-    return NextResponse.json(
-      { error: "Search failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Search failed" }, { status: 500 });
   }
 }

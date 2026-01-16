@@ -14,15 +14,16 @@ Build a complete API reference documentation system consisting of:
 
 ### 1. Extraction Strategy
 
-| Decision | Choice |
-|----------|--------|
-| **Python parsing** | Static parsing only (griffe) — no runtime imports initially |
+| Decision                   | Choice                                                                  |
+| -------------------------- | ----------------------------------------------------------------------- |
+| **Python parsing**         | Static parsing only (griffe) — no runtime imports initially             |
 | **Python docstring style** | **Google-style** (per `mkdocs.yml` line 282: `docstring_style: google`) |
-| **TypeScript parsing** | TypeDoc without `node_modules` initially |
+| **TypeScript parsing**     | TypeDoc without `node_modules` initially                                |
 
 ### 2. Package Scope (v1)
 
 **Python Packages** (from [langchain-ai/langchain](https://github.com/langchain-ai/langchain)):
+
 - `langchain`
 - `langchain-core`
 - `langchain-text-splitters`
@@ -31,6 +32,7 @@ Build a complete API reference documentation system consisting of:
 - `langchain-classic`
 
 **TypeScript Packages** (from [langchain-ai/langchainjs](https://github.com/langchain-ai/langchainjs) per [reference.langchain.com/javascript](https://reference.langchain.com/javascript/index.html)):
+
 - `@langchain/anthropic`
 - `@langchain/aws`
 - `@langchain/classic`
@@ -44,9 +46,9 @@ Build a complete API reference documentation system consisting of:
 
 ### 3. Version Strategy
 
-| Decision | Choice |
-|----------|--------|
-| **Initial scope** | `latest` only (current main branch) |
+| Decision           | Choice                                                      |
+| ------------------ | ----------------------------------------------------------- |
+| **Initial scope**  | `latest` only (current main branch)                         |
 | **Future support** | Architecture should support all minor/major versions easily |
 
 ### 4. URL Structure
@@ -60,35 +62,36 @@ Build a complete API reference documentation system consisting of:
 ```
 
 **Domain**: Separate domain — `reference.langchain.com`
+
 - Python: `reference.langchain.com/python/...`
 - JavaScript: `reference.langchain.com/javascript/...`
 
 ### 5. UI Design
 
-| Decision | Choice |
-|----------|--------|
-| **Layout** | Dedicated API reference layout (method signatures in left column, details in right) |
-| **Theme** | Match Mintlify Aspen theme (light/dark modes) |
-| **Responsive** | Mobile-first with hamburger menu (see `assets/docs-responsive.png`) |
+| Decision       | Choice                                                                              |
+| -------------- | ----------------------------------------------------------------------------------- |
+| **Layout**     | Dedicated API reference layout (method signatures in left column, details in right) |
+| **Theme**      | Match Mintlify Aspen theme (light/dark modes)                                       |
+| **Responsive** | Mobile-first with hamburger menu (see `assets/docs-responsive.png`)                 |
 
 ### 6. Search
 
-| Decision | Choice |
-|----------|--------|
-| **Scope** | Language-specific only (no cross-language search) |
-| **Implementation** | FlexSearch or MiniSearch (client-side) |
+| Decision           | Choice                                            |
+| ------------------ | ------------------------------------------------- |
+| **Scope**          | Language-specific only (no cross-language search) |
+| **Implementation** | FlexSearch or MiniSearch (client-side)            |
 
 ### 7. Build & Deploy
 
-| Decision | Choice |
-|----------|--------|
+| Decision    | Choice                                |
+| ----------- | ------------------------------------- |
 | **Trigger** | Manual trigger with version selection |
-| **Future** | Add automated triggers for releases |
+| **Future**  | Add automated triggers for releases   |
 
 ### 8. LangSmith
 
-| Decision | Choice |
-|----------|--------|
+| Decision  | Choice               |
+| --------- | -------------------- |
 | **Scope** | Deferred — not in v1 |
 
 ---
@@ -96,30 +99,33 @@ Build a complete API reference documentation system consisting of:
 ## Target Repositories
 
 ### Phase 1: Core (LangChain)
-| Language | Repository | Status |
-|----------|------------|--------|
-| Python | [langchain-ai/langchain](https://github.com/langchain-ai/langchain) | v1 |
-| TypeScript | [langchain-ai/langchainjs](https://github.com/langchain-ai/langchainjs) | v1 |
+
+| Language   | Repository                                                              | Status |
+| ---------- | ----------------------------------------------------------------------- | ------ |
+| Python     | [langchain-ai/langchain](https://github.com/langchain-ai/langchain)     | v1     |
+| TypeScript | [langchain-ai/langchainjs](https://github.com/langchain-ai/langchainjs) | v1     |
 
 ### Phase 2: LangGraph
-| Language | Repository | Status |
-|----------|------------|--------|
-| Python | [langchain-ai/langgraph](https://github.com/langchain-ai/langgraph) | Future |
+
+| Language   | Repository                                                              | Status |
+| ---------- | ----------------------------------------------------------------------- | ------ |
+| Python     | [langchain-ai/langgraph](https://github.com/langchain-ai/langgraph)     | Future |
 | TypeScript | [langchain-ai/langgraphjs](https://github.com/langchain-ai/langgraphjs) | Future |
 
 ### Phase 3: LangSmith
-| Source | Status |
-|--------|--------|
+
+| Source                                                                    | Status |
+| ------------------------------------------------------------------------- | ------ |
 | [docs.langchain.com/langsmith](https://docs.langchain.com/langsmith/home) | Future |
 
 ---
 
 ## Visual Assets
 
-| File | Description |
-|------|-------------|
-| `assets/docs-light-mode.png` | Mintlify light theme reference |
-| `assets/docs-dark-mode.png` | Mintlify dark theme reference |
+| File                         | Description                        |
+| ---------------------------- | ---------------------------------- |
+| `assets/docs-light-mode.png` | Mintlify light theme reference     |
+| `assets/docs-dark-mode.png`  | Mintlify dark theme reference      |
 | `assets/docs-responsive.png` | Mobile responsive design reference |
 
 ---
@@ -127,6 +133,7 @@ Build a complete API reference documentation system consisting of:
 ## Key Design Observations (from screenshots)
 
 ### Light Mode (`docs-light-mode.png`)
+
 - **Background**: Cream/off-white (`#FAF9F6` or similar)
 - **Accent border**: Golden/amber left edge
 - **Primary color**: Teal (`#2F6868`)
@@ -136,12 +143,14 @@ Build a complete API reference documentation system consisting of:
 - **Right TOC**: "On this page" with anchor links
 
 ### Dark Mode (`docs-dark-mode.png`)
+
 - **Background**: Dark gray/charcoal
 - **Accent border**: Same golden/amber left edge
 - **Text**: Light gray/white
 - **Code blocks**: Dark background with syntax highlighting
 
 ### Responsive (`docs-responsive.png`)
+
 - **Width**: 400px mobile viewport
 - **Header**: Simplified with hamburger menu (☰), search icon, overflow menu
 - **Navigation**: Hidden in drawer

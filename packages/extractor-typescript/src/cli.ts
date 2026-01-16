@@ -36,17 +36,16 @@ program
   .requiredOption("--output <file>", "Output JSON file path")
   .option("--repo <repo>", "Repository (e.g., langchain-ai/langchainjs)", "")
   .option("--sha <sha>", "Git commit SHA", "")
-  .option(
-    "--entry-points <files...>",
-    "Entry points relative to package path",
-    ["src/index.ts"]
-  )
+  .option("--entry-points <files...>", "Entry points relative to package path", ["src/index.ts"])
   .option("--tsconfig <file>", "Path to tsconfig.json (relative to package path)")
   .option("--include-private", "Include private members", false)
   .option("--include-internal", "Include @internal members", false)
   .option("--raw", "Output raw TypeDoc JSON without IR transformation", false)
   .option("--source-path-prefix <prefix>", "Path prefix to strip from source file paths in output")
-  .option("--package-repo-path <path>", "Package's relative path within the repo (e.g., libs/langchain-core)")
+  .option(
+    "--package-repo-path <path>",
+    "Package's relative path within the repo (e.g., libs/langchain-core)",
+  )
   .option("-v, --verbose", "Enable verbose output", false);
 
 program.parse();
@@ -105,8 +104,8 @@ async function main(): Promise<void> {
         config.repo,
         config.sha,
         options.sourcePathPrefix,
-        config.packagePath,  // Pass package path for AST fallback resolution
-        options.packageRepoPath  // Package's relative path within the repo
+        config.packagePath, // Pass package path for AST fallback resolution
+        options.packageRepoPath, // Package's relative path within the repo
       );
 
       const symbols = transformer.transform();
@@ -140,9 +139,7 @@ async function main(): Promise<void> {
     // Write output
     await writeFile(options.output, JSON.stringify(outputData, null, 2), "utf-8");
 
-    const symbolCount = "symbols" in outputData
-      ? (outputData.symbols as unknown[]).length
-      : "N/A";
+    const symbolCount = "symbols" in outputData ? (outputData.symbols as unknown[]).length : "N/A";
 
     console.log(`✅ Extracted ${symbolCount} symbols to ${options.output}`);
   } catch (error) {
@@ -152,4 +149,3 @@ async function main(): Promise<void> {
 }
 
 main();
-

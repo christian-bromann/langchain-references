@@ -14,8 +14,7 @@ export const MCP_CONFIG = {
   /**
    * Base URL for the MCP server endpoint
    */
-  serverUrl:
-    process.env.NEXT_PUBLIC_MCP_URL || `${getBaseUrl()}/mcp`,
+  serverUrl: process.env.NEXT_PUBLIC_MCP_URL || `${getBaseUrl()}/mcp`,
 
   /**
    * Generate a Cursor IDE deep link to install the MCP server
@@ -58,6 +57,3 @@ export function getMcpServerUrl(): string {
 export function getLlmsTxtUrl(): string {
   return `${getBaseUrl()}/llms.txt`;
 }
-
-
-

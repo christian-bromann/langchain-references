@@ -9,18 +9,11 @@ description = "Python API extractor for LangChain reference docs"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
-authors = [
-    { name = "LangChain", email = "hello@langchain.dev" }
-]
-dependencies = [
-    "griffe>=1.5.0",
-]
+authors = [{ name = "LangChain", email = "hello@langchain.dev" }]
+dependencies = ["griffe>=1.5.0"]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-cov>=4.1.0",
-]
+dev = ["pytest>=8.0.0", "pytest-cov>=4.1.0"]
 
 [project.scripts]
 extract-python = "langchain_extractor_python.cli:main"
@@ -31,8 +24,5 @@ packages = ["src/langchain_extractor_python"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-
-
-
 
 

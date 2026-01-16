@@ -26,7 +26,7 @@ export function VersionBadge({ since, className }: VersionBadgeProps) {
         "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full",
         "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
         "border border-emerald-200 dark:border-emerald-800",
-        className
+        className,
       )}
       title={`Introduced in version ${version}`}
     >
@@ -35,4 +35,3 @@ export function VersionBadge({ since, className }: VersionBadgeProps) {
     </span>
   );
 }
-

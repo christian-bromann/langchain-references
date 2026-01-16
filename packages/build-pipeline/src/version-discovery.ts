@@ -72,10 +72,7 @@ interface GitHubCommit {
  * @param pattern - The pattern (e.g., "@langchain/core@*")
  * @returns The parsed version string, or null if no match
  */
-export function parseVersionFromTag(
-  tagName: string,
-  pattern: string
-): string | null {
+export function parseVersionFromTag(tagName: string, pattern: string): string | null {
   // Pattern: @scope/package@* (scoped npm style)
   // Also matches tags with == separator (common in langchainjs)
   if (pattern.includes("@") && pattern.endsWith("@*")) {
@@ -150,9 +147,7 @@ export function tagMatchesPattern(tagName: string, pattern: string): boolean {
  * @param versions - Array of discovered versions (should be sorted newest first)
  * @returns Filtered array with only one version per minor
  */
-export function filterToMinorVersions(
-  versions: DiscoveredVersion[]
-): DiscoveredVersion[] {
+export function filterToMinorVersions(versions: DiscoveredVersion[]): DiscoveredVersion[] {
   const seen = new Map<string, DiscoveredVersion>();
 
   for (const v of versions) {
@@ -179,7 +174,7 @@ export function filterToMinorVersions(
  * @returns Filtered array with first and last version per minor (except 0.0.x)
  */
 export function filterToFirstAndLastMinorVersions(
-  versions: DiscoveredVersion[]
+  versions: DiscoveredVersion[],
 ): DiscoveredVersion[] {
   // Group versions by minor version
   const minorGroups = new Map<string, DiscoveredVersion[]>();
@@ -239,7 +234,7 @@ export function filterToFirstAndLastMinorVersions(
 export async function fetchGitTags(
   repo: string,
   pattern: string,
-  githubToken?: string
+  githubToken?: string,
 ): Promise<GitTag[]> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",
@@ -273,17 +268,14 @@ export async function fetchGitTags(
         console.warn(`Repository ${repo} not found or no tags exist`);
         return [];
       }
-      throw new Error(
-        `GitHub API error: ${response.status} ${response.statusText}`
-      );
+      throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
     }
 
-    const refs = await response.json() as GitHubTagRef[];
+    const refs = (await response.json()) as GitHubTagRef[];
 
     if (refs.length === 0) break;
 
     // Collect matching tags without fetching dates
-    const beforeCount = matchingRefs.length;
     for (const ref of refs) {
       const tagName = ref.ref.replace("refs/tags/", "");
       const version = parseVersionFromTag(tagName, pattern);
@@ -305,7 +297,9 @@ export async function fetchGitTags(
     }
 
     // Show progress with matching count
-    process.stdout.write(`\r   Scanning tags... page ${page}, found ${matchingRefs.length} matching "${pattern}"`);
+    process.stdout.write(
+      `\r   Scanning tags... page ${page}, found ${matchingRefs.length} matching "${pattern}"`,
+    );
 
     // Check if there are more pages
     if (refs.length < perPage) break;
@@ -358,7 +352,9 @@ export async function fetchGitTags(
   // Sort final result by semver (newest first)
   filteredRefs.sort((a, b) => semver.rcompare(a.version, b.version));
 
-  console.log(`   Filtered to ${filteredRefs.length} versions (first+last per minor): ${filteredRefs.map(r => r.version).join(", ")}`);
+  console.log(
+    `   Filtered to ${filteredRefs.length} versions (first+last per minor): ${filteredRefs.map((r) => r.version).join(", ")}`,
+  );
 
   // Phase 3: Fetch dates only for the filtered minor versions
   let fetchedCount = 0;
@@ -372,7 +368,7 @@ export async function fetchGitTags(
     if (ref.objectType === "tag" && ref.objectUrl) {
       const tagResponse = await fetch(ref.objectUrl, { headers });
       if (tagResponse.ok) {
-        const tagData = await tagResponse.json() as GitHubTagRef;
+        const tagData = (await tagResponse.json()) as GitHubTagRef;
         if (tagData.object?.sha) {
           sha = tagData.object.sha;
         }
@@ -381,12 +377,11 @@ export async function fetchGitTags(
         }
       }
     } else {
-      const commitResponse = await fetch(
-        `https://api.github.com/repos/${repo}/commits/${sha}`,
-        { headers }
-      );
+      const commitResponse = await fetch(`https://api.github.com/repos/${repo}/commits/${sha}`, {
+        headers,
+      });
       if (commitResponse.ok) {
-        const commitData = await commitResponse.json() as GitHubCommit;
+        const commitData = (await commitResponse.json()) as GitHubCommit;
         date = commitData.commit.committer.date;
       }
     }
@@ -422,7 +417,7 @@ export async function discoverVersions(
   repo: string,
   tagPattern: string,
   options: VersionDiscoveryOptions,
-  githubToken?: string
+  githubToken?: string,
 ): Promise<DiscoveredVersion[]> {
   console.log(`Discovering versions for ${repo} with pattern "${tagPattern}"...`);
 
@@ -476,9 +471,7 @@ export async function discoverVersions(
     result.sort((a, b) => semver.rcompare(a.version, b.version));
   }
 
-  console.log(
-    `Final version list: ${result.map((v) => v.version).join(", ")}`
-  );
+  console.log(`Final version list: ${result.map((v) => v.version).join(", ")}`);
   return result;
 }
 
@@ -488,13 +481,10 @@ export async function discoverVersions(
  * @param config - Versioning configuration
  * @returns Discovery options
  */
-export function createDiscoveryOptions(
-  config: VersioningConfig
-): VersionDiscoveryOptions {
+export function createDiscoveryOptions(config: VersioningConfig): VersionDiscoveryOptions {
   return {
     maxVersions: config.maxVersions ?? 10,
     alwaysInclude: config.alwaysInclude,
     minVersion: config.minVersion,
   };
 }
-

@@ -4,11 +4,11 @@
 
 Extend the reference documentation platform to support multiple LangChain ecosystem projects:
 
-| Project | Python | JavaScript | Status |
-|---------|--------|------------|--------|
-| LangChain | ✅ | ✅ | Implemented |
-| LangGraph | ⏳ | ⏳ | To be added |
-| DeepAgent | ⏳ | ⏳ | To be added |
+| Project   | Python | JavaScript | Status      |
+| --------- | ------ | ---------- | ----------- |
+| LangChain | ✅     | ✅         | Implemented |
+| LangGraph | ⏳     | ⏳         | To be added |
+| DeepAgent | ⏳     | ⏳         | To be added |
 
 ## Key Deliverables
 
@@ -21,10 +21,12 @@ Extend the reference documentation platform to support multiple LangChain ecosys
 ## Repositories
 
 ### LangGraph
+
 - Python: [langchain-ai/langgraph](https://github.com/langchain-ai/langgraph)
 - JavaScript: [langchain-ai/langgraphjs](https://github.com/langchain-ai/langgraphjs)
 
-### DeepAgent  
+### DeepAgent
+
 - Python: [langchain-ai/deepagents](https://github.com/langchain-ai/deepagents)
 - JavaScript: [langchain-ai/deepagentsjs](https://github.com/langchain-ai/deepagentsjs)
 
@@ -52,5 +54,3 @@ The project tabs should match the Mintlify design pattern:
 ```
 
 The active project tab shows an underline indicator and bold text.
-
-

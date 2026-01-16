@@ -422,9 +422,7 @@ const blobs = await list();
 console.log("Blobs:", blobs);
 
 // Check pointers
-const pointersResponse = await fetch(
-  `${process.env.BLOB_URL}/pointers/latest-build.json`
-);
+const pointersResponse = await fetch(`${process.env.BLOB_URL}/pointers/latest-build.json`);
 const latestBuild = await pointersResponse.json();
 console.log("Latest build:", latestBuild);
 ```
@@ -443,7 +441,7 @@ await put(
     updatedAt: new Date().toISOString(),
     packages: 0,
   }),
-  { access: "public", allowOverwrite: true }
+  { access: "public", allowOverwrite: true },
 );
 ```
 

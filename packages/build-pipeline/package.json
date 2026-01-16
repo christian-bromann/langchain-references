@@ -1,8 +1,11 @@
 {
   "name": "@langchain/build-pipeline",
   "version": "0.1.0",
-  "description": "IR build pipeline for LangChain Reference Docs - extracts, transforms, and uploads API documentation",
   "private": true,
+  "description": "IR build pipeline for LangChain Reference Docs - extracts, transforms, and uploads API documentation",
+  "files": [
+    "src"
+  ],
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -16,10 +19,11 @@
       "import": "./src/commands/*.ts"
     }
   },
-  "files": [
-    "src"
-  ],
   "scripts": {
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
     "typecheck": "tsc --noEmit",
     "build:ir": "tsx src/commands/build-ir.ts",
     "pull-ir": "tsx src/commands/pull-ir.ts",
@@ -46,4 +50,3 @@
     "typescript": "^5.9.3"
   }
 }
-

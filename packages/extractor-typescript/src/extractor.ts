@@ -42,9 +42,7 @@ function isSourceTsFile(filePath: string): boolean {
 /**
  * Extract entry points from package.json exports field.
  */
-async function discoverEntryPointsFromExports(
-  packagePath: string
-): Promise<string[]> {
+async function discoverEntryPointsFromExports(packagePath: string): Promise<string[]> {
   try {
     const packageJsonPath = path.join(packagePath, "package.json");
     const content = await fs.readFile(packageJsonPath, "utf-8");
@@ -96,10 +94,7 @@ async function discoverEntryPointsFromExports(
 /**
  * Resolve entry points - handles "auto" discovery and glob patterns.
  */
-async function resolveEntryPoints(
-  packagePath: string,
-  entryPoints: string[]
-): Promise<string[]> {
+async function resolveEntryPoints(packagePath: string, entryPoints: string[]): Promise<string[]> {
   const resolved: string[] = [];
 
   for (const ep of entryPoints) {
@@ -138,7 +133,7 @@ async function resolveEntryPoints(
  */
 function tryResolveTsconfig(
   tsconfigPath: string,
-  workingDir?: string
+  workingDir?: string,
 ): { config: ts.ParsedCommandLine; error?: undefined } | { config?: undefined; error: string } {
   const absoluteTsconfigPath = path.resolve(tsconfigPath);
   const configDir = path.dirname(absoluteTsconfigPath);
@@ -163,13 +158,11 @@ function tryResolveTsconfig(
     customSys,
     configDir,
     undefined,
-    absoluteTsconfigPath
+    absoluteTsconfigPath,
   );
 
   // Check for errors (especially unresolved extends)
-  const fatalErrors = parsed.errors.filter(
-    (e) => e.category === ts.DiagnosticCategory.Error
-  );
+  const fatalErrors = parsed.errors.filter((e) => e.category === ts.DiagnosticCategory.Error);
 
   if (fatalErrors.length > 0) {
     const messages = fatalErrors
@@ -230,7 +223,10 @@ export class TypeScriptExtractor {
     if (originalTsconfigPath) {
       try {
         const content = await fs.readFile(originalTsconfigPath, "utf-8");
-        const { config: originalConfig } = ts.parseConfigFileTextToJson(originalTsconfigPath, content);
+        const { config: originalConfig } = ts.parseConfigFileTextToJson(
+          originalTsconfigPath,
+          content,
+        );
         if (originalConfig) {
           // Merge compilerOptions from original, but keep our essential overrides
           const originalCompilerOptions = originalConfig.compilerOptions || {};
@@ -279,7 +275,7 @@ export class TypeScriptExtractor {
     // Resolve entry points (handles "auto" and glob patterns)
     const resolvedEntryPoints = await resolveEntryPoints(
       this.config.packagePath,
-      this.config.entryPoints
+      this.config.entryPoints,
     );
 
     if (resolvedEntryPoints.length === 0) {
@@ -302,9 +298,7 @@ export class TypeScriptExtractor {
 
     try {
       const app = await td.Application.bootstrapWithPlugins({
-        entryPoints: resolvedEntryPoints.map((ep) =>
-          path.join(this.config.packagePath, ep)
-        ),
+        entryPoints: resolvedEntryPoints.map((ep) => path.join(this.config.packagePath, ep)),
         tsconfig: tsconfigPath,
 
         // Filtering options

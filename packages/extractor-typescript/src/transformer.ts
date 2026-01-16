@@ -70,7 +70,7 @@ function getExtendsFromSource(
   filePath: string,
   symbolName: string,
   sourcePathPrefix: string,
-  packagePath?: string
+  packagePath?: string,
 ): { extends?: string[]; implements?: string[] } | null {
   // Try multiple path combinations to find the source file
   const pathsToTry: string[] = [];
@@ -198,7 +198,7 @@ export class TypeDocTransformer {
     sourcePathPrefix?: string,
     packagePath?: string,
     /** Package's relative path within the repo (e.g., "libs/langchain-core") */
-    packageRepoPath?: string
+    packageRepoPath?: string,
   ) {
     this.project = project;
     this.packageName = packageName;
@@ -206,9 +206,7 @@ export class TypeDocTransformer {
     this.repo = repo;
     this.sha = sha;
     // Normalize the prefix - ensure it ends with / if provided
-    this.sourcePathPrefix = sourcePathPrefix
-      ? sourcePathPrefix.replace(/\/?$/, "/")
-      : "";
+    this.sourcePathPrefix = sourcePathPrefix ? sourcePathPrefix.replace(/\/?$/, "/") : "";
     this.packagePath = packagePath || "";
     // Normalize the package repo path - remove leading/trailing slashes
     this.packageRepoPath = (packageRepoPath || "").replace(/^\/|\/$/g, "");
@@ -260,10 +258,7 @@ export class TypeDocTransformer {
    */
   private generatePackageId(): string {
     // Normalize package name (handle scoped packages)
-    const normalized = this.packageName
-      .replace(/^@/, "")
-      .replace(/\//g, "_")
-      .replace(/-/g, "_");
+    const normalized = this.packageName.replace(/^@/, "").replace(/\//g, "_").replace(/-/g, "_");
     return `pkg_js_${normalized}`;
   }
 
@@ -285,10 +280,7 @@ export class TypeDocTransformer {
   /**
    * Transform a single reflection and its children.
    */
-  private transformReflection(
-    reflection: TypeDocReflection,
-    parentPath: string[]
-  ): SymbolRecord[] {
+  private transformReflection(reflection: TypeDocReflection, parentPath: string[]): SymbolRecord[] {
     const symbols: SymbolRecord[] = [];
     const currentPath = [...parentPath, reflection.name];
 
@@ -311,10 +303,7 @@ export class TypeDocTransformer {
   /**
    * Create an IR symbol record from a TypeDoc reflection.
    */
-  private createSymbolRecord(
-    reflection: TypeDocReflection,
-    path: string[]
-  ): SymbolRecord | null {
+  private createSymbolRecord(reflection: TypeDocReflection, path: string[]): SymbolRecord | null {
     const kind = this.mapKind(reflection.kind);
     if (!kind) return null;
 
@@ -411,7 +400,11 @@ export class TypeDocTransformer {
    */
   private getSignature(reflection: TypeDocReflection): string {
     // Handle function/method signatures
-    if ("signatures" in reflection && Array.isArray(reflection.signatures) && reflection.signatures?.[0]) {
+    if (
+      "signatures" in reflection &&
+      Array.isArray(reflection.signatures) &&
+      reflection.signatures?.[0]
+    ) {
       const sig = reflection.signatures[0] as JSONOutput.SignatureReflection;
       const params = this.formatParams(sig);
       const returns = this.formatType(sig.type);
@@ -520,8 +513,13 @@ export class TypeDocTransformer {
         // Handle Zod utility types - TypeDoc resolves these without type arguments
         // z.input<Schema> and z.output<Schema> become just "z.input" with no schema info
         // Show "object" as that's the most useful representation for developers
-        if (qualifiedName === "z.input" || qualifiedName === "z.output" ||
-            qualifiedName === "z.infer" || typeName === "input" || typeName === "output") {
+        if (
+          qualifiedName === "z.input" ||
+          qualifiedName === "z.output" ||
+          qualifiedName === "z.infer" ||
+          typeName === "input" ||
+          typeName === "output"
+        ) {
           return "object";
         }
 
@@ -639,7 +637,7 @@ export class TypeDocTransformer {
    */
   private extractDocs(reflection: TypeDocReflection): SymbolDocs {
     // First try to get comment from the reflection itself
-    let comment = "comment" in reflection ? reflection.comment as TypeDocComment : null;
+    let comment = "comment" in reflection ? (reflection.comment as TypeDocComment) : null;
 
     // For functions/methods, TypeDoc puts the comment on the signature, not the reflection
     // This is especially important for overloaded functions where the first overload has the docs
@@ -738,20 +736,84 @@ export class TypeDocTransformer {
    */
   private static BUILTIN_TYPES = new Set([
     // Primitives
-    "string", "number", "boolean", "undefined", "null", "void", "never", "unknown", "any", "object", "symbol", "bigint",
+    "string",
+    "number",
+    "boolean",
+    "undefined",
+    "null",
+    "void",
+    "never",
+    "unknown",
+    "any",
+    "object",
+    "symbol",
+    "bigint",
     // Common built-in types
-    "Object", "String", "Number", "Boolean", "Array", "Function", "Symbol", "BigInt",
-    "Date", "RegExp", "Error", "Map", "Set", "WeakMap", "WeakSet", "Promise",
-    "ArrayBuffer", "DataView", "JSON", "Math", "Reflect", "Proxy",
-    "Int8Array", "Uint8Array", "Int16Array", "Uint16Array", "Int32Array", "Uint32Array",
-    "Float32Array", "Float64Array", "BigInt64Array", "BigUint64Array",
+    "Object",
+    "String",
+    "Number",
+    "Boolean",
+    "Array",
+    "Function",
+    "Symbol",
+    "BigInt",
+    "Date",
+    "RegExp",
+    "Error",
+    "Map",
+    "Set",
+    "WeakMap",
+    "WeakSet",
+    "Promise",
+    "ArrayBuffer",
+    "DataView",
+    "JSON",
+    "Math",
+    "Reflect",
+    "Proxy",
+    "Int8Array",
+    "Uint8Array",
+    "Int16Array",
+    "Uint16Array",
+    "Int32Array",
+    "Uint32Array",
+    "Float32Array",
+    "Float64Array",
+    "BigInt64Array",
+    "BigUint64Array",
     // TypeScript utility types
-    "Record", "Partial", "Required", "Readonly", "Pick", "Omit", "Exclude", "Extract",
-    "NonNullable", "ReturnType", "Parameters", "ConstructorParameters", "InstanceType", "Awaited",
-    "ThisType", "Uppercase", "Lowercase", "Capitalize", "Uncapitalize",
+    "Record",
+    "Partial",
+    "Required",
+    "Readonly",
+    "Pick",
+    "Omit",
+    "Exclude",
+    "Extract",
+    "NonNullable",
+    "ReturnType",
+    "Parameters",
+    "ConstructorParameters",
+    "InstanceType",
+    "Awaited",
+    "ThisType",
+    "Uppercase",
+    "Lowercase",
+    "Capitalize",
+    "Uncapitalize",
     // Web APIs
-    "URL", "URLSearchParams", "FormData", "Blob", "File", "Headers", "Request", "Response",
-    "ReadableStream", "WritableStream", "AbortController", "AbortSignal",
+    "URL",
+    "URLSearchParams",
+    "FormData",
+    "Blob",
+    "File",
+    "Headers",
+    "Request",
+    "Response",
+    "ReadableStream",
+    "WritableStream",
+    "AbortController",
+    "AbortSignal",
   ]);
 
   /**
@@ -821,10 +883,7 @@ export class TypeDocTransformer {
   /**
    * Recursively collect type references from a TypeDoc type.
    */
-  private collectTypeRefsFromType(
-    type: TypeDocType,
-    refs: Map<string, TypeReference>
-  ): void {
+  private collectTypeRefsFromType(type: TypeDocType, refs: Map<string, TypeReference>): void {
     switch (type.type) {
       case "reference": {
         const name = type.name;
@@ -961,7 +1020,11 @@ export class TypeDocTransformer {
    * Extract parameters from a reflection.
    */
   private extractParams(reflection: TypeDocReflection): SymbolParam[] | undefined {
-    if (!("signatures" in reflection) || !Array.isArray(reflection.signatures) || !reflection.signatures?.[0]) {
+    if (
+      !("signatures" in reflection) ||
+      !Array.isArray(reflection.signatures) ||
+      !reflection.signatures?.[0]
+    ) {
       return undefined;
     }
 
@@ -981,7 +1044,11 @@ export class TypeDocTransformer {
    * Extract return type from a reflection.
    */
   private extractReturns(reflection: TypeDocReflection): SymbolReturns | undefined {
-    if (!("signatures" in reflection) || !Array.isArray(reflection.signatures) || !reflection.signatures?.[0]) {
+    if (
+      !("signatures" in reflection) ||
+      !Array.isArray(reflection.signatures) ||
+      !reflection.signatures?.[0]
+    ) {
       return undefined;
     }
 
@@ -1006,11 +1073,23 @@ export class TypeDocTransformer {
 
     // For modules and namespaces, include all exported symbols (classes, functions, types, etc.)
     // For classes/interfaces, include methods, properties, and constructors
-    const isModuleOrNamespace = reflection.kind === ReflectionKind.Module ||
+    const isModuleOrNamespace =
+      reflection.kind === ReflectionKind.Module ||
       reflection.kind === ReflectionKind.Namespace ||
       reflection.kind === ReflectionKind.Reference;
     const allowedKinds = isModuleOrNamespace
-      ? ["class", "function", "interface", "typeAlias", "enum", "variable", "method", "property", "constructor", "namespace"]
+      ? [
+          "class",
+          "function",
+          "interface",
+          "typeAlias",
+          "enum",
+          "variable",
+          "method",
+          "property",
+          "constructor",
+          "namespace",
+        ]
       : ["method", "property", "constructor"];
 
     return (reflection.children as TypeDocReflection[])
@@ -1033,20 +1112,27 @@ export class TypeDocTransformer {
    * Extract class/interface relations.
    * Uses TypeScript AST as fallback when TypeDoc can't resolve external types.
    */
-  private extractRelations(reflection: TypeDocReflection): { extends?: string[]; implements?: string[] } | undefined {
+  private extractRelations(
+    reflection: TypeDocReflection,
+  ): { extends?: string[]; implements?: string[] } | undefined {
     const relations: { extends?: string[]; implements?: string[] } = {};
 
     if ("extendedTypes" in reflection && reflection.extendedTypes) {
-      relations.extends = (reflection.extendedTypes as TypeDocType[]).map((t) => this.formatType(t));
+      relations.extends = (reflection.extendedTypes as TypeDocType[]).map((t) =>
+        this.formatType(t),
+      );
     }
 
     if ("implementedTypes" in reflection && reflection.implementedTypes) {
-      relations.implements = (reflection.implementedTypes as TypeDocType[]).map((t) => this.formatType(t));
+      relations.implements = (reflection.implementedTypes as TypeDocType[]).map((t) =>
+        this.formatType(t),
+      );
     }
 
     // If TypeDoc returned "unknown" for extends/implements, try to resolve from source using TS AST
     // Check for "unknown", "unknown<...>" (with type params), or "<unresolved>"
-    const isUnknownType = (t: string) => t === "unknown" || t.startsWith("unknown<") || t.includes("<unresolved>");
+    const isUnknownType = (t: string) =>
+      t === "unknown" || t.startsWith("unknown<") || t.includes("<unresolved>");
     const hasUnknownExtends = relations.extends?.some(isUnknownType);
     const hasUnknownImplements = relations.implements?.some(isUnknownType);
 
@@ -1055,7 +1141,12 @@ export class TypeDocTransformer {
       const sources = "sources" in reflection ? reflection.sources : null;
       if (sources && Array.isArray(sources) && sources.length > 0) {
         const sourceFile = sources[0].fileName;
-        const astRelations = getExtendsFromSource(sourceFile, reflection.name, this.sourcePathPrefix, this.packagePath);
+        const astRelations = getExtendsFromSource(
+          sourceFile,
+          reflection.name,
+          this.sourcePathPrefix,
+          this.packagePath,
+        );
 
         if (astRelations) {
           // Replace "unknown" entries with actual type names from AST
@@ -1115,7 +1206,10 @@ export class TypeDocTransformer {
       if (filePath.startsWith(pkgPathWithSlash)) {
         const afterPkgPath = filePath.slice(pkgPathWithSlash.length);
         // If what remains still starts with the package path, we have duplication
-        if (afterPkgPath.startsWith(pkgPathWithSlash) || afterPkgPath.startsWith(this.packageRepoPath)) {
+        if (
+          afterPkgPath.startsWith(pkgPathWithSlash) ||
+          afterPkgPath.startsWith(this.packageRepoPath)
+        ) {
           // Remove the first occurrence, keep the second (which includes the actual file path)
           filePath = afterPkgPath;
         }
@@ -1170,7 +1264,7 @@ export class TypeDocTransformer {
     isStatic?: boolean;
   } {
     const flags = "flags" in reflection ? reflection.flags : {};
-    const comment = "comment" in reflection ? reflection.comment as TypeDocComment : null;
+    const comment = "comment" in reflection ? (reflection.comment as TypeDocComment) : null;
 
     // Determine stability
     let stability: Stability = "stable";
@@ -1203,4 +1297,3 @@ export class TypeDocTransformer {
     return "public";
   }
 }
-

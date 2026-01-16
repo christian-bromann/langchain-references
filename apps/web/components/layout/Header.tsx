@@ -64,7 +64,6 @@ export function Header() {
               </Link>
               {/* Offline badge - shown when user is offline */}
               <OfflineBadge />
-
             </div>
 
             {/* Center: Search bar */}
@@ -77,7 +76,7 @@ export function Header() {
                   "justify-between truncate gap-2 min-w-[43px] max-w-sm",
                   "bg-gray-950/3 dark:bg-white/3",
                   "hover:bg-gray-950/10 dark:hover:bg-white/10",
-                  "rounded-full shadow-none border-none"
+                  "rounded-full shadow-none border-none",
                 )}
                 id="search-bar-entry"
                 aria-label="Open search"
@@ -106,7 +105,7 @@ export function Header() {
                           "text-gray-800 dark:text-gray-50",
                           "bg-gray-950/3 dark:bg-white/3",
                           "hover:bg-gray-950/10 dark:hover:bg-white/10",
-                          "rounded-xl px-[14px] py-2"
+                          "rounded-xl px-[14px] py-2",
                         )}
                       >
                         <MessageCircle className="h-4 w-4" />
@@ -123,7 +122,7 @@ export function Header() {
                           "text-gray-800 dark:text-gray-50",
                           "bg-gray-950/3 dark:bg-white/3",
                           "hover:bg-gray-950/10 dark:hover:bg-white/10",
-                          "rounded-xl px-[14px] py-2"
+                          "rounded-xl px-[14px] py-2",
                         )}
                       >
                         <Github className="h-4 w-4" />
@@ -167,7 +166,7 @@ export function Header() {
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className={cn(
                   "group p-2 flex items-center justify-center w-[30px] h-[30px] rounded-full",
-                  "bg-gray-800/4 dark:bg-white/10"
+                  "bg-gray-800/4 dark:bg-white/10",
                 )}
                 aria-label="Toggle dark mode"
               >
@@ -220,5 +219,3 @@ export function Header() {
     </header>
   );
 }
-
-

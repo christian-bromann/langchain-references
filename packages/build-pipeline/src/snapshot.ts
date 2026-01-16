@@ -44,7 +44,7 @@ import type {
  */
 export function createSnapshot(
   symbol: SymbolRecord,
-  getMember?: (refId: string) => SymbolRecord | undefined
+  getMember?: (refId: string) => SymbolRecord | undefined,
 ): SymbolSnapshot {
   const snapshot: SymbolSnapshot = {
     qualifiedName: symbol.qualifiedName,
@@ -97,7 +97,7 @@ export function createSnapshot(
  */
 export function createMemberSnapshot(
   member: MemberReference,
-  getMember?: (refId: string) => SymbolRecord | undefined
+  getMember?: (refId: string) => SymbolRecord | undefined,
 ): MemberSnapshot {
   const fullMember = getMember?.(member.refId);
 
@@ -111,10 +111,7 @@ export function createMemberSnapshot(
   // Try to determine optionality from the signature or full member
   if (fullMember) {
     // Check if property is optional (has ? in name or type allows undefined)
-    if (
-      fullMember.signature.includes("?:") ||
-      fullMember.signature.includes("?: ")
-    ) {
+    if (fullMember.signature.includes("?:") || fullMember.signature.includes("?: ")) {
       snapshot.optional = true;
     }
 
@@ -212,10 +209,7 @@ function renderClassOrInterface(snapshot: SymbolSnapshot): string {
  * @param b - Second snapshot
  * @returns True if the snapshots represent the same interface
  */
-export function snapshotsEqual(
-  a: SymbolSnapshot,
-  b: SymbolSnapshot
-): boolean {
+export function snapshotsEqual(a: SymbolSnapshot, b: SymbolSnapshot): boolean {
   // Quick check on signature
   if (a.signature !== b.signature) return false;
 
@@ -256,10 +250,7 @@ function membersEqual(a: MemberSnapshot, b: MemberSnapshot): boolean {
 
 function paramsEqual(a: ParamSnapshot, b: ParamSnapshot): boolean {
   return (
-    a.name === b.name &&
-    a.type === b.type &&
-    a.required === b.required &&
-    a.default === b.default
+    a.name === b.name && a.type === b.type && a.required === b.required && a.default === b.default
   );
 }
 
@@ -269,4 +260,3 @@ function arraysEqual(a?: string[], b?: string[]): boolean {
   if (a.length !== b.length) return false;
   return a.every((v, i) => v === b[i]);
 }
-

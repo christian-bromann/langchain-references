@@ -64,7 +64,7 @@ export function VersionSwitcher({
 
     try {
       const response = await fetch(
-        `/api/changelog/${project}/${language}/${packageId}?symbol=${encodeURIComponent(qualifiedName)}`
+        `/api/changelog/${project}/${language}/${packageId}?symbol=${encodeURIComponent(qualifiedName)}`,
       );
 
       if (!response.ok) {
@@ -131,12 +131,14 @@ export function VersionSwitcher({
             "text-gray-700 dark:text-gray-300",
             "hover:bg-gray-50 dark:hover:bg-gray-800",
             "transition-colors",
-            className
+            className,
           )}
           aria-label="Select version"
         >
           <History className="h-3.5 w-3.5 text-gray-400" />
-          <span className="font-mono">{displayVersion === "latest" ? "latest" : `v${displayVersion}`}</span>
+          <span className="font-mono">
+            {displayVersion === "latest" ? "latest" : `v${displayVersion}`}
+          </span>
           <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
         </button>
       </DropdownMenu.Trigger>
@@ -155,7 +157,7 @@ export function VersionSwitcher({
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-            "data-[side=bottom]:slide-in-from-top-2"
+            "data-[side=bottom]:slide-in-from-top-2",
           )}
         >
           {/* Latest option */}
@@ -167,13 +169,11 @@ export function VersionSwitcher({
               "text-sm",
               "text-gray-700 dark:text-gray-300",
               "hover:bg-gray-100 dark:hover:bg-gray-800",
-              "outline-none focus:bg-gray-100 dark:focus:bg-gray-800"
+              "outline-none focus:bg-gray-100 dark:focus:bg-gray-800",
             )}
           >
             <span className="font-mono font-medium">latest</span>
-            {!currentVersion && (
-              <Check className="h-4 w-4 text-primary" />
-            )}
+            {!currentVersion && <Check className="h-4 w-4 text-primary" />}
           </DropdownMenu.Item>
 
           {/* Separator if we have versions */}
@@ -190,36 +190,38 @@ export function VersionSwitcher({
           )}
 
           {/* Version list */}
-          {!loading && versions.map((v) => {
-            const isSelected = currentVersion === v.version;
-            return (
-              <DropdownMenu.Item
-                key={v.version}
-                onSelect={() => handleVersionChange(v.version)}
-                className={cn(
-                  "flex items-center justify-between gap-2 rounded-md cursor-pointer",
-                  "px-3 py-2",
-                  "text-sm",
-                  "text-gray-700 dark:text-gray-300",
-                  "hover:bg-gray-100 dark:hover:bg-gray-800",
-                  "outline-none focus:bg-gray-100 dark:focus:bg-gray-800"
-                )}
-              >
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-mono">v{v.version}</span>
-                  <VersionTypeBadge type={v.type} />
-                  {v.affectedMember && (
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate max-w-[120px]" title={v.affectedMember}>
-                      ({v.affectedMember})
-                    </span>
+          {!loading &&
+            versions.map((v) => {
+              const isSelected = currentVersion === v.version;
+              return (
+                <DropdownMenu.Item
+                  key={v.version}
+                  onSelect={() => handleVersionChange(v.version)}
+                  className={cn(
+                    "flex items-center justify-between gap-2 rounded-md cursor-pointer",
+                    "px-3 py-2",
+                    "text-sm",
+                    "text-gray-700 dark:text-gray-300",
+                    "hover:bg-gray-100 dark:hover:bg-gray-800",
+                    "outline-none focus:bg-gray-100 dark:focus:bg-gray-800",
                   )}
-                </div>
-                {isSelected && (
-                  <Check className="h-4 w-4 text-primary shrink-0" />
-                )}
-              </DropdownMenu.Item>
-            );
-          })}
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono">v{v.version}</span>
+                    <VersionTypeBadge type={v.type} />
+                    {v.affectedMember && (
+                      <span
+                        className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate max-w-[120px]"
+                        title={v.affectedMember}
+                      >
+                        ({v.affectedMember})
+                      </span>
+                    )}
+                  </div>
+                  {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                </DropdownMenu.Item>
+              );
+            })}
 
           {/* Empty state */}
           {!loading && hasLoaded && versions.length === 0 && (
@@ -253,19 +255,8 @@ function VersionTypeBadge({ type }: { type: VersionChange["type"] }) {
 
 function LoadingSpinner({ className }: { className?: string }) {
   return (
-    <svg
-      className={cn("animate-spin", className)}
-      viewBox="0 0 24 24"
-      fill="none"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
+    <svg className={cn("animate-spin", className)} viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path
         className="opacity-75"
         fill="currentColor"

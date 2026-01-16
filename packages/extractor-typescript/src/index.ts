@@ -12,10 +12,5 @@ export {
   type TypeDocReflection,
   type TypeDocProject,
   type TypeDocComment,
-  type TypeDocType
+  type TypeDocType,
 } from "./transformer.js";
-
-
-
-
-

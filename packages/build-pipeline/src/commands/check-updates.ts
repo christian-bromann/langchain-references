@@ -177,7 +177,7 @@ async function fetchBlobJson<T>(relativePath: string): Promise<T | null> {
     const response = await fetch(url, {
       cache: "no-store",
       headers: {
-        "Accept": "application/json",
+        Accept: "application/json",
       },
     });
 
@@ -201,7 +201,7 @@ async function fetchBlobJson<T>(relativePath: string): Promise<T | null> {
  */
 async function getLatestBuildPointer(
   project: string,
-  language: "python" | "javascript"
+  language: "python" | "javascript",
 ): Promise<LatestLanguagePointer | null> {
   const pointerPath = `pointers/latest-${project}-${language}.json`;
   return fetchBlobJson<LatestLanguagePointer>(pointerPath);
@@ -224,11 +224,11 @@ async function getBuildMetadata(buildId: string): Promise<BuildMetadata | null> 
  */
 async function loadCachedVersions(
   project: string,
-  language: string
+  language: string,
 ): Promise<ProjectVersionsFile | null> {
   const versionsFile = path.resolve(
     __dirname,
-    `../../../../configs/${project}-${language}-versions.json`
+    `../../../../configs/${project}-${language}-versions.json`,
   );
 
   try {
@@ -288,13 +288,15 @@ async function checkConfig(configPath: string, verbose: boolean): Promise<Update
   let latestReleaseDate: string | null = null;
   for (const pkgConfig of config.packages) {
     if (!pkgConfig.versioning?.tagPattern) continue;
-    const cachedPkg = cachedVersions.packages.find(p => p.packageName === pkgConfig.name);
+    const cachedPkg = cachedVersions.packages.find((p) => p.packageName === pkgConfig.name);
     if (cachedPkg?.versions[0]) {
       const latestVersion = cachedPkg.versions[0];
       latestReleaseSha = latestVersion.sha;
       latestReleaseDate = latestVersion.releaseDate;
       if (verbose) {
-        console.log(`   Latest release: ${latestVersion.version} (${latestReleaseSha.slice(0, 7)}) from ${latestReleaseDate.split("T")[0]}`);
+        console.log(
+          `   Latest release: ${latestVersion.version} (${latestReleaseSha.slice(0, 7)}) from ${latestReleaseDate.split("T")[0]}`,
+        );
       }
       break;
     }
@@ -314,7 +316,7 @@ async function checkConfig(configPath: string, verbose: boolean): Promise<Update
     result.reason = "No build pointer found - first build needed";
     // Mark all packages as needing update
     for (const pkgConfig of config.packages) {
-      const cachedPkg = cachedVersions.packages.find(p => p.packageName === pkgConfig.name);
+      const cachedPkg = cachedVersions.packages.find((p) => p.packageName === pkgConfig.name);
       result.packages.push({
         name: pkgConfig.name,
         currentVersion: cachedPkg?.versions[0]?.version || null,
@@ -335,7 +337,7 @@ async function checkConfig(configPath: string, verbose: boolean): Promise<Update
     result.needsUpdate = true;
     result.reason = "Build metadata not found - rebuild needed";
     for (const pkgConfig of config.packages) {
-      const cachedPkg = cachedVersions.packages.find(p => p.packageName === pkgConfig.name);
+      const cachedPkg = cachedVersions.packages.find((p) => p.packageName === pkgConfig.name);
       result.packages.push({
         name: pkgConfig.name,
         currentVersion: cachedPkg?.versions[0]?.version || null,
@@ -358,7 +360,9 @@ async function checkConfig(configPath: string, verbose: boolean): Promise<Update
 
   if (verbose) {
     if (uploadedSha) {
-      console.log(`   Uploaded build: SHA ${uploadedSha.slice(0, 7)}, created ${buildCreatedAt?.split("T")[0] || "unknown"}`);
+      console.log(
+        `   Uploaded build: SHA ${uploadedSha.slice(0, 7)}, created ${buildCreatedAt?.split("T")[0] || "unknown"}`,
+      );
     }
   }
 
@@ -368,9 +372,10 @@ async function checkConfig(configPath: string, verbose: boolean): Promise<Update
   // 2. The build was created AFTER the latest release date (meaning it includes that release)
   if (latestReleaseSha && uploadedSha) {
     const shaMatches = latestReleaseSha === uploadedSha;
-    const buildIsNewer = latestReleaseDate && buildCreatedAt
-      ? new Date(buildCreatedAt) >= new Date(latestReleaseDate)
-      : false;
+    const buildIsNewer =
+      latestReleaseDate && buildCreatedAt
+        ? new Date(buildCreatedAt) >= new Date(latestReleaseDate)
+        : false;
 
     if (shaMatches || buildIsNewer) {
       result.source.isUpToDate = true;
@@ -389,7 +394,7 @@ async function checkConfig(configPath: string, verbose: boolean): Promise<Update
       }
 
       for (const pkgConfig of config.packages) {
-        const cachedPkg = cachedVersions.packages.find(p => p.packageName === pkgConfig.name);
+        const cachedPkg = cachedVersions.packages.find((p) => p.packageName === pkgConfig.name);
         result.packages.push({
           name: pkgConfig.name,
           currentVersion: cachedPkg?.versions[0]?.version || null,
@@ -411,7 +416,7 @@ async function checkConfig(configPath: string, verbose: boolean): Promise<Update
       }
 
       for (const pkgConfig of config.packages) {
-        const cachedPkg = cachedVersions.packages.find(p => p.packageName === pkgConfig.name);
+        const cachedPkg = cachedVersions.packages.find((p) => p.packageName === pkgConfig.name);
         result.packages.push({
           name: pkgConfig.name,
           currentVersion: cachedPkg?.versions[0]?.version || null,
@@ -445,9 +450,7 @@ async function checkConfig(configPath: string, verbose: boolean): Promise<Update
     };
 
     // Get current version from cached versions
-    const cachedPkg = cachedVersions.packages.find(
-      (p) => p.packageName === pkgConfig.name
-    );
+    const cachedPkg = cachedVersions.packages.find((p) => p.packageName === pkgConfig.name);
 
     if (!cachedPkg || cachedPkg.versions.length === 0) {
       // No versions tracked - check if versioning is even enabled
@@ -517,7 +520,7 @@ async function checkConfig(configPath: string, verbose: boolean): Promise<Update
  */
 export async function checkForUpdates(
   configPath: string,
-  verbose: boolean = false
+  verbose: boolean = false,
 ): Promise<UpdateCheckResult> {
   return checkConfig(configPath, verbose);
 }
@@ -597,7 +600,8 @@ async function main() {
 }
 
 // Only run main() when this file is executed directly (not imported)
-const isMainModule = import.meta.url === `file://${process.argv[1]}` ||
+const isMainModule =
+  import.meta.url === `file://${process.argv[1]}` ||
   process.argv[1]?.endsWith("check-updates.ts") ||
   process.argv[1]?.endsWith("check-updates.js");
 

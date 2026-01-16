@@ -5,11 +5,7 @@
  * Uses IndexedDB for persistent storage and Service Worker for network caching.
  */
 
-import {
-  getSymbolCache,
-  getSymbolCacheKey,
-  getCatalogCacheKey,
-} from "./symbol-cache";
+import { getSymbolCache, getSymbolCacheKey, getCatalogCacheKey } from "./symbol-cache";
 import { getCacheManager } from "./cache-manager";
 import type { SymbolRecord } from "@/lib/ir/types";
 import type { CatalogEntry } from "@/lib/ir/loader";
@@ -39,7 +35,7 @@ const STALE_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
 function buildSymbolApiUrl(
   language: "python" | "javascript",
   packageSlug: string,
-  symbolPath: string
+  symbolPath: string,
 ): string {
   const basePath = `/api/ref/${language}/${packageSlug}`;
   if (symbolPath) {
@@ -59,7 +55,7 @@ function buildSymbolApiUrl(
 export async function getSymbol(
   language: "python" | "javascript",
   packageSlug: string,
-  symbolPath: string
+  symbolPath: string,
 ): Promise<CachedFetchResult<SymbolRecord> | null> {
   const cacheKey = getSymbolCacheKey(language, packageSlug, symbolPath);
   const manager = getCacheManager();
@@ -98,7 +94,7 @@ export async function getSymbol(
       return null;
     }
 
-    const data = await response.json() as SymbolRecord;
+    const data = (await response.json()) as SymbolRecord;
 
     // Get build ID from response header or generate one
     const buildId = response.headers.get("x-build-id") || Date.now().toString();
@@ -125,7 +121,7 @@ async function refreshSymbolInBackground(
   language: "python" | "javascript",
   packageSlug: string,
   symbolPath: string,
-  cacheKey: string
+  cacheKey: string,
 ): Promise<void> {
   try {
     const url = buildSymbolApiUrl(language, packageSlug, symbolPath);
@@ -133,7 +129,7 @@ async function refreshSymbolInBackground(
 
     if (!response.ok) return;
 
-    const data = await response.json() as SymbolRecord;
+    const data = (await response.json()) as SymbolRecord;
     const buildId = response.headers.get("x-build-id") || Date.now().toString();
     const manager = getCacheManager();
 
@@ -144,7 +140,7 @@ async function refreshSymbolInBackground(
       window.dispatchEvent(
         new CustomEvent("symbol-cache-updated", {
           detail: { key: cacheKey },
-        })
+        }),
       );
     }
   } catch (error) {
@@ -158,7 +154,7 @@ async function refreshSymbolInBackground(
  */
 export async function getCatalog(
   language: "python" | "javascript",
-  packageSlug: string
+  packageSlug: string,
 ): Promise<CachedFetchResult<CatalogEntry[]> | null> {
   const cacheKey = getCatalogCacheKey(language, packageSlug);
   const manager = getCacheManager();
@@ -220,7 +216,7 @@ export async function getCatalog(
 async function refreshCatalogInBackground(
   language: "python" | "javascript",
   packageSlug: string,
-  cacheKey: string
+  cacheKey: string,
 ): Promise<void> {
   try {
     const url = buildSymbolApiUrl(language, packageSlug, "");
@@ -239,7 +235,7 @@ async function refreshCatalogInBackground(
       window.dispatchEvent(
         new CustomEvent("catalog-cache-updated", {
           detail: { key: cacheKey },
-        })
+        }),
       );
     }
   } catch {
@@ -253,7 +249,7 @@ async function refreshCatalogInBackground(
 export async function prefetchSymbols(
   language: "python" | "javascript",
   packageSlug: string,
-  symbolPaths: string[]
+  symbolPaths: string[],
 ): Promise<void> {
   const manager = getCacheManager();
 
@@ -270,12 +266,14 @@ export async function prefetchSymbols(
   if (uncachedPaths.length === 0) return;
 
   // Build URLs for prefetching
-  const urls = uncachedPaths.map((path) =>
-    buildSymbolApiUrl(language, packageSlug, path)
-  );
+  const urls = uncachedPaths.map((path) => buildSymbolApiUrl(language, packageSlug, path));
 
   // Use Service Worker to prefetch if available
-  if (typeof navigator !== "undefined" && "serviceWorker" in navigator && navigator.serviceWorker.controller) {
+  if (
+    typeof navigator !== "undefined" &&
+    "serviceWorker" in navigator &&
+    navigator.serviceWorker.controller
+  ) {
     navigator.serviceWorker.controller.postMessage({
       type: "PREFETCH",
       payload: { urls },
@@ -293,7 +291,7 @@ export async function prefetchSymbols(
           const response = await fetch(url);
           if (!response.ok) return;
 
-          const data = await response.json() as SymbolRecord;
+          const data = (await response.json()) as SymbolRecord;
           const buildId = response.headers.get("x-build-id") || Date.now().toString();
           const cacheKey = getSymbolCacheKey(language, packageSlug, uncachedPaths[i + index]);
 
@@ -301,7 +299,7 @@ export async function prefetchSymbols(
         } catch {
           // Ignore prefetch failures
         }
-      })
+      }),
     );
   }
 }
@@ -312,7 +310,7 @@ export async function prefetchSymbols(
 export async function isSymbolCached(
   language: "python" | "javascript",
   packageSlug: string,
-  symbolPath: string
+  symbolPath: string,
 ): Promise<boolean> {
   const cacheKey = getSymbolCacheKey(language, packageSlug, symbolPath);
   const manager = getCacheManager();
@@ -324,13 +322,11 @@ export async function isSymbolCached(
  */
 export async function getCachedSymbolsForPackage(
   language: "python" | "javascript",
-  packageSlug: string
+  packageSlug: string,
 ): Promise<string[]> {
   const cache = getSymbolCache();
   const allKeys = await cache.getAllSymbolKeys();
   const prefix = `${language}/${packageSlug}/`;
 
-  return allKeys
-    .filter((key) => key.startsWith(prefix))
-    .map((key) => key.slice(prefix.length));
+  return allKeys.filter((key) => key.startsWith(prefix)).map((key) => key.slice(prefix.length));
 }

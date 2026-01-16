@@ -61,9 +61,7 @@ const TYPEDOC_SHORT_MODULE_MAP: Record<string, string> = {
 };
 
 function stripTrailingIndexHtml(pathname: string): string {
-  return pathname.endsWith("/index.html")
-    ? pathname.slice(0, -"/index.html".length)
-    : pathname;
+  return pathname.endsWith("/index.html") ? pathname.slice(0, -"/index.html".length) : pathname;
 }
 
 function stripTrailingHtml(pathname: string): string {
@@ -303,4 +301,3 @@ export function mapLegacyReferencePath(pathname: string): LegacyRedirectResult |
 
   return null;
 }
-

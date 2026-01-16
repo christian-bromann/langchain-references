@@ -35,20 +35,22 @@ Build a delta-based version history system for API reference documentation acros
 ### 1.3 Solution: Delta-Based Version Tracking
 
 **Core Principle:**
+
 1. **Store full IR only for the latest version** (existing behavior)
 2. **Store compact deltas (changelogs) for historical versions** — what changed, not the full state
 3. **Include signature snapshots** in deltas so users can see what a symbol looked like at any version without fetching additional data
 
 ### 1.4 Storage Efficiency
 
-| Approach | Per-package storage |
-|----------|---------------------|
-| Full IR per version (10 versions) | ~30-50 MB |
-| Delta-based with snapshots | ~3-4 MB (full latest) + ~500 KB (all changelogs) |
+| Approach                          | Per-package storage                              |
+| --------------------------------- | ------------------------------------------------ |
+| Full IR per version (10 versions) | ~30-50 MB                                        |
+| Delta-based with snapshots        | ~3-4 MB (full latest) + ~500 KB (all changelogs) |
 
 ### 1.5 Scope
 
 **In Scope (v1)**:
+
 - Version discovery from git tags
 - Per-package version tracking (independent of other packages)
 - Changelog generation with symbol snapshots
@@ -58,6 +60,7 @@ Build a delta-based version history system for API reference documentation acros
 - Deprecation tracking with version info
 
 **Out of Scope (v1)**:
+
 - Cross-package version correlation
 - Full documentation reconstruction for historical versions (use GitHub links)
 - Interactive "time travel" to view entire docs at a past version
@@ -327,6 +330,7 @@ export interface SymbolSnapshot {
 ```
 
 **What's included in snapshots:**
+
 - Qualified name (stable identifier)
 - Symbol kind and signature
 - Member/parameter lists with signatures
@@ -334,6 +338,7 @@ export interface SymbolSnapshot {
 - Source location (for GitHub links)
 
 **What's NOT included in snapshots** (to keep storage compact):
+
 - Full JSDoc/docstrings
 - Extended descriptions
 - Usage examples
@@ -497,23 +502,25 @@ export interface ChangeValue {
 To illustrate how changes are recorded, here's an example of an interface evolving across versions:
 
 **v0.1.0 → v0.2.0**: `temperature` becomes optional
+
 ```typescript
 // Before (v0.1.0)
 interface ChatModelParams {
   model: string;
-  temperature: number;      // required
+  temperature: number; // required
   maxTokens: number;
 }
 
 // After (v0.2.0)
 interface ChatModelParams {
   model: string;
-  temperature?: number;     // now optional
+  temperature?: number; // now optional
   maxTokens: number;
 }
 ```
 
 **Change record:**
+
 ```json
 {
   "type": "member-optionality-changed",
@@ -526,6 +533,7 @@ interface ChatModelParams {
 ```
 
 **v0.2.0 → v0.3.0**: `maxTokens` type expands
+
 ```typescript
 // Before (v0.2.0)
 maxTokens: number;
@@ -535,6 +543,7 @@ maxTokens: number | "auto";
 ```
 
 **Change record:**
+
 ```json
 {
   "type": "member-type-changed",
@@ -592,12 +601,13 @@ Each package specifies its own tag pattern since monorepo packages have independ
  * Tag patterns for different versioning conventions.
  */
 type TagPattern =
-  | `${string}@*`           // Scoped npm style: "@langchain/core@*"
-  | `${string}-v*`          // Prefix style: "langchain-core-v*"
-  | "v*";                   // Simple tags: "v*"
+  | `${string}@*` // Scoped npm style: "@langchain/core@*"
+  | `${string}-v*` // Prefix style: "langchain-core-v*"
+  | "v*"; // Simple tags: "v*"
 ```
 
 **Examples:**
+
 - `@langchain/core` uses tags like `@langchain/core@0.2.15`
 - `langgraph` uses tags like `langgraph-v0.1.5`
 - Standalone packages might use `v1.2.3`
@@ -608,13 +618,13 @@ type TagPattern =
 async function discoverVersions(
   repo: string,
   tagPattern: string,
-  options: VersionDiscoveryOptions
+  options: VersionDiscoveryOptions,
 ): Promise<DiscoveredVersion[]> {
   // 1. Fetch all tags matching the pattern
   const tags = await fetchGitTags(repo, tagPattern);
 
   // 2. Parse version from each tag
-  const versions = tags.map(tag => ({
+  const versions = tags.map((tag) => ({
     tag: tag.name,
     version: parseVersionFromTag(tag.name, tagPattern),
     sha: tag.sha,
@@ -633,8 +643,8 @@ async function discoverVersions(
   // 6. Always include specified versions
   if (options.alwaysInclude) {
     for (const v of options.alwaysInclude) {
-      if (!result.find(r => r.version === v)) {
-        const found = versions.find(ver => ver.version === v);
+      if (!result.find((r) => r.version === v)) {
+        const found = versions.find((ver) => ver.version === v);
         if (found) result.push(found);
       }
     }
@@ -662,9 +672,7 @@ interface VersionDiscoveryOptions {
  * Keep only the latest patch release for each minor version.
  * Example: [0.2.15, 0.2.14, 0.2.13, 0.1.5, 0.1.4] → [0.2.15, 0.1.5]
  */
-function filterToMinorVersions(
-  versions: DiscoveredVersion[]
-): DiscoveredVersion[] {
+function filterToMinorVersions(versions: DiscoveredVersion[]): DiscoveredVersion[] {
   const seen = new Map<string, DiscoveredVersion>();
 
   for (const v of versions) {
@@ -739,7 +747,7 @@ interface MinimalExtractionOptions {
 async function extractMinimalIR(
   source: string,
   sha: string,
-  options: MinimalExtractionOptions
+  options: MinimalExtractionOptions,
 ): Promise<MinimalIR> {
   // Extract just enough for diffing:
   // - Symbol qualified names
@@ -761,7 +769,7 @@ async function computeVersionDelta(
   olderIR: MinimalIR,
   newerIR: MinimalIR,
   olderVersion: string,
-  newerVersion: string
+  newerVersion: string,
 ): Promise<VersionDelta> {
   const delta: VersionDelta = {
     version: newerVersion,
@@ -774,8 +782,8 @@ async function computeVersionDelta(
     deprecated: [],
   };
 
-  const olderSymbols = new Map(olderIR.symbols.map(s => [s.qualifiedName, s]));
-  const newerSymbols = new Map(newerIR.symbols.map(s => [s.qualifiedName, s]));
+  const olderSymbols = new Map(olderIR.symbols.map((s) => [s.qualifiedName, s]));
+  const newerSymbols = new Map(newerIR.symbols.map((s) => [s.qualifiedName, s]));
 
   // Find added symbols
   for (const [name, symbol] of newerSymbols) {
@@ -839,10 +847,7 @@ async function computeVersionDelta(
 /**
  * Detect specific changes between two versions of a symbol.
  */
-function detectChanges(
-  older: MinimalSymbol,
-  newer: MinimalSymbol
-): ChangeRecord[] {
+function detectChanges(older: MinimalSymbol, newer: MinimalSymbol): ChangeRecord[] {
   const changes: ChangeRecord[] = [];
 
   // Signature changes (overall)
@@ -898,11 +903,11 @@ function detectChanges(
  */
 function detectMemberChanges(
   olderMembers: MemberSnapshot[],
-  newerMembers: MemberSnapshot[]
+  newerMembers: MemberSnapshot[],
 ): ChangeRecord[] {
   const changes: ChangeRecord[] = [];
-  const olderMap = new Map(olderMembers.map(m => [m.name, m]));
-  const newerMap = new Map(newerMembers.map(m => [m.name, m]));
+  const olderMap = new Map(olderMembers.map((m) => [m.name, m]));
+  const newerMap = new Map(newerMembers.map((m) => [m.name, m]));
 
   // Added members
   for (const [name, member] of newerMap) {
@@ -1009,10 +1014,7 @@ After generating the changelog, annotate the latest IR with version information:
 /**
  * Add version information to symbols in the latest IR.
  */
-function annotateLatestIR(
-  latestIR: SymbolRecord[],
-  changelog: PackageChangelog
-): void {
+function annotateLatestIR(latestIR: SymbolRecord[], changelog: PackageChangelog): void {
   // Build a map of when each symbol was introduced
   const introductionMap = new Map<string, string>();
   const modificationMap = new Map<string, string[]>();
@@ -1048,7 +1050,10 @@ function annotateLatestIR(
   // Apply to latest IR
   for (const symbol of latestIR) {
     symbol.versionInfo = {
-      since: introductionMap.get(symbol.qualifiedName) || changelog.history[changelog.history.length - 1]?.version || "unknown",
+      since:
+        introductionMap.get(symbol.qualifiedName) ||
+        changelog.history[changelog.history.length - 1]?.version ||
+        "unknown",
       modifiedIn: modificationMap.get(symbol.qualifiedName),
     };
 
@@ -1114,10 +1119,10 @@ For efficiency, the build pipeline downloads existing changelogs from deployed s
 async function fetchDeployedChangelog(
   project: string,
   language: string,
-  packageId: string
+  packageId: string,
 ): Promise<{ changelog: PackageChangelog; versions: PackageVersionIndex } | null> {
   const baseUrl = process.env.BLOB_BASE_URL;
-  
+
   try {
     const [changelogRes, versionsRes] = await Promise.all([
       fetch(`${baseUrl}/ir/${project}/${language}/${packageId}/changelog.json`),
@@ -1147,11 +1152,11 @@ async function incrementalBuild(
   project: string,
   language: string,
   packageId: string,
-  config: VersioningConfig
+  config: VersioningConfig,
 ): Promise<{ changelog: PackageChangelog; versions: PackageVersionIndex }> {
   // Step 1: Fetch existing deployed changelog
   const existing = await fetchDeployedChangelog(project, language, packageId);
-  
+
   // Step 2: Discover current versions from git tags
   const discoveredVersions = await discoverVersions(config.repo, config.tagPattern, {
     maxVersions: config.maxVersions ?? 10,
@@ -1161,29 +1166,33 @@ async function incrementalBuild(
 
   // Step 3: If no existing changelog, do full build
   if (!existing) {
-    console.log(`First build for ${packageId} - extracting all ${discoveredVersions.length} versions`);
+    console.log(
+      `First build for ${packageId} - extracting all ${discoveredVersions.length} versions`,
+    );
     return fullChangelogBuild(packageId, discoveredVersions);
   }
 
   // Step 4: Find versions not already in changelog
-  const existingVersionSet = new Set(existing.changelog.history.map(h => h.version));
-  const newVersions = discoveredVersions.filter(v => !existingVersionSet.has(v.version));
+  const existingVersionSet = new Set(existing.changelog.history.map((h) => h.version));
+  const newVersions = discoveredVersions.filter((v) => !existingVersionSet.has(v.version));
 
   if (newVersions.length === 0) {
     console.log(`No new versions for ${packageId} - using existing changelog`);
     return existing;
   }
 
-  console.log(`Found ${newVersions.length} new version(s) for ${packageId}: ${newVersions.map(v => v.version).join(', ')}`);
+  console.log(
+    `Found ${newVersions.length} new version(s) for ${packageId}: ${newVersions.map((v) => v.version).join(", ")}`,
+  );
 
   // Step 5: Only extract and diff new versions
   // Use the most recent version from existing changelog as the diff base
   const mostRecentExisting = existing.changelog.history[0];
-  
+
   const newDeltas = await computeDeltasForVersions(
     packageId,
     newVersions,
-    mostRecentExisting // Base for diffing
+    mostRecentExisting, // Base for diffing
   );
 
   // Step 6: Merge new deltas into existing changelog
@@ -1204,12 +1213,12 @@ async function incrementalBuild(
       stats: computeVersionStats(newDeltas[0]),
     },
     versions: [
-      ...newVersions.map(v => ({
+      ...newVersions.map((v) => ({
         version: v.version,
         sha: v.sha,
         tag: v.tag,
         releaseDate: v.releaseDate,
-        stats: computeVersionStats(newDeltas.find(d => d.version === v.version)!),
+        stats: computeVersionStats(newDeltas.find((d) => d.version === v.version)!),
       })),
       ...existing.versions.versions,
     ],
@@ -1234,11 +1243,11 @@ pnpm build:ir
 
 #### 4.6.5 Efficiency Comparison
 
-| Scenario | Full Build | Incremental Build |
-|----------|------------|-------------------|
-| First release | Extract 10 versions, compute 9 diffs | Same |
-| New minor release | Extract 10 versions, compute 9 diffs | **Fetch existing + extract 1 version + compute 1 diff** |
-| Patch release (no new minor) | Extract 10 versions, compute 9 diffs | **Fetch existing, detect no changes, skip** |
+| Scenario                     | Full Build                           | Incremental Build                                       |
+| ---------------------------- | ------------------------------------ | ------------------------------------------------------- |
+| First release                | Extract 10 versions, compute 9 diffs | Same                                                    |
+| New minor release            | Extract 10 versions, compute 9 diffs | **Fetch existing + extract 1 version + compute 1 diff** |
+| Patch release (no new minor) | Extract 10 versions, compute 9 diffs | **Fetch existing, detect no changes, skip**             |
 
 **Time savings**: For a typical new release, incremental builds are **~90% faster** (extracting 1 version vs 10).
 
@@ -1254,39 +1263,39 @@ When extracting multiple historical versions (full build or catching up on sever
 async function extractVersionsParallel(
   repo: string,
   versions: DiscoveredVersion[],
-  options: { concurrency?: number } = {}
+  options: { concurrency?: number } = {},
 ): Promise<Map<string, MinimalIR>> {
   const concurrency = options.concurrency ?? 4; // Limit parallel extractions
   const results = new Map<string, MinimalIR>();
-  
+
   // Process in batches to avoid overwhelming resources
   for (let i = 0; i < versions.length; i += concurrency) {
     const batch = versions.slice(i, i + concurrency);
-    
+
     const batchResults = await Promise.all(
       batch.map(async (version) => {
         console.log(`Extracting ${version.version} (${version.sha.slice(0, 7)})...`);
         const ir = await extractMinimalIR(repo, version.sha);
         return { version: version.version, ir };
-      })
+      }),
     );
-    
+
     for (const { version, ir } of batchResults) {
       results.set(version, ir);
     }
   }
-  
+
   return results;
 }
 ```
 
 #### Performance Comparison
 
-| Versions | Sequential | Parallel (4x) | Speedup |
-|----------|------------|---------------|---------|
-| 4 versions | ~40s | ~10s | 4x |
-| 10 versions | ~100s | ~25s | 4x |
-| 20 versions | ~200s | ~50s | 4x |
+| Versions    | Sequential | Parallel (4x) | Speedup |
+| ----------- | ---------- | ------------- | ------- |
+| 4 versions  | ~40s       | ~10s          | 4x      |
+| 10 versions | ~100s      | ~25s          | 4x      |
+| 20 versions | ~200s      | ~50s          | 4x      |
 
 **Note**: Concurrency is limited to avoid GitHub API rate limits and memory pressure.
 
@@ -1302,29 +1311,29 @@ on:
   workflow_dispatch:
     inputs:
       project:
-        description: 'Project to build (leave empty for all)'
+        description: "Project to build (leave empty for all)"
         required: false
         type: choice
         options:
-          - ''
+          - ""
           - langchain
           - langgraph
           - deepagent
       language:
-        description: 'Language to build (leave empty for all)'
+        description: "Language to build (leave empty for all)"
         required: false
         type: choice
         options:
-          - ''
+          - ""
           - python
           - typescript
       with_versions:
-        description: 'Include version history tracking'
+        description: "Include version history tracking"
         required: false
         type: boolean
         default: true
       full_rebuild:
-        description: 'Force full rebuild (ignore existing changelogs)'
+        description: "Force full rebuild (ignore existing changelogs)"
         required: false
         type: boolean
         default: false
@@ -1334,11 +1343,11 @@ on:
     branches:
       - main
     paths:
-      - '.github/workflows/build-ir.yml'
-      - 'scripts/**'
-      - 'packages/extractor-*/**'
-      - 'packages/ir-schema/**'
-      - 'configs/**'
+      - ".github/workflows/build-ir.yml"
+      - "scripts/**"
+      - "packages/extractor-*/**"
+      - "packages/ir-schema/**"
+      - "configs/**"
 
   # Optional: Trigger on upstream releases (via repository_dispatch)
   repository_dispatch:
@@ -1351,17 +1360,17 @@ on:
 - name: Build IR
   run: |
     FLAGS=""
-    
+
     # Add versioning flag if enabled
     if [ "${{ inputs.with_versions }}" == "true" ]; then
       FLAGS="$FLAGS --with-versions"
     fi
-    
+
     # Add full rebuild flag if requested
     if [ "${{ inputs.full_rebuild }}" == "true" ]; then
       FLAGS="$FLAGS --full"
     fi
-    
+
     npx tsx scripts/build-ir.ts \
       --config ./configs/${{ matrix.config }} \
       $FLAGS
@@ -1418,7 +1427,7 @@ name: Watch Upstream Releases
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
+    - cron: "0 */6 * * *" # Every 6 hours
 
 jobs:
   check-releases:
@@ -1456,7 +1465,7 @@ export function VersionBadge({ since, className }: VersionBadgeProps) {
         "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
         "bg-emerald-100 text-emerald-800",
         "dark:bg-emerald-900/30 dark:text-emerald-400",
-        className
+        className,
       )}
     >
       Since {since}
@@ -1493,11 +1502,7 @@ export function DeprecationBanner({
           <h4 className="font-semibold text-amber-800 dark:text-amber-200">
             Deprecated since {since}
           </h4>
-          {message && (
-            <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
-              {message}
-            </p>
-          )}
+          {message && <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">{message}</p>}
           {replacement && (
             <p className="mt-2 text-sm">
               <span className="text-amber-700 dark:text-amber-300">Use </span>
@@ -1509,9 +1514,7 @@ export function DeprecationBanner({
                   {replacement}
                 </Link>
               ) : (
-                <code className="font-mono text-amber-900 dark:text-amber-100">
-                  {replacement}
-                </code>
+                <code className="font-mono text-amber-900 dark:text-amber-100">{replacement}</code>
               )}
               <span className="text-amber-700 dark:text-amber-300"> instead.</span>
             </p>
@@ -1550,6 +1553,7 @@ On Expand:
 ```
 
 **Why lazy load?**
+
 - Changelog files can be ~500KB per package
 - Most users view symbol docs without checking version history
 - Initial page load is faster without changelog fetch
@@ -1586,7 +1590,7 @@ export function VersionHistory({
     if (expanded && !changelog && !loading) {
       setLoading(true);
       setError(null);
-      
+
       fetchChangelog(project, language, packageId)
         .then(setChangelog)
         .catch((err) => setError(err.message))
@@ -1601,11 +1605,13 @@ export function VersionHistory({
   }
 
   // Filter to relevant entries for this symbol (once loaded)
-  const relevantHistory = changelog?.history.filter(delta =>
-    delta.added.some(a => a.qualifiedName === qualifiedName) ||
-    delta.modified.some(m => m.qualifiedName === qualifiedName) ||
-    delta.deprecated.some(d => d.qualifiedName === qualifiedName)
-  ) ?? [];
+  const relevantHistory =
+    changelog?.history.filter(
+      (delta) =>
+        delta.added.some((a) => a.qualifiedName === qualifiedName) ||
+        delta.modified.some((m) => m.qualifiedName === qualifiedName) ||
+        delta.deprecated.some((d) => d.qualifiedName === qualifiedName),
+    ) ?? [];
 
   return (
     <section className="mt-8 border-t border-gray-200 dark:border-gray-800 pt-8">
@@ -1616,15 +1622,9 @@ export function VersionHistory({
         <History className="h-4 w-4" />
         Version History
         {versionInfo?.modifiedIn && (
-          <span className="text-xs text-gray-500">
-            ({versionInfo.modifiedIn.length} changes)
-          </span>
+          <span className="text-xs text-gray-500">({versionInfo.modifiedIn.length} changes)</span>
         )}
-        {expanded ? (
-          <ChevronUp className="h-4 w-4" />
-        ) : (
-          <ChevronDown className="h-4 w-4" />
-        )}
+        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
 
       {expanded && (
@@ -1647,7 +1647,7 @@ export function VersionHistory({
           {/* Loaded state */}
           {changelog && relevantHistory.length > 0 && (
             <div className="space-y-4">
-              {relevantHistory.map(delta => (
+              {relevantHistory.map((delta) => (
                 <VersionHistoryEntry
                   key={delta.version}
                   delta={delta}
@@ -1659,9 +1659,7 @@ export function VersionHistory({
 
           {/* No history for this symbol */}
           {changelog && relevantHistory.length === 0 && (
-            <div className="text-sm text-gray-500">
-              No recorded changes for this symbol.
-            </div>
+            <div className="text-sm text-gray-500">No recorded changes for this symbol.</div>
           )}
         </div>
       )}
@@ -1675,7 +1673,7 @@ export function VersionHistory({
 async function fetchChangelog(
   project: string,
   language: string,
-  packageId: string
+  packageId: string,
 ): Promise<PackageChangelog> {
   const res = await fetch(`/api/changelog/${project}/${language}/${packageId}`);
   if (!res.ok) {
@@ -1693,9 +1691,9 @@ function VersionHistoryEntry({ delta, qualifiedName }: VersionHistoryEntryProps)
   const [showSnapshot, setShowSnapshot] = useState(false);
 
   // Find the relevant change for this symbol
-  const added = delta.added.find(a => a.qualifiedName === qualifiedName);
-  const modified = delta.modified.find(m => m.qualifiedName === qualifiedName);
-  const deprecated = delta.deprecated.find(d => d.qualifiedName === qualifiedName);
+  const added = delta.added.find((a) => a.qualifiedName === qualifiedName);
+  const modified = delta.modified.find((m) => m.qualifiedName === qualifiedName);
+  const deprecated = delta.deprecated.find((d) => d.qualifiedName === qualifiedName);
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
@@ -1704,9 +1702,7 @@ function VersionHistoryEntry({ delta, qualifiedName }: VersionHistoryEntryProps)
           <span className="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100">
             v{delta.version}
           </span>
-          <span className="text-xs text-gray-500">
-            {formatDate(delta.releaseDate)}
-          </span>
+          <span className="text-xs text-gray-500">{formatDate(delta.releaseDate)}</span>
         </div>
         <a
           href={`https://github.com/.../${delta.sha}`}
@@ -1747,9 +1743,7 @@ function VersionHistoryEntry({ delta, qualifiedName }: VersionHistoryEntryProps)
               {showSnapshot ? "Hide" : "View"} full interface at this version
             </button>
 
-            {showSnapshot && (
-              <SnapshotViewer snapshot={modified.snapshotBefore} />
-            )}
+            {showSnapshot && <SnapshotViewer snapshot={modified.snapshotBefore} />}
           </div>
         )}
 
@@ -1775,13 +1769,9 @@ function ChangeDescription({ change }: { change: ChangeRecord }) {
           {change.memberName}
         </code>
       )}
-      <span className="text-gray-700 dark:text-gray-300">
-        {change.description}
-      </span>
+      <span className="text-gray-700 dark:text-gray-300">{change.description}</span>
       {change.breaking && (
-        <span className="text-xs text-red-600 dark:text-red-400 font-medium">
-          Breaking
-        </span>
+        <span className="text-xs text-red-600 dark:text-red-400 font-medium">Breaking</span>
       )}
     </div>
   );
@@ -1792,12 +1782,12 @@ function ChangeDescription({ change }: { change: ChangeRecord }) {
  */
 function MemberDiff({ change }: { change: ChangeRecord }) {
   if (!change.before || !change.after) return null;
-  
+
   const beforeSig = change.before.signature || change.before.type;
   const afterSig = change.after.signature || change.after.type;
-  
+
   if (!beforeSig || !afterSig) return null;
-  
+
   return (
     <div className="font-mono text-xs bg-gray-50 dark:bg-gray-900 rounded p-2 mt-1">
       <div className="text-red-600 dark:text-red-400">
@@ -1832,9 +1822,11 @@ export function SignatureDiff({ before, after }: SignatureDiffProps) {
           key={i}
           className={cn(
             "whitespace-pre",
-            line.type === "removed" && "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200",
-            line.type === "added" && "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200",
-            line.type === "unchanged" && "text-gray-600 dark:text-gray-400"
+            line.type === "removed" &&
+              "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200",
+            line.type === "added" &&
+              "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200",
+            line.type === "unchanged" && "text-gray-600 dark:text-gray-400",
           )}
         >
           <span className="select-none mr-2">
@@ -1867,9 +1859,7 @@ export function SnapshotViewer({ snapshot, repoUrl, sha }: SnapshotViewerProps) 
    * The member signatures are already in the snapshot data.
    */
   const renderInterface = (snapshot: SymbolSnapshot): string => {
-    const members = snapshot.members
-      ?.map(m => `  ${m.signature};`)
-      .join('\n');
+    const members = snapshot.members?.map((m) => `  ${m.signature};`).join("\n");
     return `${snapshot.signature} {\n${members}\n}`;
   };
 
@@ -1879,9 +1869,7 @@ export function SnapshotViewer({ snapshot, repoUrl, sha }: SnapshotViewerProps) 
     <div className="mt-3 space-y-3">
       {/* Rendered from snapshot - no fetch needed! */}
       <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-4 font-mono text-sm overflow-x-auto">
-        <pre className="text-gray-800 dark:text-gray-200">
-          {renderInterface(snapshot)}
-        </pre>
+        <pre className="text-gray-800 dark:text-gray-200">{renderInterface(snapshot)}</pre>
       </div>
 
       {/* Link to GitHub for full source with docs */}
@@ -1901,12 +1889,12 @@ export function SnapshotViewer({ snapshot, repoUrl, sha }: SnapshotViewerProps) 
 
 #### 5.1.6 Data Source Summary
 
-| What User Sees | Data Source | Fetch Required? |
-|----------------|-------------|-----------------|
-| Change description | `changelog.json` → `changes[].description` | No (already loaded) |
+| What User Sees             | Data Source                                 | Fetch Required?     |
+| -------------------------- | ------------------------------------------- | ------------------- |
+| Change description         | `changelog.json` → `changes[].description`  | No (already loaded) |
 | Inline diff (before/after) | `changelog.json` → `changes[].before/after` | No (already loaded) |
-| Full interface at version | `changelog.json` → `snapshotBefore.members` | No (already loaded) |
-| Full docs/examples | GitHub link (external) | Yes (external link) |
+| Full interface at version  | `changelog.json` → `snapshotBefore.members` | No (already loaded) |
+| Full docs/examples         | GitHub link (external)                      | Yes (external link) |
 
 **Key design decision**: Signatures are small, docs are big. Store signatures, link to docs.
 
@@ -2015,10 +2003,10 @@ export function VersionSelector({
   return (
     <select
       value={currentVersion}
-      onChange={e => onVersionChange(e.target.value)}
+      onChange={(e) => onVersionChange(e.target.value)}
       className="text-sm border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 bg-white dark:bg-gray-800"
     >
-      {availableVersions.map(version => (
+      {availableVersions.map((version) => (
         <option key={version} value={version}>
           v{version}
           {version === availableVersions[0] && " (latest)"}
@@ -2256,32 +2244,32 @@ interface VersioningConfig {
 
 ### 8.1 Functional Requirements
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| F1 | Version discovery from git tags works for all tag patterns | P0 |
-| F2 | Changelog generated for tracked versions | P0 |
-| F3 | "Since" badge appears on symbol pages | P0 |
-| F4 | Deprecation banner shows for deprecated symbols | P0 |
-| F5 | Version history panel shows changes per version | P0 |
-| F6 | Signature diffs display inline | P0 |
-| F7 | Snapshots allow viewing historical interfaces | P1 |
-| F8 | Incremental builds download existing changelog and only process new versions | P0 |
-| F9 | GitHub links point to correct SHA | P1 |
-| F10 | Version selector allows viewing historical snapshots | P2 |
+| ID  | Requirement                                                                  | Priority |
+| --- | ---------------------------------------------------------------------------- | -------- |
+| F1  | Version discovery from git tags works for all tag patterns                   | P0       |
+| F2  | Changelog generated for tracked versions                                     | P0       |
+| F3  | "Since" badge appears on symbol pages                                        | P0       |
+| F4  | Deprecation banner shows for deprecated symbols                              | P0       |
+| F5  | Version history panel shows changes per version                              | P0       |
+| F6  | Signature diffs display inline                                               | P0       |
+| F7  | Snapshots allow viewing historical interfaces                                | P1       |
+| F8  | Incremental builds download existing changelog and only process new versions | P0       |
+| F9  | GitHub links point to correct SHA                                            | P1       |
+| F10 | Version selector allows viewing historical snapshots                         | P2       |
 
 ### 8.2 Non-Functional Requirements
 
-| ID | Requirement | Target |
-|----|-------------|--------|
-| NF1 | Changelog file size per package | < 500 KB |
-| NF2 | Version discovery time | < 5 seconds |
-| NF3 | Diff computation time per version pair | < 10 seconds |
-| NF4 | Version history panel render time (after load) | < 100ms |
-| NF5 | Full build with versioning (parallel) | < 2 minutes per package |
-| NF6 | Parallel extraction speedup | ~4x vs sequential |
-| NF7 | Initial page load (without changelog) | No changelog fetch |
-| NF8 | Changelog API response time | < 500ms |
-| NF9 | Incremental build (no new versions) | < 10 seconds |
+| ID  | Requirement                                    | Target                  |
+| --- | ---------------------------------------------- | ----------------------- |
+| NF1 | Changelog file size per package                | < 500 KB                |
+| NF2 | Version discovery time                         | < 5 seconds             |
+| NF3 | Diff computation time per version pair         | < 10 seconds            |
+| NF4 | Version history panel render time (after load) | < 100ms                 |
+| NF5 | Full build with versioning (parallel)          | < 2 minutes per package |
+| NF6 | Parallel extraction speedup                    | ~4x vs sequential       |
+| NF7 | Initial page load (without changelog)          | No changelog fetch      |
+| NF8 | Changelog API response time                    | < 500ms                 |
+| NF9 | Incremental build (no new versions)            | < 10 seconds            |
 
 ### 8.3 Definition of Done
 
@@ -2306,6 +2294,7 @@ This appendix shows a complete `changelog.json` example for an interface that ev
 ### A.1 Interface Evolution
 
 **v0.1.0 (initial)**
+
 ```typescript
 interface ChatModelParams {
   model: string;
@@ -2315,20 +2304,22 @@ interface ChatModelParams {
 ```
 
 **v0.2.0 (temperature becomes optional)**
+
 ```typescript
 interface ChatModelParams {
   model: string;
-  temperature?: number;  // Changed: now optional
+  temperature?: number; // Changed: now optional
   maxTokens: number;
 }
 ```
 
 **v0.3.0 (maxTokens type changes)**
+
 ```typescript
 interface ChatModelParams {
   model: string;
   temperature?: number;
-  maxTokens: number | "auto";  // Changed: now accepts "auto"
+  maxTokens: number | "auto"; // Changed: now accepts "auto"
 }
 ```
 
@@ -2365,9 +2356,25 @@ interface ChatModelParams {
             "kind": "interface",
             "signature": "interface ChatModelParams",
             "members": [
-              { "name": "model", "kind": "property", "signature": "model: string", "visibility": "public" },
-              { "name": "temperature", "kind": "property", "signature": "temperature?: number", "optional": true, "visibility": "public" },
-              { "name": "maxTokens", "kind": "property", "signature": "maxTokens: number", "visibility": "public" }
+              {
+                "name": "model",
+                "kind": "property",
+                "signature": "model: string",
+                "visibility": "public"
+              },
+              {
+                "name": "temperature",
+                "kind": "property",
+                "signature": "temperature?: number",
+                "optional": true,
+                "visibility": "public"
+              },
+              {
+                "name": "maxTokens",
+                "kind": "property",
+                "signature": "maxTokens: number",
+                "visibility": "public"
+              }
             ],
             "sourcePath": "libs/langchain-core/src/types.ts",
             "sourceLine": 42
@@ -2377,9 +2384,25 @@ interface ChatModelParams {
             "kind": "interface",
             "signature": "interface ChatModelParams",
             "members": [
-              { "name": "model", "kind": "property", "signature": "model: string", "visibility": "public" },
-              { "name": "temperature", "kind": "property", "signature": "temperature?: number", "optional": true, "visibility": "public" },
-              { "name": "maxTokens", "kind": "property", "signature": "maxTokens: number | \"auto\"", "visibility": "public" }
+              {
+                "name": "model",
+                "kind": "property",
+                "signature": "model: string",
+                "visibility": "public"
+              },
+              {
+                "name": "temperature",
+                "kind": "property",
+                "signature": "temperature?: number",
+                "optional": true,
+                "visibility": "public"
+              },
+              {
+                "name": "maxTokens",
+                "kind": "property",
+                "signature": "maxTokens: number | \"auto\"",
+                "visibility": "public"
+              }
             ],
             "sourcePath": "libs/langchain-core/src/types.ts",
             "sourceLine": 42
@@ -2413,9 +2436,24 @@ interface ChatModelParams {
             "kind": "interface",
             "signature": "interface ChatModelParams",
             "members": [
-              { "name": "model", "kind": "property", "signature": "model: string", "visibility": "public" },
-              { "name": "temperature", "kind": "property", "signature": "temperature: number", "visibility": "public" },
-              { "name": "maxTokens", "kind": "property", "signature": "maxTokens: number", "visibility": "public" }
+              {
+                "name": "model",
+                "kind": "property",
+                "signature": "model: string",
+                "visibility": "public"
+              },
+              {
+                "name": "temperature",
+                "kind": "property",
+                "signature": "temperature: number",
+                "visibility": "public"
+              },
+              {
+                "name": "maxTokens",
+                "kind": "property",
+                "signature": "maxTokens: number",
+                "visibility": "public"
+              }
             ],
             "sourcePath": "libs/langchain-core/src/types.ts",
             "sourceLine": 38
@@ -2425,9 +2463,25 @@ interface ChatModelParams {
             "kind": "interface",
             "signature": "interface ChatModelParams",
             "members": [
-              { "name": "model", "kind": "property", "signature": "model: string", "visibility": "public" },
-              { "name": "temperature", "kind": "property", "signature": "temperature?: number", "optional": true, "visibility": "public" },
-              { "name": "maxTokens", "kind": "property", "signature": "maxTokens: number", "visibility": "public" }
+              {
+                "name": "model",
+                "kind": "property",
+                "signature": "model: string",
+                "visibility": "public"
+              },
+              {
+                "name": "temperature",
+                "kind": "property",
+                "signature": "temperature?: number",
+                "optional": true,
+                "visibility": "public"
+              },
+              {
+                "name": "maxTokens",
+                "kind": "property",
+                "signature": "maxTokens: number",
+                "visibility": "public"
+              }
             ],
             "sourcePath": "libs/langchain-core/src/types.ts",
             "sourceLine": 42
@@ -2449,9 +2503,24 @@ interface ChatModelParams {
             "kind": "interface",
             "signature": "interface ChatModelParams",
             "members": [
-              { "name": "model", "kind": "property", "signature": "model: string", "visibility": "public" },
-              { "name": "temperature", "kind": "property", "signature": "temperature: number", "visibility": "public" },
-              { "name": "maxTokens", "kind": "property", "signature": "maxTokens: number", "visibility": "public" }
+              {
+                "name": "model",
+                "kind": "property",
+                "signature": "model: string",
+                "visibility": "public"
+              },
+              {
+                "name": "temperature",
+                "kind": "property",
+                "signature": "temperature: number",
+                "visibility": "public"
+              },
+              {
+                "name": "maxTokens",
+                "kind": "property",
+                "signature": "maxTokens: number",
+                "visibility": "public"
+              }
             ],
             "sourcePath": "libs/langchain-core/src/types.ts",
             "sourceLine": 35
@@ -2470,10 +2539,8 @@ interface ChatModelParams {
 
 ```typescript
 function renderInterfaceSnapshot(snapshot: SymbolSnapshot): string {
-  const members = snapshot.members
-    ?.map(m => `  ${m.signature};`)
-    .join('\n');
-  
+  const members = snapshot.members?.map((m) => `  ${m.signature};`).join("\n");
+
   return `${snapshot.signature} {\n${members}\n}`;
 }
 
@@ -2533,5 +2600,4 @@ apps/web/
 
 ---
 
-*End of Specification*
-
+_End of Specification_

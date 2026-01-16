@@ -36,9 +36,7 @@ export function SearchModal({ open, onOpenChange }: SearchModalProps) {
   };
 
   const [query, setQuery] = useState("");
-  const [language, setLanguage] = useState<"python" | "javascript">(
-    getInitialLanguage()
-  );
+  const [language, setLanguage] = useState<"python" | "javascript">(getInitialLanguage());
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -108,7 +106,7 @@ export function SearchModal({ open, onOpenChange }: SearchModalProps) {
       router.push(result.url);
       onOpenChange(false);
     },
-    [router, onOpenChange]
+    [router, onOpenChange],
   );
 
   // Handle keyboard navigation
@@ -135,7 +133,7 @@ export function SearchModal({ open, onOpenChange }: SearchModalProps) {
           break;
       }
     },
-    [results, selectedIndex, handleSelect, onOpenChange]
+    [results, selectedIndex, handleSelect, onOpenChange],
   );
 
   // Toggle language
@@ -182,7 +180,7 @@ export function SearchModal({ open, onOpenChange }: SearchModalProps) {
                   "px-3 py-1.5 text-sm font-medium transition-colors",
                   language === "python"
                     ? "bg-primary text-white"
-                    : "bg-transparent text-foreground-secondary hover:bg-background-secondary"
+                    : "bg-transparent text-foreground-secondary hover:bg-background-secondary",
                 )}
               >
                 Python
@@ -193,7 +191,7 @@ export function SearchModal({ open, onOpenChange }: SearchModalProps) {
                   "px-3 py-1.5 text-sm font-medium transition-colors",
                   language === "javascript"
                     ? "bg-primary text-white"
-                    : "bg-transparent text-foreground-secondary hover:bg-background-secondary"
+                    : "bg-transparent text-foreground-secondary hover:bg-background-secondary",
                 )}
               >
                 JavaScript
@@ -271,4 +269,3 @@ export function useSearchShortcut(onOpen: () => void) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onOpen]);
 }
-

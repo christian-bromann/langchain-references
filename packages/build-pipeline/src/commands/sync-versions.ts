@@ -78,18 +78,6 @@ interface BuildConfig {
 // GITHUB API
 // =============================================================================
 
-interface GitHubTagRef {
-  ref: string;
-  object: {
-    sha: string;
-    type: string;
-    url: string;
-  };
-  tagger?: {
-    date: string;
-  };
-}
-
 interface GitHubCommit {
   commit: {
     committer: {
@@ -141,7 +129,7 @@ async function fetchWithRetry(
   url: string,
   options: RequestInit,
   maxRetries = 3,
-  baseDelayMs = 1000
+  baseDelayMs = 1000,
 ): Promise<Response> {
   let lastError: Error | null = null;
 
@@ -157,7 +145,9 @@ async function fetchWithRetry(
       // Exponential backoff: 1s, 2s, 4s
       const delay = baseDelayMs * Math.pow(2, attempt);
       const errorMsg = lastError.message || "Unknown error";
-      process.stdout.write(`\r   ⚠️  Network error (${errorMsg}), retrying in ${delay / 1000}s... (${attempt + 1}/${maxRetries})`);
+      process.stdout.write(
+        `\r   ⚠️  Network error (${errorMsg}), retrying in ${delay / 1000}s... (${attempt + 1}/${maxRetries})`,
+      );
 
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
@@ -205,7 +195,7 @@ function getNextPageUrl(linkHeader: string | null): string | null {
  */
 async function fetchAllRepoTags(
   repo: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
 ): Promise<{ name: string; sha: string; objectType: string; objectUrl?: string }[]> {
   // Check cache first
   const cached = repoTagCache.get(repo);
@@ -283,7 +273,7 @@ async function fetchAllRepoTags(
  */
 function filterTagsForPattern(
   allTags: { name: string; sha: string; objectType: string; objectUrl?: string }[],
-  pattern: string
+  pattern: string,
 ): { tag: string; version: string; sha: string; objectType: string; objectUrl?: string }[] {
   const prefix = getTagPrefixFromPattern(pattern);
   if (prefix === null) {
@@ -291,7 +281,13 @@ function filterTagsForPattern(
     return [];
   }
 
-  const matchingTags: { tag: string; version: string; sha: string; objectType: string; objectUrl?: string }[] = [];
+  const matchingTags: {
+    tag: string;
+    version: string;
+    sha: string;
+    objectType: string;
+    objectUrl?: string;
+  }[] = [];
 
   for (const tag of allTags) {
     // Quick prefix check before expensive parsing (empty prefix means match all)
@@ -338,14 +334,14 @@ async function fetchCommitDate(
   tagSha: string,
   headers: Record<string, string>,
   objectType?: string,
-  objectUrl?: string
+  objectUrl?: string,
 ): Promise<{ date: string; commitSha: string }> {
   try {
     // If we know it's a commit, fetch commit directly (skip tag object lookup)
     if (objectType === "commit") {
       const commitResponse = await fetchWithRetry(
         `https://api.github.com/repos/${repo}/commits/${tagSha}`,
-        { headers }
+        { headers },
       );
 
       if (commitResponse.ok) {
@@ -361,7 +357,7 @@ async function fetchCommitDate(
     if (objectType === "tag" || !objectType) {
       const tagResponse = await fetchWithRetry(
         objectUrl ?? `https://api.github.com/repos/${repo}/git/tags/${tagSha}`,
-        { headers }
+        { headers },
       );
 
       if (tagResponse.ok) {
@@ -379,7 +375,7 @@ async function fetchCommitDate(
     // Fallback: try as commit directly
     const commitResponse = await fetchWithRetry(
       `https://api.github.com/repos/${repo}/commits/${tagSha}`,
-      { headers }
+      { headers },
     );
 
     if (commitResponse.ok) {
@@ -466,7 +462,7 @@ async function syncProject(
   configPath: string,
   existingVersions: ProjectVersionsFile | null,
   githubToken?: string,
-  forceRefresh?: boolean
+  forceRefresh?: boolean,
 ): Promise<ProjectVersionsFile | null> {
   const configContent = await fs.readFile(configPath, "utf-8");
   const config: BuildConfig = JSON.parse(configContent);
@@ -476,7 +472,7 @@ async function syncProject(
 
   // Get packages with versioning enabled
   const versionedPackages = config.packages.filter(
-    (p) => p.versioning?.tagPattern && p.versioning.enabled !== false
+    (p) => p.versioning?.tagPattern && p.versioning.enabled !== false,
   );
 
   if (versionedPackages.length === 0) {
@@ -508,9 +504,7 @@ async function syncProject(
     const maxVersions = pkg.versioning!.maxVersions ?? 10;
 
     // Check existing data first
-    const existingPkg = existingVersions?.packages.find(
-      (p) => p.packageName === pkg.name
-    );
+    const existingPkg = existingVersions?.packages.find((p) => p.packageName === pkg.name);
 
     // Filter cached tags for this package's pattern
     const matchingVersions = filterTagsForPattern(allRepoTags, pattern);
@@ -607,16 +601,14 @@ async function syncProject(
     }
 
     const v0Kept = limitedVersions.filter((v) => semver.major(v.version) === 0).length;
-    console.log(`      Filtered to ${limitedVersions.length} versions (${minorCount.size} minors, ${v0Kept} v0.x)`);
+    console.log(
+      `      Filtered to ${limitedVersions.length} versions (${minorCount.size} minors, ${v0Kept} v0.x)`,
+    );
 
     // Check what's new vs existing
-    const existingVersionSet = new Set(
-      existingPkg?.versions.map((v) => v.version) ?? []
-    );
+    const existingVersionSet = new Set(existingPkg?.versions.map((v) => v.version) ?? []);
 
-    const newVersions = limitedVersions.filter(
-      (v) => !existingVersionSet.has(v.version)
-    );
+    const newVersions = limitedVersions.filter((v) => !existingVersionSet.has(v.version));
 
     if (newVersions.length === 0 && !forceRefresh) {
       console.log(`      ✓ No new versions, using cached data`);
@@ -626,7 +618,9 @@ async function syncProject(
       continue;
     }
 
-    console.log(`      Fetching dates for ${forceRefresh ? limitedVersions.length : newVersions.length} versions...`);
+    console.log(
+      `      Fetching dates for ${forceRefresh ? limitedVersions.length : newVersions.length} versions...`,
+    );
 
     // Fetch dates for new versions (or all if force refresh)
     const versionsToFetch = forceRefresh ? limitedVersions : newVersions;
@@ -653,7 +647,7 @@ async function syncProject(
         v.sha,
         headers,
         v.objectType,
-        v.objectUrl
+        v.objectUrl,
       );
       versionEntries.push({
         version: v.version,
@@ -715,14 +709,18 @@ async function checkRateLimit(githubToken?: string): Promise<void> {
   try {
     const response = await fetch("https://api.github.com/rate_limit", { headers });
     if (response.ok) {
-      const data = await response.json() as { resources?: { core?: { remaining: number; limit: number; reset: number } } };
+      const data = (await response.json()) as {
+        resources?: { core?: { remaining: number; limit: number; reset: number } };
+      };
       const core = data.resources?.core;
       if (core) {
         const reset = new Date(core.reset * 1000);
         console.log(`   Rate limit: ${core.remaining}/${core.limit} remaining`);
         if (core.remaining < 100) {
           const waitMins = Math.ceil((reset.getTime() - Date.now()) / 60000);
-          console.warn(`   ⚠️  Low rate limit! Resets at ${reset.toLocaleTimeString()} (~${waitMins} min)`);
+          console.warn(
+            `   ⚠️  Low rate limit! Resets at ${reset.toLocaleTimeString()} (~${waitMins} min)`,
+          );
         }
       }
     }
@@ -757,7 +755,7 @@ async function main() {
   // Find all config files
   const files = await fs.readdir(CONFIGS_DIR);
   const configFiles = files.filter(
-    (f) => f.endsWith(".json") && !f.endsWith("-versions.json") && f !== "config-schema.json"
+    (f) => f.endsWith(".json") && !f.endsWith("-versions.json") && f !== "config-schema.json",
   );
 
   for (const configFile of configFiles) {
@@ -798,4 +796,3 @@ main().catch((error) => {
   console.error("\n❌ Sync failed:", error);
   process.exit(1);
 });
-

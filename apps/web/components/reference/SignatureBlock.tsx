@@ -61,11 +61,39 @@ interface Token {
  * Python keywords (not linked)
  */
 const PYTHON_KEYWORDS = new Set([
-  "self", "cls", "async", "await", "def", "class", "return",
-  "if", "else", "elif", "for", "while", "try", "except",
-  "finally", "with", "as", "import", "from", "pass", "break",
-  "continue", "raise", "yield", "lambda", "and", "or", "not",
-  "in", "is", "True", "False", "None",
+  "self",
+  "cls",
+  "async",
+  "await",
+  "def",
+  "class",
+  "return",
+  "if",
+  "else",
+  "elif",
+  "for",
+  "while",
+  "try",
+  "except",
+  "finally",
+  "with",
+  "as",
+  "import",
+  "from",
+  "pass",
+  "break",
+  "continue",
+  "raise",
+  "yield",
+  "lambda",
+  "and",
+  "or",
+  "not",
+  "in",
+  "is",
+  "True",
+  "False",
+  "None",
 ]);
 
 /**
@@ -76,7 +104,7 @@ function tokenizeSignature(
   language: "python" | "typescript" | "javascript",
   knownSymbols: Map<string, string>,
   packageName: string,
-  typeUrlMap?: Map<string, string>
+  typeUrlMap?: Map<string, string>,
 ): Token[] {
   const tokens: Token[] = [];
   const langPath = language === "python" ? "python" : "javascript";
@@ -84,7 +112,8 @@ function tokenizeSignature(
 
   // Regex patterns for different token types
   // Match: identifiers, operators, punctuation (including angle brackets for generics, dots for member access), strings, numbers
-  const tokenPattern = /([A-Za-z_][A-Za-z0-9_]*)|(\*\*|\*|->|:|\||=|,|\(|\)|\[|\]|\{|\}|<|>|\.)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\d+(?:\.\d+)?)|(\s+)/g;
+  const tokenPattern =
+    /([A-Za-z_][A-Za-z0-9_]*)|(\*\*|\*|->|:|\||=|,|\(|\)|\[|\]|\{|\}|<|>|\.)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\d+(?:\.\d+)?)|(\s+)/g;
 
   let match: RegExpExecArray | null;
 
@@ -192,12 +221,7 @@ function TokenSpan({ token }: { token: Token }) {
 
   if (token.type === "type-external" && token.href) {
     return (
-      <a
-        href={token.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={classes}
-      >
+      <a href={token.href} target="_blank" rel="noopener noreferrer" className={classes}>
         {token.value}
       </a>
     );
@@ -212,7 +236,6 @@ function TokenSpan({ token }: { token: Token }) {
 export function SignatureBlock({
   signature,
   language,
-  typeRefs,
   knownSymbols,
   packageName,
   typeUrlMap,

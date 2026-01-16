@@ -8,7 +8,7 @@
  * Similar to YouTube, GitHub, and other modern web apps.
  */
 
-import { useEffect, useState, useTransition, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 
@@ -23,7 +23,7 @@ export function NavigationProgress() {
     // Reset when navigation completes
     setIsNavigating(false);
     setProgress(100);
-    
+
     // Hide the bar after animation completes
     const timeout = setTimeout(() => {
       setProgress(0);
@@ -37,19 +37,18 @@ export function NavigationProgress() {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const link = target.closest("a");
-      
+
       if (link) {
         const href = link.getAttribute("href");
         // Only show progress for internal navigation links
         if (href && href.startsWith("/") && !href.startsWith("//")) {
-          const currentPath = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "");
           const targetPath = href.split("?")[0];
-          
+
           // Don't show progress for same-page navigation
           if (targetPath !== pathname) {
             setIsNavigating(true);
             setProgress(30);
-            
+
             // Simulate progress
             const interval = setInterval(() => {
               setProgress((prev) => {
@@ -79,7 +78,7 @@ export function NavigationProgress() {
       <div
         className={cn(
           "h-full bg-primary transition-all duration-200 ease-out",
-          isNavigating ? "opacity-100" : "opacity-0"
+          isNavigating ? "opacity-100" : "opacity-0",
         )}
         style={{ width: `${progress}%` }}
       />

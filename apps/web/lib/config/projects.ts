@@ -139,7 +139,7 @@ export function getDefaultProject(): ProjectConfig {
  */
 export function hasLanguageVariant(
   project: ProjectConfig,
-  language: "python" | "javascript"
+  language: "python" | "javascript",
 ): boolean {
   return project.variants.some((v) => v.language === language && v.enabled);
 }
@@ -157,14 +157,11 @@ const PROJECT_PACKAGE_PATTERNS: Record<string, RegExp[]> = {
   // LangGraph: matches @langchain/langgraph* or langchain-langgraph*
   langgraph: [
     /^@langchain\/langgraph/i,
-    /^langchain-langgraph/i,  // Slugified URL version
+    /^langchain-langgraph/i, // Slugified URL version
     /^langgraph/i,
   ],
   // DeepAgent: matches deepagents or @langchain/deepagents
-  deepagent: [
-    /^@langchain\/deepagents?/i,
-    /^deepagents?/i,
-  ],
+  deepagent: [/^@langchain\/deepagents?/i, /^deepagents?/i],
   // Integrations: matches provider packages
   // Python: langchain-anthropic, langchain-openai, langchain-aws, etc.
   // JavaScript: @langchain/anthropic, @langchain/openai, @langchain/aws, etc.
@@ -254,4 +251,3 @@ export function getProjectFromPathname(pathname: string): ProjectConfig | null {
   const packageName = packageSlug.replace(/-/g, "_");
   return getProjectForPackage(packageName);
 }
-

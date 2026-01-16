@@ -129,9 +129,7 @@ export function usePrefetch({
       const relatedPaths = getRelatedPaths();
 
       // Filter out already prefetched symbols
-      const newPaths = relatedPaths.filter(
-        (path) => !prefetchedRef.current.has(path)
-      );
+      const newPaths = relatedPaths.filter((path) => !prefetchedRef.current.has(path));
 
       if (newPaths.length === 0) return;
 
@@ -154,9 +152,7 @@ export function usePrefetch({
       // Prefetch via client
       await prefetchSymbols(language, packageSlug, uncachedPaths);
 
-      console.debug(
-        `[usePrefetch] Prefetched ${uncachedPaths.length} symbols for ${packageSlug}`
-      );
+      console.debug(`[usePrefetch] Prefetched ${uncachedPaths.length} symbols for ${packageSlug}`);
     }, delay);
 
     return () => {
@@ -197,7 +193,7 @@ export function usePrefetchOnHover(urls: string[]): {
 export function usePrefetchSymbolOnHover(
   language: "python" | "javascript",
   packageSlug: string,
-  symbolPath: string
+  symbolPath: string,
 ): {
   onMouseEnter: () => void;
 } {

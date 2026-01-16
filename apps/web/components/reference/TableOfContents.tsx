@@ -78,7 +78,7 @@ function CollapsibleSection({ section }: { section: TOCSection }) {
         <ChevronDown
           className={cn(
             "h-3 w-3 shrink-0 text-foreground-muted transition-transform duration-200",
-            isOpen && "rotate-180"
+            isOpen && "rotate-180",
           )}
         />
         <span className="truncate">{section.title}</span>
@@ -87,7 +87,7 @@ function CollapsibleSection({ section }: { section: TOCSection }) {
       <div
         className={cn(
           "overflow-hidden transition-all duration-200",
-          isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+          isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0",
         )}
       >
         <div className="pl-4 space-y-0">
@@ -123,7 +123,7 @@ function NestedCollapsibleSection({ section }: { section: TOCSection }) {
         <ChevronDown
           className={cn(
             "h-2.5 w-2.5 shrink-0 text-foreground-muted transition-transform duration-200",
-            isOpen && "rotate-180"
+            isOpen && "rotate-180",
           )}
         />
         <SectionIcon title={section.title} size="small" />
@@ -133,7 +133,7 @@ function NestedCollapsibleSection({ section }: { section: TOCSection }) {
       <div
         className={cn(
           "overflow-hidden transition-all duration-200",
-          isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+          isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0",
         )}
       >
         <div className="pl-4 space-y-0">
@@ -169,7 +169,7 @@ function InheritedGroupSection({ group }: { group: TOCInheritedGroup }) {
         <ChevronDown
           className={cn(
             "h-3 w-3 shrink-0 text-foreground-muted transition-transform duration-200",
-            isOpen && "rotate-180"
+            isOpen && "rotate-180",
           )}
         />
         <span className="truncate">
@@ -181,7 +181,7 @@ function InheritedGroupSection({ group }: { group: TOCInheritedGroup }) {
       <div
         className={cn(
           "overflow-hidden transition-all duration-200",
-          isOpen ? "max-h-[4000px] opacity-100" : "max-h-0 opacity-0"
+          isOpen ? "max-h-[4000px] opacity-100" : "max-h-0 opacity-0",
         )}
       >
         <div className="pl-4 space-y-0">
@@ -217,7 +217,7 @@ function SectionIcon({ title, size = "normal" }: { title: string; size?: "normal
       className={cn(
         "inline-flex items-center justify-center font-bold rounded shrink-0",
         sizeClasses,
-        icon.color
+        icon.color,
       )}
       title={title}
     >
@@ -257,7 +257,7 @@ function KindIcon({ kind, size = "normal" }: { kind: string; size?: "normal" | "
       className={cn(
         "inline-flex items-center justify-center font-bold rounded shrink-0",
         sizeClasses,
-        color
+        color,
       )}
       title={kind}
     >
@@ -278,9 +278,7 @@ function TopItemIcon({ label }: { label: string }) {
   const icon = iconMap[label];
   if (!icon) return null;
 
-  return (
-    <span className={cn("text-xs shrink-0", icon.color)}>{icon.icon}</span>
-  );
+  return <span className={cn("text-xs shrink-0", icon.color)}>{icon.icon}</span>;
 }
 
 /**
@@ -317,9 +315,7 @@ export function TableOfContents({
           </div>
         )}
 
-        <h3 className="text-sm font-semibold text-foreground mb-3">
-          On This Page
-        </h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">On This Page</h3>
 
         {/* Top-level items (examples, etc.) */}
         {topItems && topItems.length > 0 && (

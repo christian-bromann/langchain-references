@@ -62,9 +62,9 @@ function getPackageSlug(pkg: Package): string {
 export default async function JavaScriptIndexPage() {
   const buildId = await getBuildIdForLanguage("javascript");
   const manifest = buildId ? await getManifestData(buildId) : null;
-  const packages = manifest?.packages.filter(
-    (p) => p.language === "typescript" || p.ecosystem === "javascript"
-  ) ?? [];
+  const packages =
+    manifest?.packages.filter((p) => p.language === "typescript" || p.ecosystem === "javascript") ??
+    [];
 
   return (
     <div className="space-y-8">
@@ -92,9 +92,7 @@ export default async function JavaScriptIndexPage() {
       {packages.length === 0 && (
         <div className="text-center py-12 text-foreground-secondary">
           <p>No packages found.</p>
-          <p className="mt-2 text-sm">
-            Run the build script to generate IR data.
-          </p>
+          <p className="mt-2 text-sm">Run the build script to generate IR data.</p>
         </div>
       )}
     </div>
@@ -104,11 +102,7 @@ export default async function JavaScriptIndexPage() {
 /**
  * Package card component
  */
-function PackageCard({
-  package: pkg,
-}: {
-  package: Package;
-}) {
+function PackageCard({ package: pkg }: { package: Package }) {
   const href = `/javascript/${getPackageSlug(pkg)}`;
 
   return (
@@ -117,7 +111,7 @@ function PackageCard({
       className={cn(
         "group flex items-center justify-between p-4 rounded-lg",
         "border border-border bg-background-secondary",
-        "hover:border-primary/50 hover:bg-background transition-colors"
+        "hover:border-primary/50 hover:bg-background transition-colors",
       )}
     >
       <div className="flex items-start gap-4">

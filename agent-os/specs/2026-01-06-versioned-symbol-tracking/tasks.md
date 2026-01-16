@@ -8,14 +8,14 @@
 
 ## Task Overview
 
-| Phase | Description | Tasks | Priority |
-|-------|-------------|-------|----------|
-| 1 | Schema & Types | 1.1 - 1.4 | P0 |
-| 2 | Version Discovery | 2.1 - 2.4 | P0 |
-| 3 | Diff Computation | 3.1 - 3.5 | P0 |
-| 4 | Build Pipeline & Workflows | 4.1 - 4.10 | P0/P1/P2 |
-| 5 | UI Components | 5.1 - 5.6 | P0 |
-| 6 | Integration & Polish | 6.1 - 6.7 | P0/P1 |
+| Phase | Description                | Tasks      | Priority |
+| ----- | -------------------------- | ---------- | -------- |
+| 1     | Schema & Types             | 1.1 - 1.4  | P0       |
+| 2     | Version Discovery          | 2.1 - 2.4  | P0       |
+| 3     | Diff Computation           | 3.1 - 3.5  | P0       |
+| 4     | Build Pipeline & Workflows | 4.1 - 4.10 | P0/P1/P2 |
+| 5     | UI Components              | 5.1 - 5.6  | P0       |
+| 6     | Integration & Polish       | 6.1 - 6.7  | P0/P1    |
 
 **Total**: 36 tasks across 6 phases
 
@@ -24,7 +24,9 @@
 ### Key Performance Optimizations
 
 #### 1. Incremental Builds (Build Time)
+
 When a new release is made, the build pipeline:
+
 1. Downloads existing `changelog.json` from deployed storage
 2. Compares discovered versions against existing history
 3. **Only extracts and diffs new versions** (not all historical versions)
@@ -33,14 +35,18 @@ When a new release is made, the build pipeline:
 **Impact**: ~90% faster for typical new releases
 
 #### 2. Parallel Version Extraction (Build Time)
+
 When extracting multiple historical versions:
+
 1. Extract up to 4 versions in parallel (configurable)
 2. Process in batches to manage memory/API limits
 
 **Impact**: ~4x faster for full builds
 
 #### 3. Lazy Changelog Loading (UI Performance)
+
 When viewing a symbol page:
+
 1. Version badge ("Since v0.2.0") loads immediately from `versionInfo`
 2. **Changelog is NOT fetched on page load**
 3. Changelog only fetched when user expands "Version History" panel
@@ -52,6 +58,7 @@ When viewing a symbol page:
 ## Phase 1: Schema & Types
 
 ### Task 1.1: Create Versioning Types Module
+
 **Priority**: P0  
 **Estimated**: 3 hours  
 **File**: `packages/ir-schema/src/versioning.ts`
@@ -73,6 +80,7 @@ Create the core versioning type definitions:
 ---
 
 ### Task 1.2: Create Snapshot Types
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **File**: `packages/ir-schema/src/versioning.ts`
@@ -89,6 +97,7 @@ Define compact snapshot types for historical symbol views:
 ---
 
 ### Task 1.3: Create Change Record Types
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **File**: `packages/ir-schema/src/versioning.ts`
@@ -107,6 +116,7 @@ Define granular change tracking types:
 ---
 
 ### Task 1.4: Extend SymbolRecord and Export Types
+
 **Priority**: P0  
 **Estimated**: 1 hour  
 **Files**: `packages/ir-schema/src/symbol.ts`, `packages/ir-schema/src/index.ts`
@@ -123,6 +133,7 @@ Define granular change tracking types:
 ## Phase 2: Version Discovery
 
 ### Task 2.1: Create Version Discovery Module
+
 **Priority**: P0  
 **Estimated**: 3 hours  
 **File**: `scripts/lib/version-discovery.ts`
@@ -143,6 +154,7 @@ Implement version discovery utilities:
 ---
 
 ### Task 2.2: Implement Git Tag Fetching
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **File**: `scripts/lib/version-discovery.ts`
@@ -161,6 +173,7 @@ Add GitHub API integration for tag fetching:
 ---
 
 ### Task 2.3: Add Semver Utilities
+
 **Priority**: P0  
 **Estimated**: 1 hour  
 **File**: `scripts/lib/version-discovery.ts`
@@ -175,6 +188,7 @@ Add GitHub API integration for tag fetching:
 ---
 
 ### Task 2.4: Update Configuration Schema
+
 **Priority**: P0  
 **Estimated**: 1 hour  
 **Files**: `configs/config-schema.json`, `configs/langchain-typescript.json`
@@ -196,6 +210,7 @@ Add versioning configuration block:
 ## Phase 3: Diff Computation
 
 ### Task 3.1: Create Minimal IR Extraction Mode
+
 **Priority**: P0  
 **Estimated**: 4 hours  
 **Files**: `packages/extractor-typescript/src/extractor.ts`
@@ -214,6 +229,7 @@ Add lightweight extraction for historical versions:
 ---
 
 ### Task 3.2: Implement Snapshot Generation
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **File**: `scripts/lib/snapshot.ts`
@@ -232,6 +248,7 @@ Create snapshot generation utilities:
 ---
 
 ### Task 3.3: Implement Change Detection
+
 **Priority**: P0  
 **Estimated**: 4 hours  
 **File**: `scripts/lib/diff-engine.ts`
@@ -250,6 +267,7 @@ Create the core diff computation engine:
 ---
 
 ### Task 3.4: Implement Member Change Detection
+
 **Priority**: P0  
 **Estimated**: 3 hours  
 **File**: `scripts/lib/diff-engine.ts`
@@ -271,6 +289,7 @@ Add member-level change detection for classes/interfaces:
 ---
 
 ### Task 3.5: Implement Parameter Change Detection
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **File**: `scripts/lib/diff-engine.ts`
@@ -292,6 +311,7 @@ Add parameter-level change detection for functions:
 ## Phase 4: Build Pipeline
 
 ### Task 4.1: Implement Deployed Changelog Fetching
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **File**: `scripts/lib/changelog-fetcher.ts`
@@ -311,6 +331,7 @@ Fetch existing changelogs from deployed storage for incremental builds:
 ---
 
 ### Task 4.2: Implement Version Delta Computation
+
 **Priority**: P0  
 **Estimated**: 3 hours  
 **File**: `scripts/lib/changelog-generator.ts`
@@ -330,6 +351,7 @@ Create changelog generation logic:
 ---
 
 ### Task 4.3: Implement Parallel Version Extraction
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **File**: `scripts/lib/changelog-generator.ts`
@@ -348,6 +370,7 @@ Extract multiple historical versions in parallel for faster builds:
 ---
 
 ### Task 4.4: Implement Incremental Build Logic
+
 **Priority**: P0  
 **Estimated**: 4 hours  
 **File**: `scripts/lib/changelog-generator.ts`
@@ -369,6 +392,7 @@ Implement efficient incremental changelog updates:
 ---
 
 ### Task 4.5: Update Build Script with Versioning Flags
+
 **Priority**: P0  
 **Estimated**: 3 hours  
 **File**: `scripts/build-ir.ts`
@@ -384,13 +408,15 @@ Integrate versioned extraction into build pipeline:
 - [x] Output changelog.json and versions.json to correct paths
 - [x] Log efficiency stats (versions skipped, time saved, parallel speedup)
 
-**Acceptance**: 
+**Acceptance**:
+
 - `pnpm build:ir --with-versions` does incremental build
 - `pnpm build:ir --with-versions --full` does full rebuild with parallel extraction
 
 ---
 
 ### Task 4.6: Implement Latest IR Annotation
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **File**: `scripts/lib/changelog-generator.ts`
@@ -408,6 +434,7 @@ Add version info to latest symbols:
 ---
 
 ### Task 4.7: Update Upload Scripts
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **Files**: `scripts/upload-ir.ts`, `scripts/update-kv.ts`
@@ -424,6 +451,7 @@ Handle versioned file uploads:
 ---
 
 ### Task 4.8: Update GitHub Workflow for Versioning
+
 **Priority**: P0  
 **Estimated**: 3 hours  
 **File**: `.github/workflows/build-ir.yml`
@@ -438,7 +466,8 @@ Add versioning support to the build workflow:
 - [x] Update build step to use new flags
 - [x] Update artifact upload to include `changelog.json` and `versions.json`
 
-**Acceptance**: 
+**Acceptance**:
+
 - Manual dispatch shows versioning options
 - Incremental build is default behavior
 - Full rebuild option available for recovery scenarios
@@ -446,6 +475,7 @@ Add versioning support to the build workflow:
 ---
 
 ### Task 4.9: Add Workflow Triggers for Extractor Changes
+
 **Priority**: P1  
 **Estimated**: 1 hour  
 **File**: `.github/workflows/build-ir.yml`
@@ -461,6 +491,7 @@ Ensure IR is rebuilt when extraction logic changes:
 ---
 
 ### Task 4.10: Add Upstream Release Trigger (Optional)
+
 **Priority**: P2  
 **Estimated**: 2 hours  
 **Files**: `.github/workflows/build-ir.yml`, `.github/workflows/watch-releases.yml` (new)
@@ -479,6 +510,7 @@ Support triggering builds when upstream repos release:
 ## Phase 5: UI Components
 
 ### Task 5.1: Create Version Badge Component
+
 **Priority**: P0  
 **Estimated**: 1 hour  
 **File**: `apps/web/components/reference/VersionBadge.tsx`
@@ -493,6 +525,7 @@ Support triggering builds when upstream repos release:
 ---
 
 ### Task 5.2: Create Deprecation Banner Component
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **File**: `apps/web/components/reference/DeprecationBanner.tsx`
@@ -508,6 +541,7 @@ Support triggering builds when upstream repos release:
 ---
 
 ### Task 5.3: Create Signature Diff Component
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **File**: `apps/web/components/reference/SignatureDiff.tsx`
@@ -524,6 +558,7 @@ Support triggering builds when upstream repos release:
 ---
 
 ### Task 5.4: Create Snapshot Viewer Component
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **File**: `apps/web/components/reference/SnapshotViewer.tsx`
@@ -539,6 +574,7 @@ Support triggering builds when upstream repos release:
 ---
 
 ### Task 5.5: Create Version History Panel with Lazy Loading
+
 **Priority**: P0  
 **Estimated**: 5 hours  
 **Files**: `apps/web/components/reference/VersionHistory.tsx`, `apps/web/components/reference/VersionHistoryEntry.tsx`
@@ -561,7 +597,8 @@ Implement version history panel with **dynamic/lazy changelog loading**:
 - [x] Add expandable snapshot viewer
 - [x] Show "Introduced" badge for first version
 
-**Acceptance**: 
+**Acceptance**:
+
 - Panel does NOT fetch changelog on initial page load
 - Changelog is fetched only when user expands the panel
 - Loading state shown during fetch
@@ -570,6 +607,7 @@ Implement version history panel with **dynamic/lazy changelog loading**:
 ---
 
 ### Task 5.6: Create Change Description Component
+
 **Priority**: P0  
 **Estimated**: 1 hour  
 **File**: `apps/web/components/reference/ChangeDescription.tsx`
@@ -586,6 +624,7 @@ Implement version history panel with **dynamic/lazy changelog loading**:
 ## Phase 6: Integration & Polish
 
 ### Task 6.1: Create Changelog API Endpoint
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **File**: `apps/web/app/api/changelog/[project]/[language]/[packageId]/route.ts`
@@ -603,6 +642,7 @@ Create API endpoint for lazy-loaded changelog fetching:
 ---
 
 ### Task 6.2: Update IR Loader for Changelogs
+
 **Priority**: P0  
 **Estimated**: 2 hours  
 **File**: `apps/web/lib/ir/loader.ts`
@@ -617,6 +657,7 @@ Create API endpoint for lazy-loaded changelog fetching:
 ---
 
 ### Task 6.3: Update Symbol Page
+
 **Priority**: P0  
 **Estimated**: 3 hours  
 **File**: `apps/web/components/reference/SymbolPage.tsx`
@@ -634,6 +675,7 @@ Integrate version UI elements:
 ---
 
 ### Task 6.4: Verify Light/Dark Mode Styling
+
 **Priority**: P1  
 **Estimated**: 2 hours  
 **Files**: All new components
@@ -650,6 +692,7 @@ Integrate version UI elements:
 ---
 
 ### Task 6.5: Performance Testing
+
 **Priority**: P1  
 **Estimated**: 2 hours
 
@@ -665,6 +708,7 @@ Integrate version UI elements:
 ---
 
 ### Task 6.6: End-to-End Testing
+
 **Priority**: P0  
 **Estimated**: 3 hours
 
@@ -684,6 +728,7 @@ Integrate version UI elements:
 ---
 
 ### Task 6.7: Test Incremental Build Efficiency
+
 **Priority**: P0  
 **Estimated**: 2 hours
 
@@ -698,7 +743,8 @@ Test that incremental builds properly skip already-processed versions:
 - [ ] Time comparison: full build vs incremental (target: 90% faster)
 - [ ] Time comparison: sequential vs parallel extraction (target: 4x faster)
 
-**Acceptance**: 
+**Acceptance**:
+
 - Incremental build with no new versions completes in <10 seconds
 - Incremental build fetches existing changelog from deployed storage
 - Only new versions trigger extraction and diffing
@@ -750,6 +796,7 @@ Phase 6 (Integration)
 ## Files Created/Modified Summary
 
 ### New Files (19)
+
 ```
 packages/ir-schema/src/versioning.ts
 scripts/lib/version-discovery.ts
@@ -770,6 +817,7 @@ apps/web/components/reference/MemberDiff.tsx
 ```
 
 ### Modified Files (10)
+
 ```
 packages/ir-schema/src/symbol.ts
 packages/ir-schema/src/index.ts
@@ -784,11 +832,11 @@ apps/web/components/reference/SymbolPage.tsx
 ```
 
 ### New Workflow Files (Optional, P2)
+
 ```
 .github/workflows/watch-releases.yml          # Monitor upstream for new releases
 ```
 
 ---
 
-*End of Tasks*
-
+_End of Tasks_

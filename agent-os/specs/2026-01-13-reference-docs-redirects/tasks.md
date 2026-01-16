@@ -130,6 +130,7 @@
 ### 4.2 Manual verification checklist (URLs)
 
 **Python**
+
 - [ ] `https://reference.langchain.com/python/` → `/python`
 - [ ] `https://reference.langchain.com/python/langchain_core/messages.html` → `/python/langchain-core/messages`
 - [ ] `https://reference.langchain.com/python/langchain_core/messages/message.html` → `/python/langchain-core/messages/message`
@@ -137,6 +138,7 @@
 - [ ] `https://reference.langchain.com/v0.3/python/core/indexing/langchain_core.indexing.api.index.html` → `/python/langchain-core/indexing/api/index` (and optionally `?v=0.3.x`)
 
 **JavaScript**
+
 - [ ] `https://reference.langchain.com/javascript/modules.html` → `/javascript`
 - [ ] `https://reference.langchain.com/javascript/classes/_langchain_openai.ChatOpenAI.html` → `/javascript/langchain-openai/ChatOpenAI`
 - [ ] `https://reference.langchain.com/javascript/interfaces/_langchain_core.runnables.RunnableConfig.html` → `/javascript/langchain-core/runnables/RunnableConfig`
@@ -150,4 +152,3 @@
   - [x] which legacy URL families are supported
   - [x] known limitations (hash fragments; v0.3 best-effort)
   - [x] how to add new redirect mappings safely
-

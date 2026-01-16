@@ -22,11 +22,7 @@ const COPY_ICON = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" x
 
 const CHECK_ICON = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-green-500 dark:text-green-400 check-icon hidden"><path d="M15 4.5L6.75 12.75L3 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 
-export function MarkdownWrapper({
-  html,
-  className = "",
-  compact = false,
-}: MarkdownWrapperProps) {
+export function MarkdownWrapper({ html, className = "", compact = false }: MarkdownWrapperProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

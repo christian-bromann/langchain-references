@@ -75,9 +75,7 @@ export function PackageTableOfContents({ sections }: PackageTableOfContentsProps
       aria-label="On this page"
     >
       <div className="pl-4 pb-8">
-        <h3 className="text-sm font-semibold text-foreground mb-3">
-          On This Page
-        </h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">On This Page</h3>
 
         <div className="space-y-1">
           {sections.map((section) => (

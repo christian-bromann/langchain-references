@@ -48,11 +48,13 @@ If we simply swap the site/app without redirects, users will hit 404s from:
 ### 1.3 Scope
 
 **In scope**
+
 - Redirect the current Python and JavaScript reference URL schemas into the new canonical routes.
 - Support all LangChain ecosystem projects exposed by the legacy sites (LangChain, LangGraph, LangSmith, Deep Agents, integrations packages).
 - Preserve query params; best-effort support for fragment anchors.
 
 **Out of scope**
+
 - Perfect, per-anchor mapping for TypeDoc fragments (hashes are not available server-side).
 - Re-hosting the legacy sites “as-is” under the new domain (this spec is about redirecting into the new docs).
 
@@ -66,33 +68,34 @@ This section describes the URL shapes we must support/redirect.
 
 Observed patterns:
 
-- **Landing**:  
-  - `https://reference.langchain.com/python/`  
+- **Landing**:
+  - `https://reference.langchain.com/python/`
 
-- **Package roots** (often folder-like):  
-  - `https://reference.langchain.com/python/langchain/`  
-  - `https://reference.langchain.com/python/langchain_core/`  
-  - `https://reference.langchain.com/python/langgraph/`  
-  - `https://reference.langchain.com/python/langsmith/`  
+- **Package roots** (often folder-like):
+  - `https://reference.langchain.com/python/langchain/`
+  - `https://reference.langchain.com/python/langchain_core/`
+  - `https://reference.langchain.com/python/langgraph/`
+  - `https://reference.langchain.com/python/langsmith/`
 
-- **Module pages using `.html`**:  
-  - `https://reference.langchain.com/python/langchain_core/messages.html`  
-  - `https://reference.langchain.com/python/langchain_core/messages/message.html`  
+- **Module pages using `.html`**:
+  - `https://reference.langchain.com/python/langchain_core/messages.html`
+  - `https://reference.langchain.com/python/langchain_core/messages/message.html`
 
-- **Section pages without `.html`** (often trailing `/` or not):  
-  - `https://reference.langchain.com/python/langgraph/graphs/`  
-  - `https://reference.langchain.com/python/langchain/agents`  
+- **Section pages without `.html`** (often trailing `/` or not):
+  - `https://reference.langchain.com/python/langgraph/graphs/`
+  - `https://reference.langchain.com/python/langchain/agents`
 
-- **Integrations namespace**:  
-  - `https://reference.langchain.com/python/integrations/`  
-  - `https://reference.langchain.com/python/integrations/langchain_openai/`  
+- **Integrations namespace**:
+  - `https://reference.langchain.com/python/integrations/`
+  - `https://reference.langchain.com/python/integrations/langchain_openai/`
   - `https://reference.langchain.com/python/integrations/langchain_openai/ChatOpenAI/`
 
-- **Old versions** (v0.3 Python):  
-  - `https://reference.langchain.com/v0.3/python/`  
+- **Old versions** (v0.3 Python):
+  - `https://reference.langchain.com/v0.3/python/`
   - `https://reference.langchain.com/v0.3/python/core/indexing/langchain_core.indexing.api.index.html`
 
 Source examples: see the live sites at:
+
 - `https://reference.langchain.com/python/`
 - `https://reference.langchain.com/v0.3/python/`
 
@@ -100,23 +103,23 @@ Source examples: see the live sites at:
 
 Observed patterns:
 
-- **Landing**:  
+- **Landing**:
   - `https://reference.langchain.com/javascript/`
 
-- **Index pages**:  
-  - `https://reference.langchain.com/javascript/modules.html`  
-  - `https://reference.langchain.com/javascript/classes.html`  
+- **Index pages**:
+  - `https://reference.langchain.com/javascript/modules.html`
+  - `https://reference.langchain.com/javascript/classes.html`
 
-- **Module pages (TypeDoc reflections)**:  
-  - `https://reference.langchain.com/javascript/modules/_langchain_openai.html`  
-  - `https://reference.langchain.com/javascript/modules/_langchain_core.utils_math.html`  
-  - `https://reference.langchain.com/javascript/modules/_langchain_langgraph.channels.html`  
+- **Module pages (TypeDoc reflections)**:
+  - `https://reference.langchain.com/javascript/modules/_langchain_openai.html`
+  - `https://reference.langchain.com/javascript/modules/_langchain_core.utils_math.html`
+  - `https://reference.langchain.com/javascript/modules/_langchain_langgraph.channels.html`
   - `https://reference.langchain.com/javascript/modules/langsmith.traceable.html`
 
-- **Class pages**:  
+- **Class pages**:
   - `https://reference.langchain.com/javascript/classes/_langchain_openai.ChatOpenAI.html`
 
-- **Interface pages**:  
+- **Interface pages**:
   - `https://reference.langchain.com/javascript/interfaces/_langchain_core.runnables.RunnableConfig.html`
 
 Source examples: see the live site at `https://reference.langchain.com/javascript/`.
@@ -199,6 +202,7 @@ Examples:
 - `/python/integrations/langchain_openai/ChatOpenAI/` → `/python/langchain-openai/ChatOpenAI`
 
 Notes:
+
 - This is best-effort; if the integration page path includes deeper module structure, we forward it as symbol path segments.
 
 #### Rule P3: direct package/module pages
@@ -416,25 +420,24 @@ Recommended implementation points:
 
 ### 9.1 Functional requirements
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| R1 | Python legacy URLs under `/python/**` redirect to new `/python/**` | P0 |
-| R2 | JS TypeDoc URLs under `/javascript/**` redirect to new `/javascript/**` | P0 |
-| R3 | `/python/integrations/**` maps to package-based paths | P0 |
-| R4 | `.html` suffixes are canonicalized (removed) | P0 |
-| R5 | `/v0.3/python/**` redirects to new pages with a resolved `?v=` (or safe fallback) | P1 |
-| R6 | Query params preserved across redirects | P0 |
-| R7 | Redirects do not create loops | P0 |
+| ID  | Requirement                                                                       | Priority |
+| --- | --------------------------------------------------------------------------------- | -------- |
+| R1  | Python legacy URLs under `/python/**` redirect to new `/python/**`                | P0       |
+| R2  | JS TypeDoc URLs under `/javascript/**` redirect to new `/javascript/**`           | P0       |
+| R3  | `/python/integrations/**` maps to package-based paths                             | P0       |
+| R4  | `.html` suffixes are canonicalized (removed)                                      | P0       |
+| R5  | `/v0.3/python/**` redirects to new pages with a resolved `?v=` (or safe fallback) | P1       |
+| R6  | Query params preserved across redirects                                           | P0       |
+| R7  | Redirects do not create loops                                                     | P0       |
 
 ### 9.2 Quality requirements
 
-| ID | Requirement | Target |
-|----|-------------|--------|
-| Q1 | Redirect latency | < 50ms at edge |
-| Q2 | No 404 regressions for sampled legacy URLs | 100% pass |
-| Q3 | SEO-friendly status codes | 301 for stable mappings |
+| ID  | Requirement                                | Target                  |
+| --- | ------------------------------------------ | ----------------------- |
+| Q1  | Redirect latency                           | < 50ms at edge          |
+| Q2  | No 404 regressions for sampled legacy URLs | 100% pass               |
+| Q3  | SEO-friendly status codes                  | 301 for stable mappings |
 
 ---
 
-*End of Specification*
-
+_End of Specification_

@@ -43,9 +43,12 @@ export function isProduction(): boolean {
  * Example: https://xxxxxx.public.blob.vercel-storage.com
  */
 function getBlobUrl(path: string): string | null {
-  const baseUrl = process.env.BLOB_URL || process.env.BLOB_BASE_URL || process.env.NEXT_PUBLIC_BLOB_URL;
+  const baseUrl =
+    process.env.BLOB_URL || process.env.BLOB_BASE_URL || process.env.NEXT_PUBLIC_BLOB_URL;
   if (!baseUrl) {
-    console.warn("[loader] No blob URL configured. Set BLOB_URL, BLOB_BASE_URL, or NEXT_PUBLIC_BLOB_URL.");
+    console.warn(
+      "[loader] No blob URL configured. Set BLOB_URL, BLOB_BASE_URL, or NEXT_PUBLIC_BLOB_URL.",
+    );
     return null;
   }
   return `${baseUrl}/${path}`;
@@ -73,16 +76,6 @@ interface SymbolLookupIndex {
 // =============================================================================
 // SHARDED INDEX TYPES
 // =============================================================================
-
-/**
- * Sharded lookup index manifest
- */
-interface ShardedLookupIndex {
-  packageId: string;
-  symbolCount: number;
-  shards: string[];
-  knownSymbols: string[];
-}
 
 /**
  * Single shard of the lookup index
@@ -120,16 +113,6 @@ export interface SymbolChangelogEntry {
 }
 
 /**
- * Sharded changelog manifest
- */
-interface ShardedChangelogIndex {
-  packageId: string;
-  generatedAt: string;
-  versions: Array<{ version: string; releaseDate: string }>;
-  shards: string[];
-}
-
-/**
  * Single shard of the changelog
  */
 type ChangelogShard = Record<string, SymbolChangelogEntry[]>;
@@ -145,11 +128,9 @@ const lookupIndexCache = new Map<string, SymbolLookupIndex>();
 const individualSymbolCache = new Map<string, SymbolRecord>();
 
 // Sharded index caches
-const shardedLookupIndexCache = new Map<string, ShardedLookupIndex>();
 const lookupShardCache = new Map<string, LookupShard>();
 const shardedCatalogIndexCache = new Map<string, ShardedCatalogIndex>();
 const catalogShardCache = new Map<string, CatalogEntry[]>();
-const shardedChangelogIndexCache = new Map<string, ShardedChangelogIndex>();
 const changelogShardCache = new Map<string, ChangelogShard>();
 
 /**
@@ -204,11 +185,14 @@ interface ProjectPackageIndex {
   project: string;
   language: "python" | "javascript";
   updatedAt: string;
-  packages: Record<string, {
-    buildId: string;
-    version: string;
-    sha: string;
-  }>;
+  packages: Record<
+    string,
+    {
+      buildId: string;
+      version: string;
+      sha: string;
+    }
+  >;
 }
 
 // Cache for package-level data
@@ -243,7 +227,7 @@ async function fetchPointer<T>(pointerName: string): Promise<T | null> {
           // This prevents 404s from being cached indefinitely when new projects are added
           // 60 seconds is short enough to detect new builds quickly during deployments
           next: { revalidate: 60 },
-        })
+        }),
       );
 
       if (!response.ok) {
@@ -274,7 +258,7 @@ async function fetchPointer<T>(pointerName: string): Promise<T | null> {
 
       const delay = Math.min(
         INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt) + Math.random() * 500,
-        MAX_RETRY_DELAY_MS
+        MAX_RETRY_DELAY_MS,
       );
 
       await sleep(delay);
@@ -303,7 +287,7 @@ export async function getLatestBuildId(): Promise<string | null> {
  */
 export async function getLatestBuildIdForLanguage(
   language: "python" | "javascript",
-  project: string = "langchain"
+  project: string = "langchain",
 ): Promise<string | null> {
   try {
     const pointerName = `latest-${project}-${language}`;
@@ -322,12 +306,12 @@ export async function getLatestBuildIdForLanguage(
 /**
  * Get the package pointer for a specific package.
  * This is the new package-level pointer that allows independent package updates.
- * 
+ *
  * Path: pointers/packages/{ecosystem}/{packageName}.json
  */
 export async function getPackagePointer(
   ecosystem: "python" | "javascript",
-  packageName: string
+  packageName: string,
 ): Promise<PackagePointer | null> {
   const cacheKey = `${ecosystem}:${packageName}`;
   if (packagePointerCache.has(cacheKey)) {
@@ -353,7 +337,7 @@ export async function getPackagePointer(
  */
 export async function getPackageBuildId(
   ecosystem: "python" | "javascript",
-  packageName: string
+  packageName: string,
 ): Promise<string | null> {
   const pointer = await getPackagePointer(ecosystem, packageName);
   return pointer?.buildId || null;
@@ -362,12 +346,12 @@ export async function getPackageBuildId(
 /**
  * Get the project package index.
  * This aggregates all package pointers for a project/language.
- * 
+ *
  * Path: pointers/index-{project}-{language}.json
  */
 export async function getProjectPackageIndex(
   project: string,
-  language: "python" | "javascript"
+  language: "python" | "javascript",
 ): Promise<ProjectPackageIndex | null> {
   const cacheKey = `${project}:${language}`;
   if (projectPackageIndexCache.has(cacheKey)) {
@@ -389,12 +373,12 @@ export async function getProjectPackageIndex(
 
 /**
  * Get package symbols using the package-level path structure.
- * 
+ *
  * Path: ir/packages/{packageId}/{buildId}/symbols.json
  */
 export async function getPackageSymbolsV2(
   packageId: string,
-  buildId?: string
+  buildId?: string,
 ): Promise<{ symbols: SymbolRecord[]; total: number } | null> {
   // If no buildId provided, try to get it from the package pointer
   let actualBuildId = buildId;
@@ -402,7 +386,7 @@ export async function getPackageSymbolsV2(
     const ecosystem = packageId.startsWith("pkg_py_") ? "python" : "javascript";
     // Extract package name from packageId (e.g., pkg_py_langchain_openai -> langchain_openai)
     const packageName = packageId.replace(/^pkg_(py|js)_/, "").replace(/_/g, "-");
-    actualBuildId = await getPackageBuildId(ecosystem, packageName) || undefined;
+    actualBuildId = (await getPackageBuildId(ecosystem, packageName)) || undefined;
   }
 
   if (!actualBuildId) {
@@ -506,10 +490,10 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
     try {
       phase = "fetch";
       const response = await withBlobFetchLimit(() =>
-        fetch(url, isLargeFile
-          ? { cache: "no-store" }
-          : { next: { revalidate: 3600 } } // 1 hour for small files, prevents 404s from being cached forever
-        )
+        fetch(
+          url,
+          isLargeFile ? { cache: "no-store" } : { next: { revalidate: 3600 } }, // 1 hour for small files, prevents 404s from being cached forever
+        ),
       );
 
       if (!response.ok) {
@@ -536,7 +520,9 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
       const elapsed = Date.now() - startTime;
 
       // Extract detailed error info
-      const err = error as Error & { cause?: Error & { code?: string; syscall?: string; errno?: number } };
+      const err = error as Error & {
+        cause?: Error & { code?: string; syscall?: string; errno?: number };
+      };
       const causeCode = err.cause?.code || "unknown";
       const causeSyscall = err.cause?.syscall || "unknown";
       const causeErrno = err.cause?.errno;
@@ -559,8 +545,8 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
         // Log detailed failure info
         console.error(
           `[blob] ✗ ${path} FAILED after ${attempt + 1} attempts, phase=${phase}, elapsed=${elapsed}ms, ` +
-          `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
-          `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`
+            `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
+            `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`,
         );
         break;
       }
@@ -568,14 +554,11 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
       // Exponential backoff with jitter - use longer delays for large files
       const baseDelay = isLargeFile ? 2000 : INITIAL_RETRY_DELAY_MS;
       const maxDelay = isLargeFile ? 60000 : MAX_RETRY_DELAY_MS;
-      const delay = Math.min(
-        baseDelay * Math.pow(2, attempt) + Math.random() * 1000,
-        maxDelay
-      );
+      const delay = Math.min(baseDelay * Math.pow(2, attempt) + Math.random() * 1000, maxDelay);
 
       console.warn(
         `[blob] ⟳ ${path} retry ${attempt + 1}/${maxRetries} in ${Math.round(delay)}ms, ` +
-        `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`
+          `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`,
       );
 
       await sleep(delay);
@@ -585,8 +568,8 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
   failedBlobFetches++;
   console.error(
     `[blob] ✗ ${path} EXHAUSTED after ${maxRetries} attempts ` +
-    `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
-    lastError
+      `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
+    lastError,
   );
   return null;
 }
@@ -604,14 +587,10 @@ async function fetchManifest(buildId: string): Promise<Manifest | null> {
  * Cached version of fetchManifest.
  * Uses Next.js unstable_cache to persist data across function invocations.
  */
-const getCachedManifest = unstable_cache(
-  fetchManifest,
-  ["manifest"],
-  {
-    revalidate: 3600, // 1 hour
-    tags: ["manifest"],
-  }
-);
+const getCachedManifest = unstable_cache(fetchManifest, ["manifest"], {
+  revalidate: 3600, // 1 hour
+  tags: ["manifest"],
+});
 
 /**
  * Get the manifest for a build
@@ -642,7 +621,7 @@ export async function getManifest(buildId: string): Promise<Manifest | null> {
 async function fetchRoutingMap(
   buildId: string,
   packageId: string,
-  language: "python" | "typescript"
+  language: "python" | "typescript",
 ): Promise<RoutingMap | null> {
   // Routing maps are stored at ir/{buildId}/routing/{language}/{packageId}.json
   const path = `${IR_BASE_PATH}/${buildId}/routing/${language}/${packageId}.json`;
@@ -653,14 +632,10 @@ async function fetchRoutingMap(
  * Cached version of fetchRoutingMap.
  * Uses Next.js unstable_cache to persist data across function invocations.
  */
-const getCachedRoutingMap = unstable_cache(
-  fetchRoutingMap,
-  ["routing-map"],
-  {
-    revalidate: 3600, // 1 hour
-    tags: ["routing-map"],
-  }
-);
+const getCachedRoutingMap = unstable_cache(fetchRoutingMap, ["routing-map"], {
+  revalidate: 3600, // 1 hour
+  tags: ["routing-map"],
+});
 
 /**
  * Get the routing map for a package from Vercel Blob.
@@ -673,7 +648,7 @@ const getCachedRoutingMap = unstable_cache(
 export async function getRoutingMap(
   buildId: string,
   packageId: string,
-  language: "python" | "typescript"
+  language: "python" | "typescript",
 ): Promise<RoutingMap | null> {
   const cacheKey = `${buildId}:${packageId}`;
 
@@ -693,25 +668,12 @@ export async function getRoutingMap(
 }
 
 /**
- * Get the shard prefix for a symbol ID
- */
-function getShardPrefix(symbolId: string): string {
-  // Use first 2 characters of the hash part of the symbol ID
-  // Format: sym_{kind}_{hash}
-  const parts = symbolId.split("_");
-  if (parts.length >= 3) {
-    return parts[2].substring(0, 2);
-  }
-  return "00";
-}
-
-/**
  * Get symbols from a shard
  */
 export async function getSymbolShard(
   buildId: string,
   packageId: string,
-  shardPrefix: string
+  shardPrefix: string,
 ): Promise<SymbolRecord[] | null> {
   const cacheKey = `${buildId}:${packageId}:${shardPrefix}`;
 
@@ -738,7 +700,7 @@ export async function getSymbolShard(
 export async function getSymbolByPath(
   buildId: string,
   packageId: string,
-  symbolPath: string
+  symbolPath: string,
 ): Promise<SymbolRecord | null> {
   // Use cached getPackageSymbols instead of direct fetch
   const response = await getPackageSymbols(buildId, packageId);
@@ -765,7 +727,7 @@ const packageSymbolsCache = new Map<string, { symbols: SymbolRecord[]; total: nu
  */
 export async function getPackageSymbols(
   buildId: string,
-  packageId: string
+  packageId: string,
 ): Promise<{ symbols: SymbolRecord[]; total: number } | null> {
   const cacheKey = `${buildId}:${packageId}`;
 
@@ -796,7 +758,7 @@ export async function getPackageSymbols(
  */
 async function fetchSymbolLookupIndex(
   buildId: string,
-  packageId: string
+  packageId: string,
 ): Promise<SymbolLookupIndex | null> {
   const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/lookup.json`;
   return fetchBlobJson<SymbolLookupIndex>(path);
@@ -806,14 +768,10 @@ async function fetchSymbolLookupIndex(
  * Cached version of fetchSymbolLookupIndex.
  * Uses Next.js unstable_cache to persist data across function invocations.
  */
-const getCachedSymbolLookupIndex = unstable_cache(
-  fetchSymbolLookupIndex,
-  ["symbol-lookup-index"],
-  {
-    revalidate: 3600, // 1 hour
-    tags: ["symbol-lookup-index"],
-  }
-);
+const getCachedSymbolLookupIndex = unstable_cache(fetchSymbolLookupIndex, ["symbol-lookup-index"], {
+  revalidate: 3600, // 1 hour
+  tags: ["symbol-lookup-index"],
+});
 
 /**
  * Get the symbol lookup index for a package.
@@ -825,7 +783,7 @@ const getCachedSymbolLookupIndex = unstable_cache(
  */
 export async function getSymbolLookupIndex(
   buildId: string,
-  packageId: string
+  packageId: string,
 ): Promise<SymbolLookupIndex | null> {
   const cacheKey = `${buildId}:${packageId}`;
 
@@ -848,10 +806,7 @@ export async function getSymbolLookupIndex(
  * Get list of known symbol names for type linking.
  * Uses the lightweight lookup index instead of full symbols.
  */
-export async function getKnownSymbolNames(
-  buildId: string,
-  packageId: string
-): Promise<string[]> {
+export async function getKnownSymbolNames(buildId: string, packageId: string): Promise<string[]> {
   const index = await getSymbolLookupIndex(buildId, packageId);
   return index?.knownSymbols || [];
 }
@@ -866,7 +821,7 @@ export async function getKnownSymbolNames(
  */
 export async function getIndividualSymbol(
   buildId: string,
-  symbolId: string
+  symbolId: string,
 ): Promise<SymbolRecord | null> {
   const cacheKey = `${buildId}:${symbolId}`;
 
@@ -907,16 +862,20 @@ export async function getIndividualSymbol(
 export async function getSymbolByQualifiedName(
   buildId: string,
   packageId: string,
-  qualifiedName: string
+  qualifiedName: string,
 ): Promise<SymbolRecord | null> {
   // First, get the lookup index
   const index = await getSymbolLookupIndex(buildId, packageId);
   if (!index) {
-    console.log(`[loader] getSymbolByQualifiedName: No lookup index for ${packageId}, falling back to symbols.json`);
+    console.log(
+      `[loader] getSymbolByQualifiedName: No lookup index for ${packageId}, falling back to symbols.json`,
+    );
     // Fall back to full symbols.json search
     return getSymbolByPath(buildId, packageId, qualifiedName);
   }
-  console.log(`[loader] getSymbolByQualifiedName: Found index for ${packageId} with ${Object.keys(index.symbols || {}).length} symbols`);
+  console.log(
+    `[loader] getSymbolByQualifiedName: Found index for ${packageId} with ${Object.keys(index.symbols || {}).length} symbols`,
+  );
 
   // Look up the symbol ID
   const entry = index.symbols[qualifiedName];
@@ -926,10 +885,7 @@ export async function getSymbolByQualifiedName(
     symbolId = entry.id;
   } else {
     // Try some variations
-    const variations = [
-      qualifiedName.replace(/\//g, "."),
-      qualifiedName.replace(/\./g, "/"),
-    ];
+    const variations = [qualifiedName.replace(/\//g, "."), qualifiedName.replace(/\./g, "/")];
 
     for (const variation of variations) {
       const found = index.symbols[variation];
@@ -941,7 +897,9 @@ export async function getSymbolByQualifiedName(
   }
 
   if (!symbolId) {
-    console.log(`[loader] getSymbolByQualifiedName: Symbol "${qualifiedName}" not found in index for ${packageId}`);
+    console.log(
+      `[loader] getSymbolByQualifiedName: Symbol "${qualifiedName}" not found in index for ${packageId}`,
+    );
     return null;
   }
 
@@ -959,10 +917,7 @@ export async function getSymbolByQualifiedName(
 /**
  * Get package info from manifest (unified - works in prod and dev)
  */
-export async function getPackageInfo(
-  buildId: string,
-  packageId: string
-): Promise<Package | null> {
+export async function getPackageInfo(buildId: string, packageId: string): Promise<Package | null> {
   // Use unified getManifestData to support both blob and local
   const manifest = await getManifestData(buildId);
 
@@ -978,7 +933,7 @@ export async function getPackageInfo(
  */
 export async function getPackagesForLanguage(
   buildId: string,
-  language: "python" | "javascript"
+  language: "python" | "javascript",
 ): Promise<Package[]> {
   // Use unified getManifestData to support both blob and local
   const manifest = await getManifestData(buildId);
@@ -1005,7 +960,7 @@ function getLocalIrBasePath(): string {
 let localBuildIdLoggedOnce = false;
 export async function getLocalLatestBuildId(
   language: "python" | "javascript",
-  project: string = "langchain"
+  project: string = "langchain",
 ): Promise<string | null> {
   try {
     const fs = await import("fs/promises");
@@ -1019,7 +974,7 @@ export async function getLocalLatestBuildId(
     if (!localBuildIdLoggedOnce) {
       localBuildIdLoggedOnce = true;
       try {
-        const files = await fs.readdir(basePath);
+        await fs.readdir(basePath);
       } catch (e) {
         console.log(`[loader] ir-output not found or not readable: ${e}`);
       }
@@ -1041,11 +996,7 @@ export async function getLocalManifest(buildId: string): Promise<Manifest | null
   try {
     const fs = await import("fs/promises");
     const path = await import("path");
-    const manifestPath = path.join(
-      getLocalIrBasePath(),
-      buildId,
-      "reference.manifest.json"
-    );
+    const manifestPath = path.join(getLocalIrBasePath(), buildId, "reference.manifest.json");
     const content = await fs.readFile(manifestPath, "utf-8");
     return JSON.parse(content);
   } catch {
@@ -1065,7 +1016,7 @@ const localPackageSymbolsCache = new Map<string, { symbols: SymbolRecord[]; tota
  */
 export async function getLocalPackageSymbols(
   buildId: string,
-  packageId: string
+  packageId: string,
 ): Promise<{ symbols: SymbolRecord[]; total: number } | null> {
   const cacheKey = `local:${buildId}:${packageId}`;
 
@@ -1082,7 +1033,7 @@ export async function getLocalPackageSymbols(
       buildId,
       "packages",
       packageId,
-      "symbols.json"
+      "symbols.json",
     );
     const content = await fs.readFile(symbolsPath, "utf-8");
     const data = JSON.parse(content);
@@ -1102,7 +1053,7 @@ export async function getLocalPackageSymbols(
 export async function getLocalSymbolByPath(
   buildId: string,
   packageId: string,
-  symbolPath: string
+  symbolPath: string,
 ): Promise<SymbolRecord | null> {
   const result = await getLocalPackageSymbols(buildId, packageId);
   if (!result?.symbols) {
@@ -1116,7 +1067,7 @@ export async function getLocalSymbolByPath(
  */
 export async function getLocalSymbolLookupIndex(
   buildId: string,
-  packageId: string
+  packageId: string,
 ): Promise<SymbolLookupIndex | null> {
   const result = await getLocalPackageSymbols(buildId, packageId);
   if (!result?.symbols) {
@@ -1152,7 +1103,7 @@ export async function getLocalSymbolLookupIndex(
  */
 export async function getLocalKnownSymbolNames(
   buildId: string,
-  packageId: string
+  packageId: string,
 ): Promise<string[]> {
   const result = await getLocalPackageSymbols(buildId, packageId);
   if (!result?.symbols) {
@@ -1160,9 +1111,7 @@ export async function getLocalKnownSymbolNames(
   }
 
   const linkableKinds = ["class", "interface", "typeAlias", "enum"];
-  const names = result.symbols
-    .filter((s) => linkableKinds.includes(s.kind))
-    .map((s) => s.name);
+  const names = result.symbols.filter((s) => linkableKinds.includes(s.kind)).map((s) => s.name);
 
   return [...new Set(names)];
 }
@@ -1174,7 +1123,7 @@ export async function getLocalKnownSymbolNames(
 export async function getLocalIndividualSymbol(
   buildId: string,
   symbolId: string,
-  packageId?: string
+  packageId?: string,
 ): Promise<SymbolRecord | null> {
   // If we have a packageId, look up in that package's symbols
   if (packageId) {
@@ -1197,7 +1146,7 @@ export async function getLocalIndividualSymbol(
 export async function getLocalSymbolByQualifiedName(
   buildId: string,
   packageId: string,
-  qualifiedName: string
+  qualifiedName: string,
 ): Promise<SymbolRecord | null> {
   const result = await getLocalPackageSymbols(buildId, packageId);
   if (!result?.symbols) {
@@ -1209,10 +1158,7 @@ export async function getLocalSymbolByQualifiedName(
   if (symbol) return symbol;
 
   // Try variations
-  const variations = [
-    qualifiedName.replace(/\//g, "."),
-    qualifiedName.replace(/\./g, "/"),
-  ];
+  const variations = [qualifiedName.replace(/\//g, "."), qualifiedName.replace(/\./g, "/")];
 
   for (const variation of variations) {
     symbol = result.symbols.find((s) => s.qualifiedName === variation);
@@ -1230,7 +1176,7 @@ export async function getLocalRoutingMap(
   buildId: string,
   packageId: string,
   displayName: string,
-  language: "python" | "typescript"
+  language: "python" | "typescript",
 ): Promise<RoutingMap | null> {
   const cacheKey = `local:${buildId}:${packageId}`;
   if (routingCache.has(cacheKey)) {
@@ -1246,7 +1192,11 @@ export async function getLocalRoutingMap(
   const slugs: RoutingMap["slugs"] = {};
   for (const symbol of result.symbols) {
     // Only include routable symbol kinds
-    if (!["class", "function", "interface", "module", "typeAlias", "enum", "method"].includes(symbol.kind)) {
+    if (
+      !["class", "function", "interface", "module", "typeAlias", "enum", "method"].includes(
+        symbol.kind,
+      )
+    ) {
       continue;
     }
 
@@ -1307,14 +1257,16 @@ function mapKindToPageType(kind: string): RoutingMap["slugs"][string]["pageType"
  */
 export async function getBuildIdForLanguage(
   language: "python" | "javascript",
-  project: string = "langchain"
+  project: string = "langchain",
 ): Promise<string | null> {
   const buildId = await (isProduction()
     ? getLatestBuildIdForLanguage(language, project)
     : getLocalLatestBuildId(language, project));
 
   if (!buildId) {
-    console.log(`[loader] getBuildIdForLanguage: No build ID found for ${project}/${language} (isProduction=${isProduction()})`);
+    console.log(
+      `[loader] getBuildIdForLanguage: No build ID found for ${project}/${language} (isProduction=${isProduction()})`,
+    );
   }
   return buildId;
 }
@@ -1323,9 +1275,7 @@ export async function getBuildIdForLanguage(
  * Get the manifest for a build (unified - works in prod and dev)
  */
 export async function getManifestData(buildId: string): Promise<Manifest | null> {
-  return isProduction()
-    ? getManifest(buildId)
-    : getLocalManifest(buildId);
+  return isProduction() ? getManifest(buildId) : getLocalManifest(buildId);
 }
 
 /**
@@ -1333,7 +1283,7 @@ export async function getManifestData(buildId: string): Promise<Manifest | null>
  */
 export async function getSymbols(
   buildId: string,
-  packageId: string
+  packageId: string,
 ): Promise<{ symbols: SymbolRecord[]; total: number } | null> {
   return isProduction()
     ? getPackageSymbols(buildId, packageId)
@@ -1346,7 +1296,7 @@ export async function getSymbols(
 export async function getSymbolData(
   buildId: string,
   packageId: string,
-  symbolPath: string
+  symbolPath: string,
 ): Promise<SymbolRecord | null> {
   return isProduction()
     ? getSymbolByPath(buildId, packageId, symbolPath)
@@ -1362,7 +1312,7 @@ export async function getRoutingMapData(
   buildId: string,
   packageId: string,
   displayName: string,
-  language: "python" | "typescript"
+  language: "python" | "typescript",
 ): Promise<RoutingMap | null> {
   return isProduction()
     ? getRoutingMap(buildId, packageId, language)
@@ -1375,7 +1325,7 @@ export async function getRoutingMapData(
  */
 export async function getKnownSymbolNamesData(
   buildId: string,
-  packageId: string
+  packageId: string,
 ): Promise<string[]> {
   return isProduction()
     ? getKnownSymbolNames(buildId, packageId)
@@ -1387,7 +1337,7 @@ export async function getKnownSymbolNamesData(
  */
 export async function getSymbolLookupIndexData(
   buildId: string,
-  packageId: string
+  packageId: string,
 ): Promise<SymbolLookupIndex | null> {
   return isProduction()
     ? getSymbolLookupIndex(buildId, packageId)
@@ -1401,7 +1351,7 @@ export async function getSymbolLookupIndexData(
 export async function getSymbolOptimized(
   buildId: string,
   packageId: string,
-  qualifiedName: string
+  qualifiedName: string,
 ): Promise<SymbolRecord | null> {
   return isProduction()
     ? getSymbolByQualifiedName(buildId, packageId, qualifiedName)
@@ -1418,7 +1368,7 @@ export async function getSymbolOptimized(
 export async function getIndividualSymbolData(
   buildId: string,
   symbolId: string,
-  packageId?: string
+  packageId?: string,
 ): Promise<SymbolRecord | null> {
   return isProduction()
     ? getIndividualSymbol(buildId, symbolId)
@@ -1432,34 +1382,12 @@ export async function getIndividualSymbolData(
 // Each shard is <500KB and can be CDN-cached, avoiding the 2MB Next.js cache limit.
 
 /**
- * Get the sharded lookup index manifest for a package.
- */
-async function getShardedLookupIndexManifest(
-  buildId: string,
-  packageId: string
-): Promise<ShardedLookupIndex | null> {
-  const cacheKey = `${buildId}:${packageId}:lookup-index`;
-  if (shardedLookupIndexCache.has(cacheKey)) {
-    return shardedLookupIndexCache.get(cacheKey)!;
-  }
-
-  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/lookup/index.json`;
-  const index = await fetchBlobJson<ShardedLookupIndex>(path);
-
-  if (index) {
-    shardedLookupIndexCache.set(cacheKey, index);
-  }
-
-  return index;
-}
-
-/**
  * Get a specific lookup shard.
  */
 async function getLookupShard(
   buildId: string,
   packageId: string,
-  shardKey: string
+  shardKey: string,
 ): Promise<LookupShard | null> {
   const cacheKey = `${buildId}:${packageId}:lookup:${shardKey}`;
   if (lookupShardCache.has(cacheKey)) {
@@ -1483,7 +1411,7 @@ async function getLookupShard(
 export async function getSymbolFromShardedLookup(
   buildId: string,
   packageId: string,
-  qualifiedName: string
+  qualifiedName: string,
 ): Promise<SymbolLookupEntry | null> {
   const shardKey = computeShardKey(qualifiedName);
   const shard = await getLookupShard(buildId, packageId, shardKey);
@@ -1500,7 +1428,7 @@ export async function getSymbolFromShardedLookup(
  */
 async function getShardedCatalogIndexManifest(
   buildId: string,
-  packageId: string
+  packageId: string,
 ): Promise<ShardedCatalogIndex | null> {
   const cacheKey = `${buildId}:${packageId}:catalog-index`;
   if (shardedCatalogIndexCache.has(cacheKey)) {
@@ -1523,7 +1451,7 @@ async function getShardedCatalogIndexManifest(
 async function getCatalogShard(
   buildId: string,
   packageId: string,
-  shardKey: string
+  shardKey: string,
 ): Promise<CatalogEntry[] | null> {
   const cacheKey = `${buildId}:${packageId}:catalog:${shardKey}`;
   if (catalogShardCache.has(cacheKey)) {
@@ -1546,7 +1474,7 @@ async function getCatalogShard(
  */
 export async function getCatalogEntries(
   buildId: string,
-  packageId: string
+  packageId: string,
 ): Promise<CatalogEntry[]> {
   if (isProduction()) {
     const manifest = await getShardedCatalogIndexManifest(buildId, packageId);
@@ -1556,7 +1484,7 @@ export async function getCatalogEntries(
 
     // Fetch all shards in parallel
     const shardPromises = manifest.shards.map((shardKey) =>
-      getCatalogShard(buildId, packageId, shardKey)
+      getCatalogShard(buildId, packageId, shardKey),
     );
     const shards = await Promise.all(shardPromises);
 
@@ -1578,7 +1506,9 @@ export async function getCatalogEntries(
 
     return result.symbols
       .filter((s) => s.tags?.visibility === "public")
-      .filter((s) => ["class", "function", "interface", "module", "typeAlias", "enum"].includes(s.kind))
+      .filter((s) =>
+        ["class", "function", "interface", "module", "typeAlias", "enum"].includes(s.kind),
+      )
       .map((s) => ({
         id: s.id,
         kind: s.kind,
@@ -1591,34 +1521,12 @@ export async function getCatalogEntries(
 }
 
 /**
- * Get the sharded changelog index manifest for a package.
- */
-async function getShardedChangelogIndexManifest(
-  buildId: string,
-  packageId: string
-): Promise<ShardedChangelogIndex | null> {
-  const cacheKey = `${buildId}:${packageId}:changelog-index`;
-  if (shardedChangelogIndexCache.has(cacheKey)) {
-    return shardedChangelogIndexCache.get(cacheKey)!;
-  }
-
-  const path = `${IR_BASE_PATH}/${buildId}/packages/${packageId}/changelog/index.json`;
-  const index = await fetchBlobJson<ShardedChangelogIndex>(path);
-
-  if (index) {
-    shardedChangelogIndexCache.set(cacheKey, index);
-  }
-
-  return index;
-}
-
-/**
  * Get a specific changelog shard.
  */
 async function getChangelogShard(
   buildId: string,
   packageId: string,
-  shardKey: string
+  shardKey: string,
 ): Promise<ChangelogShard | null> {
   const cacheKey = `${buildId}:${packageId}:changelog:${shardKey}`;
   if (changelogShardCache.has(cacheKey)) {
@@ -1642,7 +1550,7 @@ async function getChangelogShard(
 export async function getSymbolChangelog(
   buildId: string,
   packageId: string,
-  qualifiedName: string
+  qualifiedName: string,
 ): Promise<SymbolChangelogEntry[]> {
   const shardKey = computeShardKey(qualifiedName);
   const shard = await getChangelogShard(buildId, packageId, shardKey);
@@ -1661,7 +1569,7 @@ export async function getSymbolChangelog(
 export async function getSymbolViaShardedLookup(
   buildId: string,
   packageId: string,
-  qualifiedName: string
+  qualifiedName: string,
 ): Promise<SymbolRecord | null> {
   // First, look up the symbol ID from the sharded lookup index
   const entry = await getSymbolFromShardedLookup(buildId, packageId, qualifiedName);
@@ -1700,10 +1608,7 @@ export async function getSymbolViaShardedLookup(
  * - Attributes: Python class attributes
  * - Modules: navigation pages
  */
-const STATIC_GENERATION_KINDS = new Set([
-  "class",
-  "function",
-]);
+const STATIC_GENERATION_KINDS = new Set(["class", "function"]);
 
 /**
  * Slugify a package name for URLs
@@ -1711,11 +1616,7 @@ const STATIC_GENERATION_KINDS = new Set([
  * @example "langchain_core" -> "langchain-core"
  */
 function slugifyPackageName(packageName: string): string {
-  return packageName
-    .replace(/^@/, "")
-    .replace(/\//g, "-")
-    .replace(/_/g, "-")
-    .toLowerCase();
+  return packageName.replace(/^@/, "").replace(/\//g, "-").replace(/_/g, "-").toLowerCase();
 }
 
 /**
@@ -1730,7 +1631,7 @@ function slugifyPackageName(packageName: string): string {
  */
 export async function getStaticParamsForLanguage(
   language: "python" | "javascript",
-  project: string = "langchain"
+  project: string = "langchain",
 ): Promise<{ slug: string[] }[]> {
   const buildId = await getBuildIdForLanguage(language, project);
   if (!buildId) {
@@ -1781,9 +1682,7 @@ export async function getStaticParamsForLanguage(
       } else {
         // JavaScript: just use the qualified name as-is
         // For modules with paths like "agents/toolkits/aws_sfn", split by /
-        pathSegments = symbolPath.includes("/")
-          ? symbolPath.split("/")
-          : symbolPath.split(".");
+        pathSegments = symbolPath.includes("/") ? symbolPath.split("/") : symbolPath.split(".");
       }
 
       if (pathSegments.length > 0 && pathSegments[0]) {
@@ -1828,7 +1727,7 @@ interface SerializableCrossProjectPackage {
  * Returns serializable data structure for caching.
  */
 async function fetchCrossProjectPackagesData(
-  language: "python" | "javascript"
+  language: "python" | "javascript",
 ): Promise<[string, SerializableCrossProjectPackage][]> {
   const packages: [string, SerializableCrossProjectPackage][] = [];
 
@@ -1838,7 +1737,7 @@ async function fetchCrossProjectPackagesData(
 
   // Load packages from all enabled projects
   for (const project of enabledProjects) {
-    const variant = project.variants.find(v => v.language === language && v.enabled);
+    const variant = project.variants.find((v) => v.language === language && v.enabled);
     if (!variant) continue;
 
     const buildId = await getBuildIdForLanguage(language, project.id);
@@ -1854,7 +1753,10 @@ async function fetchCrossProjectPackagesData(
       if (pkg.ecosystem !== ecosystem) continue;
 
       // Get the module prefix (e.g., "langchain_core" from package name)
-      const modulePrefix = pkg.publishedName.replace(/-/g, "_").replace(/^@/, "").replace(/\//g, "_");
+      const modulePrefix = pkg.publishedName
+        .replace(/-/g, "_")
+        .replace(/^@/, "")
+        .replace(/\//g, "_");
 
       // Load known symbols for this package.
       //
@@ -1863,7 +1765,12 @@ async function fetchCrossProjectPackagesData(
       // exceed Next.js' 2MB data cache limit (leading to cache failures and
       // slow navigations). The routing map is significantly smaller and still
       // contains enough info for type-linking (public, routable symbols).
-      const routingMap = await getRoutingMapData(buildId, pkg.packageId, pkg.displayName, irLanguage);
+      const routingMap = await getRoutingMapData(
+        buildId,
+        pkg.packageId,
+        pkg.displayName,
+        irLanguage,
+      );
       const knownSymbols: [string, string][] = [];
       if (routingMap?.slugs) {
         for (const [slug, entry] of Object.entries(routingMap.slugs)) {
@@ -1903,7 +1810,7 @@ const getCachedCrossProjectPackagesData = unstable_cache(
   {
     revalidate: 3600, // 1 hour
     tags: ["cross-project-packages"],
-  }
+  },
 );
 
 /**
@@ -1918,7 +1825,7 @@ const getCachedCrossProjectPackagesData = unstable_cache(
  * on cold starts.
  */
 export async function getCrossProjectPackages(
-  language: "python" | "javascript"
+  language: "python" | "javascript",
 ): Promise<Map<string, CrossProjectPackage>> {
   // Check in-memory cache first (fastest path for same-request reuse)
   const cacheKey = language;
@@ -1955,7 +1862,7 @@ export async function getCrossProjectPackages(
 export async function resolveTypeReferenceUrl(
   typeName: string,
   qualifiedName: string | undefined,
-  language: "python" | "javascript"
+  language: "python" | "javascript",
 ): Promise<string | null> {
   if (!qualifiedName) return null;
 
@@ -1981,4 +1888,3 @@ export async function resolveTypeReferenceUrl(
 
   return null;
 }
-

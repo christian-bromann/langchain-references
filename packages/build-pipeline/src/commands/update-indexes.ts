@@ -44,10 +44,7 @@ interface ConfigFile {
 /**
  * Load package names from a config file.
  */
-async function loadPackageNamesFromConfig(
-  project: string,
-  language: string
-): Promise<string[]> {
+async function loadPackageNamesFromConfig(project: string, language: string): Promise<string[]> {
   const configDir = path.resolve(__dirname, "../../../../configs");
   const configFile = path.join(configDir, `${project}-${language}.json`);
 
@@ -71,95 +68,92 @@ async function main(): Promise<void> {
     .option("--language <lang>", `Language to update (python, javascript)`)
     .option("--all", "Update indexes for all project/language combinations")
     .option("--dry-run", "Print what would be updated without making changes")
-    .action(async (options: {
-      project?: string;
-      language?: string;
-      all?: boolean;
-      dryRun?: boolean;
-    }) => {
-      console.log(`\n🔄 Regenerating project package indexes`);
+    .action(
+      async (options: { project?: string; language?: string; all?: boolean; dryRun?: boolean }) => {
+        console.log(`\n🔄 Regenerating project package indexes`);
 
-      if (options.dryRun) {
-        console.log("   (dry-run mode - no actual updates)\n");
-      }
+        if (options.dryRun) {
+          console.log("   (dry-run mode - no actual updates)\n");
+        }
 
-      // Determine which project/language combinations to update
-      const combinations: Array<{ project: string; language: "python" | "javascript" }> = [];
+        // Determine which project/language combinations to update
+        const combinations: Array<{ project: string; language: "python" | "javascript" }> = [];
 
-      if (options.all) {
-        for (const project of PROJECTS) {
-          for (const language of LANGUAGES) {
-            combinations.push({ project, language });
+        if (options.all) {
+          for (const project of PROJECTS) {
+            for (const language of LANGUAGES) {
+              combinations.push({ project, language });
+            }
+          }
+        } else if (options.project && options.language) {
+          // Map typescript to javascript for the pointer system
+          const lang = options.language === "typescript" ? "javascript" : options.language;
+          combinations.push({
+            project: options.project,
+            language: lang as "python" | "javascript",
+          });
+        } else if (options.project) {
+          // Update both languages for the project
+          combinations.push({ project: options.project, language: "python" });
+          combinations.push({ project: options.project, language: "javascript" });
+        } else if (options.language) {
+          // Update all projects for the language
+          const lang = options.language === "typescript" ? "javascript" : options.language;
+          for (const project of PROJECTS) {
+            combinations.push({ project, language: lang as "python" | "javascript" });
+          }
+        } else {
+          console.error("❌ Must specify --project, --language, or --all");
+          process.exit(1);
+        }
+
+        console.log(`\n📦 Updating ${combinations.length} index(es):`);
+        for (const { project, language } of combinations) {
+          console.log(`   - ${project}-${language}`);
+        }
+        console.log("");
+
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const { project, language } of combinations) {
+          // Map javascript back to typescript for config file lookup
+          const configLanguage = language === "javascript" ? "typescript" : language;
+
+          console.log(`\n📋 ${project}-${language}:`);
+
+          // Load package names from config
+          const packageNames = await loadPackageNamesFromConfig(project, configLanguage);
+
+          if (packageNames.length === 0) {
+            console.log(`   ⚠️  No packages found, skipping`);
+            continue;
+          }
+
+          console.log(`   Found ${packageNames.length} packages in config`);
+
+          try {
+            await regenerateProjectPackageIndex(
+              project,
+              language,
+              packageNames,
+              options.dryRun ?? false,
+            );
+            successCount++;
+          } catch (error) {
+            console.error(`   ❌ Failed to update index: ${error}`);
+            failCount++;
           }
         }
-      } else if (options.project && options.language) {
-        // Map typescript to javascript for the pointer system
-        const lang = options.language === "typescript" ? "javascript" : options.language;
-        combinations.push({
-          project: options.project,
-          language: lang as "python" | "javascript",
-        });
-      } else if (options.project) {
-        // Update both languages for the project
-        combinations.push({ project: options.project, language: "python" });
-        combinations.push({ project: options.project, language: "javascript" });
-      } else if (options.language) {
-        // Update all projects for the language
-        const lang = options.language === "typescript" ? "javascript" : options.language;
-        for (const project of PROJECTS) {
-          combinations.push({ project, language: lang as "python" | "javascript" });
+
+        console.log(`\n${"─".repeat(40)}`);
+        console.log(`📊 Summary: ${successCount} succeeded, ${failCount} failed`);
+
+        if (failCount > 0) {
+          process.exit(1);
         }
-      } else {
-        console.error("❌ Must specify --project, --language, or --all");
-        process.exit(1);
-      }
-
-      console.log(`\n📦 Updating ${combinations.length} index(es):`);
-      for (const { project, language } of combinations) {
-        console.log(`   - ${project}-${language}`);
-      }
-      console.log("");
-
-      let successCount = 0;
-      let failCount = 0;
-
-      for (const { project, language } of combinations) {
-        // Map javascript back to typescript for config file lookup
-        const configLanguage = language === "javascript" ? "typescript" : language;
-        
-        console.log(`\n📋 ${project}-${language}:`);
-
-        // Load package names from config
-        const packageNames = await loadPackageNamesFromConfig(project, configLanguage);
-
-        if (packageNames.length === 0) {
-          console.log(`   ⚠️  No packages found, skipping`);
-          continue;
-        }
-
-        console.log(`   Found ${packageNames.length} packages in config`);
-
-        try {
-          await regenerateProjectPackageIndex(
-            project,
-            language,
-            packageNames,
-            options.dryRun ?? false
-          );
-          successCount++;
-        } catch (error) {
-          console.error(`   ❌ Failed to update index: ${error}`);
-          failCount++;
-        }
-      }
-
-      console.log(`\n${"─".repeat(40)}`);
-      console.log(`📊 Summary: ${successCount} succeeded, ${failCount} failed`);
-
-      if (failCount > 0) {
-        process.exit(1);
-      }
-    });
+      },
+    );
 
   await program.parseAsync(process.argv);
 }

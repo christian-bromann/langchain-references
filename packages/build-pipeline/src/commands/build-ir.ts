@@ -36,7 +36,6 @@ import { program } from "commander";
 import semver from "semver";
 import type {
   Manifest,
-  Package,
   SymbolRecord,
   VersioningConfig,
   PackageVersionIndex,
@@ -56,18 +55,13 @@ import {
   TypeScriptExtractor,
   TypeDocTransformer,
   createConfig,
-  type TypeDocProject
+  type TypeDocProject,
 } from "@langchain/extractor-typescript";
 
-import {
-  fetchTarball,
-  getLatestSha,
-  getCacheBaseDir,
-  type FetchResult,
-} from "../tarball.js";
+import { fetchTarball, getLatestSha, getCacheBaseDir, type FetchResult } from "../tarball.js";
 import { uploadIR } from "../upload.js";
 import { updatePointers } from "../pointers.js";
-import { checkForUpdates, type UpdateCheckResult } from "./check-updates.js";
+import { checkForUpdates } from "./check-updates.js";
 import { fetchDeployedChangelog, type DeployedChangelog } from "../changelog-fetcher.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -81,10 +75,7 @@ const LANGUAGES = ["python", "typescript"] as const;
 /**
  * Find config files matching the given project and/or language filters.
  */
-async function findConfigFiles(
-  projectFilter?: string,
-  languageFilter?: string
-): Promise<string[]> {
+async function findConfigFiles(projectFilter?: string, languageFilter?: string): Promise<string[]> {
   const configDir = path.resolve(__dirname, "../../../../configs");
   const files = await fs.readdir(configDir);
 
@@ -143,11 +134,7 @@ interface BuildConfig {
  * Generate a deterministic build ID for a single package.
  * Package-level build IDs allow independent package updates.
  */
-function generatePackageBuildId(
-  repo: string,
-  sha: string,
-  packageName: string
-): string {
+function generatePackageBuildId(repo: string, sha: string, packageName: string): string {
   const data = JSON.stringify({ repo, sha, packageName });
   return crypto.createHash("sha256").update(data).digest("hex").slice(0, 16);
 }
@@ -160,15 +147,12 @@ async function extractPython(
   packageName: string,
   outputPath: string,
   repo: string,
-  sha: string
+  sha: string,
 ): Promise<void> {
   console.log(`   🐍 Extracting: ${packageName}`);
 
   // Path to the Python extractor source
-  const extractorSrcPath = path.resolve(
-    __dirname,
-    "../../../../packages/extractor-python/src"
-  );
+  const extractorSrcPath = path.resolve(__dirname, "../../../../packages/extractor-python/src");
 
   const args = [
     "-m",
@@ -208,7 +192,7 @@ async function extractTypeScript(
   entryPoints?: string[],
   sourcePathPrefix?: string,
   /** Package's relative path within the repo (e.g., "libs/langchain-core") */
-  packageRepoPath?: string
+  packageRepoPath?: string,
 ): Promise<void> {
   console.log(`   📘 Extracting: ${packageName}`);
 
@@ -227,7 +211,7 @@ async function extractTypeScript(
   // Run extraction
   const extractor = new TypeScriptExtractor(config);
   const packageInfo = await extractor.getPackageInfo();
-  const rawJson = await extractor.extractToJson() as TypeDocProject;
+  const rawJson = (await extractor.extractToJson()) as TypeDocProject;
 
   // Transform to IR format
   // TypeDocTransformer expects the raw JSON object from extractToJson
@@ -238,7 +222,7 @@ async function extractTypeScript(
     sha,
     sourcePathPrefix,
     packagePath,
-    packageRepoPath
+    packageRepoPath,
   );
 
   const symbols = transformer.transform();
@@ -286,7 +270,7 @@ interface RunCommandOptions {
 function runCommand(
   command: string,
   args: string[],
-  options: RunCommandOptions = {}
+  options: RunCommandOptions = {},
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const proc = spawn(command, args, {
@@ -312,94 +296,11 @@ function runCommand(
 }
 
 /**
- * Create the manifest from extracted packages.
- */
-async function createManifest(
-  buildId: string,
-  config: BuildConfig,
-  fetchResult: FetchResult,
-  irOutputPath: string,
-  /** Optional filtered list of packages (defaults to all packages in config) */
-  packagesToProcess?: PackageConfig[]
-): Promise<Manifest> {
-  const packages: Package[] = [];
-  const pkgList = packagesToProcess || config.packages;
-
-  for (const pkgConfig of pkgList) {
-    const pkgOutputPath = path.join(irOutputPath, "packages", normalizePackageId(pkgConfig.name, config.language));
-
-    try {
-      const symbolsPath = path.join(pkgOutputPath, "symbols.json");
-      const symbolsContent = await fs.readFile(symbolsPath, "utf-8");
-      const data = JSON.parse(symbolsContent);
-      const symbols: SymbolRecord[] = data.symbols || [];
-
-      // Count by kind
-      const stats = {
-        classes: symbols.filter((s) => s.kind === "class").length,
-        functions: symbols.filter((s) => s.kind === "function").length,
-        modules: symbols.filter((s) => s.kind === "module").length,
-        types: symbols.filter((s) => ["interface", "typeAlias", "enum"].includes(s.kind)).length,
-        total: symbols.length,
-      };
-
-      const [owner, repoName] = config.repo.split("/");
-
-      packages.push({
-        packageId: normalizePackageId(pkgConfig.name, config.language),
-        displayName: pkgConfig.name,
-        publishedName: pkgConfig.name,
-        language: config.language,
-        ecosystem: config.language === "python" ? "python" : "javascript",
-        version: data.package?.version || "unknown",
-        repo: {
-          owner,
-          name: repoName,
-          sha: fetchResult.sha,
-          path: pkgConfig.path,
-        },
-        entry: {
-          kind: "module",
-          refId: symbols[0]?.id || "",
-        },
-        nav: {
-          rootGroups: ["Classes", "Functions", "Types"],
-        },
-        stats,
-      });
-    } catch (error) {
-      console.warn(`   ⚠️  Failed to process ${pkgConfig.name}: ${error}`);
-    }
-  }
-
-  return {
-    irVersion: "1.0",
-    build: {
-      buildId,
-      createdAt: new Date().toISOString(),
-      baseUrl: "https://reference.langchain.com",
-    },
-    project: config.project || "langchain",
-    sources: [
-      {
-        repo: config.repo,
-        sha: fetchResult.sha,
-        fetchedAt: fetchResult.fetchedAt,
-      },
-    ],
-    packages,
-  };
-}
-
-/**
  * Normalize package name to a valid ID.
  */
 function normalizePackageId(name: string, language: "python" | "typescript"): string {
   const ecosystem = language === "python" ? "py" : "js";
-  const normalized = name
-    .replace(/^@/, "")
-    .replace(/\//g, "_")
-    .replace(/-/g, "_");
+  const normalized = name.replace(/^@/, "").replace(/\//g, "_").replace(/-/g, "_");
   return `pkg_${ecosystem}_${normalized}`;
 }
 
@@ -433,11 +334,11 @@ interface CachedProjectVersions {
  */
 async function loadCachedVersions(
   project: string,
-  language: string
+  language: string,
 ): Promise<CachedProjectVersions | null> {
   const versionsFile = path.resolve(
     __dirname,
-    `../../../../configs/${project}-${language}-versions.json`
+    `../../../../configs/${project}-${language}-versions.json`,
   );
 
   try {
@@ -451,12 +352,10 @@ async function loadCachedVersions(
 /**
  * Get the package path for a specific version, handling pathOverrides.
  */
-function getPackagePathForVersion(
-  pkgConfig: PackageConfig,
-  version: string
-): string {
+function getPackagePathForVersion(pkgConfig: PackageConfig, version: string): string {
   // Access pathOverrides from the versioning config (may not be in types yet)
-  const pathOverrides = (pkgConfig.versioning as Record<string, unknown> | undefined)?.pathOverrides as Record<string, string> | undefined;
+  const pathOverrides = (pkgConfig.versioning as Record<string, unknown> | undefined)
+    ?.pathOverrides as Record<string, string> | undefined;
   if (!pathOverrides) {
     return pkgConfig.path;
   }
@@ -486,7 +385,7 @@ async function extractHistoricalVersion(
   pkgConfig: PackageConfig,
   sha: string,
   version: string,
-  cacheDir: string
+  cacheDir: string,
 ): Promise<{ symbolsPath: string; symbolCount: number } | null> {
   const packageId = normalizePackageId(pkgConfig.name, config.language);
   const versionCacheDir = path.join(cacheDir, "version-cache", packageId, sha);
@@ -545,7 +444,7 @@ async function extractHistoricalVersion(
         sha,
         pkgConfig.entryPoints,
         fetchResult.extractedPath,
-        versionPath  // Package's relative path in the repo
+        versionPath, // Package's relative path in the repo
       );
     }
 
@@ -602,7 +501,7 @@ async function loadSymbolNames(symbolsPath: string): Promise<Map<string, SymbolR
  */
 function computeSymbolIntroductions(
   versionSymbols: Map<string, Map<string, SymbolRecord>>, // version -> qualifiedName -> symbol
-  versions: CachedVersionEntry[] // newest first
+  versions: CachedVersionEntry[], // newest first
 ): Map<string, string> {
   const introductions = new Map<string, string>(); // qualifiedName -> version introduced
 
@@ -648,7 +547,9 @@ function normalizeSourcePath(sourcePath: string): string {
   }
 
   // Handle paths that go through tmp directory with ../
-  const tmpMatch = sourcePath.match(/(?:^|\/|\.\.\/)tmp\/.*?\/extracted\/(?:libs\/)?([^/]+)\/(.+)$/);
+  const tmpMatch = sourcePath.match(
+    /(?:^|\/|\.\.\/)tmp\/.*?\/extracted\/(?:libs\/)?([^/]+)\/(.+)$/,
+  );
   if (tmpMatch) {
     return tmpMatch[2];
   }
@@ -690,21 +591,25 @@ function createSnapshot(symbol: SymbolRecord): SymbolSnapshot {
   if (symbol.members && symbol.members.length > 0) {
     snapshot.members = symbol.members
       .filter((m) => m.visibility === "public")
-      .map((m): MemberSnapshot => ({
-        name: m.name,
-        kind: m.kind,
-        signature: m.name,
-        visibility: m.visibility || "public",
-      }));
+      .map(
+        (m): MemberSnapshot => ({
+          name: m.name,
+          kind: m.kind,
+          signature: m.name,
+          visibility: m.visibility || "public",
+        }),
+      );
   }
 
   if (symbol.params && symbol.params.length > 0) {
-    snapshot.params = symbol.params.map((p): ParamSnapshot => ({
-      name: p.name,
-      type: p.type,
-      required: p.required !== false,
-      default: p.default,
-    }));
+    snapshot.params = symbol.params.map(
+      (p): ParamSnapshot => ({
+        name: p.name,
+        type: p.type,
+        required: p.required !== false,
+        default: p.default,
+      }),
+    );
   }
 
   if (symbol.returns?.type) {
@@ -712,11 +617,13 @@ function createSnapshot(symbol: SymbolRecord): SymbolSnapshot {
   }
 
   if (symbol.typeParams && symbol.typeParams.length > 0) {
-    snapshot.typeParams = symbol.typeParams.map((tp): TypeParamSnapshot => ({
-      name: tp.name,
-      constraint: tp.constraint,
-      default: tp.default,
-    }));
+    snapshot.typeParams = symbol.typeParams.map(
+      (tp): TypeParamSnapshot => ({
+        name: tp.name,
+        constraint: tp.constraint,
+        default: tp.default,
+      }),
+    );
   }
 
   if (symbol.relations?.extends && symbol.relations.extends.length > 0) {
@@ -866,7 +773,7 @@ function compareSymbols(before: SymbolRecord, after: SymbolRecord): ChangeRecord
  */
 function computeVersionDeltas(
   versionSymbols: Map<string, Map<string, SymbolRecord>>,
-  versions: CachedVersionEntry[]
+  versions: CachedVersionEntry[],
 ): { deltas: VersionDelta[]; versionStats: Map<string, VersionStats> } {
   const deltas: VersionDelta[] = [];
   const versionStats = new Map<string, VersionStats>();
@@ -926,10 +833,9 @@ function computeVersionDeltas(
       }
     }
 
-    const breakingCount = modified.reduce(
-      (count, m) => count + m.changes.filter((c) => c.breaking).length,
-      0
-    ) + removed.length;
+    const breakingCount =
+      modified.reduce((count, m) => count + m.changes.filter((c) => c.breaking).length, 0) +
+      removed.length;
 
     const stats: VersionStats = {
       added: added.length,
@@ -959,335 +865,6 @@ function computeVersionDeltas(
 }
 
 /**
- * Build version history for packages using cached version data.
- *
- * INCREMENTAL BUILD: This function now fetches existing changelogs from blob storage
- * and only processes new versions that aren't already in the changelog. This dramatically
- * reduces CI time from ~2 hours to seconds when no new versions exist.
- */
-async function buildVersionHistory(
-  config: BuildConfig,
-  fetchResult: FetchResult,
-  irOutputPath: string,
-  forceFullRebuild?: boolean,
-  /** Optional filtered list of packages (defaults to all packages in config) */
-  packagesToProcess?: PackageConfig[]
-): Promise<void> {
-  const cachedVersions = await loadCachedVersions(
-    config.project || "langchain",
-    config.language === "python" ? "python" : "typescript"
-  );
-
-  if (!cachedVersions) {
-    console.log(`   ⚠️  No cached versions found. Run 'pnpm sync-versions' first.`);
-    return;
-  }
-
-  console.log(`   Using cached versions from ${cachedVersions.lastSynced.split("T")[0]}`);
-
-  const cacheDir = getCacheBaseDir();
-  const pkgList = packagesToProcess || config.packages;
-  const project = config.project || "langchain";
-  const language = config.language === "python" ? "python" : "javascript";
-
-  for (const pkgConfig of pkgList) {
-    if (!pkgConfig.versioning?.tagPattern) {
-      continue;
-    }
-
-    if (pkgConfig.versioning.enabled === false) {
-      continue;
-    }
-
-    const cachedPkg = cachedVersions.packages.find(
-      (p) => p.packageName === pkgConfig.name
-    );
-
-    if (!cachedPkg || cachedPkg.versions.length === 0) {
-      console.log(`   ⚠️  ${pkgConfig.name}: No cached versions. Run 'pnpm sync-versions'.`);
-      continue;
-    }
-
-    const minVersion = pkgConfig.versioning.minVersion;
-    const versions = minVersion
-      ? cachedPkg.versions.filter((v) => semver.gte(v.version, minVersion))
-      : cachedPkg.versions;
-
-    if (versions.length === 0) {
-      console.log(`   ⚠️  ${pkgConfig.name}: No versions >= ${minVersion}. Skipping.`);
-      continue;
-    }
-
-    const packageId = normalizePackageId(pkgConfig.name, config.language);
-    const pkgOutputDir = path.join(irOutputPath, "packages", packageId);
-    const latestSymbolsPath = path.join(pkgOutputDir, "symbols.json");
-
-    // Check if latest extraction succeeded before trying to build version history
-    try {
-      await fs.access(latestSymbolsPath);
-    } catch {
-      console.log(`      ⚠️ Skipping (latest extraction failed or package path not found)`);
-      continue;
-    }
-
-    // =========================================================================
-    // INCREMENTAL BUILD: Check for existing changelog in blob storage
-    // =========================================================================
-    let existingChangelog: DeployedChangelog | null = null;
-    let versionsToProcess: CachedVersionEntry[] = versions;
-
-    if (!forceFullRebuild) {
-      try {
-        existingChangelog = await fetchDeployedChangelog(project, language, packageId);
-
-        if (existingChangelog) {
-          // Find which versions we already have in the existing changelog
-          const existingVersionSet = new Set(
-            existingChangelog.changelog.history.map((h) => h.version)
-          );
-
-          // Filter to only versions NOT in the existing changelog
-          const newVersions = versions.filter((v) => !existingVersionSet.has(v.version));
-
-          if (newVersions.length === 0) {
-            // All versions are already processed - use existing changelog
-            console.log(`\n   📦 ${pkgConfig.name}: ⏭️  SKIPPED - changelog already exists in blob storage`);
-            console.log(`      Found ${existingChangelog.changelog.history.length} versions in existing changelog (latest: ${existingChangelog.versions.latest.version})`);
-
-            // Still need to annotate latest symbols and write files locally
-            await annotateSymbolsFromChangelog(latestSymbolsPath, existingChangelog.changelog, versions);
-
-            // Write existing changelog and versions to local output
-            await fs.writeFile(
-              path.join(pkgOutputDir, "changelog.json"),
-              JSON.stringify(existingChangelog.changelog, null, 2)
-            );
-            await fs.writeFile(
-              path.join(pkgOutputDir, "versions.json"),
-              JSON.stringify(existingChangelog.versions, null, 2)
-            );
-
-            console.log(`      ✓ Reused existing changelog, no extraction needed`);
-            continue;
-          }
-
-          // We have some new versions to process
-          console.log(`\n   📦 ${pkgConfig.name}: Found ${newVersions.length} new version(s) to process (existing: ${existingVersionSet.size})`);
-          versionsToProcess = newVersions;
-        } else {
-          console.log(`\n   📦 ${pkgConfig.name}: No existing changelog found, building full history (${versions.length} versions)`);
-        }
-      } catch (error) {
-        console.log(`\n   📦 ${pkgConfig.name}: Failed to fetch existing changelog (${error}), building full history`);
-      }
-    } else {
-      console.log(`\n   📦 ${pkgConfig.name}: Force full rebuild requested, processing ${versions.length} version(s)`);
-    }
-
-    const versionSymbols = new Map<string, Map<string, SymbolRecord>>();
-
-    // Always load latest symbols (we've already extracted them)
-    console.log(`      ✓ ${versions[0].version} (latest, already extracted)`);
-    try {
-      const latestSymbols = await loadSymbolNames(latestSymbolsPath);
-      versionSymbols.set(versions[0].version, latestSymbols);
-    } catch (error) {
-      console.warn(`      ⚠️ Failed to load latest symbols: ${error}`);
-      continue;
-    }
-
-    // If we have existing changelog and only processing new versions,
-    // we also need the previous version's symbols to compute the diff
-    let bridgeVersion: CachedVersionEntry | null = null;
-    if (existingChangelog && versionsToProcess.length > 0 && versionsToProcess.length < versions.length) {
-      // Find the most recent existing version (the one just before the oldest new version)
-      const oldestNewVersion = versionsToProcess[versionsToProcess.length - 1];
-      const oldestNewIdx = versions.findIndex((v) => v.version === oldestNewVersion.version);
-      if (oldestNewIdx < versions.length - 1) {
-        const previousVersion = versions[oldestNewIdx + 1];
-        bridgeVersion = previousVersion;
-
-        // Extract this one version to enable diffing
-        const result = await extractHistoricalVersion(
-          config,
-          pkgConfig,
-          previousVersion.sha,
-          previousVersion.version,
-          cacheDir
-        );
-        if (result) {
-          console.log(`      ✓ ${previousVersion.version} (previous version for diff, ${result.symbolCount} symbols)`);
-          const symbols = await loadSymbolNames(result.symbolsPath);
-          versionSymbols.set(previousVersion.version, symbols);
-        }
-      }
-    }
-
-    // Extract only the versions we need to process (excluding latest which is already done)
-    const versionsToExtract = versionsToProcess.filter((v) =>
-      v.version !== versions[0].version && !versionSymbols.has(v.version)
-    );
-
-    for (const v of versionsToExtract) {
-      const result = await extractHistoricalVersion(
-        config,
-        pkgConfig,
-        v.sha,
-        v.version,
-        cacheDir
-      );
-
-      if (result) {
-        console.log(`      ✓ ${v.version} (${result.symbolCount} symbols)`);
-        const symbols = await loadSymbolNames(result.symbolsPath);
-        versionSymbols.set(v.version, symbols);
-      }
-    }
-
-    // Compute deltas for only the versions we processed
-    // If we have existing changelog, merge the new deltas with existing history
-    let finalDeltas: VersionDelta[];
-    let allVersionStats: Map<string, VersionStats>;
-
-    if (existingChangelog && versionsToProcess.length < versions.length) {
-      // Incremental: compute deltas only for new versions + the bridge to existing
-      // IMPORTANT: Include the bridge version in the array so computeVersionDeltas
-      // can properly diff the oldest new version against the previous existing version.
-      // Without this, the oldest new version would have no "previous" and all its
-      // symbols would incorrectly be marked as "added".
-      const versionsForDelta = bridgeVersion
-        ? [...versionsToProcess, bridgeVersion]
-        : versionsToProcess;
-
-      const { deltas: newDeltas, versionStats: newStats } = computeVersionDeltas(
-        versionSymbols,
-        versionsForDelta
-      );
-
-      // Filter out the bridge version's delta (it's already in existing changelog)
-      // We only want the deltas for truly new versions
-      const filteredDeltas = bridgeVersion
-        ? newDeltas.filter((d) => d.version !== bridgeVersion?.version)
-        : newDeltas;
-
-      // Merge new deltas (newest first) with existing history
-      finalDeltas = [...filteredDeltas, ...existingChangelog.changelog.history];
-
-      // Merge version stats
-      allVersionStats = new Map<string, VersionStats>();
-      for (const [v, stats] of newStats) {
-        allVersionStats.set(v, stats);
-      }
-      // Add existing stats
-      for (const vInfo of existingChangelog.versions.versions) {
-        if (!allVersionStats.has(vInfo.version)) {
-          allVersionStats.set(vInfo.version, vInfo.stats);
-        }
-      }
-
-      console.log(`      ✓ Merged ${filteredDeltas.length} new delta(s) with ${existingChangelog.changelog.history.length} existing`);
-    } else {
-      // Full build: compute deltas for all versions
-      const { deltas, versionStats } = computeVersionDeltas(versionSymbols, versions);
-      finalDeltas = deltas;
-      allVersionStats = versionStats;
-    }
-
-    // Compute symbol introductions across ALL versions (for annotation)
-    const introductions = computeSymbolIntroductions(versionSymbols, versions);
-
-    try {
-      const symbolsContent = await fs.readFile(latestSymbolsPath, "utf-8");
-      const symbolsData = JSON.parse(symbolsContent);
-
-      const modifiedInMap = new Map<string, string[]>();
-      for (const delta of finalDeltas) {
-        for (const mod of delta.modified) {
-          const modVersions = modifiedInMap.get(mod.qualifiedName) || [];
-          modVersions.push(delta.version);
-          modifiedInMap.set(mod.qualifiedName, modVersions);
-        }
-      }
-
-      let annotatedCount = 0;
-      if (symbolsData.symbols && Array.isArray(symbolsData.symbols)) {
-        for (const symbol of symbolsData.symbols) {
-          const since = introductions.get(symbol.qualifiedName);
-          const modifiedIn = modifiedInMap.get(symbol.qualifiedName);
-
-          symbol.versionInfo = {
-            since: since || versions[0].version,
-            ...(modifiedIn && modifiedIn.length > 0 ? { modifiedIn } : {}),
-          };
-          annotatedCount++;
-        }
-
-        await fs.writeFile(latestSymbolsPath, JSON.stringify(symbolsData, null, 2));
-        console.log(`      ✓ Annotated ${annotatedCount} symbols with version info`);
-      }
-    } catch (error) {
-      console.warn(`      ⚠️ Failed to annotate symbols: ${error}`);
-    }
-
-    const changelog: PackageChangelog = {
-      packageId,
-      packageName: pkgConfig.displayName || pkgConfig.name,
-      generatedAt: new Date().toISOString(),
-      history: finalDeltas,
-    };
-
-    await fs.writeFile(
-      path.join(pkgOutputDir, "changelog.json"),
-      JSON.stringify(changelog, null, 2)
-    );
-
-    const totalAdded = finalDeltas.reduce((sum, d) => sum + d.added.length, 0);
-    const totalRemoved = finalDeltas.reduce((sum, d) => sum + d.removed.length, 0);
-    const totalModified = finalDeltas.reduce((sum, d) => sum + d.modified.length, 0);
-    console.log(`      ✓ Generated changelog: +${totalAdded} added, -${totalRemoved} removed, ~${totalModified} modified`);
-
-    const latestStats = allVersionStats.get(versions[0].version) || {
-      added: 0,
-      removed: 0,
-      modified: 0,
-      breaking: 0,
-      totalSymbols: versionSymbols.get(versions[0].version)?.size ?? 0,
-    };
-
-    const versionsIndex: PackageVersionIndex = {
-      packageId,
-      packageName: pkgConfig.displayName || pkgConfig.name,
-      latest: {
-        version: versions[0].version,
-        sha: versions[0].sha,
-        tag: versions[0].tag,
-        releaseDate: versions[0].releaseDate,
-        extractedAt: new Date().toISOString(),
-        stats: latestStats,
-      },
-      versions: versions.map((v) => ({
-        version: v.version,
-        sha: v.sha,
-        tag: v.tag,
-        releaseDate: v.releaseDate,
-        stats: allVersionStats.get(v.version) || {
-          added: 0,
-          removed: 0,
-          modified: 0,
-          breaking: 0,
-          totalSymbols: versionSymbols.get(v.version)?.size ?? 0,
-        },
-      })),
-    };
-
-    await fs.writeFile(
-      path.join(pkgOutputDir, "versions.json"),
-      JSON.stringify(versionsIndex, null, 2)
-    );
-  }
-}
-
-/**
  * Build version history for a single package with package-level build structure.
  * This is used when building a single package with --package flag.
  *
@@ -1300,11 +877,11 @@ async function buildVersionHistoryForPackage(
   fetchResult: FetchResult,
   irOutputPath: string,
   forceFullRebuild: boolean | undefined,
-  pkgConfig: PackageConfig
+  pkgConfig: PackageConfig,
 ): Promise<void> {
   const cachedVersions = await loadCachedVersions(
     config.project || "langchain",
-    config.language === "python" ? "python" : "typescript"
+    config.language === "python" ? "python" : "typescript",
   );
 
   if (!cachedVersions) {
@@ -1324,9 +901,7 @@ async function buildVersionHistoryForPackage(
     return;
   }
 
-  const cachedPkg = cachedVersions.packages.find(
-    (p) => p.packageName === pkgConfig.name
-  );
+  const cachedPkg = cachedVersions.packages.find((p) => p.packageName === pkgConfig.name);
 
   if (!cachedPkg || cachedPkg.versions.length === 0) {
     console.log(`   ⚠️  ${pkgConfig.name}: No cached versions. Run 'pnpm sync-versions'.`);
@@ -1369,40 +944,56 @@ async function buildVersionHistoryForPackage(
 
       if (existingChangelog) {
         const existingVersionSet = new Set(
-          existingChangelog.changelog.history.map((h) => h.version)
+          existingChangelog.changelog.history.map((h) => h.version),
         );
 
         const newVersions = versions.filter((v) => !existingVersionSet.has(v.version));
 
         if (newVersions.length === 0) {
-          console.log(`\n   📦 ${pkgConfig.name}: ⏭️  SKIPPED - changelog already exists in blob storage`);
-          console.log(`      Found ${existingChangelog.changelog.history.length} versions in existing changelog (latest: ${existingChangelog.versions.latest.version})`);
+          console.log(
+            `\n   📦 ${pkgConfig.name}: ⏭️  SKIPPED - changelog already exists in blob storage`,
+          );
+          console.log(
+            `      Found ${existingChangelog.changelog.history.length} versions in existing changelog (latest: ${existingChangelog.versions.latest.version})`,
+          );
 
-          await annotateSymbolsFromChangelog(latestSymbolsPath, existingChangelog.changelog, versions);
+          await annotateSymbolsFromChangelog(
+            latestSymbolsPath,
+            existingChangelog.changelog,
+            versions,
+          );
 
           await fs.writeFile(
             path.join(irOutputPath, "changelog.json"),
-            JSON.stringify(existingChangelog.changelog, null, 2)
+            JSON.stringify(existingChangelog.changelog, null, 2),
           );
           await fs.writeFile(
             path.join(irOutputPath, "versions.json"),
-            JSON.stringify(existingChangelog.versions, null, 2)
+            JSON.stringify(existingChangelog.versions, null, 2),
           );
 
           console.log(`      ✓ Reused existing changelog, no extraction needed`);
           return;
         }
 
-        console.log(`\n   📦 ${pkgConfig.name}: Found ${newVersions.length} new version(s) to process (existing: ${existingVersionSet.size})`);
+        console.log(
+          `\n   📦 ${pkgConfig.name}: Found ${newVersions.length} new version(s) to process (existing: ${existingVersionSet.size})`,
+        );
         versionsToProcess = newVersions;
       } else {
-        console.log(`\n   📦 ${pkgConfig.name}: No existing changelog found, building full history (${versions.length} versions)`);
+        console.log(
+          `\n   📦 ${pkgConfig.name}: No existing changelog found, building full history (${versions.length} versions)`,
+        );
       }
     } catch (error) {
-      console.log(`\n   📦 ${pkgConfig.name}: Failed to fetch existing changelog (${error}), building full history`);
+      console.log(
+        `\n   📦 ${pkgConfig.name}: Failed to fetch existing changelog (${error}), building full history`,
+      );
     }
   } else {
-    console.log(`\n   📦 ${pkgConfig.name}: Force full rebuild requested, processing ${versions.length} version(s)`);
+    console.log(
+      `\n   📦 ${pkgConfig.name}: Force full rebuild requested, processing ${versions.length} version(s)`,
+    );
   }
 
   const versionSymbols = new Map<string, Map<string, SymbolRecord>>();
@@ -1419,7 +1010,11 @@ async function buildVersionHistoryForPackage(
 
   // Handle incremental build bridging
   let bridgeVersion: CachedVersionEntry | null = null;
-  if (existingChangelog && versionsToProcess.length > 0 && versionsToProcess.length < versions.length) {
+  if (
+    existingChangelog &&
+    versionsToProcess.length > 0 &&
+    versionsToProcess.length < versions.length
+  ) {
     const oldestNewVersion = versionsToProcess[versionsToProcess.length - 1];
     const oldestNewIdx = versions.findIndex((v) => v.version === oldestNewVersion.version);
     if (oldestNewIdx < versions.length - 1) {
@@ -1431,10 +1026,12 @@ async function buildVersionHistoryForPackage(
         pkgConfig,
         previousVersion.sha,
         previousVersion.version,
-        cacheDir
+        cacheDir,
       );
       if (result) {
-        console.log(`      ✓ ${previousVersion.version} (previous version for diff, ${result.symbolCount} symbols)`);
+        console.log(
+          `      ✓ ${previousVersion.version} (previous version for diff, ${result.symbolCount} symbols)`,
+        );
         const symbols = await loadSymbolNames(result.symbolsPath);
         versionSymbols.set(previousVersion.version, symbols);
       }
@@ -1442,18 +1039,12 @@ async function buildVersionHistoryForPackage(
   }
 
   // Extract historical versions
-  const versionsToExtract = versionsToProcess.filter((v) =>
-    v.version !== versions[0].version && !versionSymbols.has(v.version)
+  const versionsToExtract = versionsToProcess.filter(
+    (v) => v.version !== versions[0].version && !versionSymbols.has(v.version),
   );
 
   for (const v of versionsToExtract) {
-    const result = await extractHistoricalVersion(
-      config,
-      pkgConfig,
-      v.sha,
-      v.version,
-      cacheDir
-    );
+    const result = await extractHistoricalVersion(config, pkgConfig, v.sha, v.version, cacheDir);
 
     if (result) {
       console.log(`      ✓ ${v.version} (${result.symbolCount} symbols)`);
@@ -1473,7 +1064,7 @@ async function buildVersionHistoryForPackage(
 
     const { deltas: newDeltas, versionStats: newStats } = computeVersionDeltas(
       versionSymbols,
-      versionsForDelta
+      versionsForDelta,
     );
 
     const filteredDeltas = bridgeVersion
@@ -1492,7 +1083,9 @@ async function buildVersionHistoryForPackage(
       }
     }
 
-    console.log(`      ✓ Merged ${filteredDeltas.length} new delta(s) with ${existingChangelog.changelog.history.length} existing`);
+    console.log(
+      `      ✓ Merged ${filteredDeltas.length} new delta(s) with ${existingChangelog.changelog.history.length} existing`,
+    );
   } else {
     const { deltas, versionStats } = computeVersionDeltas(versionSymbols, versions);
     finalDeltas = deltas;
@@ -1543,15 +1136,14 @@ async function buildVersionHistoryForPackage(
     history: finalDeltas,
   };
 
-  await fs.writeFile(
-    path.join(irOutputPath, "changelog.json"),
-    JSON.stringify(changelog, null, 2)
-  );
+  await fs.writeFile(path.join(irOutputPath, "changelog.json"), JSON.stringify(changelog, null, 2));
 
   const totalAdded = finalDeltas.reduce((sum, d) => sum + d.added.length, 0);
   const totalRemoved = finalDeltas.reduce((sum, d) => sum + d.removed.length, 0);
   const totalModified = finalDeltas.reduce((sum, d) => sum + d.modified.length, 0);
-  console.log(`      ✓ Generated changelog: +${totalAdded} added, -${totalRemoved} removed, ~${totalModified} modified`);
+  console.log(
+    `      ✓ Generated changelog: +${totalAdded} added, -${totalRemoved} removed, ~${totalModified} modified`,
+  );
 
   // Write versions index directly to build dir
   const latestStats = allVersionStats.get(versions[0].version) || {
@@ -1590,7 +1182,7 @@ async function buildVersionHistoryForPackage(
 
   await fs.writeFile(
     path.join(irOutputPath, "versions.json"),
-    JSON.stringify(versionsIndex, null, 2)
+    JSON.stringify(versionsIndex, null, 2),
   );
 }
 
@@ -1601,7 +1193,7 @@ async function buildVersionHistoryForPackage(
 async function annotateSymbolsFromChangelog(
   latestSymbolsPath: string,
   changelog: PackageChangelog,
-  versions: CachedVersionEntry[]
+  versions: CachedVersionEntry[],
 ): Promise<void> {
   try {
     const symbolsContent = await fs.readFile(latestSymbolsPath, "utf-8");
@@ -1642,7 +1234,9 @@ async function annotateSymbolsFromChangelog(
       }
 
       await fs.writeFile(latestSymbolsPath, JSON.stringify(symbolsData, null, 2));
-      console.log(`      ✓ Annotated ${annotatedCount} symbols with version info (from existing changelog)`);
+      console.log(
+        `      ✓ Annotated ${annotatedCount} symbols with version info (from existing changelog)`,
+      );
     }
   } catch (error) {
     console.warn(`      ⚠️ Failed to annotate symbols from changelog: ${error}`);
@@ -1666,7 +1260,7 @@ async function buildConfig(
     verbose?: boolean;
     /** Filter to build only a specific package by name */
     packageFilter?: string;
-  }
+  },
 ): Promise<{ buildId: string; success: boolean; skipped?: boolean }> {
   console.log(`\n📄 Loading config: ${configPath}`);
 
@@ -1675,7 +1269,8 @@ async function buildConfig(
 
   // Check if update is needed (unless --force is specified)
   // We can check updates even in local mode - we just need read access to blob storage
-  const hasBlobAccess = process.env.BLOB_BASE_URL || process.env.BLOB_URL || process.env.BLOB_READ_WRITE_TOKEN;
+  const hasBlobAccess =
+    process.env.BLOB_BASE_URL || process.env.BLOB_URL || process.env.BLOB_READ_WRITE_TOKEN;
 
   if (!opts.force && hasBlobAccess) {
     console.log(`\n🔍 Checking for updates...`);
@@ -1684,7 +1279,11 @@ async function buildConfig(
 
       if (!updateCheck.needsUpdate) {
         console.log(`\n⏭️  Skipping build: ${updateCheck.reason}`);
-        if (opts.verbose && updateCheck.source.latestReleaseDate && updateCheck.source.buildCreatedAt) {
+        if (
+          opts.verbose &&
+          updateCheck.source.latestReleaseDate &&
+          updateCheck.source.buildCreatedAt
+        ) {
           console.log(`   Latest release: ${updateCheck.source.latestReleaseDate.split("T")[0]}`);
           console.log(`   Build created:  ${updateCheck.source.buildCreatedAt.split("T")[0]}`);
         }
@@ -1724,19 +1323,19 @@ async function buildConfig(
   // All builds are now package-level builds
   // This allows independent package updates without affecting other packages
   const isSinglePackageBuild = packagesToProcess.length === 1;
-  
+
   // For single package builds, we set the build ID upfront
   // For multi-package builds, each package will get its own build ID
   let buildId: string;
   let irOutputPath: string;
-  
+
   if (isSinglePackageBuild) {
     // Single package build: ir-output/packages/{packageId}/{buildId}/
     const pkgConfig = packagesToProcess[0];
     const packageId = normalizePackageId(pkgConfig.name, config.language);
     buildId = generatePackageBuildId(config.repo, sha, pkgConfig.name);
     console.log(`🔑 Package Build ID: ${buildId} (for ${pkgConfig.name})`);
-    
+
     irOutputPath = path.resolve(opts.output, "packages", packageId, buildId);
     await fs.mkdir(irOutputPath, { recursive: true });
   } else {
@@ -1744,7 +1343,7 @@ async function buildConfig(
     // We'll create directories per-package during processing
     buildId = generatePackageBuildId(config.repo, sha, "multi");
     console.log(`🔑 Multi-package build (each package will have its own build ID)`);
-    
+
     irOutputPath = path.resolve(opts.output, "packages");
     await fs.mkdir(irOutputPath, { recursive: true });
   }
@@ -1773,7 +1372,8 @@ async function buildConfig(
   const failedPackages = new Set<string>();
 
   // Track package build info for package-level builds
-  const packageBuildInfo: Map<string, { packageId: string; buildId: string; outputDir: string }> = new Map();
+  const packageBuildInfo: Map<string, { packageId: string; buildId: string; outputDir: string }> =
+    new Map();
 
   for (const pkgConfig of packagesToProcess) {
     const packagePath = path.join(fetchResult.extractedPath, pkgConfig.path);
@@ -1796,7 +1396,11 @@ async function buildConfig(
     const outputPath = path.join(pkgOutputDir, "symbols.json");
 
     // Store build info for later use
-    packageBuildInfo.set(pkgConfig.name, { packageId, buildId: pkgBuildId, outputDir: pkgOutputDir });
+    packageBuildInfo.set(pkgConfig.name, {
+      packageId,
+      buildId: pkgBuildId,
+      outputDir: pkgOutputDir,
+    });
 
     // Check if package path exists before extraction
     try {
@@ -1819,7 +1423,7 @@ async function buildConfig(
           sha,
           pkgConfig.entryPoints,
           fetchResult.extractedPath,
-          pkgConfig.path  // Package's relative path in the repo
+          pkgConfig.path, // Package's relative path in the repo
         );
       }
       console.log(`   ✓ ${pkgConfig.name}`);
@@ -1837,7 +1441,7 @@ async function buildConfig(
 
   // Create package info files for each package
   console.log("\n📋 Creating package info files...");
-  
+
   for (const pkgConfig of packagesToProcess) {
     const pkgInfo = packageBuildInfo.get(pkgConfig.name);
     if (!pkgInfo) continue;
@@ -1880,9 +1484,15 @@ async function buildConfig(
     for (const pkgConfig of packagesToProcess) {
       const pkgInfo = packageBuildInfo.get(pkgConfig.name);
       if (!pkgInfo) continue;
-      
+
       // Version history goes directly in each package's build dir
-      await buildVersionHistoryForPackage(config, fetchResult, pkgInfo.outputDir, opts.fullRebuild, pkgConfig);
+      await buildVersionHistoryForPackage(
+        config,
+        fetchResult,
+        pkgInfo.outputDir,
+        opts.fullRebuild,
+        pkgConfig,
+      );
     }
   }
 
@@ -1898,7 +1508,7 @@ async function buildConfig(
     for (const pkgConfig of packagesToProcess) {
       const pkgInfo = packageBuildInfo.get(pkgConfig.name);
       if (!pkgInfo) continue;
-      
+
       console.log(`   Uploading ${pkgConfig.name}...`);
       await uploadIR({
         buildId: pkgInfo.buildId,
@@ -1915,17 +1525,17 @@ async function buildConfig(
   if (!opts.skipPointers) {
     console.log("\n🔄 Updating build pointers...");
     const ecosystem = config.language === "python" ? "python" : "javascript";
-    
+
     // Update pointers for each package individually (all builds are now package-level)
     for (const pkgConfig of packagesToProcess) {
       const pkgInfo = packageBuildInfo.get(pkgConfig.name);
       if (!pkgInfo) continue;
-      
+
       // Read package info for pointer data
       const packageInfoPath = path.join(pkgInfo.outputDir, "package.json");
       try {
         const packageInfo = JSON.parse(await fs.readFile(packageInfoPath, "utf-8"));
-        
+
         await updatePointers({
           buildId: pkgInfo.buildId,
           manifest: null as unknown as Manifest,
@@ -2061,7 +1671,9 @@ async function main() {
   }
 
   console.log("─".repeat(40));
-  console.log(`   Total: ${results.length} | Built: ${totalSuccess} | Skipped: ${totalSkipped} | Failed: ${totalFailed}`);
+  console.log(
+    `   Total: ${results.length} | Built: ${totalSuccess} | Skipped: ${totalSkipped} | Failed: ${totalFailed}`,
+  );
 
   if (totalFailed > 0) {
     process.exit(1);
@@ -2072,4 +1684,3 @@ main().catch((error) => {
   console.error("\n❌ Build failed:", error);
   process.exit(1);
 });
-

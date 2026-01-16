@@ -31,8 +31,7 @@ export const metadata: Metadata = {
     default: "LangChain Reference Docs",
     template: "%s | LangChain Reference",
   },
-  description:
-    "API reference documentation for LangChain, LangGraph, and LangSmith",
+  description: "API reference documentation for LangChain, LangGraph, and LangSmith",
   // Important: this base is used to resolve relative OG image URLs (e.g. `/og/...`).
   // While the custom domain isn't wired up, use the current Vercel deployment URL.
   metadataBase: new URL(BASE_URL),
@@ -78,19 +77,12 @@ export default function RootLayout({
       <head>
         {/* Preconnect to external resources for faster loading */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* DNS prefetch for GitHub (source links) */}
         <link rel="dns-prefetch" href="https://github.com" />
         {/* Preconnect to Vercel Blob storage if configured */}
         {process.env.NEXT_PUBLIC_BLOB_URL && (
-          <link
-            rel="preconnect"
-            href={new URL(process.env.NEXT_PUBLIC_BLOB_URL).origin}
-          />
+          <link rel="preconnect" href={new URL(process.env.NEXT_PUBLIC_BLOB_URL).origin} />
         )}
       </head>
       <body className="antialiased">
@@ -112,4 +104,3 @@ export default function RootLayout({
     </html>
   );
 }
-

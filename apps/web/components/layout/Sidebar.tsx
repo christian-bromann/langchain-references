@@ -55,10 +55,8 @@ export function Sidebar({ pythonPackages = [], javascriptPackages = [] }: Sideba
   // Then filter by project
   const packages = useMemo(() => {
     if (!currentProject) return languagePackages;
-    
-    return languagePackages.filter((pkg) => 
-      packageBelongsToProject(pkg.name, currentProject.id)
-    );
+
+    return languagePackages.filter((pkg) => packageBelongsToProject(pkg.name, currentProject.id));
   }, [languagePackages, currentProject]);
 
   return (
@@ -67,13 +65,10 @@ export function Sidebar({ pythonPackages = [], javascriptPackages = [] }: Sideba
       className="hidden lg:flex sticky top-header self-start shrink-0 flex-col border-r border-gray-100 dark:border-white/10 transition-transform duration-100"
       style={{
         height: "calc(100vh - var(--header-height))",
-        width: "var(--sidebar-width)"
+        width: "var(--sidebar-width)",
       }}
     >
-      <div
-        className="flex-1 pr-5 pt-5 pb-4 overflow-y-auto scrollbar-hide"
-        id="navigation-items"
-      >
+      <div className="flex-1 pr-5 pt-5 pb-4 overflow-y-auto scrollbar-hide" id="navigation-items">
         {/* Language Dropdown */}
         <div className="pl-4 mb-6">
           <LanguageDropdown />
@@ -85,9 +80,7 @@ export function Sidebar({ pythonPackages = [], javascriptPackages = [] }: Sideba
             <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               {currentProject.displayName}
             </h4>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              API Reference
-            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">API Reference</p>
           </div>
         )}
 
@@ -154,7 +147,7 @@ function PackageSection({
         className={cn(
           "sidebar-group-header flex items-center gap-2.5 pl-4",
           hasItems ? "mb-3.5 lg:mb-2.5" : "mb-0",
-          "hover:opacity-80 transition-opacity"
+          "hover:opacity-80 transition-opacity",
         )}
       >
         <h5
@@ -163,7 +156,7 @@ function PackageSection({
             "font-semibold text-xs uppercase tracking-wide",
             isPackageActive
               ? "text-primary dark:text-primary-light"
-              : "text-gray-700 dark:text-gray-300"
+              : "text-gray-700 dark:text-gray-300",
           )}
         >
           {pkg.name}
@@ -210,20 +203,18 @@ function NavItemLink({
             "group flex items-center pr-3 py-1.5 cursor-pointer gap-x-3 text-left rounded-xl w-full",
             "-outline-offset-1",
             "hover:bg-gray-600/5 dark:hover:bg-gray-200/5",
-            "text-gray-700 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300"
+            "text-gray-700 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300",
           )}
           style={{ paddingLeft }}
           aria-label={`Toggle ${item.name} section`}
           aria-expanded={isOpen}
         >
-          <div className="flex-1 flex items-center gap-2 justify-start">
-            {item.name}
-          </div>
+          <div className="flex-1 flex items-center gap-2 justify-start">{item.name}</div>
           <ChevronRight
             className={cn(
               "w-2 h-5 -mr-0.5 transition-transform",
               "text-gray-400 group-hover:text-gray-600 dark:text-gray-600 dark:group-hover:text-gray-400",
-              isOpen && "rotate-90"
+              isOpen && "rotate-90",
             )}
             strokeWidth={1.5}
           />
@@ -246,11 +237,7 @@ function NavItemLink({
   }
 
   return (
-    <li
-      id={item.path}
-      className="relative scroll-m-4 first:scroll-m-20"
-      data-title={item.name}
-    >
+    <li id={item.path} className="relative scroll-m-4 first:scroll-m-20" data-title={item.name}>
       <Link
         href={item.path}
         className={cn(
@@ -258,7 +245,7 @@ function NavItemLink({
           "-outline-offset-1",
           isActive
             ? "bg-primary/10 text-primary dark:text-primary-light dark:bg-primary-light/10 font-medium"
-            : "hover:bg-gray-600/5 dark:hover:bg-gray-200/5 text-gray-700 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300"
+            : "hover:bg-gray-600/5 dark:hover:bg-gray-200/5 text-gray-700 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300",
         )}
         style={{ paddingLeft }}
       >
@@ -269,4 +256,3 @@ function NavItemLink({
     </li>
   );
 }
-

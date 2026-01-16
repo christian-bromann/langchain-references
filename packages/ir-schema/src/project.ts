@@ -48,5 +48,3 @@ export interface ProjectVariant {
   /** Whether this variant is enabled */
   enabled: boolean;
 }
-
-

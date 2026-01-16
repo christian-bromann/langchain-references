@@ -27,13 +27,14 @@
 
 Extend the existing reference documentation platform to support multiple LangChain ecosystem projects, each with Python and JavaScript variants:
 
-- **LangChain** (Python & JavaScript) — *Already implemented*
-- **LangGraph** (Python & JavaScript) — *To be added*
-- **DeepAgent** (Python & JavaScript) — *To be added*
+- **LangChain** (Python & JavaScript) — _Already implemented_
+- **LangGraph** (Python & JavaScript) — _To be added_
+- **DeepAgent** (Python & JavaScript) — _To be added_
 
 ### 1.2 Scope
 
 **In Scope (v1)**:
+
 - Project navigation tabs in the header
 - Separate configuration files per project
 - Shared routing infrastructure supporting multiple projects
@@ -42,19 +43,20 @@ Extend the existing reference documentation platform to support multiple LangCha
 - Search scoped to current project and language
 
 **Out of Scope (v1)**:
+
 - Cross-project search
 - Project comparison views
 - Version history across projects
 
 ### 1.3 Project Repositories
 
-| Project | Language | Repository |
-|---------|----------|------------|
-| LangChain | Python | `langchain-ai/langchain` |
-| LangChain | JavaScript | `langchain-ai/langchainjs` |
-| LangGraph | Python | `langchain-ai/langgraph` |
-| LangGraph | JavaScript | `langchain-ai/langgraphjs` |
-| DeepAgent | Python | `langchain-ai/deepagents` |
+| Project   | Language   | Repository                  |
+| --------- | ---------- | --------------------------- |
+| LangChain | Python     | `langchain-ai/langchain`    |
+| LangChain | JavaScript | `langchain-ai/langchainjs`  |
+| LangGraph | Python     | `langchain-ai/langgraph`    |
+| LangGraph | JavaScript | `langchain-ai/langgraphjs`  |
+| DeepAgent | Python     | `langchain-ai/deepagents`   |
 | DeepAgent | JavaScript | `langchain-ai/deepagentsjs` |
 
 ---
@@ -69,22 +71,22 @@ Extend the existing reference documentation platform to support multiple LangCha
 export interface ProjectConfig {
   /** Unique project identifier (e.g., "langchain", "langgraph", "deepagent") */
   id: string;
-  
+
   /** Display name for UI */
   displayName: string;
-  
+
   /** Short description */
   description: string;
-  
+
   /** URL slug for routing (e.g., "/langchain", "/langgraph") */
   slug: string;
-  
+
   /** Available language variants */
   variants: ProjectVariant[];
-  
+
   /** Navigation order (lower = first) */
   order: number;
-  
+
   /** Whether project is enabled */
   enabled: boolean;
 }
@@ -92,13 +94,13 @@ export interface ProjectConfig {
 export interface ProjectVariant {
   /** Language identifier */
   language: "python" | "javascript";
-  
+
   /** GitHub repository */
   repo: string;
-  
+
   /** Path to configuration file */
   configPath: string;
-  
+
   /** Whether this variant is enabled */
   enabled: boolean;
 }
@@ -181,15 +183,15 @@ export const PROJECTS: ProjectConfig[] = [
 ];
 
 export function getEnabledProjects(): ProjectConfig[] {
-  return PROJECTS.filter(p => p.enabled).sort((a, b) => a.order - b.order);
+  return PROJECTS.filter((p) => p.enabled).sort((a, b) => a.order - b.order);
 }
 
 export function getProjectBySlug(slug: string): ProjectConfig | undefined {
-  return PROJECTS.find(p => p.slug === slug && p.enabled);
+  return PROJECTS.find((p) => p.slug === slug && p.enabled);
 }
 
 export function getProjectById(id: string): ProjectConfig | undefined {
-  return PROJECTS.find(p => p.id === id && p.enabled);
+  return PROJECTS.find((p) => p.id === id && p.enabled);
 }
 ```
 
@@ -231,11 +233,11 @@ import { cn } from "@/lib/utils/cn";
 export function Header() {
   const pathname = usePathname();
   const projects = getEnabledProjects();
-  
+
   // Determine current project and language from pathname
   const currentProject = getCurrentProject(pathname, projects);
   const currentLanguage = getCurrentLanguage(pathname);
-  
+
   // ... existing state and handlers ...
 
   return (
@@ -245,9 +247,9 @@ export function Header() {
         <div className="flex items-center lg:px-4 h-14 min-w-0 px-4">
           {/* ... existing header content ... */}
         </div>
-        
+
         {/* Project Navigation Tabs (NEW) */}
-        <ProjectTabs 
+        <ProjectTabs
           projects={projects}
           currentProject={currentProject}
           currentLanguage={currentLanguage}
@@ -263,21 +265,21 @@ export function Header() {
 // Helper to extract current project from pathname
 function getCurrentProject(pathname: string, projects: ProjectConfig[]): ProjectConfig | null {
   // Match patterns like /python/langchain/... or /javascript/langgraph/...
-  const segments = pathname.split('/').filter(Boolean);
-  
+  const segments = pathname.split("/").filter(Boolean);
+
   if (segments.length >= 2) {
     const [lang, projectSlug] = segments;
-    if (lang === 'python' || lang === 'javascript') {
-      return projects.find(p => p.slug === projectSlug) || projects[0];
+    if (lang === "python" || lang === "javascript") {
+      return projects.find((p) => p.slug === projectSlug) || projects[0];
     }
   }
-  
+
   return projects[0]; // Default to first project
 }
 
 function getCurrentLanguage(pathname: string): "python" | "javascript" {
-  if (pathname.startsWith('/javascript')) return 'javascript';
-  return 'python';
+  if (pathname.startsWith("/javascript")) return "javascript";
+  return "python";
 }
 ```
 
@@ -298,18 +300,14 @@ interface ProjectTabsProps {
   currentLanguage: "python" | "javascript";
 }
 
-export function ProjectTabs({ 
-  projects, 
-  currentProject, 
-  currentLanguage 
-}: ProjectTabsProps) {
+export function ProjectTabs({ projects, currentProject, currentLanguage }: ProjectTabsProps) {
   return (
     <div className="hidden lg:flex px-4 h-10 border-t border-gray-200/50 dark:border-gray-800/50">
       <nav className="h-full flex text-sm gap-x-6" aria-label="Project navigation">
         {projects.map((project) => {
           const isActive = currentProject?.id === project.id;
           const href = `/${currentLanguage}/${project.slug}`;
-          
+
           return (
             <Link
               key={project.id}
@@ -318,18 +316,18 @@ export function ProjectTabs({
                 "group relative h-full gap-2 flex items-center font-medium transition-colors",
                 isActive
                   ? "text-primary dark:text-primary-light [text-shadow:-0.2px_0_0_currentColor,0.2px_0_0_currentColor]"
-                  : "text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-gray-100"
+                  : "text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-gray-100",
               )}
             >
               {project.displayName}
-              
+
               {/* Active indicator */}
               <div
                 className={cn(
                   "absolute bottom-0 w-full left-0 h-px transition-colors",
                   isActive
                     ? "bg-primary dark:bg-primary-light"
-                    : "bg-transparent group-hover:bg-gray-200 dark:group-hover:bg-gray-700"
+                    : "bg-transparent group-hover:bg-gray-200 dark:group-hover:bg-gray-700",
                 )}
               />
             </Link>
@@ -430,7 +428,7 @@ export function MobileProjectMenu({
                                   "flex items-center justify-between px-4 py-4",
                                   isActive
                                     ? "bg-primary/5 text-primary dark:text-primary-light"
-                                    : "text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900"
+                                    : "text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900",
                                 )}
                               >
                                 <div>
@@ -500,55 +498,47 @@ interface PageProps {
 
 export default async function ProjectReferencePage({ params }: PageProps) {
   const { lang, project, slug } = await params;
-  
+
   // Validate language
   if (!["python", "javascript"].includes(lang)) {
     notFound();
   }
-  
+
   // Validate project
   const projectConfig = getProjectBySlug(project);
   if (!projectConfig) {
     notFound();
   }
-  
+
   // Check if the language variant is enabled for this project
-  const variant = projectConfig.variants.find(
-    v => v.language === lang && v.enabled
-  );
+  const variant = projectConfig.variants.find((v) => v.language === lang && v.enabled);
   if (!variant) {
     notFound();
   }
-  
+
   // Load routing map for this project/language combination
   const routing = await getRoutingMap(lang, project);
   if (!routing) {
     notFound();
   }
-  
+
   // Find the symbol entry
   const slugKey = slug.join("/");
   const entry = routing.slugs[slugKey];
   if (!entry) {
     notFound();
   }
-  
+
   // Load the symbol
   const symbol = await getSymbol(entry.refId);
   if (!symbol) {
     notFound();
   }
-  
+
   // Render based on page type
   const PageComponent = getPageComponent(entry.pageType);
-  
-  return (
-    <PageComponent 
-      symbol={symbol} 
-      project={projectConfig}
-      language={lang}
-    />
-  );
+
+  return <PageComponent symbol={symbol} project={projectConfig} language={lang} />;
 }
 
 function getPageComponent(pageType: string) {
@@ -568,11 +558,11 @@ function getPageComponent(pageType: string) {
 export async function generateMetadata({ params }: PageProps) {
   const { lang, project, slug } = await params;
   const projectConfig = getProjectBySlug(project);
-  
+
   if (!projectConfig) {
     return { title: "Not Found" };
   }
-  
+
   return {
     title: `${slug.join(" / ")} | ${projectConfig.displayName} ${lang === "python" ? "Python" : "JavaScript"} API Reference`,
     description: `API documentation for ${projectConfig.displayName}`,
@@ -602,36 +592,32 @@ interface PageProps {
 
 export default async function ProjectIndexPage({ params }: PageProps) {
   const { lang, project } = await params;
-  
+
   const projectConfig = getProjectBySlug(project);
   if (!projectConfig) {
     notFound();
   }
-  
+
   const manifest = await getManifest(lang, project);
   if (!manifest) {
     notFound();
   }
-  
+
   return (
     <div className="max-w-4xl mx-auto px-8 py-12">
       <header className="mb-12">
         <h1 className="text-4xl font-bold font-heading text-gray-900 dark:text-gray-100">
           {projectConfig.displayName}
         </h1>
-        <p className="mt-4 text-xl text-gray-600 dark:text-gray-400">
-          {projectConfig.description}
-        </p>
+        <p className="mt-4 text-xl text-gray-600 dark:text-gray-400">{projectConfig.description}</p>
         <div className="mt-4 flex items-center gap-4">
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary">
             {lang === "python" ? "Python" : "JavaScript"}
           </span>
-          <span className="text-sm text-gray-500">
-            {manifest.packages.length} packages
-          </span>
+          <span className="text-sm text-gray-500">{manifest.packages.length} packages</span>
         </div>
       </header>
-      
+
       <PackageList packages={manifest.packages} lang={lang} project={project} />
     </div>
   );
@@ -650,24 +636,21 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
+
   // Redirect old /python/... and /javascript/... URLs to include default project
   // e.g., /python/classes/ChatOpenAI → /python/langchain/classes/ChatOpenAI
   const legacyPatterns = [
     /^\/python\/(classes|functions|modules)\//,
     /^\/javascript\/(classes|functions|interfaces)\//,
   ];
-  
+
   for (const pattern of legacyPatterns) {
     if (pattern.test(pathname)) {
-      const newPath = pathname.replace(
-        /^\/(python|javascript)\//,
-        "/$1/langchain/"
-      );
+      const newPath = pathname.replace(/^\/(python|javascript)\//, "/$1/langchain/");
       return NextResponse.redirect(new URL(newPath, request.url), 301);
     }
   }
-  
+
   return NextResponse.next();
 }
 
@@ -891,15 +874,15 @@ async function main() {
     .parse();
 
   const opts = program.opts<BuildOptions>();
-  
+
   // Determine which builds to run
   const builds = determineBuildMatrix(opts);
-  
+
   console.log(`🔧 Building ${builds.length} configuration(s)...`);
-  
+
   for (const build of builds) {
     console.log(`\n📦 Building ${build.project} (${build.language})...`);
-    
+
     try {
       await buildProject(build.configPath, opts.dryRun);
       console.log(`✅ ${build.project} (${build.language}) complete`);
@@ -908,7 +891,7 @@ async function main() {
       if (!opts.all) throw error;
     }
   }
-  
+
   console.log("\n🎉 All builds complete!");
 }
 
@@ -920,15 +903,15 @@ interface BuildTarget {
 
 function determineBuildMatrix(opts: BuildOptions): BuildTarget[] {
   const builds: BuildTarget[] = [];
-  
+
   for (const project of PROJECTS) {
     if (opts.project && project.id !== opts.project) continue;
     if (!project.enabled) continue;
-    
+
     for (const variant of project.variants) {
       if (opts.language && variant.language !== opts.language) continue;
       if (!variant.enabled) continue;
-      
+
       builds.push({
         project: project.id,
         language: variant.language,
@@ -936,7 +919,7 @@ function determineBuildMatrix(opts: BuildOptions): BuildTarget[] {
       });
     }
   }
-  
+
   return builds;
 }
 
@@ -958,7 +941,7 @@ on:
   workflow_dispatch:
     inputs:
       project:
-        description: 'Project to build'
+        description: "Project to build"
         required: true
         type: choice
         options:
@@ -967,7 +950,7 @@ on:
           - deepagent
           - all
       language:
-        description: 'Language to build'
+        description: "Language to build"
         required: true
         type: choice
         options:
@@ -975,7 +958,7 @@ on:
           - typescript
           - both
       sha:
-        description: 'Git SHA (leave empty for latest main)'
+        description: "Git SHA (leave empty for latest main)"
         required: false
         type: string
 
@@ -989,25 +972,25 @@ jobs:
         run: |
           # Build matrix based on inputs
           matrix=[]
-          
+
           if [ "${{ inputs.project }}" == "all" ]; then
             projects=("langchain" "langgraph" "deepagent")
           else
             projects=("${{ inputs.project }}")
           fi
-          
+
           if [ "${{ inputs.language }}" == "both" ]; then
             languages=("python" "typescript")
           else
             languages=("${{ inputs.language }}")
           fi
-          
+
           for project in "${projects[@]}"; do
             for lang in "${languages[@]}"; do
               matrix+=("{\"project\":\"$project\",\"language\":\"$lang\"}")
             done
           done
-          
+
           echo "matrix={\"include\":[$(IFS=,; echo "${matrix[*]}")]}" >> $GITHUB_OUTPUT
 
   build:
@@ -1018,27 +1001,27 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          
+          node-version: "20"
+
       - uses: pnpm/action-setup@v2
         with:
           version: 9
-          
+
       - if: matrix.language == 'python'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          
+          python-version: "3.11"
+
       - name: Install dependencies
         run: |
           pnpm install
           if [ "${{ matrix.language }}" == "python" ]; then
             pip install griffe
           fi
-          
+
       - name: Build IR
         run: |
           pnpm build:ir \
@@ -1105,7 +1088,7 @@ interface SidebarProps {
 
 export function Sidebar({ project, language, packages }: SidebarProps) {
   const pathname = usePathname();
-  
+
   return (
     <aside className="hidden lg:block w-72 flex-shrink-0 border-r border-gray-200 dark:border-gray-800">
       <div className="sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto py-6 px-4">
@@ -1118,7 +1101,7 @@ export function Sidebar({ project, language, packages }: SidebarProps) {
             {language === "python" ? "Python" : "JavaScript"} API Reference
           </p>
         </div>
-        
+
         {/* Package Navigation */}
         <nav className="space-y-2">
           {packages.map((pkg) => (
@@ -1143,15 +1126,10 @@ interface PackageSectionProps {
   isActive: boolean;
 }
 
-function PackageSection({ 
-  package: pkg, 
-  project, 
-  language, 
-  isActive 
-}: PackageSectionProps) {
+function PackageSection({ package: pkg, project, language, isActive }: PackageSectionProps) {
   const [expanded, setExpanded] = useState(isActive);
   const basePath = `/${language}/${project.slug}/${pkg.packageId}`;
-  
+
   return (
     <div className="space-y-1">
       <button
@@ -1160,20 +1138,16 @@ function PackageSection({
           "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors",
           isActive
             ? "bg-primary/10 text-primary dark:text-primary-light"
-            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800",
         )}
       >
         <div className="flex items-center gap-2">
           <Package className="h-4 w-4" />
           <span>{pkg.displayName}</span>
         </div>
-        {expanded ? (
-          <ChevronDown className="h-4 w-4" />
-        ) : (
-          <ChevronRight className="h-4 w-4" />
-        )}
+        {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
       </button>
-      
+
       {expanded && (
         <ul className="ml-4 pl-4 border-l border-gray-200 dark:border-gray-700 space-y-1">
           <li>
@@ -1231,11 +1205,7 @@ interface ProjectBreadcrumbsProps {
   }>;
 }
 
-export function ProjectBreadcrumbs({ 
-  project, 
-  language, 
-  items 
-}: ProjectBreadcrumbsProps) {
+export function ProjectBreadcrumbs({ project, language, items }: ProjectBreadcrumbsProps) {
   const allItems = [
     { label: project.displayName, href: `/${language}/${project.slug}` },
     { label: language === "python" ? "Python" : "JavaScript" },
@@ -1248,10 +1218,7 @@ export function ProjectBreadcrumbs({
         <span key={index} className="flex items-center">
           {index > 0 && <ChevronRight className="h-4 w-4 mx-2" />}
           {item.href ? (
-            <Link 
-              href={item.href}
-              className="hover:text-primary dark:hover:text-primary-light"
-            >
+            <Link href={item.href} className="hover:text-primary dark:hover:text-primary-light">
               {item.label}
             </Link>
           ) : (
@@ -1278,22 +1245,22 @@ interface SearchModalProps {
   currentLanguage?: "python" | "javascript";
 }
 
-export function SearchModal({ 
-  open, 
+export function SearchModal({
+  open,
   onOpenChange,
   currentProject,
   currentLanguage = "python",
 }: SearchModalProps) {
   // ... existing state ...
   const [projectFilter, setProjectFilter] = useState(currentProject || "all");
-  
+
   // Search with project filter
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
       return;
     }
-    
+
     const timer = setTimeout(async () => {
       setLoading(true);
       const searchResults = await search(query, currentLanguage, {
@@ -1303,10 +1270,10 @@ export function SearchModal({
       setSelectedIndex(0);
       setLoading(false);
     }, 150);
-    
+
     return () => clearTimeout(timer);
   }, [query, currentLanguage, projectFilter]);
-  
+
   // ... rest of component with project filter dropdown ...
 }
 ```
@@ -1385,27 +1352,27 @@ export function SearchModal({
 
 ### 10.1 Functional Requirements
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| F1 | Project tabs visible in header navigation | P0 |
-| F2 | Clicking project tab navigates to that project's docs | P0 |
-| F3 | Current project tab is visually highlighted | P0 |
-| F4 | URL structure supports `/[lang]/[project]/[...slug]` | P0 |
-| F5 | Sidebar shows packages for current project only | P0 |
-| F6 | Search results are scoped to current project | P0 |
-| F7 | Breadcrumbs include project name | P1 |
-| F8 | Mobile project navigation via menu | P1 |
-| F9 | Build pipeline supports all three projects | P0 |
-| F10 | Backwards compatibility for existing URLs | P1 |
+| ID  | Requirement                                           | Priority |
+| --- | ----------------------------------------------------- | -------- |
+| F1  | Project tabs visible in header navigation             | P0       |
+| F2  | Clicking project tab navigates to that project's docs | P0       |
+| F3  | Current project tab is visually highlighted           | P0       |
+| F4  | URL structure supports `/[lang]/[project]/[...slug]`  | P0       |
+| F5  | Sidebar shows packages for current project only       | P0       |
+| F6  | Search results are scoped to current project          | P0       |
+| F7  | Breadcrumbs include project name                      | P1       |
+| F8  | Mobile project navigation via menu                    | P1       |
+| F9  | Build pipeline supports all three projects            | P0       |
+| F10 | Backwards compatibility for existing URLs             | P1       |
 
 ### 10.2 Non-Functional Requirements
 
-| ID | Requirement | Target |
-|----|-------------|--------|
-| NF1 | Project tab click response time | < 100ms |
-| NF2 | No layout shift when switching projects | CLS < 0.1 |
-| NF3 | Project tabs accessible via keyboard | Full support |
-| NF4 | Build time per project | < 3 minutes |
+| ID  | Requirement                             | Target       |
+| --- | --------------------------------------- | ------------ |
+| NF1 | Project tab click response time         | < 100ms      |
+| NF2 | No layout shift when switching projects | CLS < 0.1    |
+| NF3 | Project tabs accessible via keyboard    | Full support |
+| NF4 | Build time per project                  | < 3 minutes  |
 
 ### 10.3 Definition of Done
 
@@ -1467,6 +1434,4 @@ scripts/
 
 ---
 
-*End of Specification*
-
-
+_End of Specification_

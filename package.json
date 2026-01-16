@@ -2,10 +2,10 @@
   "name": "langchain-reference-docs",
   "version": "0.1.0",
   "private": true,
-  "license": "MIT",
-  "author": "LangChain",
   "description": "Unified API reference documentation platform for LangChain",
   "homepage": "https://reference.langchain.com",
+  "license": "MIT",
+  "author": "LangChain",
   "repository": {
     "type": "git",
     "url": "https://github.com/langchain-ai/langchain-reference-docs.git"
@@ -19,7 +19,10 @@
     "sync-versions": "tsx packages/build-pipeline/src/commands/sync-versions.ts",
     "fetch-tarball": "tsx packages/build-pipeline/src/commands/fetch-tarball.ts",
     "update-pointers": "tsx packages/build-pipeline/src/commands/update-pointers.ts",
-    "lint": "turbo lint",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean && rm -rf node_modules"
@@ -27,13 +30,14 @@
   "devDependencies": {
     "@types/node": "^25.0.3",
     "dotenv-cli": "^8.0.0",
-    "prettier": "^3.7.4",
+    "oxfmt": "^0.24.0",
+    "oxlint": "^1.39.0",
     "tsx": "^4.21.0",
     "turbo": "^2.7.2",
     "typescript": "^5.9.3"
   },
-  "packageManager": "pnpm@10.26.2",
   "engines": {
     "node": ">=24.0.0"
-  }
+  },
+  "packageManager": "pnpm@10.26.2"
 }

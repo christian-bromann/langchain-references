@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils/cn";
-import type { VersionDelta, ModifiedSymbol, ChangeRecord } from "@langchain/ir-schema";
+import type { ChangeRecord } from "@langchain/ir-schema";
 
 /**
  * Props for the VersionHistory component.
@@ -44,7 +44,7 @@ export function VersionHistory({
 
     try {
       const response = await fetch(
-        `/api/changelog/${project}/${language}/${packageId}?symbol=${encodeURIComponent(qualifiedName)}`
+        `/api/changelog/${project}/${language}/${packageId}?symbol=${encodeURIComponent(qualifiedName)}`,
       );
 
       if (!response.ok) {
@@ -78,7 +78,7 @@ export function VersionHistory({
         "rounded-lg border",
         "border-slate-200 dark:border-slate-700",
         "bg-white dark:bg-slate-900",
-        className
+        className,
       )}
     >
       {/* Header - always visible */}
@@ -90,7 +90,7 @@ export function VersionHistory({
           "text-slate-700 dark:text-slate-200",
           "hover:bg-slate-50 dark:hover:bg-slate-800/50",
           "transition-colors duration-150",
-          expanded && "border-b border-slate-200 dark:border-slate-700"
+          expanded && "border-b border-slate-200 dark:border-slate-700",
         )}
         aria-expanded={expanded}
       >
@@ -101,7 +101,7 @@ export function VersionHistory({
         <ChevronIcon
           className={cn(
             "h-4 w-4 text-slate-400 transition-transform duration-200",
-            expanded && "rotate-180"
+            expanded && "rotate-180",
           )}
         />
       </button>
@@ -116,11 +116,7 @@ export function VersionHistory({
             </div>
           )}
 
-          {error && (
-            <div className="text-sm text-red-600 dark:text-red-400">
-              {error}
-            </div>
-          )}
+          {error && <div className="text-sm text-red-600 dark:text-red-400">{error}</div>}
 
           {!loading && !error && changes.length === 0 && (
             <div className="text-sm text-slate-500 dark:text-slate-400">
@@ -194,12 +190,7 @@ function VersionChangeEntry({ change }: { change: VersionChange }) {
         <span className="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">
           v{change.version}
         </span>
-        <span
-          className={cn(
-            "px-1.5 py-0.5 text-xs font-medium rounded",
-            typeColors[change.type]
-          )}
-        >
+        <span className={cn("px-1.5 py-0.5 text-xs font-medium rounded", typeColors[change.type])}>
           {typeLabels[change.type]}
         </span>
         <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -222,9 +213,7 @@ function VersionChangeEntry({ change }: { change: VersionChange }) {
                   MODIFIED
                 </span>
               )}
-              <span className="text-slate-600 dark:text-slate-300">
-                {c.description}
-              </span>
+              <span className="text-slate-600 dark:text-slate-300">{c.description}</span>
             </li>
           ))}
         </ul>
@@ -307,19 +296,8 @@ function ChevronIcon({ className }: { className?: string }) {
 
 function LoadingSpinner({ className }: { className?: string }) {
   return (
-    <svg
-      className={cn("animate-spin", className)}
-      viewBox="0 0 24 24"
-      fill="none"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
+    <svg className={cn("animate-spin", className)} viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path
         className="opacity-75"
         fill="currentColor"
@@ -328,4 +306,3 @@ function LoadingSpinner({ className }: { className?: string }) {
     </svg>
   );
 }
-

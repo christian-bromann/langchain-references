@@ -52,4 +52,3 @@ export interface PackageNav {
   language: import("@langchain/ir-schema").Language;
   items: NavItem[];
 }
-

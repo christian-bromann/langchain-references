@@ -10,10 +10,7 @@ const STATIC_CACHE_NAME = `langchain-static-${CACHE_VERSION}`;
 const SYMBOL_CACHE_NAME = `langchain-symbols-${CACHE_VERSION}`;
 
 // Paths that should use stale-while-revalidate
-const API_PATTERNS = [
-  /^\/api\/ref\//,
-  /^\/api\/search\/query/,
-];
+const API_PATTERNS = [/^\/api\/ref\//, /^\/api\/search\/query/];
 
 // Static assets to pre-cache
 const STATIC_ASSETS = [
@@ -36,7 +33,7 @@ self.addEventListener("install", (event) => {
       return cache.addAll(STATIC_ASSETS).catch((err) => {
         console.warn("[SW] Failed to pre-cache some assets:", err);
       });
-    })
+    }),
   );
   // Activate immediately
   self.skipWaiting();
@@ -57,9 +54,9 @@ self.addEventListener("activate", (event) => {
               (name.startsWith("langchain-symbols-") && name !== SYMBOL_CACHE_NAME)
             );
           })
-          .map((name) => caches.delete(name))
+          .map((name) => caches.delete(name)),
       );
-    })
+    }),
   );
   // Take control of all clients immediately
   self.clients.claim();
@@ -124,7 +121,7 @@ async function staleWhileRevalidate(request) {
             status: clonedResponse.status,
             statusText: clonedResponse.statusText,
             headers,
-          })
+          }),
         );
 
         // Notify clients that fresh data is available
@@ -215,7 +212,7 @@ self.addEventListener("fetch", (event) => {
         if (cached) return cached;
         // Fallback to fetching the dark favicon
         return fetch("/favicons/dark/favicon.ico");
-      })
+      }),
     );
     return;
   }
@@ -250,7 +247,7 @@ self.addEventListener("fetch", (event) => {
         .catch(() => {
           // Try to serve RSC from cache
           return caches.match(request.url);
-        })
+        }),
     );
     return;
   }
@@ -436,10 +433,10 @@ self.addEventListener("fetch", (event) => {
 </html>`,
               {
                 headers: { "Content-Type": "text/html" },
-              }
+              },
             );
           });
-        })
+        }),
     );
     return;
   }
@@ -569,7 +566,7 @@ async function prefetchUrls(urls) {
             status: response.status,
             statusText: response.statusText,
             headers,
-          })
+          }),
         );
       }
     } catch (error) {

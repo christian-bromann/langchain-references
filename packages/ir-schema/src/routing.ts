@@ -50,14 +50,7 @@ export interface SlugEntry {
 /**
  * Page types determine which component to use for rendering.
  */
-export type PageType =
-  | "module"
-  | "class"
-  | "function"
-  | "interface"
-  | "type"
-  | "enum"
-  | "variable";
+export type PageType = "module" | "class" | "function" | "interface" | "type" | "enum" | "variable";
 
 /**
  * Navigation tree structure for sidebar rendering.
@@ -100,8 +93,3 @@ export interface BreadcrumbItem {
   /** Whether this is the current page */
   isCurrent?: boolean;
 }
-
-
-
-
-

@@ -64,43 +64,43 @@ This document defines the technical architecture and tool choices for the unifie
 
 ### Frontend / Rendering
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Next.js** | 15.x | React framework with App Router, SSR/ISR |
-| **React** | 19.x | UI component library |
-| **TypeScript** | 5.x | Type-safe development |
-| **Tailwind CSS** | 4.x | Utility-first styling |
-| **Radix UI** | latest | Accessible component primitives |
+| Technology       | Version | Purpose                                  |
+| ---------------- | ------- | ---------------------------------------- |
+| **Next.js**      | 15.x    | React framework with App Router, SSR/ISR |
+| **React**        | 19.x    | UI component library                     |
+| **TypeScript**   | 5.x     | Type-safe development                    |
+| **Tailwind CSS** | 4.x     | Utility-first styling                    |
+| **Radix UI**     | latest  | Accessible component primitives          |
 
 ### Build & Extraction
 
-| Technology | Purpose |
-|------------|---------|
-| **TypeDoc** | Extract TypeScript/JavaScript APIs to JSON |
-| **griffe** | Extract Python APIs without runtime imports |
-| **pnpm** | Fast, disk-efficient package manager |
-| **tsx** | TypeScript execution for build scripts |
+| Technology  | Purpose                                     |
+| ----------- | ------------------------------------------- |
+| **TypeDoc** | Extract TypeScript/JavaScript APIs to JSON  |
+| **griffe**  | Extract Python APIs without runtime imports |
+| **pnpm**    | Fast, disk-efficient package manager        |
+| **tsx**     | TypeScript execution for build scripts      |
 
 ### Storage & State
 
-| Technology | Purpose |
-|------------|---------|
+| Technology      | Purpose                                             |
+| --------------- | --------------------------------------------------- |
 | **Vercel Blob** | Immutable IR artifact storage (`/ir/{buildId}/...`) |
-| **Vercel KV** | Version pointers, build status, latest aliases |
+| **Vercel KV**   | Version pointers, build status, latest aliases      |
 
 ### Search
 
-| Technology | Purpose |
-|------------|---------|
+| Technology                       | Purpose                      |
+| -------------------------------- | ---------------------------- |
 | **FlexSearch** or **MiniSearch** | Client-side full-text search |
-| JSON index built from IR | Pre-computed search entries |
+| JSON index built from IR         | Pre-computed search entries  |
 
 ### Hosting & Infrastructure
 
-| Technology | Purpose |
-|------------|---------|
-| **Vercel** | Hosting, CDN, serverless functions |
-| **GitHub Actions** | CI/CD for builds and deployments |
+| Technology         | Purpose                            |
+| ------------------ | ---------------------------------- |
+| **Vercel**         | Hosting, CDN, serverless functions |
+| **GitHub Actions** | CI/CD for builds and deployments   |
 
 ---
 
@@ -110,34 +110,34 @@ This document defines the technical architecture and tool choices for the unifie
 
 ```typescript
 export const tokens = {
-  theme: 'aspen',
+  theme: "aspen",
   colors: {
-    primary: '#2F6868',
-    light: '#84C4C0',
-    dark: '#1C3C3C',
+    primary: "#2F6868",
+    light: "#84C4C0",
+    dark: "#1C3C3C",
   },
   fonts: {
-    heading: 'Manrope',
-    body: 'Inter',  // Default body font
-    mono: 'JetBrains Mono',
+    heading: "Manrope",
+    body: "Inter", // Default body font
+    mono: "JetBrains Mono",
   },
   logo: {
-    light: '/images/brand/langchain-docs-teal.svg',
-    dark: '/images/brand/langchain-docs-lilac.svg',
+    light: "/images/brand/langchain-docs-teal.svg",
+    dark: "/images/brand/langchain-docs-lilac.svg",
   },
-  favicon: '/images/brand/docs-favicon.png',
+  favicon: "/images/brand/docs-favicon.png",
 } as const;
 ```
 
 ### Layout Patterns
 
-| Component | Mintlify Pattern |
-|-----------|------------------|
-| **Top navbar** | Ask AI, GitHub link, "Try LangSmith" CTA |
-| **Left nav** | Product/package grouping, collapsible sections |
-| **Content area** | Symbol documentation, code blocks |
-| **Right TOC** | On-page navigation, sticky position |
-| **Breadcrumbs** | Eyebrow navigation (`styling.eyebrows: 'breadcrumbs'`) |
+| Component        | Mintlify Pattern                                       |
+| ---------------- | ------------------------------------------------------ |
+| **Top navbar**   | Ask AI, GitHub link, "Try LangSmith" CTA               |
+| **Left nav**     | Product/package grouping, collapsible sections         |
+| **Content area** | Symbol documentation, code blocks                      |
+| **Right TOC**    | On-page navigation, sticky position                    |
+| **Breadcrumbs**  | Eyebrow navigation (`styling.eyebrows: 'breadcrumbs'`) |
 
 ### Styling Conventions
 
@@ -169,7 +169,7 @@ interface Manifest {
   packages: Array<{
     packageId: string;
     displayName: string;
-    language: 'python' | 'typescript';
+    language: "python" | "typescript";
     version: string;
   }>;
 }
@@ -181,8 +181,8 @@ interface Manifest {
 interface SymbolRecord {
   id: string;
   packageId: string;
-  language: 'python' | 'typescript';
-  kind: 'class' | 'function' | 'method' | 'interface' | 'type' | 'module';
+  language: "python" | "typescript";
+  kind: "class" | "function" | "method" | "interface" | "type" | "module";
   name: string;
   qualifiedName: string;
   signature: string;
@@ -221,7 +221,7 @@ interface SearchRecord {
   breadcrumbs: string[];
   excerpt: string;
   kind: string;
-  language: 'python' | 'typescript';
+  language: "python" | "typescript";
   packageId: string;
 }
 ```
@@ -232,21 +232,21 @@ interface SearchRecord {
 
 ### Canonical Routes
 
-| Pattern | Example |
-|---------|---------|
-| Package landing | `/python/langchain/1.0.0/` |
-| Class page | `/python/langchain/1.0.0/classes/ChatOpenAI/` |
-| Function page | `/javascript/langchain/0.3.0/functions/initChatModel/` |
-| Module page | `/python/langchain_core/1.0.0/modules/messages/` |
-| Latest alias | `/python/langchain/latest/` → redirects to current |
+| Pattern         | Example                                                |
+| --------------- | ------------------------------------------------------ |
+| Package landing | `/python/langchain/1.0.0/`                             |
+| Class page      | `/python/langchain/1.0.0/classes/ChatOpenAI/`          |
+| Function page   | `/javascript/langchain/0.3.0/functions/initChatModel/` |
+| Module page     | `/python/langchain_core/1.0.0/modules/messages/`       |
+| Latest alias    | `/python/langchain/latest/` → redirects to current     |
 
 ### Versioned vs Pinned Builds
 
-| URL Type | Cache Behavior |
-|----------|----------------|
-| `/python/{pkg}/{version}/...` | Immutable, cache forever |
-| `/python/{pkg}/latest/...` | Short TTL, redirects to version |
-| `/b/{buildId}/...` | Immutable, internal debugging |
+| URL Type                      | Cache Behavior                  |
+| ----------------------------- | ------------------------------- |
+| `/python/{pkg}/{version}/...` | Immutable, cache forever        |
+| `/python/{pkg}/latest/...`    | Short TTL, redirects to version |
+| `/b/{buildId}/...`            | Immutable, internal debugging   |
 
 ---
 
@@ -275,12 +275,12 @@ ir/{buildId}/
 
 ### Vercel KV Keys
 
-| Key Pattern | Value |
-|-------------|-------|
-| `latest:python:{package}` | `{ version, buildId }` |
-| `latest:javascript:{package}` | `{ version, buildId }` |
-| `version:{ecosystem}:{package}:{version}` | `{ buildId, sha }` |
-| `build:{buildId}` | `{ status, createdAt, sources }` |
+| Key Pattern                               | Value                            |
+| ----------------------------------------- | -------------------------------- |
+| `latest:python:{package}`                 | `{ version, buildId }`           |
+| `latest:javascript:{package}`             | `{ version, buildId }`           |
+| `version:{ecosystem}:{package}:{version}` | `{ buildId, sha }`               |
+| `build:{buildId}`                         | `{ status, createdAt, sources }` |
 
 ---
 
@@ -319,13 +319,15 @@ ir/{buildId}/
 
 ```typescript
 const buildId = crypto
-  .createHash('sha256')
-  .update(JSON.stringify({
-    config: normalizedConfig,
-    sources: sources.map(s => `${s.repo}@${s.sha}`),
-    extractorVersions: { typedoc: '0.x', griffe: '0.x' },
-  }))
-  .digest('hex')
+  .createHash("sha256")
+  .update(
+    JSON.stringify({
+      config: normalizedConfig,
+      sources: sources.map((s) => `${s.repo}@${s.sha}`),
+      extractorVersions: { typedoc: "0.x", griffe: "0.x" },
+    }),
+  )
+  .digest("hex")
   .slice(0, 16);
 ```
 
@@ -335,18 +337,18 @@ const buildId = crypto
 
 ### Analytics
 
-| Tool | Purpose |
-|------|---------|
+| Tool                   | Purpose                             |
+| ---------------------- | ----------------------------------- |
 | **Google Tag Manager** | `GTM-MBBX68ST` (from Mintlify docs) |
-| **Vercel Analytics** | Core Web Vitals, page views |
+| **Vercel Analytics**   | Core Web Vitals, page views         |
 
 ### External Links
 
-| Link | URL |
-|------|-----|
-| Ask AI | `https://chat.langchain.com/` |
-| GitHub | `https://github.com/langchain-ai` |
-| Try LangSmith | `https://smith.langchain.com/` |
+| Link          | URL                               |
+| ------------- | --------------------------------- |
+| Ask AI        | `https://chat.langchain.com/`     |
+| GitHub        | `https://github.com/langchain-ai` |
+| Try LangSmith | `https://smith.langchain.com/`    |
 
 ---
 
@@ -399,7 +401,3 @@ VERCEL_ANALYTICS_ID=
 - Vercel Blob/KV accessed via server-side only
 - No user-generated content in v1
 - CSP headers configured for script/style sources
-
-
-
-

@@ -478,4 +478,3 @@ export interface DiscoveredVersion {
   /** Release date (from tag) */
   releaseDate: string;
 }
-

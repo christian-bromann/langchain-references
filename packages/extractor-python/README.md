@@ -46,8 +46,3 @@ ir_symbols = transformer.transform(raw_data)
 - Google-style docstring support
 - Generates IR-compatible output
 - Source location tracking
-
-
-
-
-

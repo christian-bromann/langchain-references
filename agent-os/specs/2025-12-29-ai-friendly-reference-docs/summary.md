@@ -43,5 +43,3 @@ Make API reference documentation AI-friendly by serving markdown for programmati
 - Copy button works on all symbol pages
 - MCP server responds to basic queries
 - llms.txt accessible at site root
-
-

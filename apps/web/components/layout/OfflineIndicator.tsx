@@ -105,7 +105,7 @@ export function OfflineIndicator() {
       <div
         className={cn(
           "bg-background-secondary border border-border rounded-lg shadow-lg overflow-hidden transition-all duration-200",
-          isExpanded ? "w-72" : "w-auto"
+          isExpanded ? "w-72" : "w-auto",
         )}
       >
         {/* Collapsed view - just icon */}
@@ -116,9 +116,7 @@ export function OfflineIndicator() {
             title="View cache info"
           >
             <Database className="h-4 w-4" />
-            <span className="font-mono text-xs">
-              {cacheStats.symbolCount} cached
-            </span>
+            <span className="font-mono text-xs">{cacheStats.symbolCount} cached</span>
             <ChevronUp className="h-3 w-3" />
           </button>
         )}
@@ -178,7 +176,7 @@ export function OfflineIndicator() {
                         ? "bg-red-500"
                         : cacheStats.usagePercent > 70
                           ? "bg-amber-500"
-                          : "bg-primary"
+                          : "bg-primary",
                     )}
                     style={{ width: `${Math.min(cacheStats.usagePercent, 100)}%` }}
                   />

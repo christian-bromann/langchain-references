@@ -8,17 +8,12 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  getBuildIdForLanguage,
-  getManifestData,
-  getSymbols,
-  getSymbolData,
-} from "@/lib/ir/loader";
+import { getBuildIdForLanguage, getManifestData, getSymbols, getSymbolData } from "@/lib/ir/loader";
 import { symbolToMarkdown } from "@/lib/ir/markdown-generator";
 import { getBaseUrl } from "@/lib/config/mcp";
 import { getEnabledProjects } from "@/lib/config/projects";
 import { slugifyPackageName, unslugifyPackageName } from "@/lib/utils/url";
-import type { SymbolRecord, Package } from "@langchain/ir-schema";
+import type { SymbolRecord } from "@langchain/ir-schema";
 
 // =============================================================================
 // Types
@@ -69,7 +64,8 @@ const MCP_SERVER_VERSION = "1.0.0";
 const TOOLS: McpTool[] = [
   {
     name: "search_api",
-    description: "Search the LangChain API reference documentation for classes, functions, and other symbols.",
+    description:
+      "Search the LangChain API reference documentation for classes, functions, and other symbols.",
     inputSchema: {
       type: "object",
       properties: {
@@ -92,7 +88,8 @@ const TOOLS: McpTool[] = [
   },
   {
     name: "get_symbol",
-    description: "Get detailed documentation for a specific symbol including signature, parameters, and examples.",
+    description:
+      "Get detailed documentation for a specific symbol including signature, parameters, and examples.",
     inputSchema: {
       type: "object",
       properties: {
@@ -102,7 +99,8 @@ const TOOLS: McpTool[] = [
         },
         symbol: {
           type: "string",
-          description: "Symbol name or qualified path (e.g., ChatOpenAI, langchain_openai.ChatOpenAI)",
+          description:
+            "Symbol name or qualified path (e.g., ChatOpenAI, langchain_openai.ChatOpenAI)",
         },
       },
       required: ["package", "symbol"],
@@ -197,7 +195,7 @@ function handleResourcesList(id: string | number): Response {
 
 async function handleToolCall(
   params: Record<string, unknown>,
-  id: string | number
+  id: string | number,
 ): Promise<Response> {
   const { name, arguments: args } = params as {
     name: string;
@@ -218,7 +216,7 @@ async function handleToolCall(
 
 async function handleResourceRead(
   params: Record<string, unknown>,
-  id: string | number
+  id: string | number,
 ): Promise<Response> {
   const { uri } = params as { uri: string };
 
@@ -256,7 +254,7 @@ async function handleResourceRead(
 
 async function handleSearchApi(
   args: Record<string, unknown>,
-  id: string | number
+  id: string | number,
 ): Promise<Response> {
   const query = (args.query as string) || "";
   const language = args.language as "python" | "javascript" | undefined;
@@ -285,7 +283,7 @@ async function handleSearchApi(
 
 async function handleGetSymbol(
   args: Record<string, unknown>,
-  id: string | number
+  id: string | number,
 ): Promise<Response> {
   const packageName = args.package as string;
   const symbolName = args.symbol as string;
@@ -334,7 +332,7 @@ async function handleGetSymbol(
 async function searchSymbols(
   query: string,
   language?: "python" | "javascript",
-  limit: number = 10
+  limit: number = 10,
 ): Promise<SearchResult[]> {
   const results: SearchResult[] = [];
   const queryLower = query.toLowerCase();
@@ -365,9 +363,7 @@ async function searchSymbols(
         for (const symbol of symbolsData.symbols) {
           // Match by name or qualified name
           const nameMatch = symbol.name.toLowerCase().includes(queryLower);
-          const qualifiedMatch = symbol.qualifiedName
-            .toLowerCase()
-            .includes(queryLower);
+          const qualifiedMatch = symbol.qualifiedName.toLowerCase().includes(queryLower);
 
           if (nameMatch || qualifiedMatch) {
             const pkgSlug = slugifyPackageName(pkg.publishedName);
@@ -448,7 +444,7 @@ function formatSearchResults(results: SearchResult[], query: string): string {
   lines.push("---");
   lines.push("");
   lines.push(
-    "Use the `get_symbol` tool with the package and symbol name to get full documentation."
+    "Use the `get_symbol` tool with the package and symbol name to get full documentation.",
   );
 
   return lines.join("\n");
@@ -460,7 +456,7 @@ function formatSearchResults(results: SearchResult[], query: string): string {
 
 async function getSymbolByName(
   packageName: string,
-  symbolName: string
+  symbolName: string,
 ): Promise<SymbolRecord | null> {
   // Determine language from package name
   const isJavaScript = packageName.startsWith("@");
@@ -476,7 +472,7 @@ async function getSymbolByName(
   const pkg = manifest.packages.find(
     (p) =>
       p.publishedName === packageName ||
-      p.publishedName === unslugifyPackageName(packageName, language)
+      p.publishedName === unslugifyPackageName(packageName, language),
   );
 
   if (!pkg) return null;
@@ -495,9 +491,7 @@ async function getSymbolByName(
   if (exactMatch) return exactMatch;
 
   // Try qualified name match
-  const qualifiedMatch = symbolsData.symbols.find(
-    (s) => s.qualifiedName === symbolName
-  );
+  const qualifiedMatch = symbolsData.symbols.find((s) => s.qualifiedName === symbolName);
   if (qualifiedMatch) return qualifiedMatch;
 
   return null;
@@ -507,11 +501,7 @@ async function getSymbolByName(
 // Utilities
 // =============================================================================
 
-function jsonRpcError(
-  id: string | number,
-  code: number,
-  message: string
-): Response {
+function jsonRpcError(id: string | number, code: number, message: string): Response {
   return Response.json({
     jsonrpc: "2.0",
     id,
@@ -521,4 +511,3 @@ function jsonRpcError(
     },
   });
 }
-

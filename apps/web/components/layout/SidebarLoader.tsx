@@ -34,7 +34,7 @@ function getPackageSlug(pkg: Package, language: "python" | "javascript"): string
 function buildNavItemsFromRouting(
   routingMap: RoutingMap,
   language: "python" | "javascript",
-  packageSlug: string
+  packageSlug: string,
 ): SidebarPackage["items"] {
   const modules: { name: string; path: string; kind: SymbolKind }[] = [];
   const slugEntries = Object.entries(routingMap.slugs || {});
@@ -98,7 +98,7 @@ function buildNavItemsFromRouting(
  */
 async function loadSidebarPackagesForProject(
   language: "python" | "javascript",
-  projectId: string
+  projectId: string,
 ): Promise<SidebarPackage[]> {
   const buildId = await getBuildIdForLanguage(language, projectId);
   if (!buildId) return [];
@@ -109,7 +109,7 @@ async function loadSidebarPackagesForProject(
   const packages = manifest.packages.filter((p) =>
     language === "python"
       ? p.language === "python"
-      : p.language === "typescript" || p.ecosystem === "javascript"
+      : p.language === "typescript" || p.ecosystem === "javascript",
   );
 
   const irLanguage = language === "python" ? "python" : "typescript";
@@ -123,7 +123,12 @@ async function loadSidebarPackagesForProject(
     let items: SidebarPackage["items"] = [];
     if (language === "javascript") {
       // Use routing map instead of full symbols (~100KB vs ~14MB)
-      const routingMap = await getRoutingMapData(buildId, pkg.packageId, pkg.displayName, irLanguage);
+      const routingMap = await getRoutingMapData(
+        buildId,
+        pkg.packageId,
+        pkg.displayName,
+        irLanguage,
+      );
       items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
     }
 
@@ -141,15 +146,13 @@ async function loadSidebarPackagesForProject(
 /**
  * Load sidebar data for a language from ALL enabled projects
  */
-async function loadSidebarPackages(
-  language: "python" | "javascript"
-): Promise<SidebarPackage[]> {
+async function loadSidebarPackages(language: "python" | "javascript"): Promise<SidebarPackage[]> {
   const projects = getEnabledProjects();
   const allPackages: SidebarPackage[] = [];
 
   // Load packages from all projects in parallel
   const projectPackages = await Promise.all(
-    projects.map((project) => loadSidebarPackagesForProject(language, project.id))
+    projects.map((project) => loadSidebarPackagesForProject(language, project.id)),
   );
 
   for (const packages of projectPackages) {
@@ -165,10 +168,5 @@ export async function SidebarLoader() {
     loadSidebarPackages("javascript"),
   ]);
 
-  return (
-    <Sidebar
-      pythonPackages={pythonPackages}
-      javascriptPackages={javascriptPackages}
-    />
-  );
+  return <Sidebar pythonPackages={pythonPackages} javascriptPackages={javascriptPackages} />;
 }

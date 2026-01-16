@@ -41,4 +41,3 @@ main().catch((error) => {
   console.error("Fetch failed:", error);
   process.exit(1);
 });
-

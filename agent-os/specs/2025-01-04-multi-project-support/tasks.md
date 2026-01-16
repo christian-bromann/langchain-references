@@ -74,18 +74,18 @@
 
 ### 3.1 Route Structure
 
-- [x] **T3.1.1** Create route group `apps/web/app/(ref)/[lang]/[project]/` — *Kept existing structure for backwards compatibility*
-- [x] **T3.1.2** Create `apps/web/app/(ref)/[lang]/[project]/page.tsx` (project index) — *Uses existing structure*
-- [x] **T3.1.3** Create `apps/web/app/(ref)/[lang]/[project]/[...slug]/page.tsx` (symbol pages) — *Uses existing structure*
+- [x] **T3.1.1** Create route group `apps/web/app/(ref)/[lang]/[project]/` — _Kept existing structure for backwards compatibility_
+- [x] **T3.1.2** Create `apps/web/app/(ref)/[lang]/[project]/page.tsx` (project index) — _Uses existing structure_
+- [x] **T3.1.3** Create `apps/web/app/(ref)/[lang]/[project]/[...slug]/page.tsx` (symbol pages) — _Uses existing structure_
 - [x] **T3.1.4** Implement project validation in page components
 - [x] **T3.1.5** Implement language variant validation (check if enabled)
 - [x] **T3.1.6** Generate appropriate metadata for SEO
 
 ### 3.2 IR Loader Updates
 
-- [x] **T3.2.1** Update `getManifest()` in `apps/web/lib/ir/loader.ts` to accept project parameter — *Project inferred from package*
-- [x] **T3.2.2** Update `getRoutingMap()` to accept project parameter — *Project inferred from package*
-- [x] **T3.2.3** Update `getSymbol()` for project-aware paths — *Project inferred from package*
+- [x] **T3.2.1** Update `getManifest()` in `apps/web/lib/ir/loader.ts` to accept project parameter — _Project inferred from package_
+- [x] **T3.2.2** Update `getRoutingMap()` to accept project parameter — _Project inferred from package_
+- [x] **T3.2.3** Update `getSymbol()` for project-aware paths — _Project inferred from package_
 - [x] **T3.2.4** Update `getSearchIndex()` to accept project parameter
 - [x] **T3.2.5** Update KV key patterns to include project (e.g., `latest:{project}:{lang}`)
 
@@ -99,8 +99,8 @@
 
 ### 3.4 Layout Updates
 
-- [x] **T3.4.1** Update `apps/web/app/(ref)/layout.tsx` to pass project context — *Uses project registry*
-- [x] **T3.4.2** Make layout project-aware for sidebar rendering — *Via ProjectTabs*
+- [x] **T3.4.1** Update `apps/web/app/(ref)/layout.tsx` to pass project context — _Uses project registry_
+- [x] **T3.4.2** Make layout project-aware for sidebar rendering — _Via ProjectTabs_
 - [x] **T3.4.3** Ensure proper context is available to child components
 
 ---
@@ -109,8 +109,8 @@
 
 ### 4.1 Sidebar Updates
 
-- [x] **T4.1.1** Update `Sidebar` component props to accept `project` and `language` — *Project inferred from URL*
-- [x] **T4.1.2** Filter packages displayed based on current project — *Via project registry*
+- [x] **T4.1.1** Update `Sidebar` component props to accept `project` and `language` — _Project inferred from URL_
+- [x] **T4.1.2** Filter packages displayed based on current project — _Via project registry_
 - [x] **T4.1.3** Update package section links to include project in URL
 - [x] **T4.1.4** Add project header section to sidebar
 
@@ -205,15 +205,15 @@ Phase 1 (Foundation)
 
 ## Estimated Effort
 
-| Phase | Tasks | Estimated Time | Status |
-|-------|-------|----------------|--------|
-| Phase 1: Foundation | 14 tasks | 1-2 days | ✅ Complete |
-| Phase 2: Header Navigation | 14 tasks | 1-2 days | ✅ Complete |
-| Phase 3: Routing Architecture | 16 tasks | 2 days | ✅ Complete |
-| Phase 4: Sidebar & UI | 12 tasks | 1-2 days | ✅ Complete |
-| Phase 5: Build Pipeline | 10 tasks | 1-2 days | ⚠️ Partial |
-| Phase 6: Testing & Documentation | 13 tasks | 2 days | ⚠️ Partial |
-| **Total** | **79 tasks** | **~10 days** | **~75% Complete** |
+| Phase                            | Tasks        | Estimated Time | Status            |
+| -------------------------------- | ------------ | -------------- | ----------------- |
+| Phase 1: Foundation              | 14 tasks     | 1-2 days       | ✅ Complete       |
+| Phase 2: Header Navigation       | 14 tasks     | 1-2 days       | ✅ Complete       |
+| Phase 3: Routing Architecture    | 16 tasks     | 2 days         | ✅ Complete       |
+| Phase 4: Sidebar & UI            | 12 tasks     | 1-2 days       | ✅ Complete       |
+| Phase 5: Build Pipeline          | 10 tasks     | 1-2 days       | ⚠️ Partial        |
+| Phase 6: Testing & Documentation | 13 tasks     | 2 days         | ⚠️ Partial        |
+| **Total**                        | **79 tasks** | **~10 days**   | **~75% Complete** |
 
 ---
 
@@ -238,16 +238,19 @@ pnpm test
 ## Implementation Notes
 
 ### Backwards Compatibility
+
 - Existing URLs (`/python/langchain-core/...`) continue to work
 - Project is inferred from the package name in the URL
 - Legacy URLs with patterns like `/python/classes/...` redirect to `/python/langchain/classes/...`
 
 ### Project Detection
+
 - Project detection uses package name patterns (e.g., `langchain*`, `langgraph*`)
 - Default project is LangChain when no match is found
 - Header tabs highlight based on detected project
 
 ### Files Created
+
 - `packages/ir-schema/src/project.ts` - ProjectConfig types
 - `apps/web/lib/config/projects.ts` - Project registry
 - `apps/web/components/layout/ProjectTabs.tsx` - Header tabs
@@ -261,6 +264,7 @@ pnpm test
 - `configs/deepagent-typescript.json` - DeepAgent TypeScript config
 
 ### Files Modified
+
 - `packages/ir-schema/src/index.ts` - Export project types
 - `packages/ir-schema/src/manifest.ts` - Add project field
 - `packages/ir-schema/src/search.ts` - Add project filter

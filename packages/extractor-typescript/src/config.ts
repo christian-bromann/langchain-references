@@ -52,7 +52,7 @@ export const defaultConfig: Partial<ExtractionConfig> = {
  * Create a complete configuration with defaults.
  */
 export function createConfig(
-  partial: Partial<ExtractionConfig> & Pick<ExtractionConfig, "packageName" | "packagePath">
+  partial: Partial<ExtractionConfig> & Pick<ExtractionConfig, "packageName" | "packagePath">,
 ): ExtractionConfig {
   return {
     ...defaultConfig,
@@ -80,5 +80,3 @@ export function validateConfig(config: ExtractionConfig): void {
     throw new Error("At least one entry point is required");
   }
 }
-
-

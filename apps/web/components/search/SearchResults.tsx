@@ -41,12 +41,7 @@ function getKindColor(kind: string): string {
  */
 function KindBadge({ kind }: { kind: string }) {
   return (
-    <span
-      className={cn(
-        "px-1.5 py-0.5 text-xs font-medium rounded shrink-0",
-        getKindColor(kind)
-      )}
-    >
+    <span className={cn("px-1.5 py-0.5 text-xs font-medium rounded shrink-0", getKindColor(kind))}>
       {kind}
     </span>
   );
@@ -97,7 +92,7 @@ export function SearchResults({
             "transition-colors",
             index === selectedIndex
               ? "bg-primary/10 dark:bg-primary-light/10"
-              : "hover:bg-background-secondary"
+              : "hover:bg-background-secondary",
           )}
           onClick={() => onSelect(result)}
           onMouseEnter={() => {
@@ -107,9 +102,7 @@ export function SearchResults({
           {/* Title row with kind badge */}
           <div className="flex items-center gap-2">
             <KindBadge kind={result.kind} />
-            <span className="font-medium text-foreground truncate">
-              {result.title}
-            </span>
+            <span className="font-medium text-foreground truncate">{result.title}</span>
           </div>
 
           {/* Breadcrumbs */}
@@ -119,15 +112,10 @@ export function SearchResults({
 
           {/* Excerpt */}
           {result.excerpt && (
-            <p className="mt-1 text-sm text-foreground-secondary line-clamp-1">
-              {result.excerpt}
-            </p>
+            <p className="mt-1 text-sm text-foreground-secondary line-clamp-1">{result.excerpt}</p>
           )}
         </li>
       ))}
     </ul>
   );
 }
-
-
-

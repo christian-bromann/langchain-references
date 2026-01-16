@@ -17,10 +17,7 @@ import type {
 
 import { computeVersionDelta, MinimalIR } from "./diff-engine.js";
 import { fetchDeployedChangelog, DeployedChangelog } from "./changelog-fetcher.js";
-import {
-  discoverVersions,
-  createDiscoveryOptions,
-} from "./version-discovery.js";
+import { discoverVersions, createDiscoveryOptions } from "./version-discovery.js";
 import { createSnapshot } from "./snapshot.js";
 
 // =============================================================================
@@ -77,7 +74,7 @@ export interface IncrementalBuildOptions {
 export async function extractVersionsParallel(
   versions: DiscoveredVersion[],
   extractIR: (sha: string) => Promise<MinimalIR>,
-  concurrency = 4
+  concurrency = 4,
 ): Promise<Map<string, MinimalIR>> {
   const results = new Map<string, MinimalIR>();
 
@@ -87,7 +84,7 @@ export async function extractVersionsParallel(
 
     console.log(
       `Extracting batch ${Math.floor(i / concurrency) + 1}/${Math.ceil(versions.length / concurrency)} ` +
-        `(${batch.map((v) => v.version).join(", ")})...`
+        `(${batch.map((v) => v.version).join(", ")})...`,
     );
 
     const batchResults = await Promise.all(
@@ -98,7 +95,7 @@ export async function extractVersionsParallel(
         const elapsed = Date.now() - startTime;
         console.log(`  ✓ ${version.version} extracted in ${elapsed}ms`);
         return { version: version.version, ir };
-      })
+      }),
     );
 
     for (const { version, ir } of batchResults) {
@@ -121,7 +118,7 @@ export async function extractVersionsParallel(
  * @returns Changelog and version index
  */
 export async function incrementalBuild(
-  options: IncrementalBuildOptions
+  options: IncrementalBuildOptions,
 ): Promise<ChangelogBuildResult> {
   const {
     repo,
@@ -149,7 +146,7 @@ export async function incrementalBuild(
     repo,
     config.tagPattern,
     discoveryOptions,
-    githubToken
+    githubToken,
   );
 
   if (discoveredVersions.length === 0) {
@@ -159,7 +156,7 @@ export async function incrementalBuild(
   // Step 3: If no existing changelog, do full build
   if (!existing) {
     console.log(
-      `First build for ${packageId} - extracting all ${discoveredVersions.length} versions`
+      `First build for ${packageId} - extracting all ${discoveredVersions.length} versions`,
     );
     return fullChangelogBuild({
       packageId,
@@ -170,12 +167,8 @@ export async function incrementalBuild(
   }
 
   // Step 4: Find versions not already in changelog
-  const existingVersionSet = new Set(
-    existing.changelog.history.map((h) => h.version)
-  );
-  const newVersions = discoveredVersions.filter(
-    (v) => !existingVersionSet.has(v.version)
-  );
+  const existingVersionSet = new Set(existing.changelog.history.map((h) => h.version));
+  const newVersions = discoveredVersions.filter((v) => !existingVersionSet.has(v.version));
 
   if (newVersions.length === 0) {
     console.log(`No new versions for ${packageId} - using existing changelog`);
@@ -184,7 +177,7 @@ export async function incrementalBuild(
 
   console.log(
     `Found ${newVersions.length} new version(s) for ${packageId}: ` +
-      newVersions.map((v) => v.version).join(", ")
+      newVersions.map((v) => v.version).join(", "),
   );
 
   // Step 5: Only extract and diff new versions (using parallel extraction)
@@ -210,7 +203,7 @@ export async function incrementalBuild(
       // We need to extract or reconstruct the IR from the existing changelog
       // For now, we'll need the previous version's IR
       console.log(
-        `  Diffing ${newerVersion.version} against existing latest ${mostRecentExisting.version}`
+        `  Diffing ${newerVersion.version} against existing latest ${mostRecentExisting.version}`,
       );
       olderIR = await extractIR(mostRecentExisting.sha);
     } else {
@@ -256,9 +249,7 @@ export async function incrementalBuild(
     ],
   };
 
-  console.log(
-    `✓ Incremental build complete: added ${newVersions.length} version(s)`
-  );
+  console.log(`✓ Incremental build complete: added ${newVersions.length} version(s)`);
 
   return { changelog: mergedChangelog, versions: mergedVersions };
 }
@@ -280,9 +271,7 @@ interface FullBuildOptions {
  * @param options - Build options
  * @returns Changelog and version index
  */
-export async function fullChangelogBuild(
-  options: FullBuildOptions
-): Promise<ChangelogBuildResult> {
+export async function fullChangelogBuild(options: FullBuildOptions): Promise<ChangelogBuildResult> {
   const { packageId, packageName, versions, extractIR } = options;
 
   console.log(`Full build for ${packageId} - extracting ${versions.length} versions...`);
@@ -357,10 +346,7 @@ export async function fullChangelogBuild(
  * @param symbols - Latest symbol records
  * @param changelog - Package changelog
  */
-export function annotateLatestIR(
-  symbols: SymbolRecord[],
-  changelog: PackageChangelog
-): void {
+export function annotateLatestIR(symbols: SymbolRecord[], changelog: PackageChangelog): void {
   // Build maps for lookup
   const introductionMap = new Map<string, string>();
   const modificationMap = new Map<string, string[]>();
@@ -400,8 +386,7 @@ export function annotateLatestIR(
   }
 
   // Apply to symbols
-  const oldestVersion =
-    sortedHistory[0]?.version ?? changelog.history[0]?.version ?? "unknown";
+  const oldestVersion = sortedHistory[0]?.version ?? changelog.history[0]?.version ?? "unknown";
 
   for (const symbol of symbols) {
     const versionInfo: SymbolVersionInfo = {
@@ -423,7 +408,7 @@ export function annotateLatestIR(
 
   console.log(
     `Annotated ${symbols.length} symbols with version info ` +
-      `(${introductionMap.size} since, ${deprecationMap.size} deprecated)`
+      `(${introductionMap.size} since, ${deprecationMap.size} deprecated)`,
   );
 }
 
@@ -458,10 +443,7 @@ function computeVersionStats(delta: VersionDelta): VersionStats {
     added: delta.added.length,
     removed: delta.removed.length,
     modified: delta.modified.length,
-    breaking: delta.modified.filter((m) =>
-      m.changes.some((c) => c.breaking)
-    ).length,
+    breaking: delta.modified.filter((m) => m.changes.some((c) => c.breaking)).length,
     totalSymbols: 0, // Will be filled in later with actual count
   };
 }
-

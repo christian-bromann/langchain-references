@@ -51,7 +51,7 @@ export function CopyPageButton({ markdown, className }: CopyPageButtonProps) {
         "transition-colors duration-150",
         // Focus
         "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-1",
-        className
+        className,
       )}
       aria-label="Copy page as markdown"
     >
@@ -69,4 +69,3 @@ export function CopyPageButton({ markdown, className }: CopyPageButtonProps) {
     </button>
   );
 }
-

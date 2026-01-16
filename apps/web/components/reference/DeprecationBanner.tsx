@@ -51,7 +51,7 @@ export function DeprecationBanner({
         "rounded-lg border p-4",
         "bg-amber-50 border-amber-200 text-amber-800",
         "dark:bg-amber-900/20 dark:border-amber-700/50 dark:text-amber-200",
-        className
+        className,
       )}
       role="alert"
     >
@@ -79,18 +79,12 @@ export function DeprecationBanner({
           </h3>
 
           {/* Message */}
-          {message && (
-            <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
-              {message}
-            </p>
-          )}
+          {message && <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">{message}</p>}
 
           {/* Replacement link */}
           {replacement && (
             <p className="mt-2 text-sm">
-              <span className="text-amber-600 dark:text-amber-400">
-                Use instead:{" "}
-              </span>
+              <span className="text-amber-600 dark:text-amber-400">Use instead: </span>
               {replacementHref ? (
                 <Link
                   href={replacementHref}
@@ -99,9 +93,7 @@ export function DeprecationBanner({
                   {replacement}
                 </Link>
               ) : (
-                <code className="font-mono text-amber-800 dark:text-amber-200">
-                  {replacement}
-                </code>
+                <code className="font-mono text-amber-800 dark:text-amber-200">{replacement}</code>
               )}
             </p>
           )}
@@ -110,4 +102,3 @@ export function DeprecationBanner({
     </div>
   );
 }
-

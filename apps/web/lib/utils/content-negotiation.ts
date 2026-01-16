@@ -93,10 +93,7 @@ export function detectRequestedFormat(ctx: RequestContext): ContentFormat {
   if (accept.includes("text/markdown")) {
     return "markdown";
   }
-  if (
-    accept.includes("application/json") &&
-    !accept.includes("text/html")
-  ) {
+  if (accept.includes("application/json") && !accept.includes("text/html")) {
     return "json";
   }
 
@@ -105,7 +102,7 @@ export function detectRequestedFormat(ctx: RequestContext): ContentFormat {
   const userAgentLower = userAgent.toLowerCase();
 
   const isLlmRequest = LLM_USER_AGENT_PATTERNS.some((pattern) =>
-    userAgentLower.includes(pattern.toLowerCase())
+    userAgentLower.includes(pattern.toLowerCase()),
   );
 
   if (isLlmRequest) {
@@ -115,7 +112,7 @@ export function detectRequestedFormat(ctx: RequestContext): ContentFormat {
   // 4. Check for CLI tools (curl, wget, etc.)
   // These typically want plain text unless they explicitly request HTML
   const isCliRequest = CLI_USER_AGENT_PATTERNS.some((pattern) =>
-    userAgentLower.includes(pattern.toLowerCase())
+    userAgentLower.includes(pattern.toLowerCase()),
   );
 
   if (isCliRequest && !accept.includes("text/html")) {
@@ -134,9 +131,7 @@ export function detectRequestedFormat(ctx: RequestContext): ContentFormat {
  */
 export function isLlmUserAgent(userAgent: string): boolean {
   const userAgentLower = userAgent.toLowerCase();
-  return LLM_USER_AGENT_PATTERNS.some((pattern) =>
-    userAgentLower.includes(pattern.toLowerCase())
-  );
+  return LLM_USER_AGENT_PATTERNS.some((pattern) => userAgentLower.includes(pattern.toLowerCase()));
 }
 
 /**
@@ -165,6 +160,3 @@ export function getCacheHeaders(): Record<string, string> {
     "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
   };
 }
-
-
-

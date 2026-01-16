@@ -51,7 +51,7 @@ export interface MinimalIR {
 export function computeVersionDelta(
   olderIR: MinimalIR,
   newerIR: MinimalIR,
-  getMember?: (refId: string) => SymbolRecord | undefined
+  getMember?: (refId: string) => SymbolRecord | undefined,
 ): VersionDelta {
   const delta: VersionDelta = {
     version: newerIR.version,
@@ -65,12 +65,8 @@ export function computeVersionDelta(
   };
 
   // Build maps for quick lookup
-  const olderSymbols = new Map(
-    olderIR.symbols.map((s) => [s.qualifiedName, s])
-  );
-  const newerSymbols = new Map(
-    newerIR.symbols.map((s) => [s.qualifiedName, s])
-  );
+  const olderSymbols = new Map(olderIR.symbols.map((s) => [s.qualifiedName, s]));
+  const newerSymbols = new Map(newerIR.symbols.map((s) => [s.qualifiedName, s]));
 
   // Find added symbols
   for (const [name, symbol] of newerSymbols) {
@@ -141,10 +137,7 @@ export function computeVersionDelta(
  * @param newer - The newer symbol
  * @returns Array of change records
  */
-export function detectChanges(
-  older: SymbolRecord,
-  newer: SymbolRecord
-): ChangeRecord[] {
+export function detectChanges(older: SymbolRecord, newer: SymbolRecord): ChangeRecord[] {
   const changes: ChangeRecord[] = [];
 
   // Signature changes
@@ -196,19 +189,13 @@ export function detectChanges(
 
   // Member changes (for classes/interfaces)
   if (older.members || newer.members) {
-    const memberChanges = detectMemberChanges(
-      older.members ?? [],
-      newer.members ?? []
-    );
+    const memberChanges = detectMemberChanges(older.members ?? [], newer.members ?? []);
     changes.push(...memberChanges);
   }
 
   // Parameter changes (for functions)
   if (older.params || newer.params) {
-    const paramChanges = detectParamChanges(
-      older.params ?? [],
-      newer.params ?? []
-    );
+    const paramChanges = detectParamChanges(older.params ?? [], newer.params ?? []);
     changes.push(...paramChanges);
   }
 
@@ -228,7 +215,7 @@ export function detectChanges(
  */
 export function detectMemberChanges(
   olderMembers: { name: string; refId: string; visibility: string }[],
-  newerMembers: { name: string; refId: string; visibility: string }[]
+  newerMembers: { name: string; refId: string; visibility: string }[],
 ): ChangeRecord[] {
   const changes: ChangeRecord[] = [];
   const olderMap = new Map(olderMembers.map((m) => [m.name, m]));
@@ -267,10 +254,7 @@ export function detectMemberChanges(
       changes.push({
         type: "member-visibility-changed",
         description: `Visibility of '${name}' changed from ${olderMember.visibility} to ${newerMember.visibility}`,
-        breaking: isVisibilityChangeBreaking(
-          olderMember.visibility,
-          newerMember.visibility
-        ),
+        breaking: isVisibilityChangeBreaking(olderMember.visibility, newerMember.visibility),
         memberName: name,
         before: { visibility: olderMember.visibility as "public" | "protected" | "private" },
         after: { visibility: newerMember.visibility as "public" | "protected" | "private" },
@@ -286,7 +270,7 @@ export function detectMemberChanges(
  */
 export function detectMemberSnapshotChanges(
   olderMembers: MemberSnapshot[],
-  newerMembers: MemberSnapshot[]
+  newerMembers: MemberSnapshot[],
 ): ChangeRecord[] {
   const changes: ChangeRecord[] = [];
   const olderMap = new Map(olderMembers.map((m) => [m.name, m]));
@@ -352,10 +336,7 @@ export function detectMemberSnapshotChanges(
         changes.push({
           type: "member-visibility-changed",
           description: `Visibility of '${name}' changed from ${olderMember.visibility} to ${newerMember.visibility}`,
-          breaking: isVisibilityChangeBreaking(
-            olderMember.visibility,
-            newerMember.visibility
-          ),
+          breaking: isVisibilityChangeBreaking(olderMember.visibility, newerMember.visibility),
           memberName: name,
           before: { visibility: olderMember.visibility },
           after: { visibility: newerMember.visibility },
@@ -402,7 +383,7 @@ export function detectMemberSnapshotChanges(
  */
 export function detectParamChanges(
   olderParams: { name: string; type: string; required: boolean; default?: string }[],
-  newerParams: { name: string; type: string; required: boolean; default?: string }[]
+  newerParams: { name: string; type: string; required: boolean; default?: string }[],
 ): ChangeRecord[] {
   const changes: ChangeRecord[] = [];
   const olderMap = new Map(olderParams.map((p) => [p.name, p]));
@@ -489,7 +470,7 @@ export function detectParamChanges(
  */
 function findPotentialReplacement(
   removedName: string,
-  newerSymbols: Map<string, SymbolRecord>
+  newerSymbols: Map<string, SymbolRecord>,
 ): { qualifiedName: string; note?: string } | undefined {
   // Simple heuristic: look for similar names
   const baseName = removedName.split(".").pop() ?? removedName;
@@ -513,10 +494,7 @@ function findPotentialReplacement(
 /**
  * Check if a visibility change is breaking.
  */
-function isVisibilityChangeBreaking(
-  oldVisibility: string,
-  newVisibility: string
-): boolean {
+function isVisibilityChangeBreaking(oldVisibility: string, newVisibility: string): boolean {
   const order = ["public", "protected", "private"];
   const oldIndex = order.indexOf(oldVisibility);
   const newIndex = order.indexOf(newVisibility);
@@ -526,10 +504,7 @@ function isVisibilityChangeBreaking(
 /**
  * Check if a member type change is breaking.
  */
-function isMemberTypeChangeBreaking(
-  older: MemberSnapshot,
-  newer: MemberSnapshot
-): boolean {
+function isMemberTypeChangeBreaking(older: MemberSnapshot, newer: MemberSnapshot): boolean {
   // If the new type is a superset (union includes old type), not breaking
   if (newer.signature.includes(older.signature.replace(/[?:]/g, ""))) {
     return false;
@@ -542,7 +517,7 @@ function isMemberTypeChangeBreaking(
  */
 function isBreakingReturnTypeChange(
   oldType: string | undefined,
-  newType: string | undefined
+  newType: string | undefined,
 ): boolean {
   if (!oldType || !newType) return false;
   // Widening return type is breaking (callers may depend on narrower type)
@@ -569,4 +544,3 @@ function formatList(items: string[]): string {
   if (items.length === 0) return "none";
   return items.join(", ");
 }
-

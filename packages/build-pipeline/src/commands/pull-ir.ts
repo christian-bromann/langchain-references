@@ -71,7 +71,9 @@ function getBlobBaseUrl(): string | null {
 async function fetchBlobJson<T>(relativePath: string): Promise<T | null> {
   const baseUrl = getBlobBaseUrl();
   if (!baseUrl) {
-    throw new Error("No BLOB_BASE_URL, BLOB_URL, or BLOB_READ_WRITE_TOKEN environment variable set");
+    throw new Error(
+      "No BLOB_BASE_URL, BLOB_URL, or BLOB_READ_WRITE_TOKEN environment variable set",
+    );
   }
 
   const url = `${baseUrl}/${relativePath}`;
@@ -101,7 +103,9 @@ async function fetchBlobJson<T>(relativePath: string): Promise<T | null> {
 async function fetchBlobRaw(relativePath: string): Promise<string | null> {
   const baseUrl = getBlobBaseUrl();
   if (!baseUrl) {
-    throw new Error("No BLOB_BASE_URL, BLOB_URL, or BLOB_READ_WRITE_TOKEN environment variable set");
+    throw new Error(
+      "No BLOB_BASE_URL, BLOB_URL, or BLOB_READ_WRITE_TOKEN environment variable set",
+    );
   }
 
   const url = `${baseUrl}/${relativePath}`;
@@ -145,7 +149,7 @@ async function pullProjectLanguage(
   project: Project,
   language: Language,
   outputDir: string,
-  verbose: boolean
+  verbose: boolean,
 ): Promise<PullResult> {
   const result: PullResult = {
     project,
@@ -162,7 +166,7 @@ async function pullProjectLanguage(
     }
 
     const pointer = await fetchBlobJson<LatestBuildPointer>(
-      `pointers/latest-${project}-${language}.json`
+      `pointers/latest-${project}-${language}.json`,
     );
 
     if (!pointer) {
@@ -172,7 +176,9 @@ async function pullProjectLanguage(
 
     result.buildId = pointer.buildId;
     if (verbose) {
-      console.log(`   Found build: ${pointer.buildId} (updated ${pointer.updatedAt.split("T")[0]})`);
+      console.log(
+        `   Found build: ${pointer.buildId} (updated ${pointer.updatedAt.split("T")[0]})`,
+      );
     }
 
     const buildId = pointer.buildId;
@@ -222,7 +228,7 @@ async function pullProjectLanguage(
       }
 
       const symbolsContent = await fetchBlobRaw(
-        `ir/${buildId}/packages/${pkg.packageId}/symbols.json`
+        `ir/${buildId}/packages/${pkg.packageId}/symbols.json`,
       );
 
       if (symbolsContent) {
@@ -240,7 +246,7 @@ async function pullProjectLanguage(
 
       // Try to download changelog.json if it exists
       const changelogContent = await fetchBlobRaw(
-        `ir/${buildId}/packages/${pkg.packageId}/changelog.json`
+        `ir/${buildId}/packages/${pkg.packageId}/changelog.json`,
       );
 
       if (changelogContent) {
@@ -253,7 +259,7 @@ async function pullProjectLanguage(
 
       // Try to download versions.json if it exists
       const versionsContent = await fetchBlobRaw(
-        `ir/${buildId}/packages/${pkg.packageId}/versions.json`
+        `ir/${buildId}/packages/${pkg.packageId}/versions.json`,
       );
 
       if (versionsContent) {
@@ -271,7 +277,7 @@ async function pullProjectLanguage(
       for (const shardDir of shardedDirs) {
         // First, try to fetch the index manifest to discover shards
         const indexContent = await fetchBlobRaw(
-          `ir/${buildId}/packages/${pkg.packageId}/${shardDir}/index.json`
+          `ir/${buildId}/packages/${pkg.packageId}/${shardDir}/index.json`,
         );
 
         if (indexContent) {
@@ -294,17 +300,17 @@ async function pullProjectLanguage(
                 await Promise.all(
                   batch.map(async (shardKey) => {
                     const shardContent = await fetchBlobRaw(
-                      `ir/${buildId}/packages/${pkg.packageId}/${shardDir}/${shardKey}.json`
+                      `ir/${buildId}/packages/${pkg.packageId}/${shardDir}/${shardKey}.json`,
                     );
                     if (shardContent) {
                       await fs.writeFile(
                         path.join(shardDirPath, `${shardKey}.json`),
                         shardContent,
-                        "utf-8"
+                        "utf-8",
                       );
                       result.filesDownloaded++;
                     }
-                  })
+                  }),
                 );
               }
 
@@ -339,7 +345,7 @@ async function createSymlink(
   outputDir: string,
   buildId: string,
   project: string,
-  language: string
+  language: string,
 ): Promise<void> {
   const linkName = `latest-${project}-${language}`;
   const linkPath = path.join(outputDir, linkName);
@@ -390,12 +396,8 @@ async function main() {
   await fs.mkdir(outputDir, { recursive: true });
 
   // Determine what to pull
-  const projectsToPull: Project[] = opts.project
-    ? [opts.project as Project]
-    : [...PROJECTS];
-  const languagesToPull: Language[] = opts.language
-    ? [opts.language as Language]
-    : [...LANGUAGES];
+  const projectsToPull: Project[] = opts.project ? [opts.project as Project] : [...PROJECTS];
+  const languagesToPull: Language[] = opts.language ? [opts.language as Language] : [...LANGUAGES];
 
   const results: PullResult[] = [];
 
@@ -403,12 +405,7 @@ async function main() {
     for (const language of languagesToPull) {
       console.log(`\n📦 ${project} (${language})`);
 
-      const result = await pullProjectLanguage(
-        project,
-        language,
-        outputDir,
-        opts.verbose
-      );
+      const result = await pullProjectLanguage(project, language, outputDir, opts.verbose);
       results.push(result);
 
       if (!result.success && result.error) {

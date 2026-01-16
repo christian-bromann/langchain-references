@@ -95,7 +95,3 @@ export interface SearchResult extends SearchRecord {
   /** Matched terms */
   matches?: string[];
 }
-
-
-
-

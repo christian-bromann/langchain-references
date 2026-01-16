@@ -62,7 +62,7 @@ function wantsAlternateFormat(request: NextRequest): "markdown" | "json" | null 
   const userAgentLower = userAgent.toLowerCase();
 
   const isLlm = LLM_USER_AGENT_PATTERNS.some((pattern) =>
-    userAgentLower.includes(pattern.toLowerCase())
+    userAgentLower.includes(pattern.toLowerCase()),
   );
   if (isLlm) {
     return "markdown";
@@ -70,7 +70,7 @@ function wantsAlternateFormat(request: NextRequest): "markdown" | "json" | null 
 
   // Check for CLI tools
   const isCli = CLI_USER_AGENT_PATTERNS.some((pattern) =>
-    userAgentLower.includes(pattern.toLowerCase())
+    userAgentLower.includes(pattern.toLowerCase()),
   );
   if (isCli && !accept.includes("text/html")) {
     return "markdown";
@@ -129,8 +129,7 @@ async function resolveV03VersionFromChangelog(params: {
     const candidates =
       changelog.history
         ?.map((h) => h.version)
-        .filter((v): v is string => typeof v === "string" && v.startsWith("0.3."))
-        ?? [];
+        .filter((v): v is string => typeof v === "string" && v.startsWith("0.3.")) ?? [];
 
     if (candidates.length === 0) {
       v03VersionCache.set(params.packageId, null);
@@ -203,9 +202,7 @@ export async function middleware(request: NextRequest) {
   //
   // IMPORTANT: Only apply this to our own old schema (no .html). TypeDoc uses
   // /javascript/classes/<reflection>.html and must be handled by legacy mapping above.
-  const legacyPatterns = [
-    /^\/(python|javascript)\/(classes|functions|modules|interfaces)\//,
-  ];
+  const legacyPatterns = [/^\/(python|javascript)\/(classes|functions|modules|interfaces)\//];
 
   for (const pattern of legacyPatterns) {
     if (pattern.test(pathname)) {
@@ -213,10 +210,7 @@ export async function middleware(request: NextRequest) {
       if (pathname.includes(".html")) {
         continue;
       }
-      const newPath = pathname.replace(
-        /^\/(python|javascript)\//,
-        "/$1/langchain/"
-      );
+      const newPath = pathname.replace(/^\/(python|javascript)\//, "/$1/langchain/");
       return NextResponse.redirect(new URL(newPath, request.url), 301);
     }
   }
@@ -245,17 +239,17 @@ export async function middleware(request: NextRequest) {
     if (legacyKindDirs.has(segments[1]!)) {
       // Skip
     } else {
-    const symbolSegments = segments.slice(2);
-    const lastSegment = symbolSegments[symbolSegments.length - 1];
+      const symbolSegments = segments.slice(2);
+      const lastSegment = symbolSegments[symbolSegments.length - 1];
 
-    // Check if any symbol segment contains a dot (indicating qualified name format)
-    // But ignore URL-encoded dots (%2F) which are already handled
-    if (lastSegment && lastSegment.includes(".") && !lastSegment.includes("%")) {
-      // Convert dots to slashes in the symbol path
-      const expandedSegments = symbolSegments.flatMap(seg => seg.split("."));
-      const newPath = `/${segments[0]}/${segments[1]}/${expandedSegments.join("/")}`;
-      return NextResponse.redirect(new URL(newPath, request.url), 301);
-    }
+      // Check if any symbol segment contains a dot (indicating qualified name format)
+      // But ignore URL-encoded dots (%2F) which are already handled
+      if (lastSegment && lastSegment.includes(".") && !lastSegment.includes("%")) {
+        // Convert dots to slashes in the symbol path
+        const expandedSegments = symbolSegments.flatMap((seg) => seg.split("."));
+        const newPath = `/${segments[0]}/${segments[1]}/${expandedSegments.join("/")}`;
+        return NextResponse.redirect(new URL(newPath, request.url), 301);
+      }
     }
   }
 
@@ -294,5 +288,3 @@ export const config = {
     "/v0.3/python/:path*",
   ],
 };
-
-

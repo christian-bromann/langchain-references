@@ -7,14 +7,7 @@
  * Must be placed near the root of the app to ensure caching is available everywhere.
  */
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import {
   registerServiceWorker,
   requestCacheStats,

@@ -15,12 +15,7 @@ export {
 } from "./tarball.js";
 
 // Upload utilities
-export {
-  uploadIR,
-  cleanupOldBuilds,
-  type UploadOptions,
-  type UploadResult,
-} from "./upload.js";
+export { uploadIR, cleanupOldBuilds, type UploadOptions, type UploadResult } from "./upload.js";
 
 // Pointer management
 export {
@@ -55,10 +50,7 @@ export {
 } from "./version-discovery.js";
 
 // Changelog fetching
-export {
-  fetchDeployedChangelog,
-  type DeployedChangelog,
-} from "./changelog-fetcher.js";
+export { fetchDeployedChangelog, type DeployedChangelog } from "./changelog-fetcher.js";
 
 // Changelog generation
 export {
@@ -89,4 +81,3 @@ export {
   renderSnapshot,
   snapshotsEqual,
 } from "./snapshot.js";
-

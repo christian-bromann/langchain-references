@@ -7,12 +7,7 @@
  * @see https://llmstxt.org/
  */
 
-import { NextResponse } from "next/server";
-import {
-  getBuildIdForLanguage,
-  getManifestData,
-  getSymbols,
-} from "@/lib/ir/loader";
+import { getBuildIdForLanguage, getManifestData, getSymbols } from "@/lib/ir/loader";
 import { getBaseUrl } from "@/lib/config/mcp";
 import { slugifyPackageName } from "@/lib/utils/url";
 import type { SymbolRecord } from "@langchain/ir-schema";
@@ -52,7 +47,7 @@ function formatSymbol(
   symbol: SymbolRecord,
   packageName: string,
   langPath: string,
-  baseUrl: string
+  baseUrl: string,
 ): string {
   const pkgSlug = slugifyPackageName(packageName);
   // Use qualifiedName and convert separators to URL path
@@ -98,9 +93,7 @@ export async function GET(): Promise<Response> {
   if (pythonBuildId && !truncated) {
     const pythonManifest = await getManifestData(pythonBuildId);
     if (pythonManifest) {
-      const pythonPackages = pythonManifest.packages.filter(
-        (p) => p.language === "python"
-      );
+      const pythonPackages = pythonManifest.packages.filter((p) => p.language === "python");
 
       if (pythonPackages.length > 0) {
         addLine("## Python Packages");
@@ -155,9 +148,7 @@ export async function GET(): Promise<Response> {
   if (jsBuildId && !truncated) {
     const jsManifest = await getManifestData(jsBuildId);
     if (jsManifest) {
-      const jsPackages = jsManifest.packages.filter(
-        (p) => p.language === "typescript"
-      );
+      const jsPackages = jsManifest.packages.filter((p) => p.language === "typescript");
 
       if (jsPackages.length > 0) {
         addLine("## JavaScript Packages");
@@ -225,4 +216,3 @@ export async function GET(): Promise<Response> {
     },
   });
 }
-

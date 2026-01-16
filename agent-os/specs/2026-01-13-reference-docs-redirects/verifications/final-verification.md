@@ -40,4 +40,3 @@ Date: 2026-01-13
 ## Known limitations
 
 - URL hash fragments (`#...`) cannot be preserved by edge redirects.
-

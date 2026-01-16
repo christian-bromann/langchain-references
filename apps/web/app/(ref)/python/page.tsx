@@ -72,9 +72,7 @@ export default async function PythonIndexPage() {
           <span>🐍</span>
           <span>Python</span>
         </div>
-        <h1 className="text-3xl font-heading font-bold text-foreground">
-          Python API Reference
-        </h1>
+        <h1 className="text-3xl font-heading font-bold text-foreground">Python API Reference</h1>
         <p className="mt-2 text-foreground-secondary text-lg">
           API reference documentation for LangChain Python packages.
         </p>
@@ -90,9 +88,7 @@ export default async function PythonIndexPage() {
       {packages.length === 0 && (
         <div className="text-center py-12 text-foreground-secondary">
           <p>No packages found.</p>
-          <p className="mt-2 text-sm">
-            Run the build script to generate IR data.
-          </p>
+          <p className="mt-2 text-sm">Run the build script to generate IR data.</p>
         </div>
       )}
     </div>
@@ -102,11 +98,7 @@ export default async function PythonIndexPage() {
 /**
  * Package card component
  */
-function PackageCard({
-  package: pkg,
-}: {
-  package: Package;
-}) {
+function PackageCard({ package: pkg }: { package: Package }) {
   const href = `/python/${getPackageSlug(pkg)}`;
 
   return (
@@ -115,7 +107,7 @@ function PackageCard({
       className={cn(
         "group flex items-center justify-between p-4 rounded-lg",
         "border border-border bg-background-secondary",
-        "hover:border-primary/50 hover:bg-background transition-colors"
+        "hover:border-primary/50 hover:bg-background transition-colors",
       )}
     >
       <div className="flex items-start gap-4">

@@ -106,11 +106,7 @@ export class CacheManager {
   /**
    * Cache a symbol with automatic eviction if needed
    */
-  async cacheSymbol(
-    key: string,
-    data: SymbolRecord,
-    buildId: string
-  ): Promise<void> {
+  async cacheSymbol(key: string, data: SymbolRecord, buildId: string): Promise<void> {
     const cache = getSymbolCache();
 
     // Check if we need to evict first
@@ -150,11 +146,7 @@ export class CacheManager {
   /**
    * Cache a catalog with automatic eviction if needed
    */
-  async cacheCatalog(
-    key: string,
-    entries: CatalogEntry[],
-    buildId: string
-  ): Promise<void> {
+  async cacheCatalog(key: string, entries: CatalogEntry[], buildId: string): Promise<void> {
     const cache = getSymbolCache();
 
     // Check if we need to evict first
@@ -239,7 +231,7 @@ export class CacheManager {
       }
 
       console.log(
-        `[CacheManager] Eviction complete. Size: ${formatBytes(currentSize)} / ${formatBytes(maxBytes)}`
+        `[CacheManager] Eviction complete. Size: ${formatBytes(currentSize)} / ${formatBytes(maxBytes)}`,
       );
     } catch (error) {
       console.error("[CacheManager] Eviction failed:", error);

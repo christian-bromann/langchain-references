@@ -38,29 +38,26 @@ export function slugifyPackageName(packageName: string): string {
  * @example "langchain-core" with language "javascript" -> "@langchain/core"
  * @example "langchain" with language "javascript" -> "langchain" (unscoped)
  * @example "langchain-core" with language "python" -> "langchain_core"
- * 
+ *
  * Note: This is a best-effort reverse transformation. For scoped packages like
  * @langchain/core -> langchain-core, we can reverse it. For unscoped packages
  * like "langchain", we keep them as-is since we can't know if they were scoped.
  * The actual package name should be looked up from the manifest when available.
  */
-export function unslugifyPackageName(
-  slug: string,
-  language: UrlLanguage
-): string {
+export function unslugifyPackageName(slug: string, language: UrlLanguage): string {
   if (language === "javascript" || language === "typescript") {
     // JavaScript packages can be either:
     // 1. Scoped: @scope/name -> scope-name (slug) -> @scope/name (unslug)
     // 2. Unscoped: name -> name (slug stays the same)
     const parts = slug.split("-");
-    
+
     // If it looks like a scoped package slug (has hyphen and first part is a known scope)
     // We use a heuristic: if the first part is "langchain" and there are more parts,
     // it was likely @langchain/something
     if (parts.length >= 2 && parts[0] === "langchain") {
       return `@${parts[0]}/${parts.slice(1).join("-")}`;
     }
-    
+
     // Otherwise, treat as unscoped package
     return slug;
   } else {
@@ -74,10 +71,7 @@ export function unslugifyPackageName(
  * @example "@langchain/core" -> "pkg_js_langchain_core"
  * @example "langchain_core" -> "pkg_py_langchain_core"
  */
-export function packageNameToId(
-  packageName: string,
-  language: UrlLanguage
-): string {
+export function packageNameToId(packageName: string, language: UrlLanguage): string {
   const ecosystem = language === "python" ? "py" : "js";
   const normalized = packageName
     .replace(/^@/, "")
@@ -94,17 +88,17 @@ export function packageNameToId(
  */
 export function slugifySymbolPath(symbolPath: string, hasPackagePrefix = true): string {
   const parts = symbolPath.split(".");
-  
+
   // If only one part, it's just the symbol name (no package prefix)
   if (parts.length === 1) {
     return parts[0];
   }
-  
+
   // Skip the package name (first part) if it has a package prefix
   if (hasPackagePrefix) {
     return parts.slice(1).join("/");
   }
-  
+
   return parts.join("/");
 }
 
@@ -137,10 +131,7 @@ export function parseSlug(slug: string[]): ParsedSlug | null {
 /**
  * Parse slug with explicit language
  */
-export function parseSlugWithLanguage(
-  slug: string[],
-  language: UrlLanguage
-): ParsedSlug | null {
+export function parseSlugWithLanguage(slug: string[], language: UrlLanguage): ParsedSlug | null {
   if (slug.length < 1) {
     return null;
   }
@@ -164,7 +155,7 @@ export function parseSlugWithLanguage(
 export function buildSymbolUrl(
   language: UrlLanguage,
   packageName: string,
-  symbolPath?: string
+  symbolPath?: string,
 ): string {
   const langSegment = language === "python" ? "python" : "javascript";
   const packageSlug = slugifyPackageName(packageName);
@@ -178,7 +169,7 @@ export function buildSymbolUrl(
   // JS packages would rarely have the package name in the path
   const parts = symbolPath.split(".");
   const firstPart = parts[0];
-  
+
   // Detect if the first part looks like a Python package name (contains underscore)
   // or matches the package name. If so, skip it.
   const normalizedPackage = packageName
@@ -187,26 +178,23 @@ export function buildSymbolUrl(
     .replace(/-/g, "_")
     .toLowerCase();
   const normalizedFirst = firstPart.toLowerCase().replace(/-/g, "_");
-  
-  const hasPackagePrefix = normalizedFirst === normalizedPackage || 
-    (language === "python" && firstPart.includes("_"));
+
+  const hasPackagePrefix =
+    normalizedFirst === normalizedPackage || (language === "python" && firstPart.includes("_"));
 
   const pathSegment = slugifySymbolPath(symbolPath, hasPackagePrefix);
-  
+
   if (!pathSegment) {
     return `/${langSegment}/${packageSlug}`;
   }
-  
+
   return `/${langSegment}/${packageSlug}/${pathSegment}`;
 }
 
 /**
  * Build a URL for a package
  */
-export function buildPackageUrl(
-  language: UrlLanguage,
-  packageName: string
-): string {
+export function buildPackageUrl(language: UrlLanguage, packageName: string): string {
   return buildSymbolUrl(language, packageName);
 }
 
@@ -218,9 +206,7 @@ export interface BreadcrumbItem {
   href: string;
 }
 
-export function getBreadcrumbs(
-  parsed: ParsedSlug
-): BreadcrumbItem[] {
+export function getBreadcrumbs(parsed: ParsedSlug): BreadcrumbItem[] {
   const breadcrumbs: BreadcrumbItem[] = [
     {
       label: parsed.language === "python" ? "Python" : "JavaScript",
@@ -243,7 +229,7 @@ export function getBreadcrumbs(
       href: buildSymbolUrl(
         parsed.language,
         parsed.packageName,
-        `${parsed.packageName}.${currentPath}`
+        `${parsed.packageName}.${currentPath}`,
       ),
     });
   }
@@ -322,4 +308,3 @@ export function getKindColor(kind: SymbolKind): string {
 
   return colorMap[kind] || "bg-gray-100 text-gray-800";
 }
-

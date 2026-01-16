@@ -67,11 +67,14 @@ export interface ProjectPackageIndex {
   project: string;
   language: "python" | "javascript";
   updatedAt: string;
-  packages: Record<string, {
-    buildId: string;
-    version: string;
-    sha: string;
-  }>;
+  packages: Record<
+    string,
+    {
+      buildId: string;
+      version: string;
+      sha: string;
+    }
+  >;
 }
 
 export interface BuildMetadata {
@@ -131,10 +134,7 @@ async function uploadPointer(path: string, data: unknown, dryRun: boolean): Prom
  */
 async function fetchPointer<T>(path: string): Promise<T | null> {
   try {
-    const response = await fetch(
-      `${process.env.BLOB_URL || ""}/${path}`,
-      { cache: "no-store" }
-    );
+    const response = await fetch(`${process.env.BLOB_URL || ""}/${path}`, { cache: "no-store" });
     if (!response.ok) return null;
     return (await response.json()) as T;
   } catch {
@@ -205,12 +205,20 @@ export async function updatePointers(options: PointerUpdateOptions): Promise<voi
   const jsPackages = manifest.packages.filter((p) => p.language === "typescript");
 
   if (pythonPackages.length > 0) {
-    await uploadPointer(`${POINTERS_PATH}/latest-${projectId}-python.json`, { buildId, updatedAt: now }, dryRun);
+    await uploadPointer(
+      `${POINTERS_PATH}/latest-${projectId}-python.json`,
+      { buildId, updatedAt: now },
+      dryRun,
+    );
     console.log(`   ✓ Uploaded latest-${projectId}-python.json`);
   }
 
   if (jsPackages.length > 0) {
-    await uploadPointer(`${POINTERS_PATH}/latest-${projectId}-javascript.json`, { buildId, updatedAt: now }, dryRun);
+    await uploadPointer(
+      `${POINTERS_PATH}/latest-${projectId}-javascript.json`,
+      { buildId, updatedAt: now },
+      dryRun,
+    );
     console.log(`   ✓ Uploaded latest-${projectId}-javascript.json`);
   }
 
@@ -232,10 +240,14 @@ export async function updatePointers(options: PointerUpdateOptions): Promise<voi
     // Add new build at the front, keep only last 10
     const updatedBuilds = [buildId, ...builds.filter((b) => b !== buildId)].slice(0, 10);
 
-    await uploadPointer(`${POINTERS_PATH}/build-history.json`, {
-      builds: updatedBuilds,
-      updatedAt: now,
-    }, dryRun);
+    await uploadPointer(
+      `${POINTERS_PATH}/build-history.json`,
+      {
+        builds: updatedBuilds,
+        updatedAt: now,
+      },
+      dryRun,
+    );
     console.log(`   ✓ Uploaded build-history.json`);
   }
 
@@ -262,7 +274,7 @@ export async function getBuildMetadata(buildId: string): Promise<BuildMetadata |
  */
 export async function getLatestPackageVersion(
   ecosystem: "python" | "javascript",
-  packageName: string
+  packageName: string,
 ): Promise<LatestPointer | null> {
   return fetchPointer<LatestPointer>(`${POINTERS_PATH}/packages/${ecosystem}/${packageName}.json`);
 }
@@ -278,17 +290,18 @@ export async function getBuildHistory(limit = 10): Promise<string[]> {
 /**
  * Mark a build as failed in Blob.
  */
-export async function markBuildFailed(
-  buildId: string,
-  error: string
-): Promise<void> {
+export async function markBuildFailed(buildId: string, error: string): Promise<void> {
   const existing = await getBuildMetadata(buildId);
   if (existing) {
-    await uploadPointer(`${POINTERS_PATH}/builds/${buildId}.json`, {
-      ...existing,
-      status: "failed",
-      error,
-    }, false);
+    await uploadPointer(
+      `${POINTERS_PATH}/builds/${buildId}.json`,
+      {
+        ...existing,
+        status: "failed",
+        error,
+      },
+      false,
+    );
   }
 }
 
@@ -297,7 +310,7 @@ export async function markBuildFailed(
  * This creates/updates the package-specific pointer file.
  */
 async function updatePackagePointer(data: PackagePointerData, dryRun: boolean): Promise<void> {
-  const { packageId, packageName, ecosystem, project, buildId, version, sha, repo, stats } = data;
+  const { packageName, ecosystem, project, buildId, version, sha, repo, stats } = data;
 
   console.log(`\n🔗 Updating package pointer for ${packageName}`);
   if (dryRun) {
@@ -322,7 +335,13 @@ async function updatePackagePointer(data: PackagePointerData, dryRun: boolean): 
   console.log(`   ✓ Uploaded packages/${ecosystem}/${packageName}.json → ${version}`);
 
   // Update the project package index
-  await updateProjectPackageIndex(project, ecosystem, packageName, { buildId, version, sha }, dryRun);
+  await updateProjectPackageIndex(
+    project,
+    ecosystem,
+    packageName,
+    { buildId, version, sha },
+    dryRun,
+  );
 
   console.log(`\n✅ Package pointer update complete!`);
 }
@@ -336,7 +355,7 @@ async function updateProjectPackageIndex(
   language: "python" | "javascript",
   packageName: string,
   packageInfo: { buildId: string; version: string; sha: string },
-  dryRun: boolean
+  dryRun: boolean,
 ): Promise<void> {
   const indexPath = `${POINTERS_PATH}/index-${project}-${language}.json`;
 
@@ -354,13 +373,15 @@ async function updateProjectPackageIndex(
     language,
     updatedAt: now,
     packages: {
-      ...(existingIndex?.packages || {}),
+      ...existingIndex?.packages,
       [packageName]: packageInfo,
     },
   };
 
   await uploadPointer(indexPath, updatedIndex, dryRun);
-  console.log(`   ✓ Updated index-${project}-${language}.json (${Object.keys(updatedIndex.packages).length} packages)`);
+  console.log(
+    `   ✓ Updated index-${project}-${language}.json (${Object.keys(updatedIndex.packages).length} packages)`,
+  );
 }
 
 /**
@@ -368,7 +389,7 @@ async function updateProjectPackageIndex(
  */
 export async function getPackagePointer(
   ecosystem: "python" | "javascript",
-  packageName: string
+  packageName: string,
 ): Promise<PackagePointer | null> {
   return fetchPointer<PackagePointer>(`${POINTERS_PATH}/packages/${ecosystem}/${packageName}.json`);
 }
@@ -378,7 +399,7 @@ export async function getPackagePointer(
  */
 export async function getProjectPackageIndex(
   project: string,
-  language: "python" | "javascript"
+  language: "python" | "javascript",
 ): Promise<ProjectPackageIndex | null> {
   return fetchPointer<ProjectPackageIndex>(`${POINTERS_PATH}/index-${project}-${language}.json`);
 }
@@ -391,7 +412,7 @@ export async function regenerateProjectPackageIndex(
   project: string,
   language: "python" | "javascript",
   packageNames: string[],
-  dryRun: boolean = false
+  dryRun: boolean = false,
 ): Promise<void> {
   const ecosystem = language;
   const now = new Date().toISOString();
@@ -419,5 +440,7 @@ export async function regenerateProjectPackageIndex(
 
   const indexPath = `${POINTERS_PATH}/index-${project}-${language}.json`;
   await uploadPointer(indexPath, index, dryRun);
-  console.log(`   ✓ Regenerated index-${project}-${language}.json (${Object.keys(packages).length} packages)`);
+  console.log(
+    `   ✓ Regenerated index-${project}-${language}.json (${Object.keys(packages).length} packages)`,
+  );
 }

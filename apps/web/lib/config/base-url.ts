@@ -17,4 +17,3 @@ export const BASE_URL = stripTrailingSlash(
       ? "http://localhost:3000"
       : "https://langchain-references.vercel.app"),
 );
-

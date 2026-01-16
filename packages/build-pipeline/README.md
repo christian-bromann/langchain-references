@@ -52,21 +52,21 @@ pnpm build:ir --config ./configs/langchain-typescript.json --with-versions
 
 #### Options
 
-| Option | Description |
-| ------ | ----------- |
-| `--config <path>` | Build a specific configuration file |
-| `--project <name>` | Build all configs for a project (langchain, langgraph, deepagent) |
-| `--language <lang>` | Build all configs for a language (python, typescript) |
-| `--all` | Build all project/language combinations |
-| `--sha <sha>` | Git SHA to use (defaults to latest main) |
-| `--output <path>` | Output directory for IR artifacts (default: ./ir-output) |
-| `--cache <path>` | Cache directory for tarballs (default: system temp) |
-| `--local` | Local-only mode (skip all cloud uploads) |
-| `--skip-upload` | Skip upload to Vercel Blob |
-| `--skip-pointers` | Skip updating build pointers |
-| `--with-versions` | Enable version history tracking |
-| `--full` | Force full rebuild of version history |
-| `-v, --verbose` | Enable verbose output |
+| Option              | Description                                                       |
+| ------------------- | ----------------------------------------------------------------- |
+| `--config <path>`   | Build a specific configuration file                               |
+| `--project <name>`  | Build all configs for a project (langchain, langgraph, deepagent) |
+| `--language <lang>` | Build all configs for a language (python, typescript)             |
+| `--all`             | Build all project/language combinations                           |
+| `--sha <sha>`       | Git SHA to use (defaults to latest main)                          |
+| `--output <path>`   | Output directory for IR artifacts (default: ./ir-output)          |
+| `--cache <path>`    | Cache directory for tarballs (default: system temp)               |
+| `--local`           | Local-only mode (skip all cloud uploads)                          |
+| `--skip-upload`     | Skip upload to Vercel Blob                                        |
+| `--skip-pointers`   | Skip updating build pointers                                      |
+| `--with-versions`   | Enable version history tracking                                   |
+| `--full`            | Force full rebuild of version history                             |
+| `-v, --verbose`     | Enable verbose output                                             |
 
 ### sync-versions
 
@@ -138,12 +138,7 @@ import {
 ### Example: Custom Build
 
 ```typescript
-import {
-  fetchTarball,
-  getLatestSha,
-  uploadIR,
-  updatePointers,
-} from "@langchain/build-pipeline";
+import { fetchTarball, getLatestSha, uploadIR, updatePointers } from "@langchain/build-pipeline";
 
 async function customBuild() {
   const repo = "langchain-ai/langchainjs";
@@ -196,12 +191,12 @@ Build configurations are JSON files in the `configs/` directory:
 
 ## Environment Variables
 
-| Variable | Description |
-| -------- | ----------- |
-| `GITHUB_TOKEN` | GitHub personal access token for API access (recommended) |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob storage token for uploads |
-| `BLOB_URL` | Vercel Blob storage URL |
-| `BLOB_BASE_URL` | Base URL for fetching existing changelogs |
+| Variable                | Description                                               |
+| ----------------------- | --------------------------------------------------------- |
+| `GITHUB_TOKEN`          | GitHub personal access token for API access (recommended) |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob storage token for uploads                     |
+| `BLOB_URL`              | Vercel Blob storage URL                                   |
+| `BLOB_BASE_URL`         | Base URL for fetching existing changelogs                 |
 
 ## Architecture
 

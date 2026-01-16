@@ -42,14 +42,14 @@ function getLocalIrPath(project: string, language: string): string {
  */
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ slug: string[] }> }
+  context: { params: Promise<{ slug: string[] }> },
 ): Promise<NextResponse> {
   const { slug } = await context.params;
 
   if (!slug || slug.length < 3) {
     return NextResponse.json(
       { error: "Invalid path. Expected /api/changelog/:project/:language/:packageId" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -57,10 +57,7 @@ export async function GET(
   const symbolName = request.nextUrl.searchParams.get("symbol");
 
   if (!symbolName) {
-    return NextResponse.json(
-      { error: "Missing 'symbol' query parameter" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing 'symbol' query parameter" }, { status: 400 });
   }
 
   try {
@@ -101,7 +98,7 @@ export async function GET(
       localIrPath,
       "packages",
       packageId,
-      "changelog.json"
+      "changelog.json",
     );
 
     try {
@@ -121,10 +118,7 @@ export async function GET(
     }
   } catch (error) {
     console.error("Failed to load changelog:", error);
-    return NextResponse.json(
-      { error: "Failed to load changelog" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to load changelog" }, { status: 500 });
   }
 }
 
@@ -148,10 +142,7 @@ function getMemberName(qualifiedName: string, parentName: string): string {
  * Extract changes relevant to a specific symbol from the full changelog.
  * Also includes changes to member/child symbols (e.g., properties of an interface).
  */
-function extractSymbolChanges(
-  changelog: PackageChangelog,
-  symbolName: string
-): VersionChange[] {
+function extractSymbolChanges(changelog: PackageChangelog, symbolName: string): VersionChange[] {
   const changes: VersionChange[] = [];
   // Track which versions we've already added to avoid duplicates
   const addedVersions = new Set<string>();
@@ -180,9 +171,7 @@ function extractSymbolChanges(
         snapshotBefore: modified.snapshotBefore
           ? renderSnapshot(modified.snapshotBefore)
           : undefined,
-        snapshotAfter: modified.snapshotAfter
-          ? renderSnapshot(modified.snapshotAfter)
-          : undefined,
+        snapshotAfter: modified.snapshotAfter ? renderSnapshot(modified.snapshotAfter) : undefined,
       });
       addedVersions.add(delta.version);
       continue;
@@ -224,7 +213,11 @@ function extractSymbolChanges(
     // If we haven't found a direct change, check for member/child changes
     // This allows parent symbols (like interfaces) to show changes to their properties
     if (!addedVersions.has(delta.version)) {
-      const memberChanges: { memberName: string; type: VersionChange["type"]; changes?: ChangeRecord[] }[] = [];
+      const memberChanges: {
+        memberName: string;
+        type: VersionChange["type"];
+        changes?: ChangeRecord[];
+      }[] = [];
 
       // Check for added members
       for (const a of delta.added) {
@@ -271,12 +264,16 @@ function extractSymbolChanges(
       if (memberChanges.length > 0) {
         // Create aggregated change records for the member changes
         const aggregatedChanges: ChangeRecord[] = memberChanges.map((mc) => ({
-          type: mc.type === "added" ? "member-added" as const :
-                mc.type === "removed" ? "member-removed" as const :
-                mc.type === "deprecated" ? "deprecated" as const :
-                "member-type-changed" as const,
+          type:
+            mc.type === "added"
+              ? ("member-added" as const)
+              : mc.type === "removed"
+                ? ("member-removed" as const)
+                : mc.type === "deprecated"
+                  ? ("deprecated" as const)
+                  : ("member-type-changed" as const),
           description: `${mc.memberName} was ${mc.type}`,
-          breaking: mc.changes?.some(c => c.breaking) || mc.type === "removed",
+          breaking: mc.changes?.some((c) => c.breaking) || mc.type === "removed",
           memberName: mc.memberName,
         }));
 
@@ -285,7 +282,7 @@ function extractSymbolChanges(
           releaseDate: delta.releaseDate,
           type: "modified",
           changes: aggregatedChanges,
-          affectedMember: memberChanges.map(mc => mc.memberName).join(", "),
+          affectedMember: memberChanges.map((mc) => mc.memberName).join(", "),
         });
         addedVersions.add(delta.version);
       }
@@ -314,4 +311,3 @@ function renderSnapshot(snapshot: any): string {
   // For functions and other types, just show signature
   return snapshot.signature;
 }
-

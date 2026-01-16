@@ -86,4 +86,3 @@ export function CopyButton({ text, className = "" }: CopyButtonProps) {
     </div>
   );
 }
-

@@ -21,34 +21,34 @@ on:
   workflow_dispatch:
     inputs:
       project:
-        description: 'Project to build (leave empty for all)'
+        description: "Project to build (leave empty for all)"
         required: false
         type: choice
         options:
-          - ''
+          - ""
           - langchain
           - langgraph
           - deepagent
       language:
-        description: 'Language to build (leave empty for all)'
+        description: "Language to build (leave empty for all)"
         required: false
         type: choice
         options:
-          - ''
+          - ""
           - python
           - typescript
       with_versions:
-        description: 'Include version history tracking'
+        description: "Include version history tracking"
         required: false
         type: boolean
         default: true
       full_rebuild:
-        description: 'Force full rebuild (skip blob download, recompile everything)'
+        description: "Force full rebuild (skip blob download, recompile everything)"
         required: false
         type: boolean
         default: false
       force_build:
-        description: 'Force build even if no new releases detected'
+        description: "Force build even if no new releases detected"
         required: false
         type: boolean
         default: false
@@ -62,11 +62,11 @@ on:
     branches:
       - main
     paths:
-      - '.github/workflows/build-ir.yml'
-      - 'configs/**'
-      - 'packages/build-pipeline/**'
-      - 'packages/extractor-*/**'
-      - 'packages/ir-schema/**'
+      - ".github/workflows/build-ir.yml"
+      - "configs/**"
+      - "packages/build-pipeline/**"
+      - "packages/extractor-*/**"
+      - "packages/ir-schema/**"
 
 # Ensure only one build runs at a time per ref
 concurrency:
@@ -96,7 +96,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -291,7 +291,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -395,7 +395,7 @@ jobs:
         if: steps.check-existing.outputs.needs_compile == 'true' && matrix.language == 'python'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install Python extractor (for Python builds)
         if: steps.check-existing.outputs.needs_compile == 'true' && matrix.language == 'python'
@@ -491,7 +491,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -499,11 +499,11 @@ jobs:
       - name: Update project package indexes
         run: |
           echo "🔄 Regenerating project package indexes..."
-          
+
           # Determine which projects/languages were built
           PROJECT="${{ github.event.inputs.project }}"
           LANGUAGE="${{ github.event.inputs.language }}"
-          
+
           if [ -n "$PROJECT" ] && [ -n "$LANGUAGE" ]; then
             # Specific project/language
             echo "Updating index for $PROJECT-$LANGUAGE"

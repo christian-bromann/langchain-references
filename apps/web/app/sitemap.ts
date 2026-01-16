@@ -61,10 +61,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }
       } catch (error) {
         // Log but don't fail - some projects may not have data yet
-        console.warn(
-          `Failed to generate sitemap entries for ${language}/${project.id}:`,
-          error
-        );
+        console.warn(`Failed to generate sitemap entries for ${language}/${project.id}:`, error);
       }
     }
   }

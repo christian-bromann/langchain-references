@@ -27,7 +27,15 @@ interface PackagePageProps {
  */
 interface DisplaySymbol {
   id: string;
-  kind: "class" | "function" | "method" | "module" | "interface" | "property" | "typeAlias" | "enum";
+  kind:
+    | "class"
+    | "function"
+    | "method"
+    | "module"
+    | "interface"
+    | "property"
+    | "typeAlias"
+    | "enum";
   name: string;
   qualifiedName: string;
   summary?: string;
@@ -72,16 +80,36 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
   // Build TOC sections for the sidebar
   const tocSections: PackageTOCSection[] = [];
   if (classes.length > 0) {
-    tocSections.push({ id: "section-classes", title: "Classes", icon: "class", count: classes.length });
+    tocSections.push({
+      id: "section-classes",
+      title: "Classes",
+      icon: "class",
+      count: classes.length,
+    });
   }
   if (functions.length > 0) {
-    tocSections.push({ id: "section-functions", title: "Functions", icon: "function", count: functions.length });
+    tocSections.push({
+      id: "section-functions",
+      title: "Functions",
+      icon: "function",
+      count: functions.length,
+    });
   }
   if (modules.length > 0) {
-    tocSections.push({ id: "section-modules", title: "Modules", icon: "module", count: modules.length });
+    tocSections.push({
+      id: "section-modules",
+      title: "Modules",
+      icon: "module",
+      count: modules.length,
+    });
   }
   if (interfaces.length > 0) {
-    tocSections.push({ id: "section-interfaces", title: "Interfaces", icon: "interface", count: interfaces.length });
+    tocSections.push({
+      id: "section-interfaces",
+      title: "Interfaces",
+      icon: "interface",
+      count: interfaces.length,
+    });
   }
   if (types.length > 0) {
     tocSections.push({ id: "section-types", title: "Types", icon: "type", count: types.length });
@@ -109,9 +137,7 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               <Box className="h-6 w-6" />
             </div>
-            <h1 className="text-3xl font-heading font-bold text-foreground">
-              {packageName}
-            </h1>
+            <h1 className="text-3xl font-heading font-bold text-foreground">{packageName}</h1>
           </div>
           <p className="mt-3 text-foreground-secondary text-lg">
             API reference for the {packageName} package.
@@ -179,14 +205,16 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
         )}
 
         {/* Empty state */}
-        {classes.length === 0 && functions.length === 0 && modules.length === 0 && interfaces.length === 0 && types.length === 0 && (
-          <div className="text-center py-12 text-foreground-secondary">
-            <p>No symbols found for this package.</p>
-            <p className="mt-2 text-sm">
-              This package may not have been extracted yet.
-            </p>
-          </div>
-        )}
+        {classes.length === 0 &&
+          functions.length === 0 &&
+          modules.length === 0 &&
+          interfaces.length === 0 &&
+          types.length === 0 && (
+            <div className="text-center py-12 text-foreground-secondary">
+              <p>No symbols found for this package.</p>
+              <p className="mt-2 text-sm">This package may not have been extracted yet.</p>
+            </div>
+          )}
       </div>
 
       {/* Table of Contents sidebar */}
@@ -253,12 +281,14 @@ function SymbolCard({
       className={cn(
         "group flex items-start gap-4 p-4 rounded-lg",
         "border border-border bg-background-secondary",
-        "hover:border-primary/50 hover:bg-background transition-colors"
+        "hover:border-primary/50 hover:bg-background transition-colors",
       )}
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className={cn("px-2 py-0.5 text-xs font-medium rounded", getKindColor(symbol.kind))}>
+          <span
+            className={cn("px-2 py-0.5 text-xs font-medium rounded", getKindColor(symbol.kind))}
+          >
             {getKindLabel(symbol.kind)}
           </span>
           <h3 className="font-mono font-semibold text-foreground group-hover:text-primary transition-colors">
@@ -266,9 +296,7 @@ function SymbolCard({
           </h3>
         </div>
         {symbol.summary && (
-          <p className="mt-1 text-sm text-foreground-secondary line-clamp-2">
-            {symbol.summary}
-          </p>
+          <p className="mt-1 text-sm text-foreground-secondary line-clamp-2">{symbol.summary}</p>
         )}
         {symbol.signature && (
           <code className="mt-2 block text-xs text-foreground-muted font-mono truncate">

@@ -1,7 +1,15 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["**/.env.*local"],
-  "globalEnv": ["NODE_ENV", "VERCEL", "CACHE_BUST", "USE_LOCAL_IR", "BLOB_URL", "BLOB_BASE_URL", "NEXT_PUBLIC_BLOB_URL"],
+  "globalEnv": [
+    "NODE_ENV",
+    "VERCEL",
+    "CACHE_BUST",
+    "USE_LOCAL_IR",
+    "BLOB_URL",
+    "BLOB_BASE_URL",
+    "NEXT_PUBLIC_BLOB_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -13,7 +21,13 @@
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "cache": false
+    },
+    "fmt": {
+      "cache": false
+    },
+    "fmt:check": {
+      "cache": false
     },
     "test": {
       "dependsOn": ["^build"]
@@ -26,6 +40,3 @@
     }
   }
 }
-
-
-

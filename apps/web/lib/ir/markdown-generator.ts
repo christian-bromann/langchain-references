@@ -118,7 +118,7 @@ function escapeTableCell(text: string): string {
 export function symbolToMarkdown(
   symbol: SymbolRecord,
   packageName: string,
-  options: MarkdownOptions = {}
+  options: MarkdownOptions = {},
 ): string {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const baseUrl = opts.baseUrl || getBaseUrl();
@@ -233,11 +233,9 @@ export function symbolToMarkdown(
   // Members (properties and methods)
   if (opts.includeMemberDetails && symbol.members && symbol.members.length > 0) {
     const properties = symbol.members.filter(
-      (m) => m.kind === "property" || m.kind === "attribute"
+      (m) => m.kind === "property" || m.kind === "attribute",
     );
-    const methods = symbol.members.filter(
-      (m) => m.kind === "method" || m.kind === "function"
-    );
+    const methods = symbol.members.filter((m) => m.kind === "method" || m.kind === "function");
     const constructors = symbol.members.filter((m) => m.kind === "constructor");
 
     if (constructors.length > 0) {
@@ -269,11 +267,7 @@ export function symbolToMarkdown(
   }
 
   // Examples
-  if (
-    opts.includeExamples &&
-    symbol.docs?.examples &&
-    symbol.docs.examples.length > 0
-  ) {
+  if (opts.includeExamples && symbol.docs?.examples && symbol.docs.examples.length > 0) {
     lines.push("## Examples");
     lines.push("");
     for (let i = 0; i < symbol.docs.examples.length; i++) {
@@ -289,8 +283,7 @@ export function symbolToMarkdown(
         lines.push(`### Example ${i + 1}`);
         lines.push("");
       }
-      const exampleLang =
-        example.language || getCodeLanguage(symbol.language);
+      const exampleLang = example.language || getCodeLanguage(symbol.language);
       lines.push("```" + exampleLang);
       lines.push(cleanedCode);
       lines.push("```");
@@ -352,10 +345,7 @@ export function symbolToMarkdown(
  * @param packageName - The package name
  * @returns Compact markdown string
  */
-export function symbolToCompactMarkdown(
-  symbol: SymbolRecord,
-  packageName: string
-): string {
+export function symbolToCompactMarkdown(symbol: SymbolRecord, packageName: string): string {
   const lines: string[] = [];
 
   lines.push(`### ${symbol.name}`);
@@ -388,7 +378,7 @@ export function symbolToCompactMarkdown(
 export function packageToMarkdown(
   packageName: string,
   symbols: SymbolRecord[],
-  language: Language
+  language: Language,
 ): string {
   const lines: string[] = [];
   const baseUrl = getBaseUrl();
@@ -397,9 +387,7 @@ export function packageToMarkdown(
 
   lines.push(`# ${packageName}`);
   lines.push("");
-  lines.push(
-    `> ${language === "python" ? "Python" : "JavaScript/TypeScript"} package`
-  );
+  lines.push(`> ${language === "python" ? "Python" : "JavaScript/TypeScript"} package`);
   lines.push("");
   lines.push(`📖 [View in docs](${baseUrl}/${langPath}/${packageSlug})`);
   lines.push("");
@@ -489,7 +477,7 @@ interface CatalogEntry {
 export function packageToMarkdownFromCatalog(
   packageName: string,
   entries: CatalogEntry[],
-  language: Language
+  language: Language,
 ): string {
   const lines: string[] = [];
   const baseUrl = getBaseUrl();
@@ -498,9 +486,7 @@ export function packageToMarkdownFromCatalog(
 
   lines.push(`# ${packageName}`);
   lines.push("");
-  lines.push(
-    `> ${language === "python" ? "Python" : "JavaScript/TypeScript"} package`
-  );
+  lines.push(`> ${language === "python" ? "Python" : "JavaScript/TypeScript"} package`);
   lines.push("");
   lines.push(`📖 [View in docs](${baseUrl}/${langPath}/${packageSlug})`);
   lines.push("");
@@ -564,6 +550,3 @@ export function packageToMarkdownFromCatalog(
 
   return lines.join("\n");
 }
-
-
-

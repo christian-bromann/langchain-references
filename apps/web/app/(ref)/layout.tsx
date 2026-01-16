@@ -9,11 +9,7 @@ import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
 import { SidebarLoader } from "@/components/layout/SidebarLoader";
 
-export default function ReferenceLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function ReferenceLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -22,17 +18,15 @@ export default function ReferenceLayout({
       {/* Main layout with sidebar */}
       <div className="max-w-8xl mx-auto px-0 lg:px-5">
         <div className="flex pt-header">
-        {/* Sidebar */}
-        <Suspense fallback={<SidebarSkeleton />}>
-          <SidebarLoader />
-        </Suspense>
+          {/* Sidebar */}
+          <Suspense fallback={<SidebarSkeleton />}>
+            <SidebarLoader />
+          </Suspense>
 
-        {/* Main content - full width on mobile */}
-        <main className="flex-1 min-w-0">
-          <div className="px-6 py-8">
-            {children}
-          </div>
-        </main>
+          {/* Main content - full width on mobile */}
+          <main className="flex-1 min-w-0">
+            <div className="px-6 py-8">{children}</div>
+          </main>
         </div>
       </div>
     </div>
@@ -48,7 +42,7 @@ function SidebarSkeleton() {
       className="hidden lg:flex sticky top-header self-start shrink-0 flex-col border-r border-gray-100 dark:border-white/10"
       style={{
         height: "calc(100vh - var(--header-height))",
-        width: "var(--sidebar-width)"
+        width: "var(--sidebar-width)",
       }}
     >
       <div className="flex-1 pr-5 pt-5 pb-4">
@@ -90,4 +84,3 @@ function SidebarSkeleton() {
     </aside>
   );
 }
-

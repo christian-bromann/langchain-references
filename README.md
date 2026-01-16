@@ -33,7 +33,7 @@ flowchart TB
         MF["Manifest<br/>.json"]
         SY["Symbol Shards<br/>.json"]
         SE["Search<br/>Index"]
-        
+
         GH --> PY
         GH --> TS
         PY --> IR
@@ -42,19 +42,19 @@ flowchart TB
         IR --> SY
         IR --> SE
     end
-    
+
     subgraph STORAGE["STORAGE LAYER"]
         BLOB["Vercel Blob<br/><br/>/ir/{buildId}/<br/>manifest.json<br/>routing/*.json<br/>symbols/*.json<br/>search/*.json"]
         PTRS["Vercel Blob<br/><br/>/pointers/<br/>latest-build.json<br/>latest-python.json<br/>latest-javascript.json"]
     end
-    
+
     subgraph RENDER["RENDERING LAYER"]
         NEXT["Next.js App Router<br/><br/>/python/[...slug]/page.tsx<br/>/javascript/[...slug]/page.tsx"]
         EDGE["Vercel Edge<br/>reference.langchain.com"]
-        
+
         NEXT --> EDGE
     end
-    
+
     BUILD --> STORAGE
     STORAGE --> RENDER
 ```
@@ -220,24 +220,24 @@ TypeScript API extractor using TypeDoc. Located in `packages/extractor-typescrip
 
 ### Python (from `langchain-ai/langchain`)
 
-| Package | Import Path |
-| ------- | ----------- |
-| langchain | `langchain` |
-| langchain-core | `langchain_core` |
-| langchain-community | `langchain_community` |
+| Package                  | Import Path                |
+| ------------------------ | -------------------------- |
+| langchain                | `langchain`                |
+| langchain-core           | `langchain_core`           |
+| langchain-community      | `langchain_community`      |
 | langchain-text-splitters | `langchain_text_splitters` |
 
 ### JavaScript/TypeScript (from `langchain-ai/langchainjs`)
 
-| Package | npm Name |
-| ------- | -------- |
-| langchain | `langchain` |
-| @langchain/core | `@langchain/core` |
-| @langchain/community | `@langchain/community` |
-| @langchain/openai | `@langchain/openai` |
-| @langchain/anthropic | `@langchain/anthropic` |
+| Package                 | npm Name                  |
+| ----------------------- | ------------------------- |
+| langchain               | `langchain`               |
+| @langchain/core         | `@langchain/core`         |
+| @langchain/community    | `@langchain/community`    |
+| @langchain/openai       | `@langchain/openai`       |
+| @langchain/anthropic    | `@langchain/anthropic`    |
 | @langchain/google-genai | `@langchain/google-genai` |
-| @langchain/aws | `@langchain/aws` |
+| @langchain/aws          | `@langchain/aws`          |
 
 ## URL Structure
 
@@ -334,12 +334,12 @@ The UI follows LangChain's brand guidelines:
 
 ### Colors
 
-| Token | Light | Dark |
-| ----- | ----- | ---- |
-| Primary | `#2F6868` (Teal) | `#84C4C0` (Light Teal) |
-| Background | `#FAFAF8` | `#0D0D0D` |
-| Text | `#1C1C1C` | `#FAFAFA` |
-| Accent | `#D4A574` (Gold) | `#D4A574` (Gold) |
+| Token      | Light            | Dark                   |
+| ---------- | ---------------- | ---------------------- |
+| Primary    | `#2F6868` (Teal) | `#84C4C0` (Light Teal) |
+| Background | `#FAFAF8`        | `#0D0D0D`              |
+| Text       | `#1C1C1C`        | `#FAFAFA`              |
+| Accent     | `#D4A574` (Gold) | `#D4A574` (Gold)       |
 
 ### Typography
 

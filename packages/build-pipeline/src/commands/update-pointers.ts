@@ -84,4 +84,3 @@ main().catch((error) => {
 });
 
 export { main as updatePointersMain };
-

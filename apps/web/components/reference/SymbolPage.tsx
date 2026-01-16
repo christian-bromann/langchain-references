@@ -9,7 +9,13 @@ import { ChevronRight, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
 import { buildPackageUrl, getKindColor, getKindLabel, slugifyPackageName } from "@/lib/utils/url";
-import type { SymbolKind, Visibility, Stability, SymbolRecord, TypeReference } from "@/lib/ir/types";
+import type {
+  SymbolKind,
+  Visibility,
+  Stability,
+  SymbolRecord,
+  TypeReference,
+} from "@/lib/ir/types";
 import type { PackageChangelog, SymbolSnapshot } from "@langchain/ir-schema";
 import {
   getBuildIdForLanguage,
@@ -28,7 +34,12 @@ import { getProjectForPackage } from "@/lib/config/projects";
 import { CodeBlock } from "./CodeBlock";
 import { SignatureBlock } from "./SignatureBlock";
 import { MarkdownContent } from "./MarkdownContent";
-import { TableOfContents, type TOCSection, type TOCItem, type TOCInheritedGroup } from "./TableOfContents";
+import {
+  TableOfContents,
+  type TOCSection,
+  type TOCItem,
+  type TOCInheritedGroup,
+} from "./TableOfContents";
 import { symbolToMarkdown } from "@/lib/ir/markdown-generator";
 import { getBaseUrl } from "@/lib/config/mcp";
 import { VersionBadge } from "./VersionBadge";
@@ -82,7 +93,7 @@ function splitAtDepthZero(str: string, delimiter: string): string[] {
  * When a signature exceeds a reasonable width, each parameter and type parameter
  * is placed on its own line.
  */
-function formatSignature(signature: string, language: UrlLanguage): string {
+function formatSignature(signature: string): string {
   // Check if signature is "long" - threshold of 80 characters
   if (signature.length <= 80) {
     return signature;
@@ -176,7 +187,7 @@ function formatSignatureParams(signature: string): string {
 function getDisplayCode(
   symbol: { kind: SymbolKind; name: string; signature: string },
   packageName: string,
-  language: UrlLanguage
+  language: UrlLanguage,
 ): string {
   // For modules, show an import statement
   if (symbol.kind === "module") {
@@ -198,7 +209,7 @@ function getDisplayCode(
   }
 
   // For other symbols, format the signature if it's long
-  return formatSignature(symbol.signature, language);
+  return formatSignature(symbol.signature);
 }
 
 /**
@@ -309,7 +320,7 @@ function extractTypeFromSignature(signature: string, kind: string): string | und
 function toDisplaySymbol(
   symbol: SymbolRecord,
   memberSymbols?: Map<string, SymbolRecord>,
-  inheritedMembers?: InheritedMemberGroup[]
+  inheritedMembers?: InheritedMemberGroup[],
 ): DisplaySymbol {
   // Build sections from params if available
   const sections: DocSection[] = [];
@@ -401,7 +412,18 @@ function toDisplaySymbol(
 /**
  * Kind prefixes used in URLs that should be stripped when looking up symbols
  */
-const KIND_PREFIXES = ["modules", "classes", "functions", "interfaces", "types", "enums", "variables", "methods", "propertys", "namespaces"];
+const KIND_PREFIXES = [
+  "modules",
+  "classes",
+  "functions",
+  "interfaces",
+  "types",
+  "enums",
+  "variables",
+  "methods",
+  "propertys",
+  "namespaces",
+];
 
 /**
  * Pointer type for latest builds.
@@ -425,7 +447,7 @@ function getLocalIrPath(project: string, language: string): string {
 async function fetchLatestBuildId(
   blobBaseUrl: string,
   project: string,
-  language: string
+  language: string,
 ): Promise<string | null> {
   const langSuffix = language === "python" ? "python" : "javascript";
   const pointerUrl = `${blobBaseUrl}/pointers/latest-${project}-${langSuffix}.json`;
@@ -446,7 +468,7 @@ async function fetchLatestBuildId(
 async function loadChangelog(
   project: string,
   language: string,
-  packageId: string
+  packageId: string,
 ): Promise<PackageChangelog | null> {
   // Try local IR output first (for development)
   const localIrPath = getLocalIrPath(project, language);
@@ -458,7 +480,7 @@ async function loadChangelog(
     localIrPath,
     "packages",
     packageId,
-    "changelog.json"
+    "changelog.json",
   );
 
   try {
@@ -498,7 +520,7 @@ async function getHistoricalSnapshot(
   language: string,
   packageId: string,
   symbolName: string,
-  targetVersion: string
+  targetVersion: string,
 ): Promise<{ snapshot: SymbolSnapshot; changeType: "added" | "modified" } | null> {
   const changelog = await loadChangelog(project, language, packageId);
   if (!changelog) return null;
@@ -532,7 +554,7 @@ async function getHistoricalSnapshot(
 function snapshotToDisplaySymbol(
   snapshot: SymbolSnapshot,
   versionInfo?: DisplaySymbol["versionInfo"],
-  fallbackSource?: { repo?: string; sha?: string }
+  fallbackSource?: { repo?: string; sha?: string },
 ): DisplaySymbol {
   // Convert members from snapshot format to display format
   const members: DisplayMember[] | undefined = snapshot.members?.map((m) => ({
@@ -567,9 +589,11 @@ function snapshotToDisplaySymbol(
 /**
  * Generate Table of Contents data from a symbol
  */
-function generateTOCData(
-  symbol: DisplaySymbol
-): { topItems: TOCItem[]; sections: TOCSection[]; inheritedGroups: TOCInheritedGroup[] } {
+function generateTOCData(symbol: DisplaySymbol): {
+  topItems: TOCItem[];
+  sections: TOCSection[];
+  inheritedGroups: TOCInheritedGroup[];
+} {
   const topItems: TOCItem[] = [];
   const sections: TOCSection[] = [];
   const inheritedGroups: TOCInheritedGroup[] = [];
@@ -586,7 +610,7 @@ function generateTOCData(
 
     // Add parameters section if present
     const paramSections = symbol.docs.sections.filter(
-      (s) => s.kind === "parameters" || s.kind === "attributes"
+      (s) => s.kind === "parameters" || s.kind === "attributes",
     );
     if (paramSections.length > 0) {
       topItems.push({
@@ -607,17 +631,10 @@ function generateTOCData(
         acc[kind].push(member);
         return acc;
       },
-      Object.create(null) as Record<string, DisplayMember[]>
+      Object.create(null) as Record<string, DisplayMember[]>,
     );
 
-    const kindOrder = [
-      "constructor",
-      "property",
-      "attribute",
-      "accessor",
-      "method",
-      "function",
-    ];
+    const kindOrder = ["constructor", "property", "attribute", "accessor", "method", "function"];
 
     const kindLabels: Record<string, string> = {
       constructor: "Constructors",
@@ -655,7 +672,7 @@ function generateTOCData(
           acc[kind].push(member);
           return acc;
         },
-        Object.create(null) as Record<string, DisplayMember[]>
+        Object.create(null) as Record<string, DisplayMember[]>,
       );
 
       const kindOrder = ["property", "attribute", "accessor", "method", "function"];
@@ -701,7 +718,7 @@ function generateTOCData(
 async function findSymbol(
   buildId: string,
   packageId: string,
-  symbolPath: string
+  symbolPath: string,
 ): Promise<SymbolRecord | null> {
   // Generate variations of the path to try
   const pathVariations: string[] = [symbolPath];
@@ -766,7 +783,7 @@ async function findSymbol(
 async function findSymbolOptimized(
   buildId: string,
   packageId: string,
-  symbolPath: string
+  symbolPath: string,
 ): Promise<SymbolRecord | null> {
   // Generate variations of the path to try
   const pathVariations: string[] = [symbolPath];
@@ -797,7 +814,9 @@ async function findSymbolOptimized(
     for (const p of pathVariations) {
       candidates.push(p);
       // Try with package prefix for python-style qualified names
-      candidates.push(`${pkgInfo?.publishedName || pkgInfo?.displayName || ""}.${p}`.replace(/^\./, ""));
+      candidates.push(
+        `${pkgInfo?.publishedName || pkgInfo?.displayName || ""}.${p}`.replace(/^\./, ""),
+      );
       // Try slash form for TS module paths
       candidates.push(p.replace(/\./g, "/"));
     }
@@ -896,7 +915,7 @@ async function resolveInheritedMembers(
   currentPackageId: string,
   baseClassNames: string[],
   ownMemberNames: string[],
-  currentPackageSymbols?: SymbolRecord[]
+  currentPackageSymbols?: SymbolRecord[],
 ): Promise<InheritedMemberGroup[]> {
   const inheritedGroups: InheritedMemberGroup[] = [];
   const ownMemberSet = new Set(ownMemberNames);
@@ -925,12 +944,12 @@ async function resolveInheritedMembers(
           );
         })
         .map((p) => p.packageId),
-    ])
+    ]),
   ).slice(0, Math.max(1, crossPackageLimit));
 
   // Helper to find a symbol by name across all packages
   async function findBaseSymbol(
-    simpleBaseName: string
+    simpleBaseName: string,
   ): Promise<{ symbol: SymbolRecord; packageId: string; packageName: string } | null> {
     // First, try to find in current package
     let baseSymbol =
@@ -939,7 +958,7 @@ async function resolveInheritedMembers(
           (s.kind === "class" || s.kind === "interface") &&
           (s.name === simpleBaseName ||
             s.qualifiedName === simpleBaseName ||
-            s.qualifiedName.endsWith(`.${simpleBaseName}`))
+            s.qualifiedName.endsWith(`.${simpleBaseName}`)),
       ) || null;
 
     if (baseSymbol) {
@@ -1050,7 +1069,7 @@ async function resolveInheritedMembers(
     baseSymbol: SymbolRecord,
     basePackageId: string,
     basePackageName: string,
-    simpleBaseName: string
+    simpleBaseName: string,
   ): Promise<void> {
     if (!baseSymbol.members || baseSymbol.members.length === 0) return;
 
@@ -1064,7 +1083,10 @@ async function resolveInheritedMembers(
     } else {
       const memberIds = baseSymbol.members.map((m) => m.refId).filter(Boolean);
       const resolved = await Promise.all(
-        memberIds.map(async (id) => ({ id, symbol: await getIndividualSymbolData(buildId, id, basePackageId) }))
+        memberIds.map(async (id) => ({
+          id,
+          symbol: await getIndividualSymbolData(buildId, id, basePackageId),
+        })),
       );
       for (const r of resolved) {
         if (r.symbol) symbolsById.set(r.id, r.symbol);
@@ -1125,7 +1147,11 @@ async function resolveInheritedMembers(
     processedBases.add(simpleBaseName);
 
     // Skip utility types and unresolved types
-    if (["Pick", "Partial", "Omit", "Record", "Exclude", "Extract", "unknown"].includes(simpleBaseName)) {
+    if (
+      ["Pick", "Partial", "Omit", "Record", "Exclude", "Extract", "unknown"].includes(
+        simpleBaseName,
+      )
+    ) {
       continue;
     }
 
@@ -1136,7 +1162,7 @@ async function resolveInheritedMembers(
         found.symbol,
         found.packageId,
         found.packageName,
-        simpleBaseName
+        simpleBaseName,
       );
 
       // Add parent's bases to the processing queue (recursive inheritance)
@@ -1154,7 +1180,13 @@ async function resolveInheritedMembers(
   return inheritedGroups;
 }
 
-export async function SymbolPage({ language, packageId, packageName, symbolPath, version }: SymbolPageProps) {
+export async function SymbolPage({
+  language,
+  packageId,
+  packageName,
+  symbolPath,
+  version,
+}: SymbolPageProps) {
   const irLanguage = language === "python" ? "python" : "javascript";
 
   // Determine which project this package belongs to
@@ -1173,7 +1205,7 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
           buildId,
           packageId,
           pkgInfo.displayName,
-          language === "python" ? "python" : "typescript"
+          language === "python" ? "python" : "typescript",
         )
       : null;
 
@@ -1241,14 +1273,14 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
         irLanguage,
         packageId,
         irSymbol.qualifiedName,
-        version
+        version,
       );
 
       if (historicalData) {
         symbol = snapshotToDisplaySymbol(
           historicalData.snapshot,
           { since: version },
-          { repo: irSymbol.source?.repo, sha: irSymbol.source?.sha }
+          { repo: irSymbol.source?.repo, sha: irSymbol.source?.sha },
         );
       }
     }
@@ -1258,45 +1290,45 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
       // Keep reference for markdown generation
       irSymbolForMarkdown = irSymbol;
 
-        // Fetch member symbols individually (instead of loading all 11MB)
-        let memberSymbols: Map<string, SymbolRecord> | undefined;
+      // Fetch member symbols individually (instead of loading all 11MB)
+      let memberSymbols: Map<string, SymbolRecord> | undefined;
 
-        if (irSymbol.members && irSymbol.members.length > 0) {
-          memberSymbols = new Map();
-          // Fetch each member symbol individually in parallel
-          const memberPromises = irSymbol.members.map(async (member) => {
-            const memberSymbol = await getIndividualSymbolData(buildId, member.refId, packageId);
-            if (memberSymbol) {
-              return { refId: member.refId, symbol: memberSymbol };
-            }
-            return null;
-          });
+      if (irSymbol.members && irSymbol.members.length > 0) {
+        memberSymbols = new Map();
+        // Fetch each member symbol individually in parallel
+        const memberPromises = irSymbol.members.map(async (member) => {
+          const memberSymbol = await getIndividualSymbolData(buildId, member.refId, packageId);
+          if (memberSymbol) {
+            return { refId: member.refId, symbol: memberSymbol };
+          }
+          return null;
+        });
 
-          const memberResults = await Promise.all(memberPromises);
-          for (const result of memberResults) {
-            if (result) {
-              memberSymbols.set(result.refId, result.symbol);
-            }
+        const memberResults = await Promise.all(memberPromises);
+        for (const result of memberResults) {
+          if (result) {
+            memberSymbols.set(result.refId, result.symbol);
           }
         }
+      }
 
-        // For inherited members, we still need the full symbols (but only if class has extends)
-        // This is a rare case and the data is cached, so it's acceptable
-        let inheritedMembers: InheritedMemberGroup[] | undefined;
-        if (
-          (irSymbol.kind === "class" || irSymbol.kind === "interface") &&
-          irSymbol.relations?.extends &&
-          irSymbol.relations.extends.length > 0
-        ) {
-          // For inherited members, avoid fetching full symbols.json during prerender.
-          // We resolve base classes via lightweight lookup indexes + individual symbol files.
-          inheritedMembers = await resolveInheritedMembers(
-            buildId,
-            packageId,
-            irSymbol.relations.extends,
-            irSymbol.members?.map((m) => m.name) || []
-          );
-        }
+      // For inherited members, we still need the full symbols (but only if class has extends)
+      // This is a rare case and the data is cached, so it's acceptable
+      let inheritedMembers: InheritedMemberGroup[] | undefined;
+      if (
+        (irSymbol.kind === "class" || irSymbol.kind === "interface") &&
+        irSymbol.relations?.extends &&
+        irSymbol.relations.extends.length > 0
+      ) {
+        // For inherited members, avoid fetching full symbols.json during prerender.
+        // We resolve base classes via lightweight lookup indexes + individual symbol files.
+        inheritedMembers = await resolveInheritedMembers(
+          buildId,
+          packageId,
+          irSymbol.relations.extends,
+          irSymbol.members?.map((m) => m.name) || [],
+        );
+      }
 
       symbol = toDisplaySymbol(irSymbol, memberSymbols, inheritedMembers);
     }
@@ -1325,11 +1357,10 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
         </nav>
 
         <div className="text-center py-12">
-          <h1 className="text-2xl font-heading font-bold text-foreground mb-2">
-            Symbol Not Found
-          </h1>
+          <h1 className="text-2xl font-heading font-bold text-foreground mb-2">Symbol Not Found</h1>
           <p className="text-foreground-secondary">
-            The symbol <code className="font-mono">{symbolPath}</code> was not found in {packageName}.
+            The symbol <code className="font-mono">{symbolPath}</code> was not found in{" "}
+            {packageName}.
           </p>
         </div>
       </div>
@@ -1408,7 +1439,11 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
       {/* Structured Data */}
       <TechArticleJsonLd
         title={`${symbol.name} - ${packageName}`}
-        description={symbol.docs.summary || symbol.docs.description || `API reference for ${symbol.name} in ${packageName}`}
+        description={
+          symbol.docs.summary ||
+          symbol.docs.description ||
+          `API reference for ${symbol.name} in ${packageName}`
+        }
         url={`/${urlLangPath}/${slugifyPackageName(packageName)}/${symbolPath}`}
         language={language}
         packageName={packageName}
@@ -1418,193 +1453,183 @@ export async function SymbolPage({ language, packageId, packageName, symbolPath,
       <div className="flex gap-8">
         {/* Main content */}
         <div className="flex-1 min-w-0 space-y-8">
-        {/* Breadcrumbs */}
-        <nav className="flex items-center gap-2 text-sm text-foreground-secondary flex-wrap">
-          <Link
-            href={`/${language === "python" ? "python" : "javascript"}`}
-            className="hover:text-foreground transition-colors"
-          >
-            {language === "python" ? "Python" : "JavaScript"}
-          </Link>
-        <ChevronRight className="h-4 w-4 shrink-0" />
-        <Link
-          href={buildPackageUrl(language, packageName)}
-          className="hover:text-foreground transition-colors"
-        >
-          {packageName}
-        </Link>
-        {symbolPath.split(".").map((part, i, arr) => {
-          // Build cumulative path up to this part
-          const pathParts = arr.slice(0, i + 1);
-          const cumulativePath = pathParts.join(".");
-          const isLast = i === arr.length - 1;
-          const langPath = language === "python" ? "python" : "javascript";
-          const packageSlug = slugifyPackageName(packageName);
-          const href = `/${langPath}/${packageSlug}/${cumulativePath}`;
+          {/* Breadcrumbs */}
+          <nav className="flex items-center gap-2 text-sm text-foreground-secondary flex-wrap">
+            <Link
+              href={`/${language === "python" ? "python" : "javascript"}`}
+              className="hover:text-foreground transition-colors"
+            >
+              {language === "python" ? "Python" : "JavaScript"}
+            </Link>
+            <ChevronRight className="h-4 w-4 shrink-0" />
+            <Link
+              href={buildPackageUrl(language, packageName)}
+              className="hover:text-foreground transition-colors"
+            >
+              {packageName}
+            </Link>
+            {symbolPath.split(".").map((part, i, arr) => {
+              // Build cumulative path up to this part
+              const pathParts = arr.slice(0, i + 1);
+              const cumulativePath = pathParts.join(".");
+              const isLast = i === arr.length - 1;
+              const langPath = language === "python" ? "python" : "javascript";
+              const packageSlug = slugifyPackageName(packageName);
+              const href = `/${langPath}/${packageSlug}/${cumulativePath}`;
 
-          return (
-            <span key={i} className="flex items-center gap-2">
-              <ChevronRight className="h-4 w-4 shrink-0" />
-              {isLast ? (
-                <span className="text-foreground">{part}</span>
-              ) : (
-                <Link
-                  href={href}
-                  className="hover:text-foreground transition-colors"
-                >
-                  {part}
-                </Link>
+              return (
+                <span key={i} className="flex items-center gap-2">
+                  <ChevronRight className="h-4 w-4 shrink-0" />
+                  {isLast ? (
+                    <span className="text-foreground">{part}</span>
+                  ) : (
+                    <Link href={href} className="hover:text-foreground transition-colors">
+                      {part}
+                    </Link>
+                  )}
+                </span>
+              );
+            })}
+          </nav>
+
+          {/* Header */}
+          <div>
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
+              <span
+                className={cn("px-2 py-1 text-sm font-medium rounded", getKindColor(symbol.kind))}
+              >
+                {getKindLabel(symbol.kind)}
+              </span>
+              <VersionSwitcher
+                qualifiedName={symbol.qualifiedName}
+                project={project.id}
+                language={irLanguage}
+                packageId={packageId}
+                currentVersion={version}
+              />
+              {symbol.versionInfo?.since && <VersionBadge since={symbol.versionInfo.since} />}
+              {symbol.visibility === "private" && (
+                <span className="px-2 py-1 text-sm font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                  Private
+                </span>
               )}
-            </span>
-          );
-        })}
-      </nav>
+              {symbol.stability === "deprecated" && (
+                <span className="px-2 py-1 text-sm font-medium rounded bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                  Deprecated
+                </span>
+              )}
+            </div>
+            <h1 className="text-3xl font-bold text-foreground font-mono">{symbol.name}</h1>
+            {symbol.docs?.summary && (
+              <MarkdownContent compact className="mt-3 text-foreground-secondary text-lg">
+                {symbol.docs.summary}
+              </MarkdownContent>
+            )}
+          </div>
 
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-3 mb-2 flex-wrap">
-          <span className={cn("px-2 py-1 text-sm font-medium rounded", getKindColor(symbol.kind))}>
-            {getKindLabel(symbol.kind)}
-          </span>
-          <VersionSwitcher
+          {/* Signature / Import statement */}
+          {symbol.signature &&
+            (symbol.kind === "module" ? (
+              <CodeBlock
+                code={getDisplayCode(symbol, packageName, language)}
+                language={language === "python" ? "python" : "typescript"}
+                className="rounded-lg [&_pre]:p-4 [&_pre]:m-0 [&_pre]:text-sm [&_code]:text-sm [&_pre]:overflow-x-auto"
+              />
+            ) : (
+              <SignatureBlock
+                signature={formatSignature(symbol.signature)}
+                language={language === "python" ? "python" : "typescript"}
+                typeRefs={symbol.typeRefs}
+                knownSymbols={knownSymbols}
+                packageName={packageName}
+                typeUrlMap={typeUrlMap}
+                className="rounded-lg"
+              />
+            ))}
+
+          {/* Bases (for classes) */}
+          {symbol.bases && symbol.bases.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-foreground-secondary uppercase tracking-wider mb-2">
+                Bases
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {symbol.bases.map((base) => (
+                  <code
+                    key={base}
+                    className="px-2 py-1 bg-background-secondary rounded text-sm font-mono text-foreground"
+                  >
+                    <TypeReferenceDisplay
+                      typeStr={base}
+                      knownSymbols={knownSymbols}
+                      language={language}
+                      packageName={packageName}
+                      typeUrlMap={typeUrlMap}
+                    />
+                  </code>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Description */}
+          {symbol.docs?.description && <MarkdownContent>{symbol.docs.description}</MarkdownContent>}
+
+          {/* Sections (parameters, examples, etc.) */}
+          {symbol.docs?.sections?.map((section, i) => (
+            <Section
+              key={i}
+              section={section}
+              language={language}
+              knownSymbols={knownSymbols}
+              packageName={packageName}
+              typeUrlMap={typeUrlMap}
+            />
+          ))}
+
+          {/* Members (for classes/modules) */}
+          {symbol.members && symbol.members.length > 0 && (
+            <MembersSection
+              members={symbol.members}
+              language={language}
+              packageName={packageName}
+              parentQualifiedName={symbol.qualifiedName}
+            />
+          )}
+
+          {/* Inherited members from base classes */}
+          {symbol.inheritedMembers && symbol.inheritedMembers.length > 0 && (
+            <InheritedMembersSection
+              inheritedGroups={symbol.inheritedMembers}
+              language={language}
+              packageName={packageName}
+            />
+          )}
+
+          {/* Source link */}
+          {sourceUrl && (
+            <div className="pt-4 border-t border-border">
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-foreground-secondary hover:text-primary transition-colors"
+              >
+                <ExternalLink className="h-4 w-4" />
+                View source on GitHub
+              </a>
+            </div>
+          )}
+
+          {/* Version History */}
+          <VersionHistory
             qualifiedName={symbol.qualifiedName}
             project={project.id}
             language={irLanguage}
             packageId={packageId}
-            currentVersion={version}
+            className="mt-6"
           />
-          {symbol.versionInfo?.since && (
-            <VersionBadge since={symbol.versionInfo.since} />
-          )}
-          {symbol.visibility === "private" && (
-            <span className="px-2 py-1 text-sm font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
-              Private
-            </span>
-          )}
-          {symbol.stability === "deprecated" && (
-            <span className="px-2 py-1 text-sm font-medium rounded bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-              Deprecated
-            </span>
-          )}
         </div>
-        <h1 className="text-3xl font-bold text-foreground font-mono">
-          {symbol.name}
-        </h1>
-        {symbol.docs?.summary && (
-          <MarkdownContent compact className="mt-3 text-foreground-secondary text-lg">
-            {symbol.docs.summary}
-          </MarkdownContent>
-        )}
-      </div>
-
-      {/* Signature / Import statement */}
-      {symbol.signature && (
-        symbol.kind === "module" ? (
-          <CodeBlock
-            code={getDisplayCode(symbol, packageName, language)}
-            language={language === "python" ? "python" : "typescript"}
-            className="rounded-lg [&_pre]:p-4 [&_pre]:m-0 [&_pre]:text-sm [&_code]:text-sm [&_pre]:overflow-x-auto"
-          />
-        ) : (
-          <SignatureBlock
-            signature={formatSignature(symbol.signature, language)}
-            language={language === "python" ? "python" : "typescript"}
-            typeRefs={symbol.typeRefs}
-            knownSymbols={knownSymbols}
-            packageName={packageName}
-            typeUrlMap={typeUrlMap}
-            className="rounded-lg"
-          />
-        )
-      )}
-
-      {/* Bases (for classes) */}
-      {symbol.bases && symbol.bases.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold text-foreground-secondary uppercase tracking-wider mb-2">
-            Bases
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {symbol.bases.map((base) => (
-              <code
-                key={base}
-                className="px-2 py-1 bg-background-secondary rounded text-sm font-mono text-foreground"
-              >
-                <TypeReferenceDisplay
-                  typeStr={base}
-                  knownSymbols={knownSymbols}
-                  language={language}
-                  packageName={packageName}
-                  typeUrlMap={typeUrlMap}
-                />
-              </code>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Description */}
-      {symbol.docs?.description && (
-        <MarkdownContent>
-          {symbol.docs.description}
-        </MarkdownContent>
-      )}
-
-      {/* Sections (parameters, examples, etc.) */}
-      {symbol.docs?.sections?.map((section, i) => (
-        <Section
-          key={i}
-          section={section}
-          language={language}
-          knownSymbols={knownSymbols}
-          packageName={packageName}
-          typeUrlMap={typeUrlMap}
-        />
-      ))}
-
-      {/* Members (for classes/modules) */}
-      {symbol.members && symbol.members.length > 0 && (
-        <MembersSection
-          members={symbol.members}
-          language={language}
-          packageName={packageName}
-          parentQualifiedName={symbol.qualifiedName}
-        />
-      )}
-
-      {/* Inherited members from base classes */}
-      {symbol.inheritedMembers && symbol.inheritedMembers.length > 0 && (
-        <InheritedMembersSection
-          inheritedGroups={symbol.inheritedMembers}
-          language={language}
-          packageName={packageName}
-        />
-      )}
-
-      {/* Source link */}
-      {sourceUrl && (
-        <div className="pt-4 border-t border-border">
-          <a
-            href={sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-foreground-secondary hover:text-primary transition-colors"
-          >
-            <ExternalLink className="h-4 w-4" />
-            View source on GitHub
-          </a>
-        </div>
-      )}
-
-      {/* Version History */}
-      <VersionHistory
-        qualifiedName={symbol.qualifiedName}
-        project={project.id}
-        language={irLanguage}
-        packageId={packageId}
-        className="mt-6"
-      />
-      </div>
 
         {/* Table of Contents sidebar */}
         <TableOfContents
@@ -1658,9 +1683,7 @@ function TypeReferenceDisplay({
 
     // Add text before this match
     if (startIndex > lastIndex) {
-      parts.push(
-        <span key={`text-${lastIndex}`}>{typeStr.slice(lastIndex, startIndex)}</span>
-      );
+      parts.push(<span key={`text-${lastIndex}`}>{typeStr.slice(lastIndex, startIndex)}</span>);
     }
 
     // Check if this type is a known symbol in current package
@@ -1677,7 +1700,7 @@ function TypeReferenceDisplay({
           className="text-primary hover:text-primary/80 underline decoration-dashed decoration-primary/50 underline-offset-2"
         >
           {typeName}
-        </Link>
+        </Link>,
       );
     }
     // Check if we have a cross-project URL for this type
@@ -1689,7 +1712,7 @@ function TypeReferenceDisplay({
           className="text-primary hover:text-primary/80 underline decoration-dashed decoration-primary/50 underline-offset-2"
         >
           {typeName}
-        </Link>
+        </Link>,
       );
     }
     // Check if this is a built-in type with external documentation
@@ -1705,7 +1728,7 @@ function TypeReferenceDisplay({
             className="text-foreground-secondary hover:text-foreground underline decoration-dotted decoration-foreground-muted/50 underline-offset-2"
           >
             {typeName}
-          </a>
+          </a>,
         );
       } else {
         parts.push(<span key={`type-${startIndex}`}>{typeName}</span>);
@@ -1760,9 +1783,7 @@ async function Section({
                 <tr key={item.name} className="border-b border-border last:border-0">
                   <td className="py-3 px-3">
                     <code className="font-mono text-foreground">{item.name}</code>
-                    {item.required && (
-                      <span className="ml-1 text-red-500">*</span>
-                    )}
+                    {item.required && <span className="ml-1 text-red-500">*</span>}
                   </td>
                   <td className="py-3 px-3">
                     <code className="font-mono text-foreground-secondary text-xs">
@@ -1781,9 +1802,7 @@ async function Section({
                   </td>
                   <td className="py-3 px-3 text-foreground-secondary">
                     {item.description && (
-                      <MarkdownContent compact>
-                        {item.description}
-                      </MarkdownContent>
+                      <MarkdownContent compact>{item.description}</MarkdownContent>
                     )}
                     {item.default && (
                       <span className="ml-2 text-xs text-foreground-muted">
@@ -1853,7 +1872,7 @@ function MembersSection({
       acc[kind].push(member);
       return acc;
     },
-    Object.create(null) as Record<string, DisplayMember[]>
+    Object.create(null) as Record<string, DisplayMember[]>,
   );
 
   // Order of display
@@ -1872,9 +1891,7 @@ function MembersSection({
 
   const orderedKinds = kindOrder.filter((k) => groupedMembers[k]);
   // Add any remaining kinds not in the order
-  const remainingKinds = Object.keys(groupedMembers).filter(
-    (k) => !kindOrder.includes(k)
-  );
+  const remainingKinds = Object.keys(groupedMembers).filter((k) => !kindOrder.includes(k));
   const allKinds = [...orderedKinds, ...remainingKinds];
 
   const kindLabels: Record<string, string> = {
@@ -1929,9 +1946,7 @@ function MemberCard({
   parentQualifiedName: string;
 }) {
   const isMethodOrFunction =
-    member.kind === "method" ||
-    member.kind === "function" ||
-    member.kind === "constructor";
+    member.kind === "method" || member.kind === "function" || member.kind === "constructor";
 
   // Build the symbol path for linking
   const symbolPath = `${parentQualifiedName}.${member.name}`;
@@ -1949,7 +1964,7 @@ function MemberCard({
       <span
         className={cn(
           "px-2 py-0.5 text-xs font-medium rounded shrink-0 mt-0.5",
-          getKindColor(member.kind as SymbolKind)
+          getKindColor(member.kind as SymbolKind),
         )}
       >
         {member.kind}
@@ -1978,9 +1993,7 @@ function MemberCard({
 
         {/* Show summary for methods */}
         {member.summary && (
-          <p className="text-sm text-foreground-secondary mt-1 line-clamp-2">
-            {member.summary}
-          </p>
+          <p className="text-sm text-foreground-secondary mt-1 line-clamp-2">{member.summary}</p>
         )}
       </div>
 
@@ -2039,13 +2052,11 @@ function InheritedMembersSection({
             acc[kind].push(member);
             return acc;
           },
-          Object.create(null) as Record<string, DisplayMember[]>
+          Object.create(null) as Record<string, DisplayMember[]>,
         );
 
         const orderedKinds = kindOrder.filter((k) => groupedMembers[k]);
-        const remainingKinds = Object.keys(groupedMembers).filter(
-          (k) => !kindOrder.includes(k)
-        );
+        const remainingKinds = Object.keys(groupedMembers).filter((k) => !kindOrder.includes(k));
         const allKinds = [...orderedKinds, ...remainingKinds];
 
         return (
@@ -2063,9 +2074,7 @@ function InheritedMembersSection({
                 <code className="font-mono text-foreground">{group.baseName}</code>
               )}
               {group.basePackageName && group.basePackageName !== packageName && (
-                <span className="text-sm text-foreground-muted">
-                  ({group.basePackageName})
-                </span>
+                <span className="text-sm text-foreground-muted">({group.basePackageName})</span>
               )}
             </h2>
 
@@ -2110,9 +2119,7 @@ function InheritedMemberRow({
   basePackageName: string;
   baseClassName: string;
 }) {
-  const isMethodOrFunction =
-    member.kind === "method" ||
-    member.kind === "function";
+  const isMethodOrFunction = member.kind === "method" || member.kind === "function";
 
   // Link to the base class's member page
   const langPath = language === "python" ? "python" : "javascript";
@@ -2129,7 +2136,7 @@ function InheritedMemberRow({
       <span
         className={cn(
           "px-1.5 py-0.5 text-xs font-medium rounded shrink-0",
-          getKindColor(member.kind as SymbolKind)
+          getKindColor(member.kind as SymbolKind),
         )}
       >
         {member.kind.charAt(0).toUpperCase()}
@@ -2148,9 +2155,7 @@ function InheritedMemberRow({
 
       {/* Show summary if available */}
       {member.summary && (
-        <span className="text-xs text-foreground-muted truncate flex-1">
-          — {member.summary}
-        </span>
+        <span className="text-xs text-foreground-muted truncate flex-1">— {member.summary}</span>
       )}
     </Link>
   );

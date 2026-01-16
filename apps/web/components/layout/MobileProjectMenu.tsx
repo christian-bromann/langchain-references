@@ -44,15 +44,13 @@ export function MobileProjectMenu({
         className={cn(
           "fixed inset-y-0 right-0 w-full max-w-sm z-50 lg:hidden",
           "transform transition-transform duration-300 ease-in-out",
-          open ? "translate-x-0" : "translate-x-full"
+          open ? "translate-x-0" : "translate-x-full",
         )}
       >
         <div className="flex h-full flex-col bg-background shadow-xl">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-gray-800">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Projects
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Projects</h2>
             <button
               onClick={onClose}
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1"
@@ -78,7 +76,7 @@ export function MobileProjectMenu({
                         "flex items-center justify-between px-4 py-4",
                         isActive
                           ? "bg-primary/5 text-primary dark:text-primary-light"
-                          : "text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900"
+                          : "text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900",
                       )}
                     >
                       <div>
@@ -108,7 +106,7 @@ export function MobileProjectMenu({
                   "flex-1 py-2 px-3 text-center rounded-lg text-sm font-medium transition-colors",
                   currentLanguage === "python"
                     ? "bg-primary text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
                 )}
               >
                 Python
@@ -120,7 +118,7 @@ export function MobileProjectMenu({
                   "flex-1 py-2 px-3 text-center rounded-lg text-sm font-medium transition-colors",
                   currentLanguage === "javascript"
                     ? "bg-primary text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
                 )}
               >
                 JavaScript
@@ -132,5 +130,3 @@ export function MobileProjectMenu({
     </Fragment>
   );
 }
-
-
