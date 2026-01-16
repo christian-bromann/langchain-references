@@ -15,7 +15,8 @@
         "pathOverrides": {
           "0.x": "langchain"
         }
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/core",
@@ -28,7 +29,8 @@
         "pathOverrides": {
           "0.x": "langchain-core"
         }
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/textsplitters",
@@ -41,7 +43,8 @@
         "pathOverrides": {
           "0.x": "libs/langchain-textsplitters"
         }
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/mcp-adapters",
@@ -54,7 +57,8 @@
         "pathOverrides": {
           "0.x": "libs/langchain-mcp-adapters"
         }
-      }
+      },
+      "descriptionSource": "readme"
     }
   ]
 }

@@ -11,7 +11,8 @@
       "versioning": {
         "tagPattern": "deepagents==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "deepagents_cli",
@@ -20,7 +21,8 @@
       "versioning": {
         "tagPattern": "deepagents-cli==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     }
   ]
 }

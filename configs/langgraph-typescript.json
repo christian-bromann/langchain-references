@@ -12,7 +12,8 @@
       "versioning": {
         "tagPattern": "*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/langgraph-sdk",
@@ -22,7 +23,8 @@
       "versioning": {
         "tagPattern": "@langchain/langgraph-sdk@*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/langgraph-checkpoint",
@@ -32,7 +34,8 @@
       "versioning": {
         "tagPattern": "checkpoint==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/langgraph-checkpoint-mongodb",
@@ -42,7 +45,8 @@
       "versioning": {
         "tagPattern": "checkpoint-mongodb==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/langgraph-checkpoint-postgres",
@@ -52,13 +56,15 @@
       "versioning": {
         "tagPattern": "checkpoint-postgres==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/langgraph-checkpoint-redis",
       "path": "libs/checkpoint-redis",
       "entryPoints": ["auto"],
-      "displayName": "LangGraph Checkpoint Redis"
+      "displayName": "LangGraph Checkpoint Redis",
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/langgraph-checkpoint-sqlite",
@@ -68,13 +74,15 @@
       "versioning": {
         "tagPattern": "checkpoint-sqlite==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/langgraph-checkpoint-validation",
       "path": "libs/checkpoint-validation",
       "entryPoints": ["auto"],
-      "displayName": "LangGraph Checkpoint Validation"
+      "displayName": "LangGraph Checkpoint Validation",
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/langgraph-api",
@@ -84,7 +92,8 @@
       "versioning": {
         "tagPattern": "@langchain/langgraph-api@*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/langgraph-cli",
@@ -94,7 +103,8 @@
       "versioning": {
         "tagPattern": "@langchain/langgraph-cli@*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/langgraph-cua",
@@ -104,7 +114,8 @@
       "versioning": {
         "tagPattern": "cua==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/langgraph-supervisor",
@@ -114,7 +125,8 @@
       "versioning": {
         "tagPattern": "supervisor==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/langgraph-swarm",
@@ -124,7 +136,8 @@
       "versioning": {
         "tagPattern": "swarm==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     }
   ]
 }

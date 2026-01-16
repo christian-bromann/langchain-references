@@ -11,7 +11,8 @@
       "versioning": {
         "tagPattern": "langchain==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "langchain_classic",
@@ -20,7 +21,8 @@
       "versioning": {
         "tagPattern": "langchain==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "langchain_core",
@@ -29,7 +31,8 @@
       "versioning": {
         "tagPattern": "langchain-core==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "langchain_text_splitters",
@@ -38,7 +41,8 @@
       "versioning": {
         "tagPattern": "langchain-text-splitters==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     }
   ]
 }

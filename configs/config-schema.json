@@ -85,6 +85,10 @@
               }
             },
             "required": ["tagPattern"]
+          },
+          "descriptionSource": {
+            "type": "string",
+            "description": "GitHub raw URL for custom markdown content, or 'readme' to use package README.md. If not specified, defaults to 'readme'."
           }
         }
       },

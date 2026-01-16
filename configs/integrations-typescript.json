@@ -15,7 +15,8 @@
         "pathOverrides": {
           "0.x": "langchain-community"
         }
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/anthropic",
@@ -28,7 +29,8 @@
         "pathOverrides": {
           "0.x": "libs/langchain-anthropic"
         }
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/aws",
@@ -41,7 +43,8 @@
         "pathOverrides": {
           "0.x": "libs/langchain-aws"
         }
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/deepseek",
@@ -54,7 +57,8 @@
         "pathOverrides": {
           "0.x": "libs/langchain-deepseek"
         }
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/google-genai",
@@ -67,7 +71,8 @@
         "pathOverrides": {
           "0.x": "libs/langchain-google-genai"
         }
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/google-vertexai",
@@ -80,7 +85,8 @@
         "pathOverrides": {
           "0.x": "libs/langchain-google-vertexai"
         }
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/google-vertexai-web",
@@ -93,7 +99,8 @@
         "pathOverrides": {
           "0.x": "libs/langchain-google-vertexai-web"
         }
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/groq",
@@ -106,7 +113,8 @@
         "pathOverrides": {
           "0.x": "libs/langchain-groq"
         }
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "@langchain/openai",
@@ -119,7 +127,8 @@
         "pathOverrides": {
           "0.x": "libs/langchain-openai"
         }
-      }
+      },
+      "descriptionSource": "readme"
     }
   ]
 }

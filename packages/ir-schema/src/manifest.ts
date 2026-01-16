@@ -86,6 +86,9 @@ export interface Package {
 
   /** Symbol counts by kind */
   stats: PackageStats;
+
+  /** Optional markdown description to display on package page */
+  description?: string;
 }
 
 /**

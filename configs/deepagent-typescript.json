@@ -12,7 +12,8 @@
       "versioning": {
         "tagPattern": "v*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     }
   ]
 }

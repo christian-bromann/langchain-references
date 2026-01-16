@@ -116,6 +116,8 @@ interface PackageConfig {
   displayName?: string;
   /** Version tracking configuration */
   versioning?: VersioningConfig;
+  /** GitHub raw URL for custom markdown content, or 'readme' to use package README.md */
+  descriptionSource?: string;
 }
 
 /**
@@ -139,6 +141,114 @@ interface BuildConfig {
 function generatePackageBuildId(repo: string, sha: string, packageName: string): string {
   const data = JSON.stringify({ repo, sha, packageName });
   return crypto.createHash("sha256").update(data).digest("hex").slice(0, 16);
+}
+
+/**
+ * Fetch package description markdown content.
+ *
+ * Resolution order:
+ * 1. If `descriptionSource` is set on the package config, use that URL
+ * 2. If `descriptionBaseUrl` is set on the build config, generate URL from template
+ * 3. Otherwise, try to read README.md from the package directory in the tarball
+ *
+ * @param pkgConfig - Package configuration
+ * @param config - Build configuration
+ * @param packagePath - Path to the extracted package directory
+ * @returns Markdown content or undefined if not found
+ */
+async function fetchPackageDescription(
+  pkgConfig: PackageConfig,
+  packagePath: string,
+): Promise<string | undefined> {
+  // Check if package has explicit descriptionSource
+  if (!pkgConfig.descriptionSource || pkgConfig.descriptionSource === "readme") {
+    // Use README.md from the package
+    return readReadmeFromPackage(packagePath);
+  }
+
+  // Fetch from GitHub raw URL
+  try {
+    // Convert GitHub blob URLs to raw URLs if needed
+    const rawUrl = pkgConfig.descriptionSource
+      .replace("github.com", "raw.githubusercontent.com")
+      .replace("/blob/", "/");
+
+    console.log(`      📄 Fetching description from: ${rawUrl}`);
+    const response = await fetch(rawUrl);
+
+    if (response.ok) {
+      const content = await response.text();
+      // Clean up the markdown - remove frontmatter and any MkDocs-specific syntax
+      return cleanMarkdownContent(content);
+    } else if (response.status === 404) {
+      // Try index.md for packages that have a directory structure
+      const indexUrl = rawUrl.replace(/\.md$/, "/index.md");
+      const indexResponse = await fetch(indexUrl);
+      if (indexResponse.ok) {
+        const content = await indexResponse.text();
+        return cleanMarkdownContent(content);
+      }
+      console.log(`      ⚠️  Description not found (404), falling back to README`);
+      return readReadmeFromPackage(packagePath);
+    } else {
+      console.log(`      ⚠️  Failed to fetch description: ${response.status}`);
+      return readReadmeFromPackage(packagePath);
+    }
+  } catch (error) {
+    console.log(`      ⚠️  Error fetching description: ${error}`);
+    return readReadmeFromPackage(packagePath);
+  }
+}
+
+/**
+ * Read README.md from a package directory.
+ */
+async function readReadmeFromPackage(packagePath: string): Promise<string | undefined> {
+  const readmePaths = ["README.md", "readme.md", "Readme.md"];
+
+  for (const readmeName of readmePaths) {
+    const readmePath = path.join(packagePath, readmeName);
+    try {
+      const content = await fs.readFile(readmePath, "utf-8");
+      console.log(`      📄 Using ${readmeName} from package`);
+      return cleanMarkdownContent(content);
+    } catch {
+      // Try next path
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Clean markdown content by removing frontmatter and MkDocs-specific syntax.
+ */
+function cleanMarkdownContent(content: string): string {
+  let cleaned = content;
+
+  // Remove YAML frontmatter (--- ... ---)
+  cleaned = cleaned.replace(/^---\n[\s\S]*?\n---\n/, "");
+
+  // Remove MkDocs admonitions like !!! note "Title"
+  // Keep the content but convert to a more standard format
+  cleaned = cleaned.replace(
+    /^!!! (\w+)(?: "([^"]*)")?\n((?:    .*\n)*)/gm,
+    (_, type, title, content) => {
+      const blockContent = content.replace(/^    /gm, "").trim();
+      if (title) {
+        return `> **${title}**\n> ${blockContent.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      return `> ${blockContent.replace(/\n/g, "\n> ")}\n\n`;
+    },
+  );
+
+  // Remove ::: directives (another MkDocs syntax)
+  cleaned = cleaned.replace(/^::: .*$/gm, "");
+
+  // Remove Material for MkDocs icons like :simple-claude:{ .lg .middle }
+  cleaned = cleaned.replace(/:\w+[-\w]*:(?:\{[^}]*\})?/g, "");
+
+  return cleaned.trim();
 }
 
 /**
@@ -1396,8 +1506,10 @@ async function buildConfig(
   const failedPackages = new Set<string>();
 
   // Track package build info for package-level builds
-  const packageBuildInfo: Map<string, { packageId: string; buildId: string; outputDir: string }> =
-    new Map();
+  const packageBuildInfo: Map<
+    string,
+    { packageId: string; buildId: string; outputDir: string; packagePath: string }
+  > = new Map();
 
   for (const pkgConfig of packagesToProcess) {
     const packagePath = path.join(fetchResult.extractedPath, pkgConfig.path);
@@ -1424,6 +1536,7 @@ async function buildConfig(
       packageId,
       buildId: pkgBuildId,
       outputDir: pkgOutputDir,
+      packagePath,
     });
 
     // Check if package path exists before extraction
@@ -1483,8 +1596,11 @@ async function buildConfig(
       // Ignore errors
     }
 
+    // Fetch package description markdown
+    const description = await fetchPackageDescription(pkgConfig, pkgInfo.packagePath);
+
     // Create package info file
-    const packageInfo = {
+    const packageInfo: Record<string, unknown> = {
       packageId: pkgInfo.packageId,
       displayName: pkgConfig.displayName || pkgConfig.name,
       publishedName: pkgConfig.name,
@@ -1498,9 +1614,16 @@ async function buildConfig(
       createdAt: new Date().toISOString(),
     };
 
+    // Add description if available
+    if (description) {
+      packageInfo.description = description;
+    }
+
     const packageInfoPath = path.join(pkgInfo.outputDir, "package.json");
     await fs.writeFile(packageInfoPath, JSON.stringify(packageInfo, null, 2));
-    console.log(`   ✓ ${pkgInfo.packageId} (${symbolCount} symbols)`);
+    console.log(
+      `   ✓ ${pkgInfo.packageId} (${symbolCount} symbols${description ? ", with description" : ""})`,
+    );
   }
 
   if (opts.withVersions) {

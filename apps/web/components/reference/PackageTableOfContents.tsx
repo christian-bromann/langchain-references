@@ -14,7 +14,8 @@ export interface PackageTOCSection {
   id: string;
   title: string;
   icon: "class" | "function" | "module" | "interface" | "type";
-  count: number;
+  /** Number of items in this section (optional for description sections) */
+  count?: number;
 }
 
 export interface PackageTableOfContentsProps {
@@ -88,9 +89,11 @@ export function PackageTableOfContents({ sections }: PackageTableOfContentsProps
               <span className="truncate group-hover:text-primary transition-colors">
                 {section.title}
               </span>
-              <span className="ml-auto text-xs text-foreground-muted tabular-nums">
-                {section.count}
-              </span>
+              {section.count !== undefined && (
+                <span className="ml-auto text-xs text-foreground-muted tabular-nums">
+                  {section.count}
+                </span>
+              )}
             </button>
           ))}
         </div>

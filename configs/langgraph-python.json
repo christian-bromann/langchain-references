@@ -11,7 +11,8 @@
       "versioning": {
         "tagPattern": "*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "langgraph_sdk",
@@ -20,7 +21,8 @@
       "versioning": {
         "tagPattern": "sdk==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "langgraph.checkpoint",
@@ -29,7 +31,8 @@
       "versioning": {
         "tagPattern": "checkpoint==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "langgraph.checkpoint.sqlite",
@@ -38,7 +41,8 @@
       "versioning": {
         "tagPattern": "checkpointsqlite==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "langgraph.checkpoint.postgres",
@@ -47,7 +51,8 @@
       "versioning": {
         "tagPattern": "checkpointpostgres==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "langgraph_cli",
@@ -56,7 +61,8 @@
       "versioning": {
         "tagPattern": "cli==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     },
     {
       "name": "langgraph.prebuilt",
@@ -65,7 +71,8 @@
       "versioning": {
         "tagPattern": "prebuilt==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "readme"
     }
   ]
 }

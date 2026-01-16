@@ -411,6 +411,153 @@ export async function getPackageSymbolsV2(
 }
 
 /**
+ * Package info cache for V2 path structure.
+ */
+const packageInfoCacheV2 = new Map<string, Package>();
+
+/**
+ * Extended package info that includes the description field.
+ */
+interface ExtendedPackageInfo extends Package {
+  description?: string;
+}
+
+/**
+ * Get package info using the package-level path structure.
+ * This fetches the package.json file which may include the markdown description.
+ *
+ * Path: ir/packages/{packageId}/{buildId}/package.json
+ */
+export async function getPackageInfoV2(
+  packageId: string,
+  buildId?: string,
+): Promise<ExtendedPackageInfo | null> {
+  // If no buildId provided, try to get it from the package pointer
+  let actualBuildId = buildId;
+  if (!actualBuildId) {
+    const ecosystem = packageId.startsWith("pkg_py_") ? "python" : "javascript";
+    const packageName = packageId.replace(/^pkg_(py|js)_/, "").replace(/_/g, "-");
+    actualBuildId = (await getPackageBuildId(ecosystem, packageName)) || undefined;
+  }
+
+  if (!actualBuildId) {
+    return null;
+  }
+
+  const cacheKey = `${packageId}:${actualBuildId}`;
+  if (packageInfoCacheV2.has(cacheKey)) {
+    return packageInfoCacheV2.get(cacheKey)!;
+  }
+
+  const blobPath = `${IR_BASE_PATH}/packages/${packageId}/${actualBuildId}/package.json`;
+  const response = await fetchBlobJson<ExtendedPackageInfo>(blobPath);
+
+  if (!response) {
+    return null;
+  }
+
+  packageInfoCacheV2.set(cacheKey, response);
+  return response;
+}
+
+/**
+ * Get package description markdown for display on package pages.
+ * Fetches from the package.json file in the package-level storage.
+ *
+ * @param packageId - The package ID (e.g., "pkg_py_langchain_openai")
+ * @param buildId - Optional build ID (will look up from pointers if not provided)
+ * @returns Markdown description string or null if not available
+ */
+export async function getPackageDescription(
+  packageId: string,
+  buildId?: string,
+): Promise<string | null> {
+  if (isProduction()) {
+    const packageInfo = await getPackageInfoV2(packageId, buildId);
+    return packageInfo?.description || null;
+  } else {
+    // In development, read from local package.json
+    return getLocalPackageDescription(packageId, buildId);
+  }
+}
+
+/**
+ * Get local package description for development.
+ */
+async function getLocalPackageDescription(
+  packageId: string,
+  buildId?: string,
+): Promise<string | null> {
+  try {
+    const fs = await import("fs/promises");
+    const path = await import("path");
+
+    // Find the build directory for this package
+    const basePath = getLocalIrBasePath();
+    let packageDir: string | null = null;
+
+    if (buildId) {
+      packageDir = path.join(basePath, buildId, "packages", packageId);
+    } else {
+      // Try to find the latest build with this package
+      const entries = await fs.readdir(basePath, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isSymbolicLink() && entry.name.startsWith("latest-")) {
+          const linkPath = path.join(basePath, entry.name);
+          const realPath = await fs.realpath(linkPath);
+          const candidateDir = path.join(realPath, "packages", packageId);
+          try {
+            await fs.access(candidateDir);
+            packageDir = candidateDir;
+            break;
+          } catch {
+            continue;
+          }
+        }
+      }
+    }
+
+    if (!packageDir) {
+      return null;
+    }
+
+    // Look for package.json in the package directory or its build subdirectory
+    const packageJsonPaths = [
+      path.join(packageDir, "package.json"),
+      // Also try looking in subdirectories (build ID directories)
+    ];
+
+    // Find build subdirectories
+    try {
+      const subdirs = await fs.readdir(packageDir, { withFileTypes: true });
+      for (const subdir of subdirs) {
+        if (subdir.isDirectory()) {
+          packageJsonPaths.push(path.join(packageDir, subdir.name, "package.json"));
+        }
+      }
+    } catch {
+      // Directory might not exist
+    }
+
+    for (const pkgJsonPath of packageJsonPaths) {
+      try {
+        const content = await fs.readFile(pkgJsonPath, "utf-8");
+        const data = JSON.parse(content);
+        if (data.description) {
+          return data.description;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Retry configuration for blob fetches
  */
 const MAX_RETRIES = 5;

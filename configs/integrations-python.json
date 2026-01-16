@@ -11,7 +11,8 @@
       "versioning": {
         "tagPattern": "langchain-community==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_community/index.md"
     },
     {
       "name": "langchain_anthropic",
@@ -20,7 +21,8 @@
       "versioning": {
         "tagPattern": "langchain-anthropic==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_anthropic/index.md"
     },
     {
       "name": "langchain_astradb",
@@ -29,7 +31,8 @@
       "versioning": {
         "tagPattern": "langchain-astradb==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_astradb.md"
     },
     {
       "name": "langchain_aws",
@@ -38,7 +41,8 @@
       "versioning": {
         "tagPattern": "langchain-aws==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_aws.md"
     },
     {
       "name": "langchain_azure_dynamic_sessions",
@@ -47,7 +51,8 @@
       "versioning": {
         "tagPattern": "langchain-azure-dynamic-sessions==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_azure_dynamic_sessions/index.md"
     },
     {
       "name": "langchain_cerebras",
@@ -56,7 +61,8 @@
       "versioning": {
         "tagPattern": "langchain-cerebras==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_cerebras.md"
     },
     {
       "name": "langchain_chroma",
@@ -65,7 +71,8 @@
       "versioning": {
         "tagPattern": "langchain-chroma==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_chroma.md"
     },
     {
       "name": "langchain_cohere",
@@ -74,7 +81,8 @@
       "versioning": {
         "tagPattern": "langchain-cohere==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_cohere.md"
     },
     {
       "name": "langchain_ibm_db2",
@@ -83,7 +91,8 @@
       "versioning": {
         "tagPattern": "langchain-ibm-db2==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_db2.md"
     },
     {
       "name": "langchain_deepseek",
@@ -92,7 +101,8 @@
       "versioning": {
         "tagPattern": "langchain-deepseek==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_deepseek.md"
     },
     {
       "name": "langchain_elasticsearch",
@@ -101,7 +111,8 @@
       "versioning": {
         "tagPattern": "langchain-elasticsearch==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_elasticsearch.md"
     },
     {
       "name": "langchain_exa",
@@ -110,7 +121,8 @@
       "versioning": {
         "tagPattern": "langchain-exa==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_exa.md"
     },
     {
       "name": "langchain_fireworks",
@@ -119,7 +131,8 @@
       "versioning": {
         "tagPattern": "langchain-fireworks==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_fireworks.md"
     },
     {
       "name": "langchain_google_community",
@@ -128,7 +141,8 @@
       "versioning": {
         "tagPattern": "langchain-google-community==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_google_community/index.md"
     },
     {
       "name": "langchain_groq",
@@ -137,7 +151,8 @@
       "versioning": {
         "tagPattern": "langchain-groq==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_groq.md"
     },
     {
       "name": "langchain_huggingface",
@@ -146,7 +161,8 @@
       "versioning": {
         "tagPattern": "langchain-huggingface==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_huggingface.md"
     },
     {
       "name": "langchain_ibm",
@@ -155,7 +171,8 @@
       "versioning": {
         "tagPattern": "langchain-ibm==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_ibm/index.md"
     },
     {
       "name": "langchain_milvus",
@@ -164,7 +181,8 @@
       "versioning": {
         "tagPattern": "langchain-milvus==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_milvus.md"
     },
     {
       "name": "langchain_mistralai",
@@ -173,7 +191,8 @@
       "versioning": {
         "tagPattern": "langchain-mistralai==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_mistralai.md"
     },
     {
       "name": "langchain_mongodb",
@@ -182,7 +201,8 @@
       "versioning": {
         "tagPattern": "langchain-mongodb==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_mongodb.md"
     },
     {
       "name": "langchain_neo4j",
@@ -191,7 +211,8 @@
       "versioning": {
         "tagPattern": "langchain-neo4j==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_neo4j.md"
     },
     {
       "name": "langchain_nomic",
@@ -200,7 +221,8 @@
       "versioning": {
         "tagPattern": "langchain-nomic==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_nomic.md"
     },
     {
       "name": "langchain_nvidia_ai_endpoints",
@@ -209,7 +231,8 @@
       "versioning": {
         "tagPattern": "langchain-nvidia-ai-endpoints==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_nvidia_ai_endpoints.md"
     },
     {
       "name": "langchain_ollama",
@@ -218,7 +241,8 @@
       "versioning": {
         "tagPattern": "langchain-ollama==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_ollama.md"
     },
     {
       "name": "langchain_openai",
@@ -227,7 +251,8 @@
       "versioning": {
         "tagPattern": "langchain-openai==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_openai/index.md"
     },
     {
       "name": "langchain_perplexity",
@@ -236,7 +261,8 @@
       "versioning": {
         "tagPattern": "langchain-perplexity==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_perplexity.md"
     },
     {
       "name": "langchain_pinecone",
@@ -245,7 +271,8 @@
       "versioning": {
         "tagPattern": "langchain-pinecone==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_pinecone.md"
     },
     {
       "name": "langchain_postgres",
@@ -254,7 +281,8 @@
       "versioning": {
         "tagPattern": "langchain-postgres==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_postgres.md"
     },
     {
       "name": "langchain_prompty",
@@ -263,7 +291,8 @@
       "versioning": {
         "tagPattern": "langchain-prompty==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_prompty.md"
     },
     {
       "name": "langchain_qdrant",
@@ -272,7 +301,8 @@
       "versioning": {
         "tagPattern": "langchain-qdrant==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_qdrant.md"
     },
     {
       "name": "langchain_redis",
@@ -281,7 +311,8 @@
       "versioning": {
         "tagPattern": "langchain-redis==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_redis.md"
     },
     {
       "name": "langchain_sema4",
@@ -290,7 +321,8 @@
       "versioning": {
         "tagPattern": "langchain-sema4==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_sema4.md"
     },
     {
       "name": "langchain_snowflake",
@@ -299,7 +331,8 @@
       "versioning": {
         "tagPattern": "langchain-snowflake==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_snowflake.md"
     },
     {
       "name": "langchain_sqlserver",
@@ -308,7 +341,8 @@
       "versioning": {
         "tagPattern": "langchain-sqlserver==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_sqlserver.md"
     },
     {
       "name": "langchain_tavily",
@@ -317,7 +351,8 @@
       "versioning": {
         "tagPattern": "langchain-tavily==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_tavily.md"
     },
     {
       "name": "langchain_together",
@@ -326,7 +361,8 @@
       "versioning": {
         "tagPattern": "langchain-together==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_together.md"
     },
     {
       "name": "langchain_unstructured",
@@ -335,7 +371,8 @@
       "versioning": {
         "tagPattern": "langchain-unstructured==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_unstructured.md"
     },
     {
       "name": "langchain_upstage",
@@ -344,7 +381,8 @@
       "versioning": {
         "tagPattern": "langchain-upstage==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_upstage.md"
     },
     {
       "name": "langchain_xai",
@@ -353,7 +391,8 @@
       "versioning": {
         "tagPattern": "langchain-xai==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_xai.md"
     }
   ],
   "externalPackages": [
@@ -365,7 +404,8 @@
       "versioning": {
         "tagPattern": "langchain-weaviate==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_weaviate.md"
     },
     {
       "name": "langchain_parallel",
@@ -375,7 +415,8 @@
       "versioning": {
         "tagPattern": "langchain-parallel==*",
         "maxVersions": 10
-      }
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_parallel/index.md"
     }
   ]
 }

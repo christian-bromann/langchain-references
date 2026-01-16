@@ -8,13 +8,19 @@
  */
 
 import Link from "next/link";
-import { Box, Code, Folder, ChevronRight, FileType } from "lucide-react";
+import { Box, Code, Folder, ChevronRight, FileType, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
 import { buildSymbolUrl, getKindColor, getKindLabel } from "@/lib/utils/url";
-import { getBuildIdForLanguage, getCatalogEntries, type CatalogEntry } from "@/lib/ir/loader";
+import {
+  getBuildIdForLanguage,
+  getCatalogEntries,
+  getPackageDescription,
+  type CatalogEntry,
+} from "@/lib/ir/loader";
 import { getProjectForPackage } from "@/lib/config/projects";
 import { PackageTableOfContents, type PackageTOCSection } from "./PackageTableOfContents";
+import { MarkdownContent } from "./MarkdownContent";
 
 interface PackagePageProps {
   language: UrlLanguage;
@@ -63,9 +69,11 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
   const project = getProjectForPackage(packageName);
   const buildId = await getBuildIdForLanguage(irLanguage, project.id);
 
-  // OPTIMIZATION: Use sharded catalog instead of full symbols.json
-  // Each catalog shard is <500KB and CDN-cacheable
-  const catalogEntries = buildId ? await getCatalogEntries(buildId, packageId) : [];
+  // Fetch package description and catalog entries in parallel
+  const [catalogEntries, description] = await Promise.all([
+    buildId ? getCatalogEntries(buildId, packageId) : Promise.resolve([]),
+    buildId ? getPackageDescription(packageId, buildId) : Promise.resolve(null),
+  ]);
 
   // Convert to display symbols (catalog already filters to public symbols)
   const symbols: DisplaySymbol[] = catalogEntries.map(toDisplaySymbol);
@@ -79,6 +87,13 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
 
   // Build TOC sections for the sidebar
   const tocSections: PackageTOCSection[] = [];
+  if (description) {
+    tocSections.push({
+      id: "section-description",
+      title: "Description",
+      icon: "module", // Using module icon for description
+    });
+  }
   if (classes.length > 0) {
     tocSections.push({
       id: "section-classes",
@@ -139,10 +154,25 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
             </div>
             <h1 className="text-3xl font-heading font-bold text-foreground">{packageName}</h1>
           </div>
-          <p className="mt-3 text-foreground-secondary text-lg">
-            API reference for the {packageName} package.
-          </p>
+          {!description && (
+            <p className="mt-3 text-foreground-secondary text-lg">
+              API reference for the {packageName} package.
+            </p>
+          )}
         </div>
+
+        {/* Package description (markdown content) */}
+        {description && (
+          <section id="section-description">
+            <h2 className="flex items-center gap-2 text-xl font-heading font-semibold text-foreground mb-4">
+              <BookOpen className="h-5 w-5" />
+              Description
+            </h2>
+            <div className="prose prose-slate dark:prose-invert max-w-none">
+              <MarkdownContent>{description}</MarkdownContent>
+            </div>
+          </section>
+        )}
 
         {/* Classes section */}
         {classes.length > 0 && (
