@@ -78,6 +78,28 @@ export const PROJECTS: ProjectConfig[] = [
       },
     ],
   },
+  {
+    id: "integrations",
+    displayName: "Integrations",
+    description: "Provider integrations for LangChain",
+    slug: "integrations",
+    order: 4,
+    enabled: true,
+    variants: [
+      {
+        language: "python",
+        repo: "langchain-ai/langchain",
+        configPath: "configs/integrations-python.json",
+        enabled: true,
+      },
+      {
+        language: "javascript",
+        repo: "langchain-ai/langchainjs",
+        configPath: "configs/integrations-typescript.json",
+        enabled: true,
+      },
+    ],
+  },
 ];
 
 /**
@@ -125,14 +147,10 @@ export function hasLanguageVariant(
 /**
  * Package name patterns for each project.
  * Used to infer which project a package belongs to based on its name.
- */
-/**
- * Package name patterns for each project.
- * Used to infer which project a package belongs to based on its name.
  * Patterns must match BOTH original names (@langchain/langgraph) AND
  * slugified URL versions (langchain-langgraph).
  *
- * IMPORTANT: Order matters! More specific patterns (langgraph, deepagent)
+ * IMPORTANT: Order matters! More specific patterns (langgraph, deepagent, integrations)
  * should be checked BEFORE the general langchain pattern.
  */
 const PROJECT_PACKAGE_PATTERNS: Record<string, RegExp[]> = {
@@ -147,11 +165,18 @@ const PROJECT_PACKAGE_PATTERNS: Record<string, RegExp[]> = {
     /^@langchain\/deepagents?/i,
     /^deepagents?/i,
   ],
-  // LangChain: matches langchain* but NOT langgraph or deepagent
+  // Integrations: matches provider packages
+  // Python: langchain-anthropic, langchain-openai, langchain-aws, etc.
+  // JavaScript: @langchain/anthropic, @langchain/openai, @langchain/aws, etc.
+  integrations: [
+    /^@langchain\/(anthropic|openai|aws|azure|google|groq|mistral|cohere|ollama|huggingface|fireworks|together|nvidia|pinecone|chroma|weaviate|qdrant|milvus|neo4j|mongodb|postgres|redis|elasticsearch|astradb|cerebras|deepseek|exa|ibm|nomic|perplexity|snowflake|sqlserver|tavily|unstructured|upstage|xai|sema4|prompty|db2|community)/i,
+    /^langchain[-_](anthropic|openai|aws|azure|google|groq|mistral|cohere|ollama|huggingface|fireworks|together|nvidia|pinecone|chroma|weaviate|qdrant|milvus|neo4j|mongodb|postgres|redis|elasticsearch|astradb|cerebras|deepseek|exa|ibm|nomic|perplexity|snowflake|sqlserver|tavily|unstructured|upstage|xai|sema4|prompty|db2|community|parallel)/i,
+  ],
+  // LangChain: matches langchain* but NOT langgraph, deepagent, or integration providers
   // This must be LAST because it's the most general pattern
   langchain: [
-    /^@langchain\/(?!langgraph|deepagent)/i,
-    /^langchain(?!-langgraph)/i, // Matches langchain but not langchain-langgraph
+    /^@langchain\/(?!langgraph|deepagent|anthropic|openai|aws|azure|google|groq|mistral|cohere|ollama|huggingface|fireworks|together|nvidia|pinecone|chroma|weaviate|qdrant|milvus|neo4j|mongodb|postgres|redis|elasticsearch|astradb|cerebras|deepseek|exa|ibm|nomic|perplexity|snowflake|sqlserver|tavily|unstructured|upstage|xai|sema4|prompty|db2|community)/i,
+    /^langchain(?!-langgraph|-anthropic|-openai|-aws|-azure|-google|-groq|-mistral|-cohere|-ollama|-huggingface|-fireworks|-together|-nvidia|-pinecone|-chroma|-weaviate|-qdrant|-milvus|-neo4j|-mongodb|-postgres|-redis|-elasticsearch|-astradb|-cerebras|-deepseek|-exa|-ibm|-nomic|-perplexity|-snowflake|-sqlserver|-tavily|-unstructured|-upstage|-xai|-sema4|-prompty|-db2|-community|-parallel)/i,
   ],
 };
 
@@ -174,7 +199,7 @@ export function packageBelongsToProject(packageName: string, projectId: string):
  */
 export function getProjectForPackage(packageName: string): ProjectConfig {
   // Check in order: specific projects first, then general langchain
-  const checkOrder = ["langgraph", "deepagent", "langchain"];
+  const checkOrder = ["langgraph", "deepagent", "integrations", "langchain"];
 
   for (const projectId of checkOrder) {
     const patterns = PROJECT_PACKAGE_PATTERNS[projectId];

@@ -2,17 +2,17 @@
   "project": "langgraph",
   "language": "python",
   "repo": "langchain-ai/langgraph",
-  "lastSynced": "2026-01-12T07:23:07.985Z",
+  "lastSynced": "2026-01-16T06:34:36.305Z",
   "packages": [
     {
       "packageName": "langgraph",
       "tagPattern": "*",
       "versions": [
         {
-          "version": "1.0.5",
-          "sha": "84023451a2bd5987b1d4df530f4145d503d75ccb",
-          "tag": "1.0.5",
-          "releaseDate": "2025-12-12T22:56:30Z"
+          "version": "1.0.6",
+          "sha": "f91d79d0c86932ded6e3b9f195d5a0bbd5aef99c",
+          "tag": "1.0.6",
+          "releaseDate": "2026-01-12T20:26:37Z"
         },
         {
           "version": "1.0.0",
@@ -27,25 +27,31 @@
           "releaseDate": "2025-10-20T23:58:04Z"
         }
       ],
-      "lastUpdated": "2026-01-12T07:23:00.026Z"
+      "lastUpdated": "2026-01-16T06:34:34.920Z"
     },
     {
       "packageName": "langgraph_sdk",
       "tagPattern": "sdk==*",
       "versions": [
         {
-          "version": "0.3.2",
-          "sha": "454af218968b2962b4beeb9a28b9d421f0610694",
-          "tag": "sdk==0.3.2",
-          "releaseDate": "2026-01-09T21:07:32Z"
+          "version": "0.3.3",
+          "sha": "e820097701d989446c1d41661c20908a8d55af20",
+          "tag": "sdk==0.3.3",
+          "releaseDate": "2026-01-13T00:29:04Z"
         }
       ],
-      "lastUpdated": "2026-01-12T07:23:00.286Z"
+      "lastUpdated": "2026-01-16T06:34:35.130Z"
     },
     {
       "packageName": "langgraph.checkpoint",
       "tagPattern": "checkpoint==*",
       "versions": [
+        {
+          "version": "4.0.0",
+          "sha": "f91d79d0c86932ded6e3b9f195d5a0bbd5aef99c",
+          "tag": "checkpoint==4.0.0",
+          "releaseDate": "2026-01-12T20:26:37Z"
+        },
         {
           "version": "3.0.1",
           "sha": "575401c78c5376c5ec4a30a948f192bf531f2cb0",
@@ -95,17 +101,17 @@
           "releaseDate": "2024-08-02T22:58:04Z"
         }
       ],
-      "lastUpdated": "2026-01-12T07:23:02.920Z"
+      "lastUpdated": "2026-01-16T06:34:35.376Z"
     },
     {
       "packageName": "langgraph.checkpoint.sqlite",
       "tagPattern": "checkpointsqlite==*",
       "versions": [
         {
-          "version": "3.0.1",
-          "sha": "b70d5aac0ee330e9dde22ca9c7e8f0774e44da54",
-          "tag": "checkpointsqlite==3.0.1",
-          "releaseDate": "2025-12-09T22:00:00Z"
+          "version": "3.0.2",
+          "sha": "f91d79d0c86932ded6e3b9f195d5a0bbd5aef99c",
+          "tag": "checkpointsqlite==3.0.2",
+          "releaseDate": "2026-01-12T20:26:37Z"
         },
         {
           "version": "3.0.0",
@@ -138,17 +144,17 @@
           "releaseDate": "2024-08-07T02:43:35Z"
         }
       ],
-      "lastUpdated": "2026-01-12T07:23:04.812Z"
+      "lastUpdated": "2026-01-16T06:34:35.742Z"
     },
     {
       "packageName": "langgraph.checkpoint.postgres",
       "tagPattern": "checkpointpostgres==*",
       "versions": [
         {
-          "version": "3.0.2",
-          "sha": "4d01e69b823c4126f375cbed72fed7c5797d1b91",
-          "tag": "checkpointpostgres==3.0.2",
-          "releaseDate": "2025-12-09T23:05:49Z"
+          "version": "3.0.3",
+          "sha": "f91d79d0c86932ded6e3b9f195d5a0bbd5aef99c",
+          "tag": "checkpointpostgres==3.0.3",
+          "releaseDate": "2026-01-12T20:26:37Z"
         },
         {
           "version": "3.0.0",
@@ -181,7 +187,7 @@
           "releaseDate": "2024-08-07T02:53:29Z"
         }
       ],
-      "lastUpdated": "2026-01-12T07:23:06.757Z"
+      "lastUpdated": "2026-01-16T06:34:35.963Z"
     },
     {
       "packageName": "langgraph_cli",
@@ -201,10 +207,10 @@
       "tagPattern": "prebuilt==*",
       "versions": [
         {
-          "version": "1.0.5",
-          "sha": "f8006b2fee8f72aed77317afba493c52e2d2d563",
-          "tag": "prebuilt==1.0.5",
-          "releaseDate": "2025-11-20T16:45:19Z"
+          "version": "1.0.6",
+          "sha": "f91d79d0c86932ded6e3b9f195d5a0bbd5aef99c",
+          "tag": "prebuilt==1.0.6",
+          "releaseDate": "2026-01-12T20:26:37Z"
         },
         {
           "version": "1.0.0",
@@ -219,7 +225,7 @@
           "releaseDate": "2025-10-21T00:11:29Z"
         }
       ],
-      "lastUpdated": "2026-01-12T07:23:07.985Z"
+      "lastUpdated": "2026-01-16T06:34:36.305Z"
     }
   ]
 }

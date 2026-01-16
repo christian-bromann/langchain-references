@@ -2,17 +2,17 @@
   "project": "langchain",
   "language": "typescript",
   "repo": "langchain-ai/langchainjs",
-  "lastSynced": "2026-01-12T07:22:57.935Z",
+  "lastSynced": "2026-01-16T06:34:33.586Z",
   "packages": [
     {
       "packageName": "langchain",
       "tagPattern": "langchain@*",
       "versions": [
         {
-          "version": "1.2.7",
-          "sha": "bd72d8eb8bde1b2282c9ec88f2ebadd0747dc7b7",
-          "tag": "langchain@1.2.7",
-          "releaseDate": "2026-01-08T21:00:25Z"
+          "version": "1.2.10",
+          "sha": "a1499ae640a9cb0d713979efa7cba1d13c19e38e",
+          "tag": "langchain@1.2.10",
+          "releaseDate": "2026-01-14T21:58:52Z"
         },
         {
           "version": "1.2.0",
@@ -51,17 +51,17 @@
           "releaseDate": "2025-09-29T22:58:35Z"
         }
       ],
-      "lastUpdated": "2026-01-12T07:22:39.718Z"
+      "lastUpdated": "2026-01-16T06:34:31.016Z"
     },
     {
       "packageName": "@langchain/core",
       "tagPattern": "@langchain/core@*",
       "versions": [
         {
-          "version": "1.1.12",
-          "sha": "bd72d8eb8bde1b2282c9ec88f2ebadd0747dc7b7",
-          "tag": "@langchain/core@1.1.12",
-          "releaseDate": "2026-01-08T21:00:25Z"
+          "version": "1.1.15",
+          "sha": "a1499ae640a9cb0d713979efa7cba1d13c19e38e",
+          "tag": "@langchain/core@1.1.15",
+          "releaseDate": "2026-01-14T21:58:52Z"
         },
         {
           "version": "1.1.1",
@@ -88,376 +88,57 @@
           "releaseDate": "2025-10-27T19:02:21Z"
         }
       ],
-      "lastUpdated": "2026-01-12T07:22:41.448Z"
+      "lastUpdated": "2026-01-16T06:34:31.385Z"
     },
     {
-      "packageName": "@langchain/community",
-      "tagPattern": "@langchain/community@*",
+      "packageName": "@langchain/textsplitters",
+      "tagPattern": "@langchain/textsplitters@*",
       "versions": [
         {
-          "version": "1.1.3",
-          "sha": "bd72d8eb8bde1b2282c9ec88f2ebadd0747dc7b7",
-          "tag": "@langchain/community@1.1.3",
-          "releaseDate": "2026-01-08T21:00:25Z"
-        },
-        {
-          "version": "1.1.0",
-          "sha": "1a8162c87a800eb329bd76f8a598e461690597a7",
-          "tag": "@langchain/community@1.1.0",
-          "releaseDate": "2025-12-13T01:50:00Z"
-        },
-        {
-          "version": "1.0.7",
-          "sha": "08148ae908aa1f304d89d6d875c65466fc29918f",
-          "tag": "@langchain/community@1.0.7",
-          "releaseDate": "2025-12-05T02:33:25Z"
-        },
-        {
-          "version": "1.0.0",
-          "sha": "822db857fce821a2beee645e6c90beac5c42ff09",
-          "tag": "@langchain/community==1.0.0",
-          "releaseDate": "2025-10-20T18:25:23Z"
-        },
-        {
-          "version": "0.3.57",
-          "sha": "23a92ed3fae05531193af80977019aaa82fe94df",
-          "tag": "@langchain/community==0.3.57",
-          "releaseDate": "2025-09-29T22:58:35Z"
-        }
-      ],
-      "lastUpdated": "2026-01-12T07:22:43.116Z"
-    },
-    {
-      "packageName": "@langchain/anthropic",
-      "tagPattern": "@langchain/anthropic@*",
-      "versions": [
-        {
-          "version": "1.3.7",
-          "sha": "bd72d8eb8bde1b2282c9ec88f2ebadd0747dc7b7",
-          "tag": "@langchain/anthropic@1.3.7",
-          "releaseDate": "2026-01-08T21:00:25Z"
-        },
-        {
-          "version": "1.3.0",
-          "sha": "1a8162c87a800eb329bd76f8a598e461690597a7",
-          "tag": "@langchain/anthropic@1.3.0",
-          "releaseDate": "2025-12-13T01:50:00Z"
-        },
-        {
-          "version": "1.2.3",
-          "sha": "a0cef1e7063d1644abea0e8acae5d19f764a3288",
-          "tag": "@langchain/anthropic@1.2.3",
-          "releaseDate": "2025-12-05T17:44:09Z"
-        },
-        {
-          "version": "1.2.0",
-          "sha": "8a77e9af292b542d739b502ffbfbfd82dd12fcb4",
-          "tag": "@langchain/anthropic@1.2.0",
-          "releaseDate": "2025-12-02T02:42:22Z"
-        },
-        {
-          "version": "1.1.3",
-          "sha": "862da5008f5278ac8a82d1fe383df975b83bad59",
-          "tag": "@langchain/anthropic@1.1.3",
-          "releaseDate": "2025-11-24T21:10:06Z"
-        },
-        {
-          "version": "1.1.0",
-          "sha": "a13d6b01cf758d8f469aaf7335d69d536840d1d5",
-          "tag": "@langchain/anthropic@1.1.0",
-          "releaseDate": "2025-11-18T03:13:40Z"
-        },
-        {
-          "version": "1.0.0",
-          "sha": "822db857fce821a2beee645e6c90beac5c42ff09",
-          "tag": "@langchain/anthropic==1.0.0",
-          "releaseDate": "2025-10-20T18:25:23Z"
-        },
-        {
-          "version": "0.3.33",
-          "sha": "749aa259461bbb7221892444ba852f7ebc50375e",
-          "tag": "@langchain/anthropic==0.3.33",
-          "releaseDate": "2025-10-27T19:02:21Z"
-        }
-      ],
-      "lastUpdated": "2026-01-12T07:22:45.674Z"
-    },
-    {
-      "packageName": "@langchain/aws",
-      "tagPattern": "@langchain/aws@*",
-      "versions": [
-        {
-          "version": "1.1.1",
-          "sha": "7ea8874715f76c17d3ec3d2ff0503dd12abbc5e9",
-          "tag": "@langchain/aws@1.1.1",
-          "releaseDate": "2026-01-06T02:01:35Z"
-        },
-        {
-          "version": "1.1.0",
-          "sha": "8a77e9af292b542d739b502ffbfbfd82dd12fcb4",
-          "tag": "@langchain/aws@1.1.0",
-          "releaseDate": "2025-12-02T02:42:22Z"
-        },
-        {
-          "version": "1.0.2",
-          "sha": "a13d6b01cf758d8f469aaf7335d69d536840d1d5",
-          "tag": "@langchain/aws@1.0.2",
-          "releaseDate": "2025-11-18T03:13:40Z"
-        },
-        {
-          "version": "1.0.0",
-          "sha": "822db857fce821a2beee645e6c90beac5c42ff09",
-          "tag": "@langchain/aws==1.0.0",
-          "releaseDate": "2025-10-20T18:25:23Z"
-        },
-        {
-          "version": "0.1.15",
-          "sha": "350a80a43b54affc2b307681210eb8da1d3abf51",
-          "tag": "@langchain/aws==0.1.15",
-          "releaseDate": "2025-09-02T19:39:31Z"
-        }
-      ],
-      "lastUpdated": "2026-01-12T07:22:47.359Z"
-    },
-    {
-      "packageName": "@langchain/deepseek",
-      "tagPattern": "@langchain/deepseek@*",
-      "versions": [
-        {
-          "version": "1.0.4",
-          "sha": "7ea8874715f76c17d3ec3d2ff0503dd12abbc5e9",
-          "tag": "@langchain/deepseek@1.0.4",
-          "releaseDate": "2026-01-06T02:01:35Z"
-        },
-        {
-          "version": "1.0.0",
-          "sha": "822db857fce821a2beee645e6c90beac5c42ff09",
-          "tag": "@langchain/deepseek==1.0.0",
-          "releaseDate": "2025-10-20T18:25:23Z"
-        },
-        {
-          "version": "0.1.0",
-          "sha": "f9e937c0c6ee5a91be8c3b3d2e3584b25521ed99",
-          "tag": "@langchain/deepseek==0.1.0",
-          "releaseDate": "2025-07-05T00:59:44Z"
-        }
-      ],
-      "lastUpdated": "2026-01-12T07:22:48.577Z"
-    },
-    {
-      "packageName": "@langchain/google-genai",
-      "tagPattern": "@langchain/google-genai@*",
-      "versions": [
-        {
-          "version": "2.1.7",
-          "sha": "bd72d8eb8bde1b2282c9ec88f2ebadd0747dc7b7",
-          "tag": "@langchain/google-genai@2.1.7",
-          "releaseDate": "2026-01-08T21:00:25Z"
-        },
-        {
-          "version": "2.1.0",
-          "sha": "1a8162c87a800eb329bd76f8a598e461690597a7",
-          "tag": "@langchain/google-genai@2.1.0",
-          "releaseDate": "2025-12-13T01:50:00Z"
-        },
-        {
-          "version": "2.0.4",
-          "sha": "a0cef1e7063d1644abea0e8acae5d19f764a3288",
-          "tag": "@langchain/google-genai@2.0.4",
-          "releaseDate": "2025-12-05T17:44:09Z"
-        },
-        {
-          "version": "2.0.1",
-          "sha": "8a77e9af292b542d739b502ffbfbfd82dd12fcb4",
-          "tag": "@langchain/google-genai@2.0.1",
-          "releaseDate": "2025-12-02T02:42:22Z"
-        },
-        {
-          "version": "1.0.3",
-          "sha": "70320b7843a5f01e3f0ba1452d38db24302edb8d",
-          "tag": "@langchain/google-genai@1.0.3",
-          "releaseDate": "2025-11-19T00:11:07Z"
-        },
-        {
-          "version": "1.0.0",
-          "sha": "822db857fce821a2beee645e6c90beac5c42ff09",
-          "tag": "@langchain/google-genai==1.0.0",
-          "releaseDate": "2025-10-20T18:25:23Z"
-        },
-        {
-          "version": "0.2.18",
-          "sha": "085431171b6199d9317bc8271b6dcb17db2593a8",
-          "tag": "@langchain/google-genai==0.2.18",
-          "releaseDate": "2025-09-15T21:41:49Z"
-        }
-      ],
-      "lastUpdated": "2026-01-12T07:22:50.844Z"
-    },
-    {
-      "packageName": "@langchain/google-vertexai",
-      "tagPattern": "@langchain/google-vertexai@*",
-      "versions": [
-        {
-          "version": "2.1.7",
-          "sha": "bd72d8eb8bde1b2282c9ec88f2ebadd0747dc7b7",
-          "tag": "@langchain/google-vertexai@2.1.7",
-          "releaseDate": "2026-01-08T21:00:25Z"
-        },
-        {
-          "version": "2.1.0",
-          "sha": "1a8162c87a800eb329bd76f8a598e461690597a7",
-          "tag": "@langchain/google-vertexai@2.1.0",
-          "releaseDate": "2025-12-13T01:50:00Z"
-        },
-        {
-          "version": "2.0.4",
-          "sha": "a0cef1e7063d1644abea0e8acae5d19f764a3288",
-          "tag": "@langchain/google-vertexai@2.0.4",
-          "releaseDate": "2025-12-05T17:44:09Z"
-        },
-        {
-          "version": "2.0.1",
-          "sha": "8a77e9af292b542d739b502ffbfbfd82dd12fcb4",
-          "tag": "@langchain/google-vertexai@2.0.1",
-          "releaseDate": "2025-12-02T02:42:22Z"
-        },
-        {
-          "version": "1.0.4",
-          "sha": "426236e2808a9f319c59e395317149e9a3ce0d3b",
-          "tag": "@langchain/google-vertexai@1.0.4",
-          "releaseDate": "2025-11-24T18:11:48Z"
-        },
-        {
-          "version": "1.0.2",
-          "sha": "d897f902c6c07506cdbb41683bb2ef1c577a9a4e",
-          "tag": "@langchain/google-vertexai@1.0.2",
-          "releaseDate": "2025-11-18T16:39:19Z"
-        },
-        {
-          "version": "0.2.18",
-          "sha": "085431171b6199d9317bc8271b6dcb17db2593a8",
-          "tag": "@langchain/google-vertexai==0.2.18",
-          "releaseDate": "2025-09-15T21:41:49Z"
-        }
-      ],
-      "lastUpdated": "2026-01-12T07:22:52.929Z"
-    },
-    {
-      "packageName": "@langchain/google-vertexai-web",
-      "tagPattern": "@langchain/google-vertexai-web@*",
-      "versions": [
-        {
-          "version": "2.1.7",
-          "sha": "bd72d8eb8bde1b2282c9ec88f2ebadd0747dc7b7",
-          "tag": "@langchain/google-vertexai-web@2.1.7",
-          "releaseDate": "2026-01-08T21:00:25Z"
-        },
-        {
-          "version": "2.1.0",
-          "sha": "1a8162c87a800eb329bd76f8a598e461690597a7",
-          "tag": "@langchain/google-vertexai-web@2.1.0",
-          "releaseDate": "2025-12-13T01:50:00Z"
-        },
-        {
-          "version": "2.0.4",
-          "sha": "a0cef1e7063d1644abea0e8acae5d19f764a3288",
-          "tag": "@langchain/google-vertexai-web@2.0.4",
-          "releaseDate": "2025-12-05T17:44:09Z"
-        },
-        {
-          "version": "2.0.1",
-          "sha": "8a77e9af292b542d739b502ffbfbfd82dd12fcb4",
-          "tag": "@langchain/google-vertexai-web@2.0.1",
-          "releaseDate": "2025-12-02T02:42:22Z"
-        },
-        {
-          "version": "1.0.4",
-          "sha": "426236e2808a9f319c59e395317149e9a3ce0d3b",
-          "tag": "@langchain/google-vertexai-web@1.0.4",
-          "releaseDate": "2025-11-24T18:11:48Z"
-        },
-        {
-          "version": "1.0.2",
-          "sha": "d897f902c6c07506cdbb41683bb2ef1c577a9a4e",
-          "tag": "@langchain/google-vertexai-web@1.0.2",
-          "releaseDate": "2025-11-18T16:39:19Z"
-        },
-        {
-          "version": "0.2.18",
-          "sha": "085431171b6199d9317bc8271b6dcb17db2593a8",
-          "tag": "@langchain/google-vertexai-web==0.2.18",
-          "releaseDate": "2025-09-15T21:41:49Z"
-        }
-      ],
-      "lastUpdated": "2026-01-12T07:22:55.033Z"
-    },
-    {
-      "packageName": "@langchain/groq",
-      "tagPattern": "@langchain/groq@*",
-      "versions": [
-        {
-          "version": "1.0.2",
+          "version": "1.0.1",
           "sha": "1596213afe2874842e98d0827752b422096d020b",
-          "tag": "@langchain/groq@1.0.2",
+          "tag": "@langchain/textsplitters@1.0.1",
           "releaseDate": "2025-11-24T16:38:51Z"
         },
         {
           "version": "1.0.0",
           "sha": "822db857fce821a2beee645e6c90beac5c42ff09",
-          "tag": "@langchain/groq==1.0.0",
+          "tag": "@langchain/textsplitters==1.0.0",
           "releaseDate": "2025-10-20T18:25:23Z"
-        },
-        {
-          "version": "0.2.4",
-          "sha": "085431171b6199d9317bc8271b6dcb17db2593a8",
-          "tag": "@langchain/groq==0.2.4",
-          "releaseDate": "2025-09-15T21:41:49Z"
         }
       ],
-      "lastUpdated": "2026-01-12T07:22:56.062Z"
+      "lastUpdated": "2026-01-16T06:34:32.164Z"
     },
     {
-      "packageName": "@langchain/openai",
-      "tagPattern": "@langchain/openai@*",
+      "packageName": "@langchain/mcp-adapters",
+      "tagPattern": "@langchain/mcp-adapters@*",
       "versions": [
         {
-          "version": "1.2.1",
-          "sha": "7ea8874715f76c17d3ec3d2ff0503dd12abbc5e9",
-          "tag": "@langchain/openai@1.2.1",
-          "releaseDate": "2026-01-06T02:01:35Z"
-        },
-        {
-          "version": "1.2.0",
+          "version": "1.1.0",
           "sha": "1a8162c87a800eb329bd76f8a598e461690597a7",
-          "tag": "@langchain/openai@1.2.0",
+          "tag": "@langchain/mcp-adapters@1.1.0",
           "releaseDate": "2025-12-13T01:50:00Z"
         },
         {
-          "version": "1.1.2",
-          "sha": "a13d6b01cf758d8f469aaf7335d69d536840d1d5",
-          "tag": "@langchain/openai@1.1.2",
-          "releaseDate": "2025-11-18T03:13:40Z"
-        },
-        {
-          "version": "1.1.0",
-          "sha": "671a9498b841e855eea06ac2dbf8c2931425d7c3",
-          "tag": "@langchain/openai==1.1.0",
-          "releaseDate": "2025-11-11T01:36:15Z"
+          "version": "1.0.3",
+          "sha": "08148ae908aa1f304d89d6d875c65466fc29918f",
+          "tag": "@langchain/mcp-adapters@1.0.3",
+          "releaseDate": "2025-12-05T02:33:25Z"
         },
         {
           "version": "1.0.0",
           "sha": "822db857fce821a2beee645e6c90beac5c42ff09",
-          "tag": "@langchain/openai==1.0.0",
+          "tag": "@langchain/mcp-adapters==1.0.0",
           "releaseDate": "2025-10-20T18:25:23Z"
         },
         {
-          "version": "0.6.14",
-          "sha": "23a92ed3fae05531193af80977019aaa82fe94df",
-          "tag": "@langchain/openai==0.6.14",
-          "releaseDate": "2025-09-29T22:58:35Z"
+          "version": "0.6.0",
+          "sha": "82623086bc0d7f31673691c9c605346df80cdf8a",
+          "tag": "@langchain/mcp-adapters==0.6.0",
+          "releaseDate": "2025-07-20T02:38:42Z"
         }
       ],
-      "lastUpdated": "2026-01-12T07:22:57.935Z"
+      "lastUpdated": "2026-01-16T06:34:33.586Z"
     }
   ]
 }

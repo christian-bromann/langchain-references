@@ -1,0 +1,381 @@
+{
+  "$schema": "./config-schema.json",
+  "project": "integrations",
+  "language": "python",
+  "repo": "langchain-ai/langchain",
+  "packages": [
+    {
+      "name": "langchain_community",
+      "path": "libs/community",
+      "displayName": "Community",
+      "versioning": {
+        "tagPattern": "langchain-community==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_anthropic",
+      "path": "libs/partners/anthropic",
+      "displayName": "Anthropic",
+      "versioning": {
+        "tagPattern": "langchain-anthropic==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_astradb",
+      "path": "libs/partners/astradb",
+      "displayName": "AstraDB",
+      "versioning": {
+        "tagPattern": "langchain-astradb==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_aws",
+      "path": "libs/partners/aws",
+      "displayName": "AWS",
+      "versioning": {
+        "tagPattern": "langchain-aws==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_azure_dynamic_sessions",
+      "path": "libs/partners/azure-dynamic-sessions",
+      "displayName": "Azure (Microsoft)",
+      "versioning": {
+        "tagPattern": "langchain-azure-dynamic-sessions==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_cerebras",
+      "path": "libs/partners/cerebras",
+      "displayName": "Cerebras",
+      "versioning": {
+        "tagPattern": "langchain-cerebras==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_chroma",
+      "path": "libs/partners/chroma",
+      "displayName": "Chroma",
+      "versioning": {
+        "tagPattern": "langchain-chroma==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_cohere",
+      "path": "libs/partners/cohere",
+      "displayName": "Cohere",
+      "versioning": {
+        "tagPattern": "langchain-cohere==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_ibm_db2",
+      "path": "libs/partners/db2",
+      "displayName": "Db2",
+      "versioning": {
+        "tagPattern": "langchain-ibm-db2==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_deepseek",
+      "path": "libs/partners/deepseek",
+      "displayName": "DeepSeek",
+      "versioning": {
+        "tagPattern": "langchain-deepseek==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_elasticsearch",
+      "path": "libs/partners/elasticsearch",
+      "displayName": "Elasticsearch",
+      "versioning": {
+        "tagPattern": "langchain-elasticsearch==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_exa",
+      "path": "libs/partners/exa",
+      "displayName": "Exa",
+      "versioning": {
+        "tagPattern": "langchain-exa==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_fireworks",
+      "path": "libs/partners/fireworks",
+      "displayName": "Fireworks",
+      "versioning": {
+        "tagPattern": "langchain-fireworks==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_google_community",
+      "path": "libs/partners/google-community",
+      "displayName": "Google",
+      "versioning": {
+        "tagPattern": "langchain-google-community==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_groq",
+      "path": "libs/partners/groq",
+      "displayName": "Groq",
+      "versioning": {
+        "tagPattern": "langchain-groq==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_huggingface",
+      "path": "libs/partners/huggingface",
+      "displayName": "HuggingFace",
+      "versioning": {
+        "tagPattern": "langchain-huggingface==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_ibm",
+      "path": "libs/partners/ibm",
+      "displayName": "IBM",
+      "versioning": {
+        "tagPattern": "langchain-ibm==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_milvus",
+      "path": "libs/partners/milvus",
+      "displayName": "Milvus",
+      "versioning": {
+        "tagPattern": "langchain-milvus==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_mistralai",
+      "path": "libs/partners/mistralai",
+      "displayName": "Mistral AI",
+      "versioning": {
+        "tagPattern": "langchain-mistralai==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_mongodb",
+      "path": "libs/partners/mongodb",
+      "displayName": "MongoDB",
+      "versioning": {
+        "tagPattern": "langchain-mongodb==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_neo4j",
+      "path": "libs/partners/neo4j",
+      "displayName": "Neo4J",
+      "versioning": {
+        "tagPattern": "langchain-neo4j==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_nomic",
+      "path": "libs/partners/nomic",
+      "displayName": "Nomic",
+      "versioning": {
+        "tagPattern": "langchain-nomic==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_nvidia_ai_endpoints",
+      "path": "libs/partners/nvidia-ai-endpoints",
+      "displayName": "Nvidia AI Endpoints",
+      "versioning": {
+        "tagPattern": "langchain-nvidia-ai-endpoints==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_ollama",
+      "path": "libs/partners/ollama",
+      "displayName": "Ollama",
+      "versioning": {
+        "tagPattern": "langchain-ollama==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_openai",
+      "path": "libs/partners/openai",
+      "displayName": "OpenAI",
+      "versioning": {
+        "tagPattern": "langchain-openai==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_perplexity",
+      "path": "libs/partners/perplexity",
+      "displayName": "Perplexity",
+      "versioning": {
+        "tagPattern": "langchain-perplexity==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_pinecone",
+      "path": "libs/partners/pinecone",
+      "displayName": "Pinecone",
+      "versioning": {
+        "tagPattern": "langchain-pinecone==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_postgres",
+      "path": "libs/partners/postgres",
+      "displayName": "Postgres",
+      "versioning": {
+        "tagPattern": "langchain-postgres==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_prompty",
+      "path": "libs/partners/prompty",
+      "displayName": "Prompty",
+      "versioning": {
+        "tagPattern": "langchain-prompty==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_qdrant",
+      "path": "libs/partners/qdrant",
+      "displayName": "Qdrant",
+      "versioning": {
+        "tagPattern": "langchain-qdrant==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_redis",
+      "path": "libs/partners/redis",
+      "displayName": "Redis",
+      "versioning": {
+        "tagPattern": "langchain-redis==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_sema4",
+      "path": "libs/partners/sema4",
+      "displayName": "Sema4",
+      "versioning": {
+        "tagPattern": "langchain-sema4==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_snowflake",
+      "path": "libs/partners/snowflake",
+      "displayName": "Snowflake",
+      "versioning": {
+        "tagPattern": "langchain-snowflake==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_sqlserver",
+      "path": "libs/partners/sqlserver",
+      "displayName": "SQLServer",
+      "versioning": {
+        "tagPattern": "langchain-sqlserver==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_tavily",
+      "path": "libs/partners/tavily",
+      "displayName": "Tavily",
+      "versioning": {
+        "tagPattern": "langchain-tavily==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_together",
+      "path": "libs/partners/together",
+      "displayName": "Together",
+      "versioning": {
+        "tagPattern": "langchain-together==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_unstructured",
+      "path": "libs/partners/unstructured",
+      "displayName": "Unstructured",
+      "versioning": {
+        "tagPattern": "langchain-unstructured==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_upstage",
+      "path": "libs/partners/upstage",
+      "displayName": "Upstage",
+      "versioning": {
+        "tagPattern": "langchain-upstage==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_xai",
+      "path": "libs/partners/xai",
+      "displayName": "xAI",
+      "versioning": {
+        "tagPattern": "langchain-xai==*",
+        "maxVersions": 10
+      }
+    }
+  ],
+  "externalPackages": [
+    {
+      "name": "langchain_weaviate",
+      "repo": "langchain-ai/langchain-weaviate",
+      "path": "libs/weaviate",
+      "displayName": "Weaviate",
+      "versioning": {
+        "tagPattern": "langchain-weaviate==*",
+        "maxVersions": 10
+      }
+    },
+    {
+      "name": "langchain_parallel",
+      "repo": "langchain-ai/langchain-parallel",
+      "path": ".",
+      "displayName": "Parallel",
+      "versioning": {
+        "tagPattern": "langchain-parallel==*",
+        "maxVersions": 10
+      }
+    }
+  ]
+}

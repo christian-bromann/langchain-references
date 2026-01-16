@@ -39,44 +39,6 @@
         "tagPattern": "langchain-text-splitters==*",
         "maxVersions": 10
       }
-    },
-    {
-      "name": "langchain_anthropic",
-      "path": "libs/partners/anthropic",
-      "displayName": "Anthropic",
-      "versioning": {
-        "tagPattern": "langchain-anthropic==*",
-        "maxVersions": 10
-      }
-    },
-    {
-      "name": "langchain_deepseek",
-      "path": "libs/partners/deepseek",
-      "displayName": "DeepSeek",
-      "versioning": {
-        "tagPattern": "langchain-deepseek==*",
-        "maxVersions": 10
-      }
-    },
-    {
-      "name": "langchain_groq",
-      "path": "libs/partners/groq",
-      "displayName": "Groq",
-      "versioning": {
-        "tagPattern": "langchain-groq==*",
-        "maxVersions": 10
-      }
-    },
-    {
-      "name": "langchain_openai",
-      "path": "libs/partners/openai",
-      "displayName": "OpenAI",
-      "versioning": {
-        "tagPattern": "langchain-openai==*",
-        "maxVersions": 10
-      }
     }
   ]
 }
-
-
