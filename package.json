@@ -19,6 +19,7 @@
     "sync-versions": "tsx packages/build-pipeline/src/commands/sync-versions.ts",
     "fetch-tarball": "tsx packages/build-pipeline/src/commands/fetch-tarball.ts",
     "update-pointers": "tsx packages/build-pipeline/src/commands/update-pointers.ts",
+    "upload-pointers": "dotenv -e .env.local -- tsx packages/build-pipeline/src/commands/upload-pointers.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt .",

@@ -425,12 +425,10 @@ jobs:
           fi
 
           # Run via tsx directly with package filter for parallel execution
-          # Package-level builds upload directly - no merge step needed!
-          # Still skip pointers - project index is updated at the end
+          # Package-level builds upload directly and update their own pointers
           npx tsx packages/build-pipeline/src/commands/build-ir.ts \
             --config ./configs/${{ matrix.config }} \
             --package "${{ matrix.package }}" \
-            --skip-pointers \
             $FLAGS
 
           echo "compiled=true" >> $GITHUB_OUTPUT

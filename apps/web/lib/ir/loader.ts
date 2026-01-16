@@ -1102,7 +1102,110 @@ function getLocalIrBasePath(): string {
 }
 
 /**
- * Get the latest build ID for a language and project from local symlinks
+ * Cache for local package index
+ */
+const localPackageIndexCache = new Map<string, ProjectPackageIndex>();
+
+/**
+ * Get the local package index for a project/language
+ * With the new architecture, there are no build IDs at the project level.
+ * Instead, we need to scan the packages directory to find available packages.
+ */
+export async function getLocalPackageIndex(
+  language: "python" | "javascript",
+  project: string = "langchain",
+): Promise<ProjectPackageIndex | null> {
+  const cacheKey = `${project}-${language}`;
+  if (localPackageIndexCache.has(cacheKey)) {
+    return localPackageIndexCache.get(cacheKey)!;
+  }
+
+  try {
+    const fs = await import("fs/promises");
+    const path = await import("path");
+    const basePath = getLocalIrBasePath();
+    const packagesDir = path.join(basePath, "packages");
+
+    // Check if packages directory exists
+    try {
+      await fs.access(packagesDir);
+    } catch {
+      console.log(`[loader] No local packages directory found at ${packagesDir}`);
+      return null;
+    }
+
+    // Scan for packages matching the language prefix
+    const prefix = language === "python" ? "pkg_py_" : "pkg_js_";
+    const entries = await fs.readdir(packagesDir, { withFileTypes: true });
+    
+    const packages: ProjectPackageIndex["packages"] = {};
+
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !entry.name.startsWith(prefix)) {
+        continue;
+      }
+
+      const packageId = entry.name;
+      const packageDir = path.join(packagesDir, packageId);
+
+      // Find the latest build for this package (first directory found)
+      const buildDirs = await fs.readdir(packageDir, { withFileTypes: true });
+      const buildDir = buildDirs.find((d) => d.isDirectory());
+      
+      if (!buildDir) continue;
+
+      const buildId = buildDir.name;
+      
+      // Try to read package.json for version info
+      const packageJsonPath = path.join(packageDir, buildId, "package.json");
+      try {
+        const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
+        const packageJson = JSON.parse(packageJsonContent);
+        
+        // Convert packageId back to package name
+        const packageName = packageJson.publishedName || packageId.replace(prefix, "").replace(/_/g, "-");
+        
+        packages[packageName] = {
+          buildId,
+          version: packageJson.version || "unknown",
+          sha: packageJson.repo?.sha || "unknown",
+        };
+      } catch {
+        // If no package.json, still include the package with unknown version
+        const packageName = packageId.replace(prefix, "").replace(/_/g, "-");
+        packages[packageName] = {
+          buildId,
+          version: "unknown",
+          sha: "unknown",
+        };
+      }
+    }
+
+    if (Object.keys(packages).length === 0) {
+      return null;
+    }
+
+    const index: ProjectPackageIndex = {
+      project,
+      language,
+      updatedAt: new Date().toISOString(),
+      packages,
+    };
+
+    localPackageIndexCache.set(cacheKey, index);
+    return index;
+  } catch (error) {
+    console.error(`[loader] getLocalPackageIndex ERROR for ${project}/${language}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get the latest build ID for a language and project.
+ * With package-level architecture, this returns the first available build ID
+ * from the package index (for backward compatibility with code that expects a single build ID).
+ * 
+ * @deprecated Use getLocalPackageIndex instead for new code
  */
 let localBuildIdLoggedOnce = false;
 export async function getLocalLatestBuildId(
@@ -1110,6 +1213,7 @@ export async function getLocalLatestBuildId(
   project: string = "langchain",
 ): Promise<string | null> {
   try {
+    // First try the old symlink approach for backward compatibility
     const fs = await import("fs/promises");
     const path = await import("path");
     const basePath = getLocalIrBasePath();
@@ -1127,8 +1231,18 @@ export async function getLocalLatestBuildId(
       }
     }
 
-    const target = await fs.readlink(symlink);
-    return target;
+    try {
+      const target = await fs.readlink(symlink);
+      return target;
+    } catch {
+      // No symlink, try to get from package index
+      const index = await getLocalPackageIndex(language, project);
+      if (index && Object.keys(index.packages).length > 0) {
+        // Return the first package's build ID
+        return Object.values(index.packages)[0].buildId;
+      }
+      return null;
+    }
   } catch (error) {
     console.error(`[loader] getLocalLatestBuildId ERROR for ${project}/${language}:`, error);
     return null;
@@ -1138,6 +1252,9 @@ export async function getLocalLatestBuildId(
 /**
  * Local file-based loader for development
  * Falls back to reading from ir-output directory
+ * 
+ * @deprecated With package-level architecture, there's no project-level manifest.
+ * Use getLocalPackageIndex instead to get package information.
  */
 export async function getLocalManifest(buildId: string): Promise<Manifest | null> {
   try {
@@ -1157,7 +1274,10 @@ export async function getLocalManifest(buildId: string): Promise<Manifest | null
 const localPackageSymbolsCache = new Map<string, { symbols: SymbolRecord[]; total: number }>();
 
 /**
- * Get local symbols for development
+ * Get local symbols for development using package-level structure
+ *
+ * New path: ir-output/packages/{packageId}/{buildId}/symbols.json
+ * Fallback: ir-output/{buildId}/packages/{packageId}/symbols.json (old structure)
  *
  * OPTIMIZATION: Uses in-memory cache to prevent duplicate file reads.
  */
@@ -1175,13 +1295,18 @@ export async function getLocalPackageSymbols(
   try {
     const fs = await import("fs/promises");
     const path = await import("path");
-    const symbolsPath = path.join(
-      getLocalIrBasePath(),
-      buildId,
-      "packages",
-      packageId,
-      "symbols.json",
-    );
+    const basePath = getLocalIrBasePath();
+    
+    // Try new path first: ir-output/packages/{packageId}/{buildId}/symbols.json
+    let symbolsPath = path.join(basePath, "packages", packageId, buildId, "symbols.json");
+    
+    try {
+      await fs.access(symbolsPath);
+    } catch {
+      // Fallback to old path: ir-output/{buildId}/packages/{packageId}/symbols.json
+      symbolsPath = path.join(basePath, buildId, "packages", packageId, "symbols.json");
+    }
+    
     const content = await fs.readFile(symbolsPath, "utf-8");
     const data = JSON.parse(content);
     const symbols = data.symbols || data;

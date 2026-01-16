@@ -31,7 +31,8 @@
     "sync-versions": "tsx src/commands/sync-versions.ts",
     "fetch-tarball": "tsx src/commands/fetch-tarball.ts",
     "update-pointers": "tsx src/commands/update-pointers.ts",
-    "update-indexes": "tsx src/commands/update-indexes.ts"
+    "update-indexes": "tsx src/commands/update-indexes.ts",
+    "upload-pointers": "tsx src/commands/upload-pointers.ts"
   },
   "dependencies": {
     "@langchain/extractor-typescript": "workspace:*",

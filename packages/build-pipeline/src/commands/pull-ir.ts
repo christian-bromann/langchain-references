@@ -6,6 +6,9 @@
  * and saves them to the local ir-output directory, allowing you to run the
  * dev environment with production data.
  *
+ * With the package-level architecture, each package is stored independently:
+ *   ir/packages/{packageId}/{buildId}/symbols.json
+ *
  * Usage:
  *   # Pull all projects and languages
  *   pnpm pull-ir
@@ -23,8 +26,7 @@
 import path from "path";
 import fs from "fs/promises";
 import { program } from "commander";
-import type { Manifest } from "@langchain/ir-schema";
-import type { LatestBuildPointer } from "../pointers.js";
+import type { ProjectPackageIndex } from "../pointers.js";
 
 // =============================================================================
 // CONFIGURATION
@@ -136,14 +138,20 @@ async function fetchBlobRaw(relativePath: string): Promise<string | null> {
 interface PullResult {
   project: Project;
   language: Language;
-  buildId: string | null;
+  packagesDownloaded: number;
   filesDownloaded: number;
   success: boolean;
   error?: string;
 }
 
+interface PackageInfo {
+  buildId: string;
+  version: string;
+  sha: string;
+}
+
 /**
- * Pull IR for a specific project and language.
+ * Pull IR for a specific project and language using package-level architecture.
  */
 async function pullProjectLanguage(
   project: Project,
@@ -154,85 +162,76 @@ async function pullProjectLanguage(
   const result: PullResult = {
     project,
     language,
-    buildId: null,
+    packagesDownloaded: 0,
     filesDownloaded: 0,
     success: false,
   };
 
   try {
-    // Fetch the latest build pointer
+    // Fetch the project package index (new architecture)
+    const indexPath = `pointers/index-${project}-${language}.json`;
     if (verbose) {
-      console.log(`   Fetching pointer: pointers/latest-${project}-${language}.json`);
+      console.log(`   Fetching index: ${indexPath}`);
     }
 
-    const pointer = await fetchBlobJson<LatestBuildPointer>(
-      `pointers/latest-${project}-${language}.json`,
-    );
+    const packageIndex = await fetchBlobJson<ProjectPackageIndex>(indexPath);
 
-    if (!pointer) {
-      result.error = "No build pointer found";
+    if (!packageIndex || !packageIndex.packages || Object.keys(packageIndex.packages).length === 0) {
+      result.error = "No package index found";
       return result;
     }
 
-    result.buildId = pointer.buildId;
-    if (verbose) {
-      console.log(
-        `   Found build: ${pointer.buildId} (updated ${pointer.updatedAt.split("T")[0]})`,
-      );
-    }
+    const packageCount = Object.keys(packageIndex.packages).length;
+    console.log(`   Found ${packageCount} packages (updated ${packageIndex.updatedAt.split("T")[0]})`);
 
-    const buildId = pointer.buildId;
-    const buildDir = path.join(outputDir, buildId);
+    // Create output directory structure
+    const packagesDir = path.join(outputDir, "packages");
+    await fs.mkdir(packagesDir, { recursive: true });
 
-    // Check if we already have this build
-    const manifestPath = path.join(buildDir, "reference.manifest.json");
-    try {
-      await fs.access(manifestPath);
-      console.log(`   ✓ Already have build ${buildId}`);
+    // Download each package
+    for (const [packageName, packageInfo] of Object.entries(packageIndex.packages) as [string, PackageInfo][]) {
+      const { buildId } = packageInfo;
 
-      // Create/update symlink
-      const irLanguage = language === "javascript" ? "javascript" : "python";
-      await createSymlink(outputDir, buildId, project, irLanguage);
+      // Generate packageId from package name
+      const packageId = normalizePackageId(packageName, language);
+      const pkgDir = path.join(packagesDir, packageId, buildId);
 
-      result.success = true;
-      return result;
-    } catch {
-      // Build doesn't exist locally, download it
-    }
-
-    // Create build directory
-    await fs.mkdir(buildDir, { recursive: true });
-    await fs.mkdir(path.join(buildDir, "packages"), { recursive: true });
-
-    // Download manifest
-    console.log(`   Downloading manifest...`);
-    const manifestContent = await fetchBlobRaw(`ir/${buildId}/reference.manifest.json`);
-    if (!manifestContent) {
-      result.error = "Failed to download manifest";
-      return result;
-    }
-
-    await fs.writeFile(manifestPath, manifestContent, "utf-8");
-    result.filesDownloaded++;
-
-    const manifest: Manifest = JSON.parse(manifestContent);
-
-    // Download symbols for each package
-    for (const pkg of manifest.packages) {
-      const pkgDir = path.join(buildDir, "packages", pkg.packageId);
-      await fs.mkdir(pkgDir, { recursive: true });
-
-      // Download symbols.json
-      if (verbose) {
-        console.log(`   Downloading ${pkg.displayName} symbols...`);
+      // Check if we already have this build
+      const symbolsPath = path.join(pkgDir, "symbols.json");
+      try {
+        await fs.access(symbolsPath);
+        if (verbose) {
+          console.log(`   ✓ ${packageName}: already have build ${buildId.slice(0, 8)}`);
+        }
+        result.packagesDownloaded++;
+        continue;
+      } catch {
+        // Package doesn't exist locally, download it
       }
 
+      // Create package directory
+      await fs.mkdir(pkgDir, { recursive: true });
+
+      if (verbose) {
+        console.log(`   Downloading ${packageName}...`);
+      }
+
+      // Download package.json (package info)
+      const packageJsonContent = await fetchBlobRaw(
+        `ir/packages/${packageId}/${buildId}/package.json`,
+      );
+      if (packageJsonContent) {
+        await fs.writeFile(path.join(pkgDir, "package.json"), packageJsonContent, "utf-8");
+        result.filesDownloaded++;
+      }
+
+      // Download symbols.json
       const symbolsContent = await fetchBlobRaw(
-        `ir/${buildId}/packages/${pkg.packageId}/symbols.json`,
+        `ir/packages/${packageId}/${buildId}/symbols.json`,
       );
 
       if (symbolsContent) {
-        await fs.writeFile(path.join(pkgDir, "symbols.json"), symbolsContent, "utf-8");
+        await fs.writeFile(symbolsPath, symbolsContent, "utf-8");
         result.filesDownloaded++;
 
         const parsed = JSON.parse(symbolsContent);
@@ -241,12 +240,22 @@ async function pullProjectLanguage(
           console.log(`     ✓ ${symbolCount} symbols`);
         }
       } else {
-        console.log(`     ⚠️  No symbols found for ${pkg.displayName}`);
+        console.log(`     ⚠️  No symbols found for ${packageName}`);
+        continue;
+      }
+
+      // Download routing.json
+      const routingContent = await fetchBlobRaw(
+        `ir/packages/${packageId}/${buildId}/routing.json`,
+      );
+      if (routingContent) {
+        await fs.writeFile(path.join(pkgDir, "routing.json"), routingContent, "utf-8");
+        result.filesDownloaded++;
       }
 
       // Try to download changelog.json if it exists
       const changelogContent = await fetchBlobRaw(
-        `ir/${buildId}/packages/${pkg.packageId}/changelog.json`,
+        `ir/packages/${packageId}/${buildId}/changelog.json`,
       );
 
       if (changelogContent) {
@@ -259,7 +268,7 @@ async function pullProjectLanguage(
 
       // Try to download versions.json if it exists
       const versionsContent = await fetchBlobRaw(
-        `ir/${buildId}/packages/${pkg.packageId}/versions.json`,
+        `ir/packages/${packageId}/${buildId}/versions.json`,
       );
 
       if (versionsContent) {
@@ -271,36 +280,30 @@ async function pullProjectLanguage(
       }
 
       // Download sharded indices (lookup, catalog, changelog)
-      // These are small files (<500KB each) used for optimized production lookups
       const shardedDirs = ["lookup", "catalog", "changelog"] as const;
 
       for (const shardDir of shardedDirs) {
-        // First, try to fetch the index manifest to discover shards
         const indexContent = await fetchBlobRaw(
-          `ir/${buildId}/packages/${pkg.packageId}/${shardDir}/index.json`,
+          `ir/packages/${packageId}/${buildId}/${shardDir}/index.json`,
         );
 
         if (indexContent) {
-          // Create shard directory
           const shardDirPath = path.join(pkgDir, shardDir);
           await fs.mkdir(shardDirPath, { recursive: true });
 
-          // Save the index
           await fs.writeFile(path.join(shardDirPath, "index.json"), indexContent, "utf-8");
           result.filesDownloaded++;
 
-          // Parse index to get shard list
           try {
             const index = JSON.parse(indexContent) as { shards?: string[] };
             if (index.shards && Array.isArray(index.shards)) {
-              // Download each shard in parallel (with concurrency limit)
               const BATCH_SIZE = 10;
               for (let i = 0; i < index.shards.length; i += BATCH_SIZE) {
                 const batch = index.shards.slice(i, i + BATCH_SIZE);
                 await Promise.all(
                   batch.map(async (shardKey) => {
                     const shardContent = await fetchBlobRaw(
-                      `ir/${buildId}/packages/${pkg.packageId}/${shardDir}/${shardKey}.json`,
+                      `ir/packages/${packageId}/${buildId}/${shardDir}/${shardKey}.json`,
                     );
                     if (shardContent) {
                       await fs.writeFile(
@@ -323,14 +326,12 @@ async function pullProjectLanguage(
           }
         }
       }
+
+      result.packagesDownloaded++;
     }
 
-    // Create symlink for latest
-    const irLanguage = language === "javascript" ? "javascript" : "python";
-    await createSymlink(outputDir, buildId, project, irLanguage);
-
     result.success = true;
-    console.log(`   ✓ Downloaded ${result.filesDownloaded} files`);
+    console.log(`   ✓ Downloaded ${result.packagesDownloaded} packages (${result.filesDownloaded} files)`);
   } catch (error) {
     result.error = (error as Error).message;
   }
@@ -339,26 +340,16 @@ async function pullProjectLanguage(
 }
 
 /**
- * Create a symlink for the latest build.
+ * Normalize a package name to a packageId.
  */
-async function createSymlink(
-  outputDir: string,
-  buildId: string,
-  project: string,
-  language: string,
-): Promise<void> {
-  const linkName = `latest-${project}-${language}`;
-  const linkPath = path.join(outputDir, linkName);
-
-  try {
-    // Remove existing symlink if it exists
-    await fs.unlink(linkPath).catch(() => {});
-
-    // Create new symlink
-    await fs.symlink(buildId, linkPath);
-  } catch (error) {
-    console.log(`   ⚠️  Could not create symlink: ${(error as Error).message}`);
-  }
+function normalizePackageId(packageName: string, language: Language): string {
+  const prefix = language === "python" ? "pkg_py_" : "pkg_js_";
+  const normalized = packageName
+    .replace(/^@/, "")
+    .replace(/\//g, "_")
+    .replace(/-/g, "_")
+    .toLowerCase();
+  return `${prefix}${normalized}`;
 }
 
 // =============================================================================
@@ -421,16 +412,14 @@ async function main() {
 
   let totalSuccess = 0;
   let totalFailed = 0;
+  let totalPackages = 0;
   let totalFiles = 0;
 
   for (const result of results) {
     if (result.success) {
-      if (result.buildId) {
-        console.log(`   ✅ ${result.project}/${result.language}: ${result.buildId.slice(0, 8)}`);
-      } else {
-        console.log(`   ✅ ${result.project}/${result.language}: (already up to date)`);
-      }
+      console.log(`   ✅ ${result.project}/${result.language}: ${result.packagesDownloaded} packages`);
       totalSuccess++;
+      totalPackages += result.packagesDownloaded;
       totalFiles += result.filesDownloaded;
     } else {
       console.log(`   ❌ ${result.project}/${result.language}: ${result.error}`);
@@ -439,14 +428,14 @@ async function main() {
   }
 
   console.log("─".repeat(40));
-  console.log(`   Success: ${totalSuccess} | Failed: ${totalFailed} | Files: ${totalFiles}`);
+  console.log(`   Success: ${totalSuccess} | Failed: ${totalFailed} | Packages: ${totalPackages} | Files: ${totalFiles}`);
 
   if (totalSuccess > 0) {
     console.log(`\n✅ IR data downloaded to ${outputDir}`);
     console.log("   You can now run: pnpm --filter @langchain/reference-web dev");
   }
 
-  if (totalFailed > 0) {
+  if (totalFailed > 0 && totalSuccess === 0) {
     process.exit(1);
   }
 }
