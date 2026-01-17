@@ -66,14 +66,9 @@ import { updatePointers } from "../pointers.js";
 import { checkForUpdates } from "./check-updates.js";
 import { fetchDeployedChangelog, type DeployedChangelog } from "../changelog-fetcher.js";
 import { processSubpages, clearFetchCache, type SubpageConfig, type ParsedSubpage } from "../subpage-processor.js";
+import { PROJECTS, CONFIG_LANGUAGES } from "../constants.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-/** Available projects */
-const PROJECTS = ["langchain", "langgraph", "deepagent"] as const;
-
-/** Available languages */
-const LANGUAGES = ["python", "typescript"] as const;
 
 /**
  * Find config files matching the given project and/or language filters.
@@ -1853,7 +1848,7 @@ async function main() {
     .description("Build IR artifacts from source repositories")
     .option("--config <path>", "Build a specific configuration file")
     .option("--project <name>", `Build all configs for a project (${PROJECTS.join(", ")})`)
-    .option("--language <lang>", `Build all configs for a language (${LANGUAGES.join(", ")})`)
+    .option("--language <lang>", `Build all configs for a language (${CONFIG_LANGUAGES.join(", ")})`)
     .option("--package <name>", "Build only a specific package within a config (for parallel CI)")
     .option("--all", "Build all project/language combinations")
     .option("--sha <sha>", "Git SHA to use (defaults to latest main)")

@@ -18,17 +18,16 @@ import path from "path";
 import fs from "fs/promises";
 import { program } from "commander";
 import { putWithRetry } from "../upload.js";
+import {
+  PROJECTS,
+  OUTPUT_LANGUAGES,
+  type Project,
+  type OutputLanguage,
+} from "../constants.js";
 
-// =============================================================================
-// CONFIGURATION
-// =============================================================================
-
-const PROJECTS = ["langchain", "langgraph", "deepagent", "integrations"] as const;
-const LANGUAGES = ["python", "javascript"] as const;
 const POINTERS_PATH = "pointers";
 
-type Project = (typeof PROJECTS)[number];
-type Language = (typeof LANGUAGES)[number];
+type Language = OutputLanguage;
 
 interface PackageJson {
   packageId: string;
@@ -93,7 +92,7 @@ async function main() {
     .name("upload-pointers")
     .description("Upload package pointers from local ir-output to Vercel Blob")
     .option("--project <name>", `Project to process (${PROJECTS.join(", ")})`)
-    .option("--language <lang>", `Language to process (${LANGUAGES.join(", ")})`)
+    .option("--language <lang>", `Language to process (${OUTPUT_LANGUAGES.join(", ")})`)
     .option("--output <path>", "Path to ir-output directory", "./ir-output")
     .option("--dry-run", "Print what would be uploaded without making changes")
     .parse();

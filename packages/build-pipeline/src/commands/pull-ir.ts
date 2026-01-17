@@ -28,18 +28,16 @@ import path from "path";
 import fs from "fs/promises";
 import { program } from "commander";
 import { getBlobBaseUrl } from "../blob-utils.js";
+import {
+  PROJECTS,
+  OUTPUT_LANGUAGES,
+  type Project,
+  type OutputLanguage,
+} from "../constants.js";
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
-// =============================================================================
-// CONFIGURATION
-// =============================================================================
-
-const PROJECTS = ["langchain", "langgraph", "deepagent", "integrations"] as const;
-const LANGUAGES = ["python", "javascript"] as const;
-
-type Project = (typeof PROJECTS)[number];
-type Language = (typeof LANGUAGES)[number];
+type Language = OutputLanguage;
 
 interface ConfigFile {
   project: string;
@@ -492,7 +490,7 @@ async function main() {
     .name("pull-ir")
     .description("Download the latest compiled IR from Vercel Blob storage")
     .option("--project <name>", `Project to pull (${PROJECTS.join(", ")})`)
-    .option("--language <lang>", `Language to pull (${LANGUAGES.join(", ")})`)
+    .option("--language <lang>", `Language to pull (${OUTPUT_LANGUAGES.join(", ")})`)
     .option("--output <path>", "Output directory", "./ir-output")
     .option("-v, --verbose", "Show detailed output")
     .parse();
@@ -519,7 +517,7 @@ async function main() {
 
   // Determine what to pull
   const projectsToPull: Project[] = opts.project ? [opts.project as Project] : [...PROJECTS];
-  const languagesToPull: Language[] = opts.language ? [opts.language as Language] : [...LANGUAGES];
+  const languagesToPull: Language[] = opts.language ? [opts.language as Language] : [...OUTPUT_LANGUAGES];
 
   const results: PullResult[] = [];
 

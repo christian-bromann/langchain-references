@@ -669,7 +669,7 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
  * Instead, we build one dynamically from the package indexes.
  */
 async function buildManifestFromPackageIndexes(): Promise<Manifest | null> {
-  const projects = ["langchain", "langgraph", "deepagent", "integrations"] as const;
+  const projects = ["langchain", "langgraph", "deepagent", "integrations", "langsmith"] as const;
   const languages = ["python", "javascript"] as const;
 
   const packages: Package[] = [];
