@@ -13,6 +13,7 @@
         "maxVersions": 10
       },
       "descriptionSource": "readme",
+      "excludePatterns": ["_internal", "_expect", "integrations", "beta"],
       "subpages": [
         { "slug": "client", "title": "Client", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/client.md" },
         { "slug": "async-client", "title": "AsyncClient", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/async_client.md" },

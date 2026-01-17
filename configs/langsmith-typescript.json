@@ -10,7 +10,7 @@
       "entryPoints": ["auto"],
       "displayName": "LangSmith",
       "versioning": {
-        "tagPattern": "langsmith@*",
+        "tagPattern": "v*",
         "maxVersions": 10
       },
       "descriptionSource": "readme"

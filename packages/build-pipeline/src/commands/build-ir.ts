@@ -121,6 +121,8 @@ interface PackageConfig {
   descriptionSource?: string;
   /** Optional curated subpages for domain-specific navigation */
   subpages?: SubpageConfig[];
+  /** Patterns to exclude from extraction (e.g., '_internal' to skip internal modules) */
+  excludePatterns?: string[];
 }
 
 /**
@@ -255,6 +257,66 @@ function cleanMarkdownContent(content: string): string {
 }
 
 /**
+ * Remove directories matching exclude patterns from the package path.
+ * This prevents griffe from parsing modules that cause issues (e.g., _internal).
+ */
+async function removeExcludedDirectories(
+  packagePath: string,
+  packageName: string,
+  excludePatterns: string[],
+): Promise<void> {
+  // The package module directory (e.g., .../python/langsmith)
+  const packageModulePath = path.join(packagePath, packageName.replace(/-/g, "_"));
+
+  try {
+    await fs.access(packageModulePath);
+    await removeMatchingDirectories(packageModulePath, excludePatterns);
+  } catch {
+    // Module directory doesn't exist, try the package path directly
+    await removeMatchingDirectories(packagePath, excludePatterns);
+  }
+}
+
+/**
+ * Recursively find and remove directories/files matching patterns.
+ */
+async function removeMatchingDirectories(
+  dirPath: string,
+  patterns: string[],
+): Promise<void> {
+  let entries;
+  try {
+    entries = await fs.readdir(dirPath, { withFileTypes: true });
+  } catch {
+    return; // Directory doesn't exist or not accessible
+  }
+
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    const nameWithoutExt = entry.name.replace(/\.py$/, "");
+
+    // Check if this entry matches any exclude pattern
+    const matches = patterns.some(pattern =>
+      entry.name === pattern ||
+      entry.name.startsWith(pattern) ||
+      nameWithoutExt === pattern
+    );
+
+    if (matches) {
+      if (entry.isDirectory()) {
+        console.log(`      🗑️  Removing excluded directory: ${entry.name}`);
+      } else {
+        console.log(`      🗑️  Removing excluded file: ${entry.name}`);
+      }
+      await fs.rm(fullPath, { recursive: true, force: true });
+    } else if (entry.isDirectory()) {
+      // Recurse into subdirectories
+      await removeMatchingDirectories(fullPath, patterns);
+    }
+  }
+}
+
+/**
  * Run the Python extractor on a package.
  */
 async function extractPython(
@@ -263,8 +325,15 @@ async function extractPython(
   outputPath: string,
   repo: string,
   sha: string,
+  excludePatterns?: string[],
 ): Promise<void> {
   console.log(`   🐍 Extracting: ${packageName}`);
+
+  // Remove excluded directories before extraction to prevent griffe from parsing them
+  if (excludePatterns && excludePatterns.length > 0) {
+    console.log(`      Applying exclude patterns: ${excludePatterns.join(", ")}`);
+    await removeExcludedDirectories(packagePath, packageName, excludePatterns);
+  }
 
   // Path to the Python extractor source
   const extractorSrcPath = path.resolve(__dirname, "../../../../packages/extractor-python/src");
@@ -283,6 +352,13 @@ async function extractPython(
     "--sha",
     sha,
   ];
+
+  // Add exclude patterns if provided (still pass for filtering during walk)
+  if (excludePatterns && excludePatterns.length > 0) {
+    for (const pattern of excludePatterns) {
+      args.push("--exclude", pattern);
+    }
+  }
 
   // Add extractor source to PYTHONPATH
   const pythonPath = process.env.PYTHONPATH
@@ -376,7 +452,12 @@ async function extractTypeScript(
 interface RunCommandOptions {
   env?: Record<string, string>;
   cwd?: string;
+  /** Timeout in milliseconds (default: 10 minutes) */
+  timeout?: number;
 }
+
+/** Default timeout for extraction commands: 10 minutes */
+const DEFAULT_EXTRACTION_TIMEOUT = 10 * 60 * 1000;
 
 /**
  * Run a shell command and wait for completion.
@@ -388,6 +469,9 @@ function runCommand(
   options: RunCommandOptions = {},
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    const timeout = options.timeout ?? DEFAULT_EXTRACTION_TIMEOUT;
+    let killed = false;
+
     const proc = spawn(command, args, {
       stdio: "inherit",
       shell: false,
@@ -398,15 +482,29 @@ function runCommand(
       },
     });
 
+    // Set up timeout to kill long-running processes
+    const timeoutId = setTimeout(() => {
+      killed = true;
+      proc.kill("SIGTERM");
+      // Force kill after 5 seconds if still running
+      setTimeout(() => proc.kill("SIGKILL"), 5000);
+    }, timeout);
+
     proc.on("close", (code) => {
-      if (code === 0) {
+      clearTimeout(timeoutId);
+      if (killed) {
+        reject(new Error(`Command timed out after ${timeout / 1000}s`));
+      } else if (code === 0) {
         resolve();
       } else {
         reject(new Error(`Command failed with code ${code}`));
       }
     });
 
-    proc.on("error", reject);
+    proc.on("error", (err) => {
+      clearTimeout(timeoutId);
+      reject(err);
+    });
   });
 }
 
@@ -549,7 +647,7 @@ async function extractHistoricalVersion(
 
   try {
     if (config.language === "python") {
-      await extractPython(packagePath, pkgConfig.name, symbolsPath, config.repo, sha);
+      await extractPython(packagePath, pkgConfig.name, symbolsPath, config.repo, sha, pkgConfig.excludePatterns);
     } else {
       await extractTypeScript(
         packagePath,
@@ -1554,7 +1652,7 @@ async function buildConfig(
 
     try {
       if (config.language === "python") {
-        await extractPython(packagePath, pkgConfig.name, outputPath, config.repo, sha);
+        await extractPython(packagePath, pkgConfig.name, outputPath, config.repo, sha, pkgConfig.excludePatterns);
       } else {
         await extractTypeScript(
           packagePath,

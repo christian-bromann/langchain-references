@@ -47,6 +47,24 @@ class PythonExtractor:
             )
         return self._loader
 
+    def _should_skip_module(self, module_path: str) -> bool:
+        """
+        Check if a module should be skipped based on exclude patterns.
+
+        Args:
+            module_path: The path of the module (e.g., 'langsmith._internal._orjson')
+
+        Returns:
+            True if the module should be skipped.
+        """
+        if not self.config.exclude_patterns:
+            return False
+
+        for pattern in self.config.exclude_patterns:
+            if pattern in module_path:
+                return True
+        return False
+
     def extract(self) -> Dict[str, Any]:
         """
         Extract all symbols from the package.
@@ -54,24 +72,40 @@ class PythonExtractor:
         Returns:
             Dictionary containing package info and extracted symbols.
         """
+        import sys
+
         # Load the package using griffe.load() function with search_paths
         docstring_style = DOCSTRING_STYLES.get(
             self.config.docstring_style,
             "google",
         )
+
+        print(f"      Loading package: {self.config.package_name}", file=sys.stderr)
+        print(f"      Search path: {self.config.package_path}", file=sys.stderr)
+        print(f"      Docstring style: {docstring_style}", file=sys.stderr)
+        sys.stderr.flush()
+
+        # Use allow_inspection=False to prevent runtime import issues
+        # Use force_inspection=False to prefer static analysis over runtime inspection
+        print(f"      Calling griffe.load()...", file=sys.stderr)
+        sys.stderr.flush()
+
         package = griffe.load(
             self.config.package_name,
             search_paths=[self.config.package_path],
             docstring_parser=docstring_style,
             resolve_aliases=False,  # Don't try to resolve external aliases
+            allow_inspection=False,  # Don't try to import modules at runtime
+            force_inspection=False,  # Prefer static analysis
         )
 
         # Collect all symbols
         symbols = []
         errors = []
+        visited: set = set()  # Track visited object paths to prevent infinite loops
 
         try:
-            for obj in self._walk(package):
+            for obj in self._walk(package, depth=0, visited=visited):
                 try:
                     if self._should_include(obj):
                         symbol = self._extract_symbol(obj)
@@ -93,26 +127,40 @@ class PythonExtractor:
             "symbols": symbols,
         }
 
-    def _walk(self, obj: GriffeObject) -> Generator[GriffeObject, None, None]:
+    def _walk(self, obj: GriffeObject, depth: int = 0, visited: set = None) -> Generator[GriffeObject, None, None]:
         """
         Recursively walk all objects in a module.
 
         Args:
             obj: The griffe object to walk.
+            depth: Current recursion depth for debugging.
+            visited: Set of visited object paths to prevent infinite loops.
 
         Yields:
             Each griffe object in the tree.
         """
+        import sys
+
+        if visited is None:
+            visited = set()
+
         try:
-            # Skip alias objects that point to external modules
+            # Skip modules that match exclude patterns
+            obj_path = getattr(obj, "path", "")
+
+            # Use path to track visited objects and prevent infinite loops
+            if obj_path:
+                if obj_path in visited:
+                    return
+                visited.add(obj_path)
+
+            if self._should_skip_module(obj_path):
+                return
+
+            # Skip ALL alias objects (imported symbols) - we only want symbols defined in this package
             is_alias = getattr(obj, "is_alias", False)
             if is_alias:
-                try:
-                    # Try to access the target to see if it's resolvable
-                    _ = obj.target
-                except Exception:
-                    # Can't resolve the alias, skip it
-                    return
+                return
 
             yield obj
 
@@ -120,8 +168,12 @@ class PythonExtractor:
             members = getattr(obj, "members", None)
             if members:
                 for name, member in list(members.items()):
+                    # Skip members that match exclude patterns
+                    member_path = getattr(member, "path", "")
+                    if member_path and self._should_skip_module(member_path):
+                        continue
                     try:
-                        yield from self._walk(member)
+                        yield from self._walk(member, depth + 1, visited)
                     except Exception:
                         # Skip members that cause errors (unresolvable aliases, etc.)
                         pass

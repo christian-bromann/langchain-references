@@ -112,6 +112,13 @@
                 }
               }
             }
+          },
+          "excludePatterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Patterns to exclude from extraction (e.g., '_internal' to skip internal modules)"
           }
         }
       },
