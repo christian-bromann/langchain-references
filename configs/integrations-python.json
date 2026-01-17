@@ -30,46 +30,6 @@
       ]
     },
     {
-      "name": "langchain_astradb",
-      "path": "libs/partners/astradb",
-      "displayName": "AstraDB",
-      "versioning": {
-        "tagPattern": "langchain-astradb==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_astradb.md"
-    },
-    {
-      "name": "langchain_aws",
-      "path": "libs/partners/aws",
-      "displayName": "AWS",
-      "versioning": {
-        "tagPattern": "langchain-aws==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_aws.md"
-    },
-    {
-      "name": "langchain_azure_dynamic_sessions",
-      "path": "libs/partners/azure-dynamic-sessions",
-      "displayName": "Azure (Microsoft)",
-      "versioning": {
-        "tagPattern": "langchain-azure-dynamic-sessions==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_azure_dynamic_sessions/index.md"
-    },
-    {
-      "name": "langchain_cerebras",
-      "path": "libs/partners/cerebras",
-      "displayName": "Cerebras",
-      "versioning": {
-        "tagPattern": "langchain-cerebras==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_cerebras.md"
-    },
-    {
       "name": "langchain_chroma",
       "path": "libs/partners/chroma",
       "displayName": "Chroma",
@@ -80,26 +40,6 @@
       "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_chroma.md"
     },
     {
-      "name": "langchain_cohere",
-      "path": "libs/partners/cohere",
-      "displayName": "Cohere",
-      "versioning": {
-        "tagPattern": "langchain-cohere==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_cohere.md"
-    },
-    {
-      "name": "langchain_ibm_db2",
-      "path": "libs/partners/db2",
-      "displayName": "Db2",
-      "versioning": {
-        "tagPattern": "langchain-ibm-db2==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_db2.md"
-    },
-    {
       "name": "langchain_deepseek",
       "path": "libs/partners/deepseek",
       "displayName": "DeepSeek",
@@ -108,16 +48,6 @@
         "maxVersions": 10
       },
       "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_deepseek.md"
-    },
-    {
-      "name": "langchain_elasticsearch",
-      "path": "libs/partners/elasticsearch",
-      "displayName": "Elasticsearch",
-      "versioning": {
-        "tagPattern": "langchain-elasticsearch==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_elasticsearch.md"
     },
     {
       "name": "langchain_exa",
@@ -140,31 +70,6 @@
       "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_fireworks.md"
     },
     {
-      "name": "langchain_google_community",
-      "path": "libs/partners/google-community",
-      "displayName": "Google",
-      "versioning": {
-        "tagPattern": "langchain-google-community==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_google_community/index.md"
-    },
-    {
-      "name": "langchain_google_genai",
-      "path": "libs/partners/google-genai",
-      "displayName": "Google GenAI (Gemini)",
-      "versioning": {
-        "tagPattern": "langchain-google-genai==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_google_genai/index.md",
-      "subpages": [
-        { "slug": "chat-google-generative-ai", "title": "ChatGoogleGenerativeAI", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_google_genai/ChatGoogleGenerativeAI.md" },
-        { "slug": "google-generative-ai", "title": "GoogleGenerativeAI", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_google_genai/GoogleGenerativeAI.md" },
-        { "slug": "google-generative-ai-embeddings", "title": "GoogleGenerativeAIEmbeddings", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_google_genai/GoogleGenerativeAIEmbeddings.md" }
-      ]
-    },
-    {
       "name": "langchain_groq",
       "path": "libs/partners/groq",
       "displayName": "Groq",
@@ -185,34 +90,6 @@
       "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_huggingface.md"
     },
     {
-      "name": "langchain_ibm",
-      "path": "libs/partners/ibm",
-      "displayName": "IBM",
-      "versioning": {
-        "tagPattern": "langchain-ibm==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_ibm/index.md",
-      "subpages": [
-        { "slug": "chat-watsonx", "title": "ChatWatsonx", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/ChatWatsonx.md" },
-        { "slug": "watsonx-llm", "title": "WatsonxLLM", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxLLM.md" },
-        { "slug": "watsonx-embeddings", "title": "WatsonxEmbeddings", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxEmbeddings.md" },
-        { "slug": "watsonx-rerank", "title": "WatsonxRerank", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxRerank.md" },
-        { "slug": "watsonx-toolkit", "title": "WatsonxToolkit", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxToolkit.md" },
-        { "slug": "watsonx-sql-database-toolkit", "title": "WatsonxSQLDatabaseToolkit", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxSQLDatabaseToolkit.md" }
-      ]
-    },
-    {
-      "name": "langchain_milvus",
-      "path": "libs/partners/milvus",
-      "displayName": "Milvus",
-      "versioning": {
-        "tagPattern": "langchain-milvus==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_milvus.md"
-    },
-    {
       "name": "langchain_mistralai",
       "path": "libs/partners/mistralai",
       "displayName": "Mistral AI",
@@ -223,26 +100,6 @@
       "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_mistralai.md"
     },
     {
-      "name": "langchain_mongodb",
-      "path": "libs/partners/mongodb",
-      "displayName": "MongoDB",
-      "versioning": {
-        "tagPattern": "langchain-mongodb==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_mongodb.md"
-    },
-    {
-      "name": "langchain_neo4j",
-      "path": "libs/partners/neo4j",
-      "displayName": "Neo4J",
-      "versioning": {
-        "tagPattern": "langchain-neo4j==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_neo4j.md"
-    },
-    {
       "name": "langchain_nomic",
       "path": "libs/partners/nomic",
       "displayName": "Nomic",
@@ -251,16 +108,6 @@
         "maxVersions": 10
       },
       "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_nomic.md"
-    },
-    {
-      "name": "langchain_nvidia_ai_endpoints",
-      "path": "libs/partners/nvidia-ai-endpoints",
-      "displayName": "Nvidia AI Endpoints",
-      "versioning": {
-        "tagPattern": "langchain-nvidia-ai-endpoints==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_nvidia_ai_endpoints.md"
     },
     {
       "name": "langchain_ollama",
@@ -303,26 +150,6 @@
       "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_perplexity.md"
     },
     {
-      "name": "langchain_pinecone",
-      "path": "libs/partners/pinecone",
-      "displayName": "Pinecone",
-      "versioning": {
-        "tagPattern": "langchain-pinecone==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_pinecone.md"
-    },
-    {
-      "name": "langchain_postgres",
-      "path": "libs/partners/postgres",
-      "displayName": "Postgres",
-      "versioning": {
-        "tagPattern": "langchain-postgres==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_postgres.md"
-    },
-    {
       "name": "langchain_prompty",
       "path": "libs/partners/prompty",
       "displayName": "Prompty",
@@ -343,86 +170,6 @@
       "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_qdrant.md"
     },
     {
-      "name": "langchain_redis",
-      "path": "libs/partners/redis",
-      "displayName": "Redis",
-      "versioning": {
-        "tagPattern": "langchain-redis==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_redis.md"
-    },
-    {
-      "name": "langchain_sema4",
-      "path": "libs/partners/sema4",
-      "displayName": "Sema4",
-      "versioning": {
-        "tagPattern": "langchain-sema4==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_sema4.md"
-    },
-    {
-      "name": "langchain_snowflake",
-      "path": "libs/partners/snowflake",
-      "displayName": "Snowflake",
-      "versioning": {
-        "tagPattern": "langchain-snowflake==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_snowflake.md"
-    },
-    {
-      "name": "langchain_sqlserver",
-      "path": "libs/partners/sqlserver",
-      "displayName": "SQLServer",
-      "versioning": {
-        "tagPattern": "langchain-sqlserver==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_sqlserver.md"
-    },
-    {
-      "name": "langchain_tavily",
-      "path": "libs/partners/tavily",
-      "displayName": "Tavily",
-      "versioning": {
-        "tagPattern": "langchain-tavily==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_tavily.md"
-    },
-    {
-      "name": "langchain_together",
-      "path": "libs/partners/together",
-      "displayName": "Together",
-      "versioning": {
-        "tagPattern": "langchain-together==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_together.md"
-    },
-    {
-      "name": "langchain_unstructured",
-      "path": "libs/partners/unstructured",
-      "displayName": "Unstructured",
-      "versioning": {
-        "tagPattern": "langchain-unstructured==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_unstructured.md"
-    },
-    {
-      "name": "langchain_upstage",
-      "path": "libs/partners/upstage",
-      "displayName": "Upstage",
-      "versioning": {
-        "tagPattern": "langchain-upstage==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_upstage.md"
-    },
-    {
       "name": "langchain_xai",
       "path": "libs/partners/xai",
       "displayName": "xAI",
@@ -434,6 +181,283 @@
     }
   ],
   "externalPackages": [
+    {
+      "name": "langchain_astradb",
+      "repo": "langchain-ai/langchain-astradb",
+      "path": "libs/astradb",
+      "displayName": "AstraDB",
+      "versioning": {
+        "tagPattern": "langchain-astradb==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_astradb.md"
+    },
+    {
+      "name": "langchain_aws",
+      "repo": "langchain-ai/langchain-aws",
+      "path": "libs/aws",
+      "displayName": "AWS",
+      "versioning": {
+        "tagPattern": "langchain-aws==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_aws.md"
+    },
+    {
+      "name": "langchain_azure_dynamic_sessions",
+      "repo": "langchain-ai/langchain-azure",
+      "path": "libs/azure-dynamic-sessions",
+      "displayName": "Azure (Microsoft)",
+      "versioning": {
+        "tagPattern": "langchain-azure-dynamic-sessions==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_azure_dynamic_sessions/index.md"
+    },
+    {
+      "name": "langchain_cerebras",
+      "repo": "langchain-ai/langchain-cerebras",
+      "path": "libs/cerebras",
+      "displayName": "Cerebras",
+      "versioning": {
+        "tagPattern": "langchain-cerebras==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_cerebras.md"
+    },
+    {
+      "name": "langchain_cohere",
+      "repo": "langchain-ai/langchain-cohere",
+      "path": "libs/cohere",
+      "displayName": "Cohere",
+      "versioning": {
+        "tagPattern": "langchain-cohere==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_cohere.md"
+    },
+    {
+      "name": "langchain_ibm_db2",
+      "repo": "langchain-ai/langchain-ibm",
+      "path": "libs/db2",
+      "displayName": "Db2",
+      "versioning": {
+        "tagPattern": "langchain-ibm-db2==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_db2.md"
+    },
+    {
+      "name": "langchain_elasticsearch",
+      "repo": "langchain-ai/langchain-elastic",
+      "path": "libs/elasticsearch",
+      "displayName": "Elasticsearch",
+      "versioning": {
+        "tagPattern": "langchain-elasticsearch==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_elasticsearch.md"
+    },
+    {
+      "name": "langchain_google_community",
+      "repo": "langchain-ai/langchain-google",
+      "path": "libs/community",
+      "displayName": "Google",
+      "versioning": {
+        "tagPattern": "langchain-google-community==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_google_community/index.md"
+    },
+    {
+      "name": "langchain_google_genai",
+      "repo": "langchain-ai/langchain-google",
+      "path": "libs/genai",
+      "displayName": "Google GenAI (Gemini)",
+      "versioning": {
+        "tagPattern": "langchain-google-genai==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_google_genai/index.md",
+      "subpages": [
+        { "slug": "chat-google-generative-ai", "title": "ChatGoogleGenerativeAI", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_google_genai/ChatGoogleGenerativeAI.md" },
+        { "slug": "google-generative-ai", "title": "GoogleGenerativeAI", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_google_genai/GoogleGenerativeAI.md" },
+        { "slug": "google-generative-ai-embeddings", "title": "GoogleGenerativeAIEmbeddings", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_google_genai/GoogleGenerativeAIEmbeddings.md" }
+      ]
+    },
+    {
+      "name": "langchain_ibm",
+      "repo": "langchain-ai/langchain-ibm",
+      "path": "libs/ibm",
+      "displayName": "IBM",
+      "versioning": {
+        "tagPattern": "langchain-ibm==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_ibm/index.md",
+      "subpages": [
+        { "slug": "chat-watsonx", "title": "ChatWatsonx", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/ChatWatsonx.md" },
+        { "slug": "watsonx-llm", "title": "WatsonxLLM", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxLLM.md" },
+        { "slug": "watsonx-embeddings", "title": "WatsonxEmbeddings", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxEmbeddings.md" },
+        { "slug": "watsonx-rerank", "title": "WatsonxRerank", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxRerank.md" },
+        { "slug": "watsonx-toolkit", "title": "WatsonxToolkit", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxToolkit.md" },
+        { "slug": "watsonx-sql-database-toolkit", "title": "WatsonxSQLDatabaseToolkit", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxSQLDatabaseToolkit.md" }
+      ]
+    },
+    {
+      "name": "langchain_milvus",
+      "repo": "langchain-ai/langchain-milvus",
+      "path": "libs/milvus",
+      "displayName": "Milvus",
+      "versioning": {
+        "tagPattern": "langchain-milvus==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_milvus.md"
+    },
+    {
+      "name": "langchain_mongodb",
+      "repo": "langchain-ai/langchain-mongodb",
+      "path": "libs/mongodb",
+      "displayName": "MongoDB",
+      "versioning": {
+        "tagPattern": "langchain-mongodb==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_mongodb.md"
+    },
+    {
+      "name": "langchain_neo4j",
+      "repo": "langchain-ai/langchain-neo4j",
+      "path": "libs/neo4j",
+      "displayName": "Neo4J",
+      "versioning": {
+        "tagPattern": "langchain-neo4j==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_neo4j.md"
+    },
+    {
+      "name": "langchain_nvidia_ai_endpoints",
+      "repo": "langchain-ai/langchain-nvidia",
+      "path": "libs/ai-endpoints",
+      "displayName": "Nvidia AI Endpoints",
+      "versioning": {
+        "tagPattern": "langchain-nvidia-ai-endpoints==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_nvidia_ai_endpoints.md"
+    },
+    {
+      "name": "langchain_pinecone",
+      "repo": "langchain-ai/langchain-pinecone",
+      "path": "libs/pinecone",
+      "displayName": "Pinecone",
+      "versioning": {
+        "tagPattern": "langchain-pinecone==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_pinecone.md"
+    },
+    {
+      "name": "langchain_postgres",
+      "repo": "langchain-ai/langchain-postgres",
+      "path": ".",
+      "displayName": "Postgres",
+      "versioning": {
+        "tagPattern": "langchain-postgres==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_postgres.md"
+    },
+    {
+      "name": "langchain_redis",
+      "repo": "langchain-ai/langchain-redis",
+      "path": ".",
+      "displayName": "Redis",
+      "versioning": {
+        "tagPattern": "langchain-redis==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_redis.md"
+    },
+    {
+      "name": "langchain_sema4",
+      "repo": "langchain-ai/langchain-sema4",
+      "path": "libs/sema4",
+      "displayName": "Sema4",
+      "versioning": {
+        "tagPattern": "langchain-sema4==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_sema4.md"
+    },
+    {
+      "name": "langchain_snowflake",
+      "repo": "langchain-ai/langchain-snowflake",
+      "path": "libs/snowflake",
+      "displayName": "Snowflake",
+      "versioning": {
+        "tagPattern": "langchain-snowflake==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_snowflake.md"
+    },
+    {
+      "name": "langchain_sqlserver",
+      "repo": "langchain-ai/langchain-sqlserver",
+      "path": ".",
+      "displayName": "SQLServer",
+      "versioning": {
+        "tagPattern": "langchain-sqlserver==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_sqlserver.md"
+    },
+    {
+      "name": "langchain_tavily",
+      "repo": "langchain-ai/langchain-tavily",
+      "path": ".",
+      "displayName": "Tavily",
+      "versioning": {
+        "tagPattern": "langchain-tavily==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_tavily.md"
+    },
+    {
+      "name": "langchain_together",
+      "repo": "langchain-ai/langchain-together",
+      "path": ".",
+      "displayName": "Together",
+      "versioning": {
+        "tagPattern": "langchain-together==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_together.md"
+    },
+    {
+      "name": "langchain_unstructured",
+      "repo": "langchain-ai/langchain-unstructured",
+      "path": ".",
+      "displayName": "Unstructured",
+      "versioning": {
+        "tagPattern": "langchain-unstructured==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_unstructured.md"
+    },
+    {
+      "name": "langchain_upstage",
+      "repo": "langchain-ai/langchain-upstage",
+      "path": ".",
+      "displayName": "Upstage",
+      "versioning": {
+        "tagPattern": "langchain-upstage==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_upstage.md"
+    },
     {
       "name": "langchain_weaviate",
       "repo": "langchain-ai/langchain-weaviate",

@@ -5,8 +5,8 @@
  * Handles latest build pointers, build history, and package version tracking.
  */
 
-import { put } from "@vercel/blob";
 import type { Manifest } from "@langchain/ir-schema";
+import { putWithRetry } from "./upload.js";
 
 const POINTERS_PATH = "pointers";
 
@@ -113,7 +113,7 @@ export interface BuildHistory {
 }
 
 /**
- * Upload a JSON pointer file to Vercel Blob
+ * Upload a JSON pointer file to Vercel Blob with rate limit retry
  */
 async function uploadPointer(path: string, data: unknown, dryRun: boolean): Promise<void> {
   if (dryRun) {
@@ -121,7 +121,7 @@ async function uploadPointer(path: string, data: unknown, dryRun: boolean): Prom
     return;
   }
 
-  await put(path, JSON.stringify(data, null, 2), {
+  await putWithRetry(path, JSON.stringify(data, null, 2), {
     access: "public",
     contentType: "application/json",
     allowOverwrite: true,

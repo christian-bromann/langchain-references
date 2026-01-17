@@ -17,7 +17,7 @@
 import path from "path";
 import fs from "fs/promises";
 import { program } from "commander";
-import { put } from "@vercel/blob";
+import { putWithRetry } from "../upload.js";
 
 // =============================================================================
 // CONFIGURATION
@@ -76,7 +76,7 @@ async function uploadPointer(
     return;
   }
 
-  await put(blobPath, content, {
+  await putWithRetry(blobPath, content, {
     access: "public",
     contentType: "application/json",
     addRandomSuffix: false,

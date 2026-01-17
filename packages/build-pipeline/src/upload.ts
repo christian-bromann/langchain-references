@@ -5,7 +5,7 @@
  * Handles sharding, routing maps, and search indices.
  */
 
-import { put, list, del } from "@vercel/blob";
+import { put, list, del, BlobServiceRateLimited } from "@vercel/blob";
 import { createHash } from "crypto";
 import fs from "fs/promises";
 import path from "path";
@@ -44,8 +44,48 @@ interface UploadTask {
 /**
  * Sleep for a given number of milliseconds.
  */
-function sleep(ms: number): Promise<void> {
+export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Upload a single blob with retry logic for rate limits.
+ * Uses the Retry-After header value from the BlobServiceRateLimited error.
+ */
+export async function putWithRetry(
+  blobPath: string,
+  content: string | Buffer,
+  options: Parameters<typeof put>[2],
+): Promise<Awaited<ReturnType<typeof put>>> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      return await put(blobPath, content, options);
+    } catch (error) {
+      lastError = error as Error;
+
+      // Check if it's a rate limit error using the SDK's typed error
+      if (error instanceof BlobServiceRateLimited) {
+        // Use the retryAfter value from the response header (already parsed by the SDK)
+        // Add 1 second buffer to avoid edge cases
+        const delay = (error.retryAfter + 1) * 1000;
+
+        if (attempt < MAX_RETRIES - 1) {
+          console.log(
+            `   ⏳ Rate limited, waiting ${error.retryAfter + 1}s before retry (attempt ${attempt + 1}/${MAX_RETRIES})...`,
+          );
+          await sleep(delay);
+          continue;
+        }
+      }
+
+      // For non-rate-limit errors, don't retry
+      throw error;
+    }
+  }
+
+  throw lastError || new Error(`Failed to upload ${blobPath} after ${MAX_RETRIES} attempts`);
 }
 
 /**
@@ -62,45 +102,13 @@ async function uploadFile(
     return { url: `https://blob.vercel-storage.com/${blobPath}`, size };
   }
 
-  let lastError: Error | null = null;
+  const blob = await putWithRetry(blobPath, content, {
+    access: "public",
+    contentType: "application/json",
+    allowOverwrite: true,
+  });
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      const blob = await put(blobPath, content, {
-        access: "public",
-        contentType: "application/json",
-        allowOverwrite: true,
-      });
-      return { url: blob.url, size };
-    } catch (error) {
-      lastError = error as Error;
-      const errorMessage = lastError.message || "";
-
-      // Check if it's a rate limit error
-      if (errorMessage.includes("Too many requests") || errorMessage.includes("rate limit")) {
-        // Extract wait time from error message if available (e.g., "try again in 42 seconds")
-        const waitMatch = errorMessage.match(/try again in (\d+) seconds/i);
-        const waitSeconds = waitMatch ? parseInt(waitMatch[1], 10) : null;
-
-        // Use exponential backoff, but respect the API's suggested wait time if provided
-        const backoffDelay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
-        const delay = waitSeconds ? waitSeconds * 1000 + 1000 : backoffDelay;
-
-        if (attempt < MAX_RETRIES - 1) {
-          console.log(
-            `   ⏳ Rate limited, waiting ${(delay / 1000).toFixed(0)}s before retry (attempt ${attempt + 1}/${MAX_RETRIES})...`,
-          );
-          await sleep(delay);
-          continue;
-        }
-      }
-
-      // For non-rate-limit errors, don't retry
-      throw error;
-    }
-  }
-
-  throw lastError || new Error(`Failed to upload ${blobPath} after ${MAX_RETRIES} attempts`);
+  return { url: blob.url, size };
 }
 
 /**
