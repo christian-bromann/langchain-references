@@ -43,6 +43,16 @@
         "maxVersions": 10
       },
       "descriptionSource": "readme"
+    },
+    {
+      "name": "langchain_tests",
+      "path": "libs/standard-tests",
+      "displayName": "Standard Tests",
+      "versioning": {
+        "tagPattern": "langchain-standard-tests==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "readme"
     }
   ]
 }

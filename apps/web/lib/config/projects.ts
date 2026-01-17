@@ -100,6 +100,28 @@ export const PROJECTS: ProjectConfig[] = [
       },
     ],
   },
+  {
+    id: "langsmith",
+    displayName: "LangSmith",
+    description: "Debug, evaluate, and monitor your language models",
+    slug: "langsmith",
+    order: 5,
+    enabled: true,
+    variants: [
+      {
+        language: "python",
+        repo: "langchain-ai/langsmith-sdk",
+        configPath: "configs/langsmith-python.json",
+        enabled: true,
+      },
+      {
+        language: "javascript",
+        repo: "langchain-ai/langsmith-sdk",
+        configPath: "configs/langsmith-typescript.json",
+        enabled: true,
+      },
+    ],
+  },
 ];
 
 /**
@@ -131,6 +153,10 @@ const DEFAULT_PACKAGE_SLUGS: Record<string, Record<string, string>> = {
   integrations: {
     python: "langchain-anthropic",
     javascript: "langchain-community",
+  },
+  langsmith: {
+    python: "langsmith",
+    javascript: "langsmith",
   },
 };
 
@@ -190,6 +216,8 @@ export function hasLanguageVariant(
  * should be checked BEFORE the general langchain pattern.
  */
 const PROJECT_PACKAGE_PATTERNS: Record<string, RegExp[]> = {
+  // LangSmith: matches langsmith package
+  langsmith: [/^langsmith$/i],
   // LangGraph: matches @langchain/langgraph* or langchain-langgraph*
   langgraph: [
     /^@langchain\/langgraph/i,
@@ -222,7 +250,7 @@ const PROJECT_PACKAGE_PATTERNS: Record<string, RegExp[]> = {
  */
 export function getProjectForPackage(packageName: string): ProjectConfig {
   // Check in order: specific projects first, then general langchain
-  const checkOrder = ["langgraph", "deepagent", "integrations", "langchain"];
+  const checkOrder = ["langsmith", "langgraph", "deepagent", "integrations", "langchain"];
 
   for (const projectId of checkOrder) {
     const patterns = PROJECT_PACKAGE_PATTERNS[projectId];

@@ -12,7 +12,7 @@ import { getBuildIdForLanguage, getManifestData, getSymbols, getSymbolData } fro
 import { symbolToMarkdown } from "@/lib/ir/markdown-generator";
 import { getBaseUrl } from "@/lib/config/mcp";
 import { getEnabledProjects } from "@/lib/config/projects";
-import { slugifyPackageName, unslugifyPackageName } from "@/lib/utils/url";
+import { slugifyPackageName, slugifySymbolPath, unslugifyPackageName } from "@/lib/utils/url";
 import type { SymbolRecord } from "@langchain/ir-schema";
 
 // =============================================================================
@@ -368,8 +368,9 @@ async function searchSymbols(
           if (nameMatch || qualifiedMatch) {
             const pkgSlug = slugifyPackageName(pkg.publishedName);
             const langPath = lang === "python" ? "python" : "javascript";
-            // Use qualified name to preserve module path (e.g., react.useStream -> react/useStream)
-            const symbolPath = symbol.qualifiedName.replace(/\./g, "/");
+            // Use slugifySymbolPath to properly strip package prefix for Python
+            const hasPackagePrefix = lang === "python" && symbol.qualifiedName.includes("_");
+            const symbolPath = slugifySymbolPath(symbol.qualifiedName, hasPackagePrefix);
 
             results.push({
               name: symbol.name,

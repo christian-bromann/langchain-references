@@ -10,7 +10,7 @@ import MiniSearch from "minisearch";
 import type { SearchRecord, SearchResult, Language } from "@langchain/ir-schema";
 import { getBuildIdForLanguage, getManifestData, getSymbols } from "@/lib/ir/loader";
 import { getEnabledProjects } from "@/lib/config/projects";
-import { slugifyPackageName } from "@/lib/utils/url";
+import { slugifyPackageName, slugifySymbolPath } from "@/lib/utils/url";
 
 // Cache the MiniSearch indices per language to avoid rebuilding on every request
 const indexCache = new Map<string, { index: MiniSearch<SearchRecord>; buildId: string }>();
@@ -51,9 +51,10 @@ function symbolToSearchRecord(
   // have incorrect format (e.g., /functions/useStream instead of /react/useStream)
   const langPath = language === "python" ? "python" : "javascript";
   const packageSlug = slugifyPackageName(packageName);
-  // Use qualified name to preserve module path (e.g., react.useStream -> react/useStream)
-  // Convert dots to slashes for URL path
-  const symbolPath = symbol.qualifiedName.replace(/\./g, "/");
+  // Use slugifySymbolPath to properly strip package prefix for Python
+  const isPython = language === "python";
+  const hasPackagePrefix = isPython && symbol.qualifiedName.includes("_");
+  const symbolPath = slugifySymbolPath(symbol.qualifiedName, hasPackagePrefix);
   const url = `/${langPath}/${packageSlug}/${symbolPath}`;
 
   // Extract excerpt from summary

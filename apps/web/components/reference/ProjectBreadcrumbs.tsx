@@ -56,7 +56,7 @@ export function ProjectBreadcrumbs({
 
       {allItems.map((item, index) => (
         <span key={index} className="flex items-center">
-          <ChevronRight className="h-4 w-4 mx-2 flex-shrink-0" />
+          <ChevronRight className="h-4 w-4 mx-2 shrink-0" />
           {item.href ? (
             <Link
               href={item.href}

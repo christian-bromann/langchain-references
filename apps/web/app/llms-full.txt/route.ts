@@ -9,7 +9,7 @@
 
 import { getBuildIdForLanguage, getManifestData, getSymbols } from "@/lib/ir/loader";
 import { getBaseUrl } from "@/lib/config/mcp";
-import { slugifyPackageName } from "@/lib/utils/url";
+import { slugifyPackageName, slugifySymbolPath } from "@/lib/utils/url";
 import type { SymbolRecord } from "@langchain/ir-schema";
 
 export const dynamic = "force-static";
@@ -50,11 +50,14 @@ function formatSymbol(
   baseUrl: string,
 ): string {
   const pkgSlug = slugifyPackageName(packageName);
-  // Use qualifiedName and convert separators to URL path
-  const symbolPath = symbol.qualifiedName
-    .replace(/\./g, "/")
-    .replace(/::/g, "/")
-    .replace(/#/g, "/");
+  // Clean up any :: or # separators first
+  const cleanedQualifiedName = symbol.qualifiedName
+    .replace(/::/g, ".")
+    .replace(/#/g, ".");
+  // Use slugifySymbolPath to properly strip package prefix for Python
+  const isPython = langPath === "python";
+  const hasPackagePrefix = isPython && cleanedQualifiedName.includes("_");
+  const symbolPath = slugifySymbolPath(cleanedQualifiedName, hasPackagePrefix);
   const url = `${baseUrl}/${langPath}/${pkgSlug}/${symbolPath}`;
 
   const kind = symbol.kind || "symbol";

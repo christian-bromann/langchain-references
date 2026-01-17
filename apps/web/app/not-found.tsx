@@ -65,9 +65,6 @@ export default function NotFound() {
                 <span className="font-medium text-foreground group-hover:text-primary block">
                   Python Reference
                 </span>
-                <span className="text-sm text-foreground-secondary">
-                  langchain, langchain-core, etc.
-                </span>
               </div>
             </Link>
             <Link
@@ -78,9 +75,6 @@ export default function NotFound() {
               <div>
                 <span className="font-medium text-foreground group-hover:text-primary block">
                   JavaScript Reference
-                </span>
-                <span className="text-sm text-foreground-secondary">
-                  @langchain/core, @langchain/openai, etc.
                 </span>
               </div>
             </Link>

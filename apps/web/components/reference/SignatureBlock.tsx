@@ -30,9 +30,32 @@ interface SignatureBlockProps {
 
 /**
  * Slugify a package name for URL paths.
+ * @example "@langchain/core" -> "langchain-core"
+ * @example "langchain_core" -> "langchain-core"
  */
 function slugifyPackageName(name: string): string {
-  return name.replace(/^@/, "").replace(/\//g, "_").replace(/-/g, "_");
+  return name.replace(/^@/, "").replace(/\//g, "-").replace(/_/g, "-").toLowerCase();
+}
+
+/**
+ * Slugify a symbol path for URLs, optionally stripping the package prefix.
+ * @example "langchain_core.messages.BaseMessage" -> "messages/BaseMessage" (with prefix)
+ * @example "runnables.RunnableConfig" -> "runnables/RunnableConfig" (without prefix)
+ */
+function slugifySymbolPath(symbolPath: string, hasPackagePrefix = true): string {
+  const parts = symbolPath.split(".");
+
+  // If only one part, it's just the symbol name (no package prefix)
+  if (parts.length === 1) {
+    return parts[0];
+  }
+
+  // Skip the package name (first part) if it has a package prefix
+  if (hasPackagePrefix) {
+    return parts.slice(1).join("/");
+  }
+
+  return parts.join("/");
 }
 
 /**
@@ -146,7 +169,10 @@ function tokenizeSignature(
       // Check if it's a known symbol in the current package
       else if (knownSymbols.has(identifier)) {
         const symbolPath = knownSymbols.get(identifier)!;
-        const href = `/${langPath}/${pkgSlug}/${symbolPath}`;
+        // Use slugifySymbolPath to properly strip package prefix for Python
+        const hasPackagePrefix = language === "python" && symbolPath.includes("_");
+        const urlPath = slugifySymbolPath(symbolPath, hasPackagePrefix);
+        const href = `/${langPath}/${pkgSlug}/${urlPath}`;
         tokens.push({ type: "type-link", value: identifier, href });
       }
       // Check if it's a built-in type with external documentation

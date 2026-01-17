@@ -1,0 +1,6 @@
+{
+  "project": "langsmith",
+  "language": "typescript",
+  "repo": "langchain-ai/langsmith-sdk",
+  "packages": []
+}

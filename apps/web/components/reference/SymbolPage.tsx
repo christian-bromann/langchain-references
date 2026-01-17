@@ -8,7 +8,13 @@ import Link from "next/link";
 import { ChevronRight, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
-import { buildPackageUrl, getKindColor, getKindLabel, slugifyPackageName } from "@/lib/utils/url";
+import {
+  buildPackageUrl,
+  getKindColor,
+  getKindLabel,
+  slugifyPackageName,
+  slugifySymbolPath,
+} from "@/lib/utils/url";
 import type {
   SymbolKind,
   Visibility,
@@ -28,6 +34,7 @@ import {
   getPackageInfo,
   getRoutingMapData,
   getSymbolViaShardedLookup,
+  findSymbolQualifiedNameByName,
 } from "@/lib/ir/loader";
 import { CodeBlock } from "./CodeBlock";
 import { SignatureBlock } from "./SignatureBlock";
@@ -269,6 +276,8 @@ interface DisplayMember {
   type?: string;
   summary?: string;
   signature?: string;
+  /** Fully qualified name for the member (e.g., langchain_core.messages.base.merge_content) */
+  qualifiedName?: string;
 }
 
 interface DocSection {
@@ -375,6 +384,8 @@ function toDisplaySymbol(
       type,
       summary: memberSymbol?.docs?.summary || undefined,
       signature: memberSymbol?.signature,
+      // Use the actual qualified name from the symbol record (handles re-exports correctly)
+      qualifiedName: memberSymbol?.qualifiedName,
     };
   });
 
@@ -802,18 +813,22 @@ async function findSymbolOptimized(
   // Prefer the routing map + individual symbol files.
   // This avoids downloading `lookup.json` which can exceed Next.js' 2MB cache limit.
   const pkgInfo = await getPackageInfo(buildId, packageId);
-  const routingMap = pkgInfo
-    ? await getRoutingMapData(buildId, packageId)
-    : null;
+  const routingMap = await getRoutingMapData(buildId, packageId);
+
+  // Derive package prefix from packageId as fallback (e.g., pkg_py_langchain_core -> langchain_core)
+  const packagePrefix =
+    pkgInfo?.publishedName ||
+    pkgInfo?.displayName ||
+    packageId.replace(/^pkg_(py|js)_/, "");
 
   if (routingMap?.slugs) {
     const candidates: string[] = [];
     for (const p of pathVariations) {
       candidates.push(p);
       // Try with package prefix for python-style qualified names
-      candidates.push(
-        `${pkgInfo?.publishedName || pkgInfo?.displayName || ""}.${p}`.replace(/^\./, ""),
-      );
+      if (packagePrefix) {
+        candidates.push(`${packagePrefix}.${p}`);
+      }
       // Try slash form for TS module paths
       candidates.push(p.replace(/\./g, "/"));
     }
@@ -831,6 +846,13 @@ async function findSymbolOptimized(
   for (const path of pathVariations) {
     const symbol = await getSymbolViaShardedLookup(buildId, packageId, path);
     if (symbol) return symbol;
+
+    // Also try with package prefix for Python-style qualified names
+    if (packagePrefix) {
+      const prefixedPath = `${packagePrefix}.${path}`;
+      const prefixedSymbol = await getSymbolViaShardedLookup(buildId, packageId, prefixedPath);
+      if (prefixedSymbol) return prefixedSymbol;
+    }
   }
 
   // Don't fall back to getSymbols - return null instead
@@ -1100,7 +1122,21 @@ async function resolveInheritedMembers(
       if (member.visibility === "private") continue;
 
       // Resolve member details
-      const memberSymbol = symbolsById.get(member.refId);
+      let memberSymbol = symbolsById.get(member.refId);
+
+      // If refId lookup fails, try to find by name in the routing map (for re-exported symbols)
+      if (!memberSymbol) {
+        const qualifiedName = await findSymbolQualifiedNameByName(
+          buildId,
+          basePackageId,
+          member.name,
+          member.kind,
+        );
+        if (qualifiedName) {
+          memberSymbol = (await getSymbolViaShardedLookup(buildId, basePackageId, qualifiedName)) ?? undefined;
+        }
+      }
+
       const type = memberSymbol
         ? extractTypeFromSignature(memberSymbol.signature, member.kind)
         : undefined;
@@ -1113,6 +1149,8 @@ async function resolveInheritedMembers(
         type,
         summary: memberSymbol?.docs?.summary || undefined,
         signature: memberSymbol?.signature,
+        // Use the actual qualified name from the symbol record (handles re-exports correctly)
+        qualifiedName: memberSymbol?.qualifiedName,
       });
     }
 
@@ -1288,7 +1326,23 @@ export async function SymbolPage({
         memberSymbols = new Map();
         // Fetch each member symbol individually in parallel
         const memberPromises = irSymbol.members.map(async (member) => {
-          const memberSymbol = await getIndividualSymbolData(buildId, member.refId, packageId);
+          // First, try to fetch the symbol by refId
+          let memberSymbol = await getIndividualSymbolData(buildId, member.refId, packageId);
+
+          // If refId lookup fails (common for re-exported symbols), try to find by name
+          if (!memberSymbol) {
+            const qualifiedName = await findSymbolQualifiedNameByName(
+              buildId,
+              packageId,
+              member.name,
+              member.kind,
+            );
+            if (qualifiedName) {
+              // Try to fetch the actual symbol using the qualified name via sharded lookup
+              memberSymbol = await getSymbolViaShardedLookup(buildId, packageId, qualifiedName);
+            }
+          }
+
           if (memberSymbol) {
             return { refId: member.refId, symbol: memberSymbol };
           }
@@ -1368,8 +1422,10 @@ export async function SymbolPage({
 
   // Add all symbols from cross-project packages to typeUrlMap
   for (const [, pkg] of crossProjectPackages) {
+    // Convert underscore slug to hyphen slug for URL comparison and building
+    const pkgUrlSlug = pkg.slug.replace(/_/g, "-").toLowerCase();
     // Skip the current package
-    if (pkg.slug === currentPkgSlug) continue;
+    if (pkgUrlSlug === currentPkgSlug) continue;
 
     for (const [symbolName, symbolPath] of pkg.knownSymbols) {
       // Skip if already in current package's known symbols (local takes precedence)
@@ -1378,7 +1434,11 @@ export async function SymbolPage({
       // Skip if already mapped (first package wins for same symbol name)
       if (typeUrlMap.has(symbolName)) continue;
 
-      typeUrlMap.set(symbolName, `/${langPath}/${pkg.slug}/${symbolPath}`);
+      // Use slugifySymbolPath to properly strip package prefix for Python
+      const isPython = pkg.language === "python";
+      const hasPackagePrefix = isPython && symbolPath.includes("_");
+      const urlPath = slugifySymbolPath(symbolPath, hasPackagePrefix);
+      typeUrlMap.set(symbolName, `/${langPath}/${pkgUrlSlug}/${urlPath}`);
     }
   }
 
@@ -1462,11 +1522,12 @@ export async function SymbolPage({
             {symbolPath.split(".").map((part, i, arr) => {
               // Build cumulative path up to this part
               const pathParts = arr.slice(0, i + 1);
-              const cumulativePath = pathParts.join(".");
+              // Use slashes for URL path
+              const urlPath = pathParts.join("/");
               const isLast = i === arr.length - 1;
               const langPath = language === "python" ? "python" : "javascript";
               const packageSlug = slugifyPackageName(packageName);
-              const href = `/${langPath}/${packageSlug}/${cumulativePath}`;
+              const href = `/${langPath}/${packageSlug}/${urlPath}`;
 
               return (
                 <span key={i} className="flex items-center gap-2">
@@ -1682,7 +1743,10 @@ function TypeReferenceDisplay({
       const langPath = language === "python" ? "python" : "javascript";
       const pkgSlug = slugifyPackageName(packageName);
       const symbolPath = knownSymbols.get(typeName)!;
-      const href = `/${langPath}/${pkgSlug}/${symbolPath}`;
+      // Use slugifySymbolPath to properly strip package prefix for Python
+      const hasPackagePrefix = language === "python" && symbolPath.includes("_");
+      const urlPath = slugifySymbolPath(symbolPath, hasPackagePrefix);
+      const href = `/${langPath}/${pkgSlug}/${urlPath}`;
 
       parts.push(
         <Link
@@ -1923,6 +1987,20 @@ function MembersSection({
 }
 
 /**
+ * Kinds that have dedicated pages and should be linked
+ */
+const LINKABLE_MEMBER_KINDS = new Set([
+  "class",
+  "interface",
+  "function",
+  "method",
+  "module",
+  "enum",
+  "typeAlias",
+  "constructor",
+]);
+
+/**
  * Individual member card
  */
 function MemberCard({
@@ -1939,19 +2017,22 @@ function MemberCard({
   const isMethodOrFunction =
     member.kind === "method" || member.kind === "function" || member.kind === "constructor";
 
-  // Build the symbol path for linking
-  const symbolPath = `${parentQualifiedName}.${member.name}`;
+  // Check if this member kind should be linked (has a dedicated page)
+  const isLinkable = LINKABLE_MEMBER_KINDS.has(member.kind);
+
+  // Use the member's actual qualifiedName if available (handles re-exports correctly)
+  // Fall back to constructing from parent path for backwards compatibility
+  const symbolPath = member.qualifiedName || `${parentQualifiedName}.${member.name}`;
   const langPath = language === "python" ? "python" : "javascript";
   const packageSlug = slugifyPackageName(packageName);
-  const href = `/${langPath}/${packageSlug}/${symbolPath}`;
+  // Use slugifySymbolPath to properly strip package prefix for Python
+  const hasPackagePrefix = language === "python" && symbolPath.includes("_");
+  const urlPath = slugifySymbolPath(symbolPath, hasPackagePrefix);
+  const href = `/${langPath}/${packageSlug}/${urlPath}`;
 
-  return (
-    <Link
-      id={`member-${member.name}`}
-      href={href}
-      className="group flex items-start gap-3 p-3 rounded-lg border border-border bg-background-secondary hover:border-primary/50 hover:bg-background transition-colors"
-      style={{ cursor: "pointer" }}
-    >
+  // Common content for both linked and non-linked versions
+  const cardContent = (
+    <>
       <span
         className={cn(
           "px-2 py-0.5 text-xs font-medium rounded shrink-0 mt-0.5",
@@ -1963,7 +2044,7 @@ function MemberCard({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="font-mono text-foreground group-hover:text-primary transition-colors">
+          <span className={cn("font-mono text-foreground", isLinkable && "group-hover:text-primary transition-colors")}>
             {member.name}
           </span>
 
@@ -1988,9 +2069,35 @@ function MemberCard({
         )}
       </div>
 
-      {/* Link indicator */}
-      <ChevronRight className="h-4 w-4 text-foreground-muted group-hover:text-primary shrink-0 transition-colors" />
-    </Link>
+      {/* Link indicator - only show for linkable members */}
+      {isLinkable && (
+        <ChevronRight className="h-4 w-4 text-foreground-muted group-hover:text-primary shrink-0 transition-colors" />
+      )}
+    </>
+  );
+
+  // Render as link only if the member kind has a dedicated page
+  if (isLinkable) {
+    return (
+      <Link
+        id={`member-${member.name}`}
+        href={href}
+        className="group flex items-start gap-3 p-3 rounded-lg border border-border bg-background-secondary hover:border-primary/50 hover:bg-background transition-colors"
+        style={{ cursor: "pointer" }}
+      >
+        {cardContent}
+      </Link>
+    );
+  }
+
+  // Render as non-clickable div for attributes and other non-linkable kinds
+  return (
+    <div
+      id={`member-${member.name}`}
+      className="flex items-start gap-3 p-3 rounded-lg border border-border bg-background-secondary"
+    >
+      {cardContent}
+    </div>
   );
 }
 
@@ -2116,7 +2223,10 @@ function InheritedMemberRow({
   const langPath = language === "python" ? "python" : "javascript";
   const packageSlug = slugifyPackageName(basePackageName);
   const symbolPath = `${baseClassName}.${member.name}`;
-  const href = `/${langPath}/${packageSlug}/${symbolPath}`;
+  // Use slugifySymbolPath to properly strip package prefix for Python
+  const hasPackagePrefix = language === "python" && symbolPath.includes("_");
+  const urlPath = slugifySymbolPath(symbolPath, hasPackagePrefix);
+  const href = `/${langPath}/${packageSlug}/${urlPath}`;
 
   return (
     <Link

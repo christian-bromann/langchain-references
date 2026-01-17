@@ -1,0 +1,18 @@
+{
+  "$schema": "./config-schema.json",
+  "project": "langsmith",
+  "language": "python",
+  "repo": "langchain-ai/langsmith-sdk",
+  "packages": [
+    {
+      "name": "langsmith",
+      "path": "python",
+      "displayName": "LangSmith",
+      "versioning": {
+        "tagPattern": "v*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "readme"
+    }
+  ]
+}

@@ -176,6 +176,34 @@ The development environment uses the same HTTP-based loading as production:
 
 ### Building IR Locally
 
+For local development, use the `build:local` command which handles all the necessary indexing:
+
+```bash
+# Build a single package (recommended for quick iteration)
+pnpm build:local --config ./configs/langchain-python.json --package langchain_core
+
+# Build all packages in a config
+pnpm build:local --config ./configs/langchain-python.json
+```
+
+The `build:local` command:
+
+1. Extracts symbols from source code
+2. Generates catalog files for package overview pages
+3. Creates routing maps for URL resolution
+4. Sets up package pointers for the loader
+5. Updates project indexes for the sidebar
+
+After building, restart the dev server to see changes:
+
+```bash
+pnpm dev
+```
+
+**Advanced: Low-level build commands**
+
+For more control, you can use the underlying `build:ir` command directly:
+
 ```bash
 # Build TypeScript IR (local mode - generates to ./ir-output/, no cloud upload)
 pnpm build:ir --local --config ./configs/langchain-typescript.json
@@ -183,12 +211,29 @@ pnpm build:ir --local --config ./configs/langchain-typescript.json
 # Build Python IR (local mode)
 pnpm build:ir --local --config ./configs/langchain-python.json
 
+# Build a specific package
+pnpm build:ir --local --config ./configs/langchain-python.json --package langchain_core
+
 # Build LangGraph Python IR
 pnpm build:ir --local --config ./configs/langgraph-python.json
+```
 
-# Build with version history tracking
+> **Note:** The `build:ir --local` command only generates `symbols.json` and `package.json`.
+> It does not create the catalog, routing, or pointer files needed for the web app to function.
+> Use `build:local` instead for a complete local build.
+
+**Version History (CI only)**
+
+Building with version history (`--with-versions`) extracts symbols from multiple historical
+versions to generate changelogs. This is computationally expensive and should only be run in CI:
+
+```bash
+# ⚠️ Takes hours - only run in CI
 pnpm build:ir --local --with-versions --config ./configs/langchain-python.json
 ```
+
+For local development, version history data is downloaded via `pnpm pull-ir` from the
+pre-built artifacts in Vercel Blob storage.
 
 ### Production Build
 

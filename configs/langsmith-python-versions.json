@@ -1,0 +1,6 @@
+{
+  "project": "langsmith",
+  "language": "python",
+  "repo": "langchain-ai/langsmith-sdk",
+  "packages": []
+}

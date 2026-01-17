@@ -1,0 +1,19 @@
+{
+  "$schema": "./config-schema.json",
+  "project": "langsmith",
+  "language": "typescript",
+  "repo": "langchain-ai/langsmith-sdk",
+  "packages": [
+    {
+      "name": "langsmith",
+      "path": "js",
+      "entryPoints": ["auto"],
+      "displayName": "LangSmith",
+      "versioning": {
+        "tagPattern": "langsmith@*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "readme"
+    }
+  ]
+}

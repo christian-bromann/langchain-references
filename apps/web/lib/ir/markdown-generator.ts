@@ -9,7 +9,7 @@
  */
 
 import type { SymbolRecord, SymbolKind, Language } from "./types";
-import { slugifyPackageName } from "../utils/url";
+import { slugifyPackageName, slugifySymbolPath } from "../utils/url";
 import { getBaseUrl } from "../config/mcp";
 import { cleanExampleCode } from "../utils/clean-example";
 
@@ -135,7 +135,10 @@ export function symbolToMarkdown(
   // Canonical URL
   const langPath = symbol.language === "python" ? "python" : "javascript";
   const packageSlug = slugifyPackageName(packageName);
-  const canonicalUrl = `${baseUrl}/${langPath}/${packageSlug}/${symbol.qualifiedName}`;
+  // Use slugifySymbolPath to properly strip package prefix for Python
+  const hasPackagePrefix = symbol.language === "python" && symbol.qualifiedName.includes("_");
+  const symbolPath = slugifySymbolPath(symbol.qualifiedName, hasPackagePrefix);
+  const canonicalUrl = `${baseUrl}/${langPath}/${packageSlug}/${symbolPath}`;
   lines.push(`📖 [View in docs](${canonicalUrl})`);
   lines.push("");
 

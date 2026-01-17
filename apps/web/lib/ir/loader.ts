@@ -1165,6 +1165,29 @@ export async function getRoutingMapData(
 }
 
 /**
+ * Find a symbol's qualified name by searching the routing map for matching name and kind.
+ * This is used as a fallback when the refId lookup fails (e.g., for re-exported symbols).
+ */
+export async function findSymbolQualifiedNameByName(
+  buildId: string,
+  packageId: string,
+  symbolName: string,
+  symbolKind: string,
+): Promise<string | null> {
+  const routingMap = await getRoutingMap(buildId, packageId);
+  if (!routingMap?.slugs) return null;
+
+  // Search for matching entries by name and kind
+  for (const [qualifiedName, entry] of Object.entries(routingMap.slugs)) {
+    if (entry.title === symbolName && entry.kind === symbolKind) {
+      return qualifiedName;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Get known symbol names for type linking.
  * Uses lightweight lookup index (~50KB) instead of full symbols (~14MB)
  */
@@ -1442,6 +1465,27 @@ function slugifyPackageName(packageName: string): string {
 }
 
 /**
+ * Slugify a symbol path for URLs, optionally stripping the package prefix.
+ * @example "langchain_core.messages.BaseMessage" -> "messages/BaseMessage" (with prefix)
+ * @example "runnables.RunnableConfig" -> "runnables/RunnableConfig" (without prefix)
+ */
+function slugifySymbolPath(symbolPath: string, hasPackagePrefix = true): string {
+  const parts = symbolPath.split(".");
+
+  // If only one part, it's just the symbol name (no package prefix)
+  if (parts.length === 1) {
+    return parts[0];
+  }
+
+  // Skip the package name (first part) if it has a package prefix
+  if (hasPackagePrefix) {
+    return parts.slice(1).join("/");
+  }
+
+  return parts.join("/");
+}
+
+/**
  * Get all static params for a language and project (for Next.js generateStaticParams)
  *
  * OPTIMIZATION: Uses lightweight routing maps (~100KB each) instead of full
@@ -1705,7 +1749,12 @@ export async function resolveTypeReferenceUrl(
     if (pkg && pkg.knownSymbols.has(typeName)) {
       const langPath = language === "python" ? "python" : "javascript";
       const symbolPath = pkg.knownSymbols.get(typeName)!;
-      return `/${langPath}/${pkg.slug}/${symbolPath}`;
+      // Convert underscore slug to hyphen slug for URLs (e.g., langchain_core -> langchain-core)
+      const urlSlug = pkg.slug.replace(/_/g, "-").toLowerCase();
+      // Use slugifySymbolPath to properly strip package prefix for Python
+      const hasPackagePrefix = language === "python" && symbolPath.includes("_");
+      const urlPath = slugifySymbolPath(symbolPath, hasPackagePrefix);
+      return `/${langPath}/${urlSlug}/${urlPath}`;
     }
   }
 

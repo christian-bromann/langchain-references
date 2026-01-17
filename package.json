@@ -6,6 +6,7 @@
   "homepage": "https://reference.langchain.com",
   "license": "MIT",
   "author": "LangChain",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/langchain-ai/langchain-reference-docs.git"
@@ -16,11 +17,13 @@
     "serve-ir": "tsx packages/ir-server/src/index.ts",
     "build": "turbo build",
     "build:ir": "tsx packages/build-pipeline/src/commands/build-ir.ts",
+    "build:local": "node scripts/build-local.js",
     "pull-ir": "dotenv -e .env.local -- tsx packages/build-pipeline/src/commands/pull-ir.ts",
     "check-updates": "tsx packages/build-pipeline/src/commands/check-updates.ts",
     "sync-versions": "tsx packages/build-pipeline/src/commands/sync-versions.ts",
     "fetch-tarball": "tsx packages/build-pipeline/src/commands/fetch-tarball.ts",
     "update-pointers": "tsx packages/build-pipeline/src/commands/update-pointers.ts",
+    "update-indexes": "tsx packages/build-pipeline/src/commands/update-indexes.ts",
     "upload-pointers": "dotenv -e .env.local -- tsx packages/build-pipeline/src/commands/upload-pointers.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
