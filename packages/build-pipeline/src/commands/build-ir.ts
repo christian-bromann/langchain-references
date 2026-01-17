@@ -991,18 +991,7 @@ async function buildVersionHistoryForPackage(
   forceFullRebuild: boolean | undefined,
   pkgConfig: PackageConfig,
 ): Promise<void> {
-  const cachedVersions = await loadCachedVersions(
-    config.project || "langchain",
-    config.language === "python" ? "python" : "typescript",
-  );
-
-  if (!cachedVersions) {
-    console.log(`   ⚠️  No cached versions found. Run 'pnpm sync-versions' first.`);
-    return;
-  }
-
-  console.log(`   Using cached versions from ${cachedVersions.lastSynced.split("T")[0]}`);
-
+  // Check versioning config first before loading cached versions
   if (!pkgConfig.versioning?.tagPattern) {
     console.log(`   ⚠️  ${pkgConfig.name}: No versioning config. Skipping.`);
     return;
@@ -1012,6 +1001,18 @@ async function buildVersionHistoryForPackage(
     console.log(`   ⚠️  ${pkgConfig.name}: Versioning disabled. Skipping.`);
     return;
   }
+
+  const cachedVersions = await loadCachedVersions(
+    config.project || "langchain",
+    config.language === "python" ? "python" : "typescript",
+  );
+
+  if (!cachedVersions || !cachedVersions.lastSynced) {
+    console.log(`   ⚠️  No cached versions found. Run 'pnpm sync-versions' first.`);
+    return;
+  }
+
+  console.log(`   Using cached versions from ${cachedVersions.lastSynced.split("T")[0]}`);
 
   const cachedPkg = cachedVersions.packages.find((p) => p.packageName === pkgConfig.name);
 
