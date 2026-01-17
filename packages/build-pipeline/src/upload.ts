@@ -12,12 +12,13 @@ import path from "path";
 import type { SymbolRecord, RoutingMap, PackageChangelog } from "@langchain/ir-schema";
 
 // Maximum concurrent uploads to avoid overwhelming the Vercel Blob API
-// Vercel Blob has rate limits, so we keep this conservative
-const MAX_CONCURRENT_UPLOADS = 10;
+// Vercel Blob has strict rate limits, so we keep this conservative
+const MAX_CONCURRENT_UPLOADS = 5;
 
 // Retry configuration for rate limit errors
 const MAX_RETRIES = 5;
-const INITIAL_RETRY_DELAY_MS = 1000;
+const MIN_RETRY_DELAY_MS = 2000; // Minimum 2 seconds even if retryAfter is 0
+const MAX_RETRY_DELAY_MS = 60000; // Maximum 60 seconds
 
 export interface UploadOptions {
   buildId: string;
@@ -50,7 +51,8 @@ export function sleep(ms: number): Promise<void> {
 
 /**
  * Upload a single blob with retry logic for rate limits.
- * Uses the Retry-After header value from the BlobServiceRateLimited error.
+ * Uses the Retry-After header value from the BlobServiceRateLimited error,
+ * with exponential backoff and jitter as fallback.
  */
 export async function putWithRetry(
   blobPath: string,
@@ -67,13 +69,24 @@ export async function putWithRetry(
 
       // Check if it's a rate limit error using the SDK's typed error
       if (error instanceof BlobServiceRateLimited) {
-        // Use the retryAfter value from the response header (already parsed by the SDK)
-        // Add 1 second buffer to avoid edge cases
-        const delay = (error.retryAfter + 1) * 1000;
-
         if (attempt < MAX_RETRIES - 1) {
+          // Calculate delay: use retryAfter if provided, otherwise exponential backoff
+          // retryAfter can be 0 when the API doesn't provide a specific wait time
+          const retryAfterMs = error.retryAfter * 1000;
+          const exponentialBackoff = MIN_RETRY_DELAY_MS * Math.pow(2, attempt);
+
+          // Use the larger of retryAfter or exponential backoff, with a minimum floor
+          let delay = Math.max(retryAfterMs, exponentialBackoff, MIN_RETRY_DELAY_MS);
+
+          // Cap at maximum delay
+          delay = Math.min(delay, MAX_RETRY_DELAY_MS);
+
+          // Add random jitter (0-25%) to prevent thundering herd
+          const jitter = delay * Math.random() * 0.25;
+          delay = Math.round(delay + jitter);
+
           console.log(
-            `   ⏳ Rate limited, waiting ${error.retryAfter + 1}s before retry (attempt ${attempt + 1}/${MAX_RETRIES})...`,
+            `   ⏳ Rate limited, waiting ${(delay / 1000).toFixed(1)}s before retry (attempt ${attempt + 1}/${MAX_RETRIES})...`,
           );
           await sleep(delay);
           continue;
@@ -141,9 +154,9 @@ async function uploadFilesInParallel(
       totalSize += result.size;
     }
 
-    // Small delay between batches to avoid rate limiting
+    // Delay between batches to avoid rate limiting
     if (i + MAX_CONCURRENT_UPLOADS < tasks.length && !dryRun) {
-      await sleep(100);
+      await sleep(500);
     }
   }
 
