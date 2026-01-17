@@ -65,6 +65,7 @@ import { uploadIR } from "../upload.js";
 import { updatePointers } from "../pointers.js";
 import { checkForUpdates } from "./check-updates.js";
 import { fetchDeployedChangelog, type DeployedChangelog } from "../changelog-fetcher.js";
+import { processSubpages, clearFetchCache, type SubpageConfig, type ParsedSubpage } from "../subpage-processor.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -118,6 +119,8 @@ interface PackageConfig {
   versioning?: VersioningConfig;
   /** GitHub raw URL for custom markdown content, or 'readme' to use package README.md */
   descriptionSource?: string;
+  /** Optional curated subpages for domain-specific navigation */
+  subpages?: SubpageConfig[];
 }
 
 /**
@@ -1620,12 +1623,42 @@ async function buildConfig(
       packageInfo.description = description;
     }
 
+    // Process subpages if configured
+    let processedSubpages: ParsedSubpage[] = [];
+    if (pkgConfig.subpages && pkgConfig.subpages.length > 0) {
+      console.log(`      📄 Processing ${pkgConfig.subpages.length} subpages...`);
+      processedSubpages = await processSubpages(pkgConfig.subpages);
+
+      if (processedSubpages.length > 0) {
+        // Add subpage metadata to package info
+        packageInfo.subpages = processedSubpages.map((s) => ({
+          slug: s.slug,
+          title: s.title,
+        }));
+
+        // Write individual subpage JSON files
+        const subpagesDir = path.join(pkgInfo.outputDir, "subpages");
+        await fs.mkdir(subpagesDir, { recursive: true });
+
+        for (const subpage of processedSubpages) {
+          const subpagePath = path.join(subpagesDir, `${subpage.slug}.json`);
+          await fs.writeFile(subpagePath, JSON.stringify(subpage, null, 2));
+        }
+        console.log(`      ✓ ${processedSubpages.length} subpages processed`);
+      } else {
+        console.log(`      ⚠️  No subpages successfully processed`);
+      }
+    }
+
     const packageInfoPath = path.join(pkgInfo.outputDir, "package.json");
     await fs.writeFile(packageInfoPath, JSON.stringify(packageInfo, null, 2));
     console.log(
-      `   ✓ ${pkgInfo.packageId} (${symbolCount} symbols${description ? ", with description" : ""})`,
+      `   ✓ ${pkgInfo.packageId} (${symbolCount} symbols${description ? ", with description" : ""}${processedSubpages.length > 0 ? `, ${processedSubpages.length} subpages` : ""})`,
     );
   }
+
+  // Clear the subpage fetch cache after processing all packages
+  clearFetchCache();
 
   if (opts.withVersions) {
     console.log("\n📜 Building version history...");

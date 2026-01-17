@@ -22,7 +22,12 @@
         "tagPattern": "langchain-anthropic==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_anthropic/index.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_anthropic/index.md",
+      "subpages": [
+        { "slug": "chat-anthropic", "title": "ChatAnthropic", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_anthropic/ChatAnthropic.md" },
+        { "slug": "middleware", "title": "Middleware", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_anthropic/middleware.md" },
+        { "slug": "anthropic-llm", "title": "AnthropicLLM", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_anthropic/AnthropicLLM.md" }
+      ]
     },
     {
       "name": "langchain_astradb",
@@ -145,6 +150,21 @@
       "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_google_community/index.md"
     },
     {
+      "name": "langchain_google_genai",
+      "path": "libs/partners/google-genai",
+      "displayName": "Google GenAI (Gemini)",
+      "versioning": {
+        "tagPattern": "langchain-google-genai==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_google_genai/index.md",
+      "subpages": [
+        { "slug": "chat-google-generative-ai", "title": "ChatGoogleGenerativeAI", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_google_genai/ChatGoogleGenerativeAI.md" },
+        { "slug": "google-generative-ai", "title": "GoogleGenerativeAI", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_google_genai/GoogleGenerativeAI.md" },
+        { "slug": "google-generative-ai-embeddings", "title": "GoogleGenerativeAIEmbeddings", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_google_genai/GoogleGenerativeAIEmbeddings.md" }
+      ]
+    },
+    {
       "name": "langchain_groq",
       "path": "libs/partners/groq",
       "displayName": "Groq",
@@ -172,7 +192,15 @@
         "tagPattern": "langchain-ibm==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_ibm/index.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_ibm/index.md",
+      "subpages": [
+        { "slug": "chat-watsonx", "title": "ChatWatsonx", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/ChatWatsonx.md" },
+        { "slug": "watsonx-llm", "title": "WatsonxLLM", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxLLM.md" },
+        { "slug": "watsonx-embeddings", "title": "WatsonxEmbeddings", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxEmbeddings.md" },
+        { "slug": "watsonx-rerank", "title": "WatsonxRerank", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxRerank.md" },
+        { "slug": "watsonx-toolkit", "title": "WatsonxToolkit", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxToolkit.md" },
+        { "slug": "watsonx-sql-database-toolkit", "title": "WatsonxSQLDatabaseToolkit", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_ibm/WatsonxSQLDatabaseToolkit.md" }
+      ]
     },
     {
       "name": "langchain_milvus",
@@ -252,7 +280,17 @@
         "tagPattern": "langchain-openai==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_openai/index.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_openai/index.md",
+      "subpages": [
+        { "slug": "base-chat-openai", "title": "BaseChatOpenAI", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_openai/BaseChatOpenAI.md" },
+        { "slug": "chat-openai", "title": "ChatOpenAI", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_openai/ChatOpenAI.md" },
+        { "slug": "azure-chat-openai", "title": "AzureChatOpenAI", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_openai/AzureChatOpenAI.md" },
+        { "slug": "openai", "title": "OpenAI", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_openai/OpenAI.md" },
+        { "slug": "azure-openai", "title": "AzureOpenAI", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_openai/AzureOpenAI.md" },
+        { "slug": "openai-embeddings", "title": "OpenAIEmbeddings", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_openai/OpenAIEmbeddings.md" },
+        { "slug": "azure-openai-embeddings", "title": "AzureOpenAIEmbeddings", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_openai/AzureOpenAIEmbeddings.md" },
+        { "slug": "middleware", "title": "Middleware", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/integrations/langchain_openai/middleware.md" }
+      ]
     },
     {
       "name": "langchain_perplexity",

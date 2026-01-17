@@ -89,6 +89,21 @@ export interface Package {
 
   /** Optional markdown description to display on package page */
   description?: string;
+
+  /** Optional curated subpages for domain-specific navigation */
+  subpages?: PackageSubpage[];
+}
+
+/**
+ * Subpage metadata for navigation (stored in manifest).
+ * Full subpage content is stored in separate JSON files.
+ */
+export interface PackageSubpage {
+  /** URL slug for the subpage (e.g., "agents", "middleware") */
+  slug: string;
+
+  /** Display title for navigation */
+  title: string;
 }
 
 /**

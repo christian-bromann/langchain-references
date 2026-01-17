@@ -89,6 +89,29 @@
           "descriptionSource": {
             "type": "string",
             "description": "GitHub raw URL for custom markdown content, or 'readme' to use package README.md. If not specified, defaults to 'readme'."
+          },
+          "subpages": {
+            "type": "array",
+            "description": "Curated subpages for domain-specific symbol grouping. Array order determines navigation order.",
+            "items": {
+              "type": "object",
+              "required": ["slug", "title", "source"],
+              "properties": {
+                "slug": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*$",
+                  "description": "URL-safe slug for the subpage (lowercase, alphanumeric with dashes)"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Display title for the subpage in navigation and page header"
+                },
+                "source": {
+                  "type": "string",
+                  "description": "Path to markdown file (relative to repo root) or GitHub raw URL"
+                }
+              }
+            }
           }
         }
       },

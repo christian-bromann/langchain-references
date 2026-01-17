@@ -12,7 +12,15 @@
         "tagPattern": "langchain==*",
         "maxVersions": 10
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        { "slug": "agents", "title": "Agents", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain/agents.md" },
+        { "slug": "middleware", "title": "Middleware", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain/middleware.md" },
+        { "slug": "models", "title": "Models", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain/models.md" },
+        { "slug": "messages", "title": "Messages", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain/messages.md" },
+        { "slug": "tools", "title": "Tools", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain/tools.md" },
+        { "slug": "embeddings", "title": "Embeddings", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain/embeddings.md" }
+      ]
     },
     {
       "name": "langchain_classic",
@@ -22,7 +30,23 @@
         "tagPattern": "langchain==*",
         "maxVersions": 10
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        { "slug": "agents", "title": "Agents", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/agents.md" },
+        { "slug": "callbacks", "title": "Callbacks", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/callbacks.md" },
+        { "slug": "chains", "title": "Chains", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/chains.md" },
+        { "slug": "chat-models", "title": "Chat models", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/chat_models.md" },
+        { "slug": "embeddings", "title": "Embeddings", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/embeddings.md" },
+        { "slug": "evaluation", "title": "Evaluation", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/evaluation.md" },
+        { "slug": "globals", "title": "Globals", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/globals.md" },
+        { "slug": "hub", "title": "Hub", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/hub.md" },
+        { "slug": "memory", "title": "Memory", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/memory.md" },
+        { "slug": "output-parsers", "title": "Output parsers", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/output_parsers.md" },
+        { "slug": "retrievers", "title": "Retrievers", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/retrievers.md" },
+        { "slug": "runnables", "title": "Runnables", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/runnables.md" },
+        { "slug": "smith", "title": "LangSmith", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/smith.md" },
+        { "slug": "storage", "title": "Storage", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/storage.md" }
+      ]
     },
     {
       "name": "langchain_core",
@@ -32,7 +56,24 @@
         "tagPattern": "langchain-core==*",
         "maxVersions": 10
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        { "slug": "caches", "title": "Caches", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/caches.md" },
+        { "slug": "callbacks", "title": "Callbacks", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/callbacks.md" },
+        { "slug": "documents", "title": "Documents", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/documents.md" },
+        { "slug": "document-loaders", "title": "Document loaders", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/document_loaders.md" },
+        { "slug": "embeddings", "title": "Embeddings", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/embeddings.md" },
+        { "slug": "exceptions", "title": "Exceptions", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/exceptions.md" },
+        { "slug": "language-models", "title": "Language models", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/language_models.md" },
+        { "slug": "serialization", "title": "Serialization", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/load.md" },
+        { "slug": "output-parsers", "title": "Output parsers", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/output_parsers.md" },
+        { "slug": "prompts", "title": "Prompts", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/prompts.md" },
+        { "slug": "rate-limiters", "title": "Rate limiters", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/rate_limiters.md" },
+        { "slug": "retrievers", "title": "Retrievers", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/retrievers.md" },
+        { "slug": "runnables", "title": "Runnables", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/runnables.md" },
+        { "slug": "utils", "title": "Utilities", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/utils.md" },
+        { "slug": "vectorstores", "title": "Vector stores", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_core/vectorstores.md" }
+      ]
     },
     {
       "name": "langchain_text_splitters",

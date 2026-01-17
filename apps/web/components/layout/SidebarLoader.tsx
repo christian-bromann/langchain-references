@@ -8,8 +8,8 @@
  * files (~14MB) to build navigation. This dramatically reduces build times.
  */
 
-import { Sidebar, type SidebarPackage } from "./Sidebar";
-import { getBuildIdForLanguage, getManifestData, getRoutingMapData } from "@/lib/ir/loader";
+import { Sidebar, type SidebarPackage, type SidebarSubpage } from "./Sidebar";
+import { getBuildIdForLanguage, getManifestData, getRoutingMapData, getPackageInfoV2 } from "@/lib/ir/loader";
 import { getEnabledProjects } from "@/lib/config/projects";
 import type { Package, RoutingMap, SymbolKind } from "@/lib/ir/types";
 
@@ -137,12 +137,24 @@ async function loadSidebarPackagesForProject(
       items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
     }
 
+    // Load subpages from package info if available
+    let subpages: SidebarSubpage[] | undefined;
+    const packageInfoV2 = await getPackageInfoV2(pkg.packageId, pkgBuildId);
+    if (packageInfoV2?.subpages && Array.isArray(packageInfoV2.subpages)) {
+      subpages = packageInfoV2.subpages.map((sp: { slug: string; title: string }) => ({
+        slug: sp.slug,
+        title: sp.title,
+        path: `/${language}/${slug}/${sp.slug}`,
+      }));
+    }
+
     sidebarPackages.push({
       id: pkg.packageId,
       name: pkg.displayName,
       path: `/${language}/${slug}`,
       items,
       project: projectId,
+      subpages,
     });
   }
 

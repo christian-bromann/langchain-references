@@ -12,7 +12,24 @@
         "tagPattern": "v*",
         "maxVersions": 10
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        { "slug": "client", "title": "Client", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/client.md" },
+        { "slug": "async-client", "title": "AsyncClient", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/async_client.md" },
+        { "slug": "run-helpers", "title": "Run Helpers", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/run_helpers.md" },
+        { "slug": "run-trees", "title": "Run Trees", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/run_trees.md" },
+        { "slug": "evaluation", "title": "Evaluation", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/evaluation.md" },
+        { "slug": "schemas", "title": "Schemas", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/schemas.md" },
+        { "slug": "utils", "title": "Utilities", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/utils.md" },
+        { "slug": "wrappers", "title": "Wrappers", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/wrappers.md" },
+        { "slug": "anonymizer", "title": "Anonymizer", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/anonymizer.md" },
+        { "slug": "testing", "title": "Testing", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/testing.md" },
+        { "slug": "expect", "title": "Expect API", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/expect.md" },
+        { "slug": "middleware", "title": "Middleware", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/middleware.md" },
+        { "slug": "pytest-plugin", "title": "Pytest Plugin", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/observability/sdk/pytest_plugin.md" },
+        { "slug": "deployment-sdk", "title": "Deployment SDK", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/deployment/sdk.md" },
+        { "slug": "remote-graph", "title": "RemoteGraph", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langsmith/deployment/remote_graph.md" }
+      ]
     }
   ]
 }

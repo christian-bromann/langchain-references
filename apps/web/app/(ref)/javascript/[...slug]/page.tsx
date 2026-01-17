@@ -11,7 +11,8 @@ import { notFound } from "next/navigation";
 import { parseSlugWithLanguage } from "@/lib/utils/url";
 import { SymbolPage } from "@/components/reference/SymbolPage";
 import { PackagePage } from "@/components/reference/PackagePage";
-import { getStaticParamsForLanguage } from "@/lib/ir/loader";
+import { SubpagePage } from "@/components/reference/SubpagePage";
+import { getStaticParamsForLanguage, isSubpage, getBuildIdForPackageId } from "@/lib/ir/loader";
 import { getEnabledProjects } from "@/lib/config/projects";
 
 interface Props {
@@ -94,6 +95,25 @@ export default async function JavaScriptSymbolPage({ params, searchParams }: Pro
         packageName={parsed.packageName}
       />
     );
+  }
+
+  // Check if this is a subpage (single path segment that matches a subpage slug)
+  if (parsed.symbolPath.length === 1) {
+    const buildId = await getBuildIdForPackageId(parsed.packageId);
+    if (buildId) {
+      const subpageSlug = parsed.symbolPath[0];
+      const subpageCheck = await isSubpage(parsed.packageId, buildId, subpageSlug);
+      if (subpageCheck) {
+        return (
+          <SubpagePage
+            language="javascript"
+            packageId={parsed.packageId}
+            packageName={parsed.packageName}
+            subpageSlug={subpageSlug}
+          />
+        );
+      }
+    }
   }
 
   // Otherwise, show symbol page

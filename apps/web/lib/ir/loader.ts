@@ -442,6 +442,8 @@ interface ExtendedPackageInfo extends Package {
   buildId?: string;
   /** Project this package belongs to */
   project?: string;
+  /** Curated subpages for domain-specific navigation */
+  subpages?: { slug: string; title: string }[];
 }
 
 /**
@@ -807,6 +809,87 @@ export async function getRoutingMap(
   }
 
   return routingMap;
+}
+
+// =============================================================================
+// Subpage Data Loader
+// =============================================================================
+
+/**
+ * Parsed subpage data structure.
+ */
+export interface ParsedSubpage {
+  slug: string;
+  title: string;
+  markdownContent: string;
+  symbolRefs: string[];
+}
+
+/**
+ * Fetch subpage data from blob storage.
+ * Subpages are stored at ir/packages/{packageId}/{buildId}/subpages/{slug}.json
+ */
+async function fetchSubpageData(
+  buildId: string,
+  packageId: string,
+  slug: string,
+): Promise<ParsedSubpage | null> {
+  const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/subpages/${slug}.json`;
+  return fetchBlobJson<ParsedSubpage>(path);
+}
+
+/**
+ * Cache for subpage data.
+ */
+const subpageCache = new Map<string, ParsedSubpage>();
+
+/**
+ * Get subpage data for a package.
+ *
+ * @param buildId - The build ID
+ * @param packageId - The package ID (e.g., "pkg_py_langchain")
+ * @param slug - The subpage slug (e.g., "middleware")
+ * @returns ParsedSubpage or null if not found
+ */
+export async function getSubpageData(
+  buildId: string,
+  packageId: string,
+  slug: string,
+): Promise<ParsedSubpage | null> {
+  const cacheKey = `${buildId}:${packageId}:${slug}`;
+
+  // Check in-memory cache first
+  if (subpageCache.has(cacheKey)) {
+    return subpageCache.get(cacheKey)!;
+  }
+
+  const subpage = await fetchSubpageData(buildId, packageId, slug);
+
+  if (subpage) {
+    subpageCache.set(cacheKey, subpage);
+  }
+
+  return subpage;
+}
+
+/**
+ * Check if a path segment is a known subpage for a package.
+ *
+ * @param packageId - The package ID
+ * @param buildId - The build ID
+ * @param segment - The path segment to check
+ * @returns True if the segment is a known subpage
+ */
+export async function isSubpage(
+  packageId: string,
+  buildId: string,
+  segment: string,
+): Promise<boolean> {
+  const packageInfo = await getPackageInfoV2(packageId, buildId);
+  if (!packageInfo?.subpages) {
+    return false;
+  }
+  return packageInfo.subpages.some((sp) => sp.slug === segment);
 }
 
 /**

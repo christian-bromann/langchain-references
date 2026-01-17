@@ -129,7 +129,72 @@ langchain-reference-docs/
 | `apps/web/components/layout/`    | Header, Sidebar, navigation   |
 | `apps/web/lib/ir/`               | IR data loading utilities     |
 | `packages/ir-schema/src/`        | IR type definitions           |
+| `packages/build-pipeline/src/`   | IR build pipeline             |
+| `configs/`                       | Package configurations        |
 | `scripts/`                       | Build orchestration scripts   |
+
+### Package Subpages
+
+Packages can have curated subpages for domain-specific navigation (e.g., "Agents", "Middleware", "Models"). These are defined in the package configuration files.
+
+#### Configuration Format
+
+Add `subpages` to a package in `configs/*-python.json` or `configs/*-typescript.json`:
+
+```json
+{
+  "name": "langchain",
+  "path": "libs/langchain_v1",
+  "displayName": "LangChain",
+  "subpages": [
+    {
+      "slug": "agents",
+      "title": "Agents",
+      "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain/agents.md"
+    },
+    {
+      "slug": "middleware",
+      "title": "Middleware",
+      "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain/middleware.md"
+    }
+  ]
+}
+```
+
+#### Subpage Properties
+
+| Property | Description |
+| -------- | ----------- |
+| `slug`   | URL-safe identifier (lowercase, alphanumeric with dashes) |
+| `title`  | Display title in navigation and page header |
+| `source` | GitHub raw URL or relative path to markdown file |
+
+#### Markdown File Format
+
+Subpage markdown files have two sections:
+
+1. **Markdown content** (before first `:::` directive) - Rendered as-is on the page
+2. **Symbol references** (`:::` directives) - Used to create symbol cards
+
+```markdown
+# Middleware
+
+Reference documentation for middleware classes.
+
+| CLASS | DESCRIPTION |
+| ----- | ----------- |
+| `SummarizationMiddleware` | Auto-summarize conversation history |
+
+::: langchain.agents.middleware.SummarizationMiddleware
+    options:
+        merge_init_into_class: true
+::: langchain.agents.middleware.HumanInTheLoopMiddleware
+```
+
+The parser:
+- Splits content at the first `:::` line
+- Extracts qualified names from `:::` directives (ignoring options blocks)
+- Resolves symbol references to catalog entries for display as cards
 
 ---
 
