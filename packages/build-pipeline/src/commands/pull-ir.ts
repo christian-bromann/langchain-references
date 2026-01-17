@@ -400,6 +400,39 @@ async function pullProjectLanguage(
         }
       }
 
+      // Try to download subpages if package.json indicates they exist
+      if (packageJsonContent) {
+        try {
+          const packageInfo = JSON.parse(packageJsonContent);
+          if (packageInfo.subpages && Array.isArray(packageInfo.subpages)) {
+            const subpagesDir = path.join(pkgDir, "subpages");
+            await fs.mkdir(subpagesDir, { recursive: true });
+
+            let subpagesDownloaded = 0;
+            for (const subpage of packageInfo.subpages) {
+              const subpageContent = await fetchBlobRaw(
+                `ir/packages/${packageId}/${buildId}/subpages/${subpage.slug}.json`,
+              );
+              if (subpageContent) {
+                await fs.writeFile(
+                  path.join(subpagesDir, `${subpage.slug}.json`),
+                  subpageContent,
+                  "utf-8",
+                );
+                result.filesDownloaded++;
+                subpagesDownloaded++;
+              }
+            }
+
+            if (verbose && subpagesDownloaded > 0) {
+              console.log(`     ✓ subpages (${subpagesDownloaded})`);
+            }
+          }
+        } catch {
+          // Package info parsing failed or no subpages
+        }
+      }
+
       result.packagesDownloaded++;
     }
 

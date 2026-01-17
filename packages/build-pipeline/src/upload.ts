@@ -677,6 +677,26 @@ async function uploadPackageIR(options: UploadOptions): Promise<UploadResult> {
     // No versions file - skip
   }
 
+  // Upload subpages directory if it exists
+  const subpagesDir = path.join(irOutputPath, "subpages");
+  try {
+    const subpageFiles = await fs.readdir(subpagesDir);
+    for (const file of subpageFiles) {
+      if (file.endsWith(".json")) {
+        const subpageContent = await fs.readFile(path.join(subpagesDir, file), "utf-8");
+        uploadTasks.push({
+          blobPath: `${basePath}/subpages/${file}`,
+          content: subpageContent,
+        });
+      }
+    }
+    if (subpageFiles.length > 0) {
+      console.log(`   📄 ${subpageFiles.length} subpage files`);
+    }
+  } catch {
+    // No subpages directory - skip
+  }
+
   console.log(`   Total upload tasks: ${uploadTasks.length}`);
 
   // Upload all files in parallel

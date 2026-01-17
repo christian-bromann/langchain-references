@@ -133,11 +133,27 @@ async function uploadPointer(path: string, data: unknown, dryRun: boolean): Prom
  * Fetch a pointer file from Vercel Blob
  */
 async function fetchPointer<T>(path: string): Promise<T | null> {
+  const baseUrl = process.env.BLOB_URL;
+  if (!baseUrl) {
+    console.warn(`   ⚠️  No blob storage URL available for fetching ${path}`);
+    return null;
+  }
+
+  // Ensure no double slashes in URL
+  const cleanBaseUrl = baseUrl.replace(/\/+$/, "");
+  const url = `${cleanBaseUrl}/${path}`;
+
   try {
-    const response = await fetch(`${process.env.BLOB_URL || ""}/${path}`, { cache: "no-store" });
-    if (!response.ok) return null;
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) {
+      if (response.status !== 404) {
+        console.warn(`   ⚠️  Failed to fetch ${path}: ${response.status} ${response.statusText}`);
+      }
+      return null;
+    }
     return (await response.json()) as T;
-  } catch {
+  } catch (error) {
+    console.warn(`   ⚠️  Error fetching ${path}: ${(error as Error).message}`);
     return null;
   }
 }
@@ -417,7 +433,16 @@ export async function regenerateProjectPackageIndex(
   const ecosystem = language;
   const now = new Date().toISOString();
 
+  // Check if blob storage is configured
+  const baseUrl = process.env.BLOB_URL;
+  if (!baseUrl) {
+    console.error(`   ❌ Cannot regenerate index: No blob storage URL configured`);
+    console.error(`      Set BLOB_URL or BLOB_READ_WRITE_TOKEN environment variable`);
+    return;
+  }
+
   const packages: Record<string, { buildId: string; version: string; sha: string }> = {};
+  const missingPackages: string[] = [];
 
   // Fetch each package pointer
   for (const packageName of packageNames) {
@@ -428,7 +453,18 @@ export async function regenerateProjectPackageIndex(
         version: pointer.version,
         sha: pointer.sha,
       };
+    } else {
+      missingPackages.push(packageName);
     }
+  }
+
+  // Log missing packages if any
+  if (missingPackages.length > 0 && missingPackages.length === packageNames.length) {
+    console.warn(`   ⚠️  No pointers found in blob storage for any packages`);
+    console.warn(`      Searched: ${missingPackages.slice(0, 3).join(", ")}${missingPackages.length > 3 ? `, ... (${missingPackages.length} total)` : ""}`);
+    console.warn(`      URL base: ${baseUrl}`);
+  } else if (missingPackages.length > 0) {
+    console.warn(`   ⚠️  Missing pointers for: ${missingPackages.join(", ")}`);
   }
 
   const index: ProjectPackageIndex = {

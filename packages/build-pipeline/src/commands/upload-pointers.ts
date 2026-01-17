@@ -80,6 +80,7 @@ async function uploadPointer(
     access: "public",
     contentType: "application/json",
     addRandomSuffix: false,
+    allowOverwrite: true,
   });
 }
 
