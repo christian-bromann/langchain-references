@@ -27,6 +27,7 @@ import url from "url";
 import path from "path";
 import fs from "fs/promises";
 import { program } from "commander";
+import { getBlobBaseUrl } from "../blob-utils.js";
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
@@ -70,35 +71,11 @@ function sanitizePackageNameForPath(packageName: string): string {
 // =============================================================================
 
 /**
- * Get the Vercel Blob base URL from environment.
- *
- * For pull-ir, we need to fetch from the production blob storage, not a local server.
- * So we prioritize BLOB_READ_WRITE_TOKEN (production) over BLOB_URL (which may be localhost).
- */
-function getBlobBaseUrl(): string | null {
-  // First, try to derive from BLOB_READ_WRITE_TOKEN (this is always production)
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (token) {
-    const match = token.match(/^vercel_blob_rw_([^_]+)_/);
-    if (match) {
-      const storeId = match[1];
-      return `https://${storeId}.public.blob.vercel-storage.com`;
-    }
-  }
-
-  // Fall back to BLOB_URL only if it's not localhost (for CI or other non-local environments)
-  if (process.env.BLOB_URL && !process.env.BLOB_URL.includes("localhost")) {
-    return process.env.BLOB_URL;
-  }
-
-  return null;
-}
-
-/**
  * Fetch JSON from Vercel Blob storage.
+ * Uses productionOnly mode to always fetch from production, not localhost.
  */
 async function fetchBlobJson<T>(relativePath: string): Promise<T | null> {
-  const baseUrl = getBlobBaseUrl();
+  const baseUrl = getBlobBaseUrl({ productionOnly: true });
   if (!baseUrl) {
     throw new Error("No BLOB_URL or BLOB_READ_WRITE_TOKEN environment variable set");
   }
@@ -126,9 +103,10 @@ async function fetchBlobJson<T>(relativePath: string): Promise<T | null> {
 
 /**
  * Fetch raw content from Vercel Blob storage.
+ * Uses productionOnly mode to always fetch from production, not localhost.
  */
 async function fetchBlobRaw(relativePath: string): Promise<string | null> {
-  const baseUrl = getBlobBaseUrl();
+  const baseUrl = getBlobBaseUrl({ productionOnly: true });
   if (!baseUrl) {
     throw new Error("No BLOB_URL or BLOB_READ_WRITE_TOKEN environment variable set");
   }
@@ -525,8 +503,8 @@ async function main() {
   console.log("📥 Pull IR - Download compiled symbols from Vercel Blob");
   console.log("========================================================");
 
-  // Check for blob access
-  const blobUrl = getBlobBaseUrl();
+  // Check for blob access (productionOnly to skip localhost BLOB_URL)
+  const blobUrl = getBlobBaseUrl({ productionOnly: true });
   if (!blobUrl) {
     console.error("\n❌ No blob storage access configured.");
     console.error("   Set BLOB_URL or BLOB_READ_WRITE_TOKEN environment variable");

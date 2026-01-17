@@ -28,6 +28,7 @@ import path from "path";
 import fs from "fs/promises";
 import { fileURLToPath } from "url";
 import { program } from "commander";
+import { getBlobBaseUrl } from "../blob-utils.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -127,34 +128,6 @@ export interface UpdateCheckResult {
 // =============================================================================
 // BLOB FETCHING
 // =============================================================================
-
-/**
- * Get the Vercel Blob base URL from environment.
- * Supports:
- * 1. BLOB_URL (primary)
- * 2. Derived from BLOB_READ_WRITE_TOKEN (fallback)
- *
- * The token format is: vercel_blob_rw_{store_id}_{secret}
- * The public URL is: https://{store_id}.public.blob.vercel-storage.com
- */
-function getBlobBaseUrl(): string | null {
-  if (process.env.BLOB_URL) {
-    return process.env.BLOB_URL;
-  }
-
-  // Try to derive from BLOB_READ_WRITE_TOKEN
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (token) {
-    // Token format: vercel_blob_rw_{store_id}_{secret}
-    const match = token.match(/^vercel_blob_rw_([^_]+)_/);
-    if (match) {
-      const storeId = match[1];
-      return `https://${storeId}.public.blob.vercel-storage.com`;
-    }
-  }
-
-  return null;
-}
 
 /**
  * Fetch JSON from Vercel Blob storage.

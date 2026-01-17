@@ -7,6 +7,7 @@
 
 import type { PackageChangelog, PackageVersionIndex } from "@langchain/ir-schema";
 import type { LatestBuildPointer } from "./pointers.js";
+import { getBlobBaseUrl } from "./blob-utils.js";
 
 // =============================================================================
 // TYPES
@@ -15,38 +16,6 @@ import type { LatestBuildPointer } from "./pointers.js";
 export interface DeployedChangelog {
   changelog: PackageChangelog;
   versions: PackageVersionIndex;
-}
-
-// =============================================================================
-// BLOB URL RESOLUTION
-// =============================================================================
-
-/**
- * Get the Vercel Blob base URL from environment.
- * Supports:
- * 1. BLOB_URL (primary)
- * 2. Derived from BLOB_READ_WRITE_TOKEN (fallback)
- *
- * The token format is: vercel_blob_rw_{store_id}_{secret}
- * The public URL is: https://{store_id}.public.blob.vercel-storage.com
- */
-function getBlobBaseUrl(): string | null {
-  if (process.env.BLOB_URL) {
-    return process.env.BLOB_URL;
-  }
-
-  // Try to derive from BLOB_READ_WRITE_TOKEN
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (token) {
-    // Token format: vercel_blob_rw_{store_id}_{secret}
-    const match = token.match(/^vercel_blob_rw_([^_]+)_/);
-    if (match) {
-      const storeId = match[1];
-      return `https://${storeId}.public.blob.vercel-storage.com`;
-    }
-  }
-
-  return null;
 }
 
 // =============================================================================

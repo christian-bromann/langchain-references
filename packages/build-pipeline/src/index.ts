@@ -81,3 +81,6 @@ export {
   renderSnapshot,
   snapshotsEqual,
 } from "./snapshot.js";
+
+// Blob utilities
+export { getBlobBaseUrl, type GetBlobBaseUrlOptions } from "./blob-utils.js";

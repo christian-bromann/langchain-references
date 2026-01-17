@@ -7,6 +7,7 @@
 
 import type { Manifest } from "@langchain/ir-schema";
 import { putWithRetry } from "./upload.js";
+import { getBlobBaseUrl } from "./blob-utils.js";
 
 const POINTERS_PATH = "pointers";
 
@@ -133,7 +134,7 @@ async function uploadPointer(path: string, data: unknown, dryRun: boolean): Prom
  * Fetch a pointer file from Vercel Blob
  */
 async function fetchPointer<T>(path: string): Promise<T | null> {
-  const baseUrl = process.env.BLOB_URL;
+  const baseUrl = getBlobBaseUrl();
   if (!baseUrl) {
     console.warn(`   ⚠️  No blob storage URL available for fetching ${path}`);
     return null;
@@ -434,7 +435,7 @@ export async function regenerateProjectPackageIndex(
   const now = new Date().toISOString();
 
   // Check if blob storage is configured
-  const baseUrl = process.env.BLOB_URL;
+  const baseUrl = getBlobBaseUrl();
   if (!baseUrl) {
     console.error(`   ❌ Cannot regenerate index: No blob storage URL configured`);
     console.error(`      Set BLOB_URL or BLOB_READ_WRITE_TOKEN environment variable`);
