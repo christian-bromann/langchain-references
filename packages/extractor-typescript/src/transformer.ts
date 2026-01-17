@@ -263,6 +263,23 @@ export class TypeDocTransformer {
   }
 
   /**
+   * Check if a reflection is from an external package (e.g., openai, zod).
+   * External packages are detected by checking if their source is in node_modules.
+   */
+  private isExternalPackageSymbol(reflection: TypeDocReflection): boolean {
+    const sources = "sources" in reflection ? reflection.sources : null;
+    if (!sources || !Array.isArray(sources) || sources.length === 0) {
+      return false;
+    }
+
+    const source = sources[0];
+    const filePath = source.fileName || "";
+
+    // If the source is in node_modules, it's an external package
+    return filePath.includes("node_modules/");
+  }
+
+  /**
    * Transform the TypeDoc project to IR symbols.
    */
   transform(): SymbolRecord[] {
@@ -281,6 +298,12 @@ export class TypeDocTransformer {
    * Transform a single reflection and its children.
    */
   private transformReflection(reflection: TypeDocReflection, parentPath: string[]): SymbolRecord[] {
+    // Skip symbols from external packages (e.g., openai SDK symbols)
+    // These are detected by checking if their source is in node_modules
+    if (this.isExternalPackageSymbol(reflection)) {
+      return [];
+    }
+
     const symbols: SymbolRecord[] = [];
     const currentPath = [...parentPath, reflection.name];
 

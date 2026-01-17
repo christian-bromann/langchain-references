@@ -42,8 +42,10 @@ export interface ExtractionConfig {
 export const defaultConfig: Partial<ExtractionConfig> = {
   excludePrivate: true,
   excludeInternal: true,
-  // Don't exclude externals - we want re-exports to be documented
+  // Don't exclude externals at TypeDoc level - we want re-exports to be documented
   // e.g., export { BaseMessage } from "@langchain/core/messages"
+  // However, the transformer filters out symbols from node_modules (like openai SDK)
+  // to avoid bloating the IR with external package types
   excludeExternals: false,
   entryPoints: ["src/index.ts"],
 };
@@ -59,7 +61,8 @@ export function createConfig(
     entryPoints: ["src/index.ts"],
     excludePrivate: true,
     excludeInternal: true,
-    excludeExternals: false, // Keep re-exports visible
+    // Keep externals visible at TypeDoc level for re-exports; node_modules symbols are filtered in transformer
+    excludeExternals: false,
     repo: "",
     sha: "",
     ...partial,
