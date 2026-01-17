@@ -5,14 +5,19 @@
  *
  * Slide-in drawer for project navigation on mobile devices.
  * Provides a touch-friendly way to switch between projects.
+ *
+ * When switching languages, uses cross-language symbol resolution
+ * to navigate to the equivalent symbol in the target language.
  */
 
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
-import { X, ChevronRight } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { X, ChevronRight, Loader2 } from "lucide-react";
 import type { ProjectConfig } from "@langchain/ir-schema";
 import { cn } from "@/lib/utils/cn";
 import { getDefaultPackageSlug } from "@/lib/config/projects";
+import type { ResolveSymbolResponse } from "@/lib/symbol-resolution";
 
 interface MobileProjectMenuProps {
   open: boolean;
@@ -22,6 +27,49 @@ interface MobileProjectMenuProps {
   currentLanguage: "python" | "javascript";
 }
 
+// =============================================================================
+// URL Parsing Utilities (shared with LanguageDropdown)
+// =============================================================================
+
+/**
+ * Extract the symbol name from a URL pathname.
+ */
+function extractSymbolNameFromPath(pathname: string): string | null {
+  const parts = pathname.replace(/^\//, "").split("/");
+  if (parts.length < 3) return null;
+  return parts[parts.length - 1] || null;
+}
+
+/**
+ * Extract the package slug from a URL pathname.
+ */
+function extractPackageFromPath(pathname: string): string | null {
+  const parts = pathname.replace(/^\//, "").split("/");
+  if (parts.length < 2) return null;
+  return parts[1] || null;
+}
+
+/**
+ * Extract the full symbol path for mapping lookup.
+ */
+function extractSymbolPathForMapping(pathname: string): string | null {
+  const parts = pathname.replace(/^\//, "").split("/");
+  if (parts.length < 3) return null;
+  return parts.slice(1).join("/");
+}
+
+/**
+ * Check if the current path is a symbol page.
+ */
+function isSymbolPage(pathname: string): boolean {
+  const parts = pathname.replace(/^\//, "").split("/");
+  return parts.length >= 3;
+}
+
+// =============================================================================
+// Component
+// =============================================================================
+
 export function MobileProjectMenu({
   open,
   onClose,
@@ -29,7 +77,83 @@ export function MobileProjectMenu({
   currentProject,
   currentLanguage,
 }: MobileProjectMenuProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isResolving, setIsResolving] = useState(false);
+  const [resolvingLang, setResolvingLang] = useState<string | null>(null);
+
   if (!open) return null;
+
+  /**
+   * Handle language change with cross-language symbol resolution.
+   */
+  const handleLanguageClick = async (targetLang: "python" | "javascript") => {
+    if (targetLang === currentLanguage) {
+      onClose();
+      return;
+    }
+
+    // If not on a symbol page, just navigate to package landing
+    if (!isSymbolPage(pathname)) {
+      onClose();
+      router.push(`/${targetLang}/${currentProject?.slug || "langchain"}`);
+      return;
+    }
+
+    setIsResolving(true);
+    setResolvingLang(targetLang);
+
+    try {
+      // Extract symbol info from current path
+      const symbolName = extractSymbolNameFromPath(pathname);
+      const sourcePackage = extractPackageFromPath(pathname);
+      const symbolPath = extractSymbolPathForMapping(pathname);
+
+      if (!symbolName) {
+        onClose();
+        router.push(`/${targetLang}/${currentProject?.slug || "langchain"}`);
+        return;
+      }
+
+      // Call resolution API
+      const params = new URLSearchParams({
+        symbolName,
+        targetLanguage: targetLang,
+        sourceLanguage: currentLanguage,
+        ...(sourcePackage && { sourcePackage }),
+        ...(symbolPath && { symbolPath }),
+      });
+
+      const response = await fetch(`/api/resolve-symbol?${params}`);
+
+      if (!response.ok) {
+        console.warn("[MobileProjectMenu] Resolution API returned", response.status);
+        onClose();
+        router.push(`/${targetLang}/${currentProject?.slug || "langchain"}`);
+        return;
+      }
+
+      const result: ResolveSymbolResponse = await response.json();
+
+      // Close menu and navigate
+      onClose();
+      router.push(result.targetUrl);
+
+      // Log for debugging
+      if (!result.found) {
+        console.log(`[MobileProjectMenu] No equivalent found for "${symbolName}"`);
+      } else if (result.matchType !== "exact" && result.matchType !== "explicit") {
+        console.log(`[MobileProjectMenu] Resolved "${symbolName}" → "${result.matchedSymbol || symbolName}"`);
+      }
+    } catch (error) {
+      console.error("[MobileProjectMenu] Resolution failed:", error);
+      onClose();
+      router.push(`/${targetLang}/${currentProject?.slug || "langchain"}`);
+    } finally {
+      setIsResolving(false);
+      setResolvingLang(null);
+    }
+  };
 
   return (
     <Fragment>
@@ -102,30 +226,42 @@ export function MobileProjectMenu({
               Language
             </div>
             <div className="flex gap-2">
-              <Link
-                href={`/python/${currentProject?.slug || "langchain"}`}
-                onClick={onClose}
+              <button
+                type="button"
+                onClick={() => handleLanguageClick("python")}
+                disabled={isResolving}
                 className={cn(
                   "flex-1 py-2 px-3 text-center rounded-lg text-sm font-medium transition-colors",
+                  "flex items-center justify-center gap-2",
                   currentLanguage === "python"
                     ? "bg-primary text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700",
+                  isResolving && "opacity-70 cursor-wait",
                 )}
               >
+                {isResolving && resolvingLang === "python" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
                 Python
-              </Link>
-              <Link
-                href={`/javascript/${currentProject?.slug || "langchain"}`}
-                onClick={onClose}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleLanguageClick("javascript")}
+                disabled={isResolving}
                 className={cn(
                   "flex-1 py-2 px-3 text-center rounded-lg text-sm font-medium transition-colors",
+                  "flex items-center justify-center gap-2",
                   currentLanguage === "javascript"
                     ? "bg-primary text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700",
+                  isResolving && "opacity-70 cursor-wait",
                 )}
               >
+                {isResolving && resolvingLang === "javascript" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
                 JavaScript
-              </Link>
+              </button>
             </div>
           </div>
         </div>

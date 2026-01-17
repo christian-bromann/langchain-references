@@ -5,12 +5,17 @@
  *
  * A dropdown in the sidebar to switch between Python and JavaScript documentation.
  * Styled similarly to Mintlify's nav dropdown.
+ *
+ * When switching languages, attempts to navigate to the equivalent symbol in the
+ * target language using cross-language symbol resolution.
  */
 
+import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import type { ResolveSymbolResponse } from "@/lib/symbol-resolution";
 
 const LANGUAGES = [
   {
@@ -33,9 +38,60 @@ const LANGUAGES = [
   },
 ] as const;
 
+// =============================================================================
+// URL Parsing Utilities
+// =============================================================================
+
+/**
+ * Extract the symbol name from a URL pathname.
+ * Returns the last segment of the path after the package.
+ */
+function extractSymbolNameFromPath(pathname: string): string | null {
+  const parts = pathname.replace(/^\//, "").split("/");
+  // First part is language, second is package, rest is symbol path
+  if (parts.length < 3) return null;
+  return parts[parts.length - 1] || null;
+}
+
+/**
+ * Extract the package slug from a URL pathname.
+ */
+function extractPackageFromPath(pathname: string): string | null {
+  const parts = pathname.replace(/^\//, "").split("/");
+  // First part is language, second is package
+  if (parts.length < 2) return null;
+  return parts[1] || null;
+}
+
+/**
+ * Extract the full symbol path for mapping lookup.
+ * Returns format: "{package}/{symbolPath}"
+ */
+function extractSymbolPathForMapping(pathname: string): string | null {
+  const parts = pathname.replace(/^\//, "").split("/");
+  // First part is language, rest is package + symbol path
+  if (parts.length < 3) return null;
+  return parts.slice(1).join("/");
+}
+
+/**
+ * Check if the current path is a symbol page (not just package landing).
+ */
+function isSymbolPage(pathname: string): boolean {
+  const parts = pathname.replace(/^\//, "").split("/");
+  // Symbol pages have at least: language/package/symbol
+  return parts.length >= 3;
+}
+
+// =============================================================================
+// Component
+// =============================================================================
+
 export function LanguageDropdown() {
   const pathname = usePathname();
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [isResolving, setIsResolving] = useState(false);
 
   // Determine current language from pathname
   const currentLang = pathname.startsWith("/python")
@@ -46,11 +102,79 @@ export function LanguageDropdown() {
 
   const currentLanguage = LANGUAGES.find((l) => l.id === currentLang) ?? LANGUAGES[1];
 
-  const handleLanguageChange = (langId: string) => {
+  const isLoading = isPending || isResolving;
+
+  /**
+   * Handle language change with cross-language symbol resolution.
+   */
+  const handleLanguageChange = async (langId: string) => {
     if (langId === currentLang) return;
 
-    // Navigate to the new language root
-    router.push(`/${langId}`);
+    // If not on a symbol page, just navigate to language root
+    if (!isSymbolPage(pathname)) {
+      startTransition(() => {
+        router.push(`/${langId}`);
+      });
+      return;
+    }
+
+    setIsResolving(true);
+
+    try {
+      // Extract symbol info from current path
+      const symbolName = extractSymbolNameFromPath(pathname);
+      const sourcePackage = extractPackageFromPath(pathname);
+      const symbolPath = extractSymbolPathForMapping(pathname);
+
+      if (!symbolName) {
+        // No symbol to resolve, go to language root
+        startTransition(() => {
+          router.push(`/${langId}`);
+        });
+        return;
+      }
+
+      // Call resolution API
+      const params = new URLSearchParams({
+        symbolName,
+        targetLanguage: langId,
+        sourceLanguage: currentLang || "",
+        ...(sourcePackage && { sourcePackage }),
+        ...(symbolPath && { symbolPath }),
+      });
+
+      const response = await fetch(`/api/resolve-symbol?${params}`);
+
+      if (!response.ok) {
+        console.warn("[LanguageDropdown] Resolution API returned", response.status);
+        startTransition(() => {
+          router.push(`/${langId}`);
+        });
+        return;
+      }
+
+      const result: ResolveSymbolResponse = await response.json();
+
+      // Navigate to the resolved URL
+      startTransition(() => {
+        router.push(result.targetUrl);
+      });
+
+      // Log for debugging (could add toast notifications here)
+      if (!result.found) {
+        console.log(`[LanguageDropdown] No equivalent found for "${symbolName}", navigated to ${result.matchType}`);
+      } else if (result.matchType !== "exact" && result.matchType !== "explicit") {
+        console.log(`[LanguageDropdown] Resolved "${symbolName}" → "${result.matchedSymbol || symbolName}" (${result.matchType})`);
+      }
+    } catch (error) {
+      console.error("[LanguageDropdown] Resolution failed:", error);
+      // Fallback to language root on error
+      startTransition(() => {
+        router.push(`/${langId}`);
+      });
+    } finally {
+      setIsResolving(false);
+    }
   };
 
   return (
@@ -58,6 +182,7 @@ export function LanguageDropdown() {
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
+          disabled={isLoading}
           className={cn(
             "group flex w-full items-center gap-1 mb-4 z-10",
             "pl-2 pr-3.5 py-1.5 rounded-[0.85rem]",
@@ -66,6 +191,7 @@ export function LanguageDropdown() {
             "text-sm text-gray-950/50 dark:text-white/50",
             "group-hover:text-gray-950/70 dark:group-hover:text-white/70",
             "transition-colors",
+            isLoading && "opacity-70 cursor-wait",
           )}
         >
           {/* Icon container */}
@@ -76,7 +202,11 @@ export function LanguageDropdown() {
               "text-primary dark:text-primary-light",
             )}
           >
-            {currentLanguage.icon}
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              currentLanguage.icon
+            )}
           </div>
 
           {/* Text */}
@@ -135,6 +265,7 @@ export function LanguageDropdown() {
             return (
               <DropdownMenu.Item
                 key={lang.id}
+                disabled={isLoading}
                 onSelect={() => handleLanguageChange(lang.id)}
                 className={cn(
                   "flex items-center gap-1 rounded-xl cursor-pointer",
@@ -142,6 +273,7 @@ export function LanguageDropdown() {
                   "text-gray-800 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-200",
                   "hover:bg-gray-950/5 dark:hover:bg-white/5",
                   "outline-none focus:bg-gray-950/5 dark:focus:bg-white/5",
+                  isLoading && "opacity-50 cursor-not-allowed",
                 )}
               >
                 {/* Icon container */}
