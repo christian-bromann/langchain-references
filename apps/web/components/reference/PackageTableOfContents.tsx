@@ -9,6 +9,8 @@
 
 import { cn } from "@/lib/utils/cn";
 import { Box, Code, Folder, FileType } from "lucide-react";
+import { CopyPageButton } from "./CopyPageButton";
+import { PageContextMenu } from "./PageContextMenu";
 
 export interface PackageTOCSection {
   id: string;
@@ -20,6 +22,10 @@ export interface PackageTOCSection {
 
 export interface PackageTableOfContentsProps {
   sections: PackageTOCSection[];
+  /** Markdown content for AI copy functionality */
+  markdown?: string;
+  /** Page URL for AI context menu */
+  pageUrl?: string;
 }
 
 /**
@@ -64,7 +70,11 @@ function SectionIcon({ type }: { type: PackageTOCSection["icon"] }) {
 /**
  * Main Package Table of Contents component
  */
-export function PackageTableOfContents({ sections }: PackageTableOfContentsProps) {
+export function PackageTableOfContents({
+  sections,
+  markdown,
+  pageUrl,
+}: PackageTableOfContentsProps) {
   // Don't render if there's nothing to show
   if (!sections || sections.length === 0) {
     return null;
@@ -76,6 +86,14 @@ export function PackageTableOfContents({ sections }: PackageTableOfContentsProps
       aria-label="On this page"
     >
       <div className="pl-4 pb-8">
+        {/* AI Actions - Copy page button and context menu */}
+        {markdown && pageUrl && (
+          <div className="flex items-center mb-8">
+            <CopyPageButton markdown={markdown} />
+            <PageContextMenu pageUrl={pageUrl} markdown={markdown} />
+          </div>
+        )}
+
         <h3 className="text-sm font-semibold text-foreground mb-3">On This Page</h3>
 
         <div className="space-y-1">

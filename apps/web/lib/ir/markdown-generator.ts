@@ -469,18 +469,28 @@ interface CatalogEntry {
 }
 
 /**
+ * Options for package markdown generation from catalog
+ */
+export interface PackageMarkdownOptions {
+  /** Package description/README content in markdown format */
+  description?: string | null;
+}
+
+/**
  * Generate markdown documentation for a package from catalog entries.
  * Uses lightweight catalog entries instead of full SymbolRecord objects.
  *
  * @param packageName - The package name
  * @param entries - Array of catalog entries
  * @param language - The language (python or typescript)
+ * @param options - Optional settings including package description
  * @returns Markdown string
  */
 export function packageToMarkdownFromCatalog(
   packageName: string,
   entries: CatalogEntry[],
   language: Language,
+  options: PackageMarkdownOptions = {},
 ): string {
   const lines: string[] = [];
   const baseUrl = getBaseUrl();
@@ -494,6 +504,21 @@ export function packageToMarkdownFromCatalog(
   lines.push(`📖 [View in docs](${baseUrl}/${langPath}/${packageSlug})`);
   lines.push("");
 
+  // Include package description (README content) if available
+  if (options.description) {
+    lines.push(options.description);
+    lines.push("");
+  }
+
+  // Helper to build a symbol URL
+  const buildEntryUrl = (entry: CatalogEntry): string => {
+    // Detect if the qualifiedName has a package prefix (Python uses underscores)
+    const parts = entry.qualifiedName.split(".");
+    const hasPackagePrefix = language === "python" && parts.length > 1 && parts[0].includes("_");
+    const symbolSlug = slugifySymbolPath(entry.qualifiedName, hasPackagePrefix);
+    return `${baseUrl}/${langPath}/${packageSlug}/${symbolSlug}`;
+  };
+
   // Group entries by kind
   const classes = entries.filter((e) => e.kind === "class");
   const functions = entries.filter((e) => e.kind === "function");
@@ -505,8 +530,9 @@ export function packageToMarkdownFromCatalog(
     lines.push("## Classes");
     lines.push("");
     for (const cls of classes) {
+      const url = buildEntryUrl(cls);
       const summary = cls.summary ? ` - ${cls.summary}` : "";
-      lines.push(`- \`${cls.name}\`${summary}`);
+      lines.push(`- [\`${cls.name}\`](${url})${summary}`);
     }
     lines.push("");
   }
@@ -515,8 +541,9 @@ export function packageToMarkdownFromCatalog(
     lines.push("## Functions");
     lines.push("");
     for (const fn of functions) {
+      const url = buildEntryUrl(fn);
       const summary = fn.summary ? ` - ${fn.summary}` : "";
-      lines.push(`- \`${fn.name}()\`${summary}`);
+      lines.push(`- [\`${fn.name}()\`](${url})${summary}`);
     }
     lines.push("");
   }
@@ -525,8 +552,9 @@ export function packageToMarkdownFromCatalog(
     lines.push("## Interfaces");
     lines.push("");
     for (const iface of interfaces) {
+      const url = buildEntryUrl(iface);
       const summary = iface.summary ? ` - ${iface.summary}` : "";
-      lines.push(`- \`${iface.name}\`${summary}`);
+      lines.push(`- [\`${iface.name}\`](${url})${summary}`);
     }
     lines.push("");
   }
@@ -535,8 +563,9 @@ export function packageToMarkdownFromCatalog(
     lines.push("## Types");
     lines.push("");
     for (const type of types) {
+      const url = buildEntryUrl(type);
       const summary = type.summary ? ` - ${type.summary}` : "";
-      lines.push(`- \`${type.name}\`${summary}`);
+      lines.push(`- [\`${type.name}\`](${url})${summary}`);
     }
     lines.push("");
   }
@@ -545,8 +574,9 @@ export function packageToMarkdownFromCatalog(
     lines.push("## Enums");
     lines.push("");
     for (const enumSym of enums) {
+      const url = buildEntryUrl(enumSym);
       const summary = enumSym.summary ? ` - ${enumSym.summary}` : "";
-      lines.push(`- \`${enumSym.name}\`${summary}`);
+      lines.push(`- [\`${enumSym.name}\`](${url})${summary}`);
     }
     lines.push("");
   }

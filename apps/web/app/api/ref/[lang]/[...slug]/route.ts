@@ -15,12 +15,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseSlugWithLanguage } from "@/lib/utils/url";
 import {
-  getBuildIdForLanguage,
+  getBuildIdForPackageId,
   getManifestData,
-  getSymbolOptimized,
   getPackageInfo,
   getCatalogEntries,
-  getSymbolViaShardedLookup,
+  findSymbolWithVariations,
 } from "@/lib/ir/loader";
 import { symbolToMarkdown, packageToMarkdownFromCatalog } from "@/lib/ir/markdown-generator";
 import { getContentTypeForFormat, getCacheHeaders } from "@/lib/utils/content-negotiation";
@@ -56,14 +55,17 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
-  // Get build ID for this language
-  const buildId = await getBuildIdForLanguage(language);
-  if (!buildId) {
-    return NextResponse.json({ error: "No build available for this language" }, { status: 503 });
+  // Get build ID for this specific package (each package has its own build ID)
+  const packageBuildId = await getBuildIdForPackageId(parsed.packageId);
+  if (!packageBuildId) {
+    return NextResponse.json(
+      { error: `No build available for package: ${parsed.packageName}` },
+      { status: 503 },
+    );
   }
 
   // Get package info from manifest
-  const manifest = await getManifestData(buildId);
+  const manifest = await getManifestData(packageBuildId);
   if (!manifest) {
     return NextResponse.json({ error: "Failed to load manifest" }, { status: 500 });
   }
@@ -79,7 +81,7 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
   // If no symbol path, return package overview
   // OPTIMIZATION: Use sharded catalog (<500KB) instead of symbols.json (23MB+)
   if (parsed.symbolPath.length === 0) {
-    const catalogEntries = await getCatalogEntries(buildId, parsed.packageId);
+    const catalogEntries = await getCatalogEntries(packageBuildId, parsed.packageId);
     if (!catalogEntries || catalogEntries.length === 0) {
       return NextResponse.json({ error: "Failed to load symbols" }, { status: 500 });
     }
@@ -110,13 +112,9 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
     });
   }
 
-  // OPTIMIZATION: Use optimized lookup for single symbol (~1-5KB instead of 11MB)
-  let symbol = await getSymbolOptimized(buildId, parsed.packageId, parsed.fullPath);
-
-  // Fall back to sharded lookup (avoids loading symbols.json)
-  if (!symbol) {
-    symbol = await getSymbolViaShardedLookup(buildId, parsed.packageId, parsed.fullPath);
-  }
+  // Use robust lookup that tries multiple path variations
+  // This handles dot/slash notation, kind prefixes, and package prefixes
+  const symbol = await findSymbolWithVariations(packageBuildId, parsed.packageId, parsed.fullPath);
 
   if (!symbol) {
     return NextResponse.json({ error: `Symbol not found: ${parsed.fullPath}` }, { status: 404 });
@@ -127,7 +125,7 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
     return NextResponse.json(symbol, { headers: getCacheHeaders() });
   }
 
-  const pkgInfo = await getPackageInfo(buildId, parsed.packageId);
+  const pkgInfo = await getPackageInfo(packageBuildId, parsed.packageId);
   const markdown = symbolToMarkdown(symbol, parsed.packageName, {
     repoPathPrefix: pkgInfo?.repo?.path || undefined,
   });

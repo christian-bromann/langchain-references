@@ -259,6 +259,9 @@ export interface MemberReference {
 
   /** Member visibility */
   visibility: Visibility;
+
+  /** Type annotation (for attributes/properties without their own symbol records) */
+  type?: string;
 }
 
 /**

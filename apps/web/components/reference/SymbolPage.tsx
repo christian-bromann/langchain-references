@@ -372,9 +372,10 @@ function toDisplaySymbol(
 
   const members: DisplayMember[] | undefined = filteredMembers?.map((m) => {
     const memberSymbol = memberSymbols?.get(m.refId);
-    const type = memberSymbol
+    // Use type from member reference (for attributes) or extract from signature
+    const type = m.type || (memberSymbol
       ? extractTypeFromSignature(memberSymbol.signature, m.kind)
-      : undefined;
+      : undefined);
 
     return {
       name: m.name,
@@ -1646,6 +1647,8 @@ export async function SymbolPage({
               language={language}
               packageName={packageName}
               parentQualifiedName={symbol.qualifiedName}
+              knownSymbols={knownSymbols}
+              typeUrlMap={typeUrlMap}
             />
           )}
 
@@ -1911,11 +1914,15 @@ function MembersSection({
   language,
   packageName,
   parentQualifiedName,
+  knownSymbols,
+  typeUrlMap,
 }: {
   members: DisplayMember[];
   language: UrlLanguage;
   packageName: string;
   parentQualifiedName: string;
+  knownSymbols: Map<string, string>;
+  typeUrlMap?: Map<string, string>;
 }) {
   // Group members by kind (use Object.create(null) to avoid prototype properties like 'constructor')
   const groupedMembers = members.reduce(
@@ -1977,6 +1984,8 @@ function MembersSection({
                 language={language}
                 packageName={packageName}
                 parentQualifiedName={parentQualifiedName}
+                knownSymbols={knownSymbols}
+                typeUrlMap={typeUrlMap}
               />
             ))}
           </div>
@@ -2008,11 +2017,15 @@ function MemberCard({
   language,
   packageName,
   parentQualifiedName,
+  knownSymbols,
+  typeUrlMap,
 }: {
   member: DisplayMember;
   language: UrlLanguage;
   packageName: string;
   parentQualifiedName: string;
+  knownSymbols: Map<string, string>;
+  typeUrlMap?: Map<string, string>;
 }) {
   const isMethodOrFunction =
     member.kind === "method" || member.kind === "function" || member.kind === "constructor";
@@ -2051,14 +2064,26 @@ function MemberCard({
           {/* Show type for properties/attributes */}
           {!isMethodOrFunction && member.type && (
             <span className="text-foreground-secondary font-mono text-sm">
-              : <TypeDisplay type={member.type} />
+              : <TypeReferenceDisplay
+                  typeStr={member.type}
+                  knownSymbols={knownSymbols}
+                  language={language}
+                  packageName={packageName}
+                  typeUrlMap={typeUrlMap}
+                />
             </span>
           )}
 
           {/* Show return type for methods */}
           {isMethodOrFunction && member.type && (
             <span className="text-foreground-muted font-mono text-xs">
-              → <TypeDisplay type={member.type} />
+              → <TypeReferenceDisplay
+                  typeStr={member.type}
+                  knownSymbols={knownSymbols}
+                  language={language}
+                  packageName={packageName}
+                  typeUrlMap={typeUrlMap}
+                />
             </span>
           )}
         </div>
@@ -2265,7 +2290,3 @@ function InheritedMemberRow({
 /**
  * Type display with potential linking for known types
  */
-function TypeDisplay({ type }: { type: string }) {
-  // For now, just display the type. Future enhancement: parse and link known types
-  return <span className="text-foreground-secondary">{type}</span>;
-}

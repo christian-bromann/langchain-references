@@ -640,18 +640,24 @@ class PythonExtractor:
             return [name for name in obj.members.keys() if not name.startswith("_")]
         return []
 
-    def _get_member_info(self, obj: GriffeObject) -> List[Dict[str, str]]:
-        """Get member information including kinds for classes/modules."""
+    def _get_member_info(self, obj: GriffeObject) -> List[Dict[str, Any]]:
+        """Get member information including kinds and types for classes/modules."""
         members = []
         if hasattr(obj, "members"):
             for name, member in obj.members.items():
                 if name.startswith("_"):
                     continue
                 kind = self._get_kind(member)
-                members.append({
+                member_info: Dict[str, Any] = {
                     "name": name,
                     "kind": kind,
-                })
+                }
+                # Capture type annotation for attributes/properties
+                if kind == "attribute" and hasattr(member, "annotation") and member.annotation:
+                    annotation_str = str(member.annotation)
+                    if annotation_str and not self._is_invalid_repr(annotation_str):
+                        member_info["type"] = annotation_str
+                members.append(member_info)
         return members
 
     def _get_bases(self, obj: GriffeObject) -> List[str]:

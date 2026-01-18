@@ -496,8 +496,9 @@ class IRTransformer:
             # Add member references for classes/modules
             members = raw.get("members", [])
             if members and kind in ("class", "module"):
-                ir_symbol["members"] = [
-                    {
+                ir_symbol["members"] = []
+                for m in members:
+                    member_ref = {
                         "name": m["name"] if isinstance(m, dict) else m,
                         "refId": self._generate_symbol_id(
                             m.get("kind", "unknown") if isinstance(m, dict) else "unknown",
@@ -506,8 +507,10 @@ class IRTransformer:
                         "kind": m.get("kind", "unknown") if isinstance(m, dict) else "unknown",
                         "visibility": "public",
                     }
-                    for m in members
-                ]
+                    # Include type annotation for attributes if available
+                    if isinstance(m, dict) and m.get("type"):
+                        member_ref["type"] = m["type"]
+                    ir_symbol["members"].append(member_ref)
 
             return ir_symbol
 

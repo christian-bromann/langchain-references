@@ -1313,6 +1313,109 @@ export async function getSymbolOptimized(
 }
 
 /**
+ * Kind prefixes used in URLs that should be stripped when looking up symbols
+ */
+const KIND_PREFIXES = [
+  "modules",
+  "classes",
+  "functions",
+  "interfaces",
+  "types",
+  "enums",
+  "variables",
+  "methods",
+  "propertys",
+  "namespaces",
+];
+
+/**
+ * Find a symbol by path, trying multiple variations.
+ *
+ * This is a robust lookup that handles:
+ * - Dot notation: tools.DynamicToolInput
+ * - Slash notation: tools/DynamicToolInput
+ * - Kind prefixes: classes.MyClass -> MyClass
+ * - Package prefixes for Python: langchain_core.messages.BaseMessage
+ * - Underscore notation: tools_DynamicToolInput
+ *
+ * Uses routing map and sharded lookup for optimal performance.
+ * Does NOT fall back to loading full symbols.json to keep it fast.
+ */
+export async function findSymbolWithVariations(
+  buildId: string,
+  packageId: string,
+  symbolPath: string,
+): Promise<SymbolRecord | null> {
+  // Generate variations of the path to try
+  const pathVariations: string[] = [symbolPath];
+
+  // Strip kind prefix if present (e.g., "modules.chat_models.universal" -> "chat_models.universal")
+  for (const prefix of KIND_PREFIXES) {
+    if (symbolPath.startsWith(`${prefix}.`)) {
+      const withoutPrefix = symbolPath.slice(prefix.length + 1);
+      pathVariations.push(withoutPrefix);
+      // Also try with slashes instead of dots (for TypeScript modules)
+      pathVariations.push(withoutPrefix.replace(/\./g, "/"));
+    }
+  }
+
+  // Try dots replaced with slashes (for TypeScript module paths like chat_models/universal)
+  pathVariations.push(symbolPath.replace(/\./g, "/"));
+
+  // Try underscores instead of dots (for Python module paths)
+  pathVariations.push(symbolPath.replace(/\./g, "_"));
+
+  // Prefer the routing map + individual symbol files.
+  // This avoids downloading `lookup.json` which can exceed Next.js' 2MB cache limit.
+  const pkgInfo = await getPackageInfo(buildId, packageId);
+  const routingMap = await getRoutingMapData(buildId, packageId);
+
+  // Derive package prefix from packageId as fallback (e.g., pkg_py_langchain_core -> langchain_core)
+  const packagePrefix =
+    pkgInfo?.publishedName ||
+    pkgInfo?.displayName ||
+    packageId.replace(/^pkg_(py|js)_/, "");
+
+  if (routingMap?.slugs) {
+    const candidates: string[] = [];
+    for (const p of pathVariations) {
+      candidates.push(p);
+      // Try with package prefix for python-style qualified names
+      if (packagePrefix) {
+        candidates.push(`${packagePrefix}.${p}`);
+      }
+      // Try slash form for TS module paths
+      candidates.push(p.replace(/\./g, "/"));
+    }
+
+    for (const key of candidates) {
+      const entry = routingMap.slugs[key];
+      if (!entry?.refId) continue;
+      const symbol = await getIndividualSymbolData(buildId, entry.refId, packageId);
+      if (symbol) return symbol;
+    }
+  }
+
+  // Try the sharded lookup as a second attempt
+  // This avoids loading the full symbols.json file
+  for (const path of pathVariations) {
+    const symbol = await getSymbolViaShardedLookup(buildId, packageId, path);
+    if (symbol) return symbol;
+
+    // Also try with package prefix for Python-style qualified names
+    if (packagePrefix) {
+      const prefixedPath = `${packagePrefix}.${path}`;
+      const prefixedSymbol = await getSymbolViaShardedLookup(buildId, packageId, prefixedPath);
+      if (prefixedSymbol) return prefixedSymbol;
+    }
+  }
+
+  // Don't fall back to getSymbols - return null instead
+  // This prevents loading multi-MB files on the hot path
+  return null;
+}
+
+/**
  * Get an individual symbol by ID.
  * With package-level architecture, searches the package's symbols.json.
  */

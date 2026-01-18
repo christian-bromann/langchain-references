@@ -20,6 +20,9 @@ import {
 } from "@/lib/ir/loader";
 import { PackageTableOfContents, type PackageTOCSection } from "./PackageTableOfContents";
 import { MarkdownContent } from "./MarkdownContent";
+import { packageToMarkdownFromCatalog } from "@/lib/ir/markdown-generator";
+import { getBaseUrl } from "@/lib/config/mcp";
+import { slugifyPackageName } from "@/lib/utils/url";
 
 interface PackagePageProps {
   language: UrlLanguage;
@@ -266,7 +269,16 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
       </div>
 
       {/* Table of Contents sidebar */}
-      <PackageTableOfContents sections={tocSections} />
+      <PackageTableOfContents
+        sections={tocSections}
+        markdown={packageToMarkdownFromCatalog(
+          packageName,
+          catalogEntries,
+          language === "python" ? "python" : "typescript",
+          { description },
+        )}
+        pageUrl={`${getBaseUrl()}/${language === "python" ? "python" : "javascript"}/${slugifyPackageName(packageName)}`}
+      />
     </div>
   );
 }
