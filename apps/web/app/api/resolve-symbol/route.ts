@@ -46,7 +46,8 @@ function symbolToSearchRecord(
     tags?: { visibility?: string };
   },
   packageId: string,
-  packageName: string,
+  packagePublishedName: string,
+  packageDisplayName: string,
   language: IRLanguage,
 ): SearchRecord | null {
   if (symbol.tags?.visibility === "private") return null;
@@ -54,22 +55,41 @@ function symbolToSearchRecord(
   const skipKinds = ["parameter", "enumMember"];
   if (skipKinds.includes(symbol.kind)) return null;
 
+  // Use displayName for human-readable breadcrumbs (e.g., "Deep Agents")
   const parts = symbol.qualifiedName.split(/[./]/);
-  const breadcrumbs = [packageName, ...parts.slice(0, -1)];
+  const breadcrumbs = [packageDisplayName, ...parts.slice(0, -1)];
 
+  // Use publishedName for URL slugification (e.g., "deepagents" not "Deep Agents")
   const langPath = language === "python" ? "python" : "javascript";
-  const packageSlug = slugifyPackageName(packageName);
+  const packageSlug = slugifyPackageName(packagePublishedName);
   const isPython = language === "python";
   const hasPackagePrefix = isPython && symbol.qualifiedName.includes("_");
   const symbolPath = slugifySymbolPath(symbol.qualifiedName, hasPackagePrefix);
   const url = `/${langPath}/${packageSlug}/${symbolPath}`;
 
   const excerpt = symbol.docs?.summary?.slice(0, 150) || "";
+
+  // Build comprehensive keywords for cross-convention matching
+  // Include: original name, word parts, normalized form, and alternative convention form
+  const camelParts = symbol.name.split(/(?=[A-Z])/).map((s) => s.toLowerCase());
+  const snakeParts = symbol.name.split("_").filter(Boolean);
+  const normalized = symbol.name.replace(/_/g, "").replace(/([a-z])([A-Z])/g, "$1$2").toLowerCase();
+
+  // Generate alternative naming convention form
+  const alternativeForm =
+    language === "python"
+      ? // For Python symbols (snake_case), add camelCase version
+        symbol.name.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+      : // For JS symbols (camelCase), add snake_case version
+        symbol.name.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
+
   const keywords = [
     symbol.name,
-    ...symbol.name.split(/(?=[A-Z])/).map((s) => s.toLowerCase()),
-    ...symbol.name.split("_"),
-  ].filter(Boolean);
+    ...camelParts,
+    ...snakeParts,
+    normalized,
+    alternativeForm,
+  ].filter((k, i, arr) => k && arr.indexOf(k) === i); // Dedupe
 
   return {
     id: `${packageId}:${symbol.id}`,
@@ -134,9 +154,11 @@ async function getSearchIndex(language: Language): Promise<MiniSearch<SearchReco
       const result = await getSymbols(buildId, pkg.packageId);
       if (result?.symbols) {
         for (const symbol of result.symbols) {
+          // Pass both publishedName (for URLs) and displayName (for breadcrumbs)
           const record = symbolToSearchRecord(
             symbol,
             pkg.packageId,
+            pkg.publishedName,
             pkg.displayName,
             language as IRLanguage,
           );
@@ -153,6 +175,38 @@ async function getSearchIndex(language: Language): Promise<MiniSearch<SearchReco
 
   indexCache.set(cacheKey, { index, buildId: buildIds.join(",") });
   return index;
+}
+
+/**
+ * Convert camelCase to snake_case.
+ * @example "createFileData" → "create_file_data"
+ */
+function camelToSnake(name: string): string {
+  return name
+    .replace(/([a-z])([A-Z])/g, "$1_$2")
+    .toLowerCase();
+}
+
+/**
+ * Convert snake_case to camelCase.
+ * @example "create_file_data" → "createFileData"
+ */
+function snakeToCamel(name: string): string {
+  return name.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+/**
+ * Convert a symbol name to the target language's naming convention.
+ * JavaScript uses camelCase, Python uses snake_case.
+ */
+function convertNameForLanguage(name: string, targetLanguage: Language): string {
+  if (targetLanguage === "python") {
+    // Convert camelCase to snake_case for Python
+    return camelToSnake(name);
+  } else {
+    // Convert snake_case to camelCase for JavaScript
+    return snakeToCamel(name);
+  }
 }
 
 /**
@@ -174,6 +228,85 @@ async function searchSymbols(
     kind: r.kind as string,
     score: r.score,
   }));
+}
+
+/**
+ * Extract word parts from a symbol name (handles both camelCase and snake_case).
+ * @example "createFileData" → ["create", "file", "data"]
+ * @example "create_file_data" → ["create", "file", "data"]
+ */
+function extractWordParts(name: string): string[] {
+  // Split on camelCase boundaries and underscores
+  return name
+    .split(/(?=[A-Z])|_/)
+    .map((s) => s.toLowerCase())
+    .filter((s) => s.length > 0);
+}
+
+/**
+ * Search for symbols with both original and converted naming conventions.
+ * This helps find snake_case symbols when searching with camelCase and vice versa.
+ *
+ * Strategy:
+ * 1. Search with original name
+ * 2. Search with converted name (camelCase ↔ snake_case)
+ * 3. Search with word parts to ensure cross-convention matching
+ * 4. Use title-focused search for better accuracy
+ */
+async function searchSymbolsWithConversion(
+  symbolName: string,
+  targetLanguage: Language,
+  limit: number = 20,
+): Promise<Array<{ url: string; title: string; kind: string; score: number }>> {
+  const index = await getSearchIndex(targetLanguage);
+  if (!index) return [];
+
+  // Search with original name
+  const originalResults = index.search(symbolName);
+
+  // Also search with converted name (camelCase ↔ snake_case)
+  const convertedName = convertNameForLanguage(symbolName, targetLanguage);
+  const convertedResults = convertedName !== symbolName ? index.search(convertedName) : [];
+
+  // Search with word parts joined by space (helps MiniSearch match across conventions)
+  const wordParts = extractWordParts(symbolName);
+  const wordPartsQuery = wordParts.join(" ");
+  const wordPartsResults =
+    wordPartsQuery !== symbolName.toLowerCase() ? index.search(wordPartsQuery) : [];
+
+  // Also try a title-focused search with the converted name for better precision
+  const titleFocusedResults = index.search(convertedName, {
+    fields: ["title"],
+    boost: { title: 10 },
+    fuzzy: 0.1,
+    prefix: true,
+  });
+
+  // Combine and dedupe results by URL, keeping highest score
+  const resultMap = new Map<string, { url: string; title: string; kind: string; score: number }>();
+
+  for (const r of [
+    ...originalResults,
+    ...convertedResults,
+    ...wordPartsResults,
+    ...titleFocusedResults,
+  ]) {
+    const url = r.url as string;
+    const existing = resultMap.get(url);
+    if (!existing || r.score > existing.score) {
+      resultMap.set(url, {
+        url,
+        title: r.title as string,
+        kind: r.kind as string,
+        score: r.score,
+      });
+    }
+  }
+
+  // Sort by score and limit
+  return Array.from(resultMap.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
 }
 
 // =============================================================================
@@ -258,9 +391,9 @@ export async function GET(request: NextRequest): Promise<Response> {
       }
     }
 
-    // 3. Search for exact/normalized match
+    // 3. Search for exact/normalized match (with automatic camelCase ↔ snake_case conversion)
     const normalized = normalizeSymbolName(symbolName);
-    const searchResults = await searchSymbols(symbolName, targetLanguage, 20);
+    const searchResults = await searchSymbolsWithConversion(symbolName, targetLanguage, 20);
 
     if (searchResults.length > 0) {
       // Score and rank results

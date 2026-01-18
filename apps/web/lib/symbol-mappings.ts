@@ -397,6 +397,7 @@ export const PACKAGE_EQUIVALENCE: {
     "langchain-textsplitters": "langchain-text-splitters",
     langgraph: "langgraph",
     langsmith: "langsmith",
+    deepagents: "deepagents",
   },
   pythonToJs: {
     langchain: "langchain",
@@ -408,6 +409,7 @@ export const PACKAGE_EQUIVALENCE: {
     "langchain-text-splitters": "langchain-textsplitters",
     langgraph: "langgraph",
     langsmith: "langsmith",
+    deepagents: "deepagents",
   },
 };
 

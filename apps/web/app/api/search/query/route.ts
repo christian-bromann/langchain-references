@@ -29,7 +29,8 @@ function symbolToSearchRecord(
     tags?: { visibility?: string };
   },
   packageId: string,
-  packageName: string,
+  packagePublishedName: string,
+  packageDisplayName: string,
   language: Language,
 ): SearchRecord | null {
   // Skip private symbols
@@ -44,13 +45,15 @@ function symbolToSearchRecord(
   }
 
   // Build breadcrumbs from qualified name
+  // Use displayName for human-readable breadcrumbs (e.g., "Deep Agents")
   const parts = symbol.qualifiedName.split(/[./]/);
-  const breadcrumbs = [packageName, ...parts.slice(0, -1)];
+  const breadcrumbs = [packageDisplayName, ...parts.slice(0, -1)];
 
   // Build URL - always construct it ourselves as canonical URLs from TypeDoc
   // have incorrect format (e.g., /functions/useStream instead of /react/useStream)
+  // Use publishedName for URL slugification (e.g., "deepagents" not "Deep Agents")
   const langPath = language === "python" ? "python" : "javascript";
-  const packageSlug = slugifyPackageName(packageName);
+  const packageSlug = slugifyPackageName(packagePublishedName);
   // Use slugifySymbolPath to properly strip package prefix for Python
   const isPython = language === "python";
   const hasPackagePrefix = isPython && symbol.qualifiedName.includes("_");
@@ -60,12 +63,27 @@ function symbolToSearchRecord(
   // Extract excerpt from summary
   const excerpt = symbol.docs?.summary?.slice(0, 150) || "";
 
-  // Generate keywords from name
+  // Build comprehensive keywords for cross-convention matching
+  // Include: original name, word parts, normalized form, and alternative convention form
+  const camelParts = symbol.name.split(/(?=[A-Z])/).map((s) => s.toLowerCase());
+  const snakeParts = symbol.name.split("_").filter(Boolean);
+  const normalized = symbol.name.replace(/_/g, "").replace(/([a-z])([A-Z])/g, "$1$2").toLowerCase();
+
+  // Generate alternative naming convention form
+  const alternativeForm =
+    language === "python"
+      ? // For Python symbols (snake_case), add camelCase version
+        symbol.name.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase())
+      : // For JS symbols (camelCase), add snake_case version
+        symbol.name.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
+
   const keywords = [
     symbol.name,
-    ...symbol.name.split(/(?=[A-Z])/).map((s) => s.toLowerCase()), // camelCase parts
-    ...symbol.name.split("_"), // snake_case parts
-  ].filter(Boolean);
+    ...camelParts,
+    ...snakeParts,
+    normalized,
+    alternativeForm,
+  ].filter((k, i, arr) => k && arr.indexOf(k) === i); // Dedupe
 
   return {
     // Make ID unique across packages by prefixing with packageId
@@ -138,7 +156,14 @@ async function getSearchIndex(language: Language): Promise<MiniSearch<SearchReco
 
       if (result?.symbols) {
         for (const symbol of result.symbols) {
-          const record = symbolToSearchRecord(symbol, pkg.packageId, pkg.displayName, language);
+          // Pass both publishedName (for URLs) and displayName (for breadcrumbs)
+          const record = symbolToSearchRecord(
+            symbol,
+            pkg.packageId,
+            pkg.publishedName,
+            pkg.displayName,
+            language,
+          );
           if (record && !recordsMap.has(record.id)) {
             recordsMap.set(record.id, record);
           }

@@ -292,6 +292,10 @@ export async function getLatestBuildIdForLanguage(
  * This is the new package-level pointer that allows independent package updates.
  *
  * Path: pointers/packages/{ecosystem}/{packageName}.json
+ *
+ * Note: For Python packages, pointer files use underscores (langchain_anthropic.json)
+ * even though URLs use hyphens (langchain-anthropic). We normalize the name
+ * to match the stored pointer filename.
  */
 export async function getPackagePointer(
   ecosystem: "python" | "javascript",
@@ -303,7 +307,12 @@ export async function getPackagePointer(
   }
 
   try {
-    const pointerName = `packages/${ecosystem}/${packageName}`;
+    // For Python packages, pointer files use underscores (the original package name format)
+    // e.g., "langchain-anthropic" -> "langchain_anthropic" for the pointer lookup
+    const pointerFileName = ecosystem === "python"
+      ? packageName.replace(/-/g, "_")
+      : packageName;
+    const pointerName = `packages/${ecosystem}/${pointerFileName}`;
     const pointer = await fetchPointer<PackagePointer>(pointerName);
     if (pointer) {
       packagePointerCache.set(cacheKey, pointer);
