@@ -5,7 +5,15 @@
  * Handles sharding, routing maps, and search indices.
  */
 
-import { put, list, del, BlobServiceRateLimited } from "@vercel/blob";
+import {
+  put,
+  list,
+  del,
+  BlobServiceRateLimited,
+  BlobUnknownError,
+  BlobRequestAbortedError,
+  BlobServiceNotAvailable,
+} from "@vercel/blob";
 import { createHash } from "crypto";
 import fs from "fs/promises";
 import path from "path";
@@ -50,7 +58,18 @@ export function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Upload a single blob with retry logic for rate limits.
+ * Check if an error is a transient network error that should be retried.
+ */
+function isTransientError(error: unknown): boolean {
+  return (
+    error instanceof BlobUnknownError ||
+    error instanceof BlobRequestAbortedError ||
+    error instanceof BlobServiceNotAvailable
+  );
+}
+
+/**
+ * Upload a single blob with retry logic for rate limits and transient errors.
  * Uses the Retry-After header value from the BlobServiceRateLimited error,
  * with exponential backoff and jitter as fallback.
  */
@@ -93,7 +112,27 @@ export async function putWithRetry(
         }
       }
 
-      // For non-rate-limit errors, don't retry
+      // Check if it's a transient network error that should be retried
+      if (isTransientError(error)) {
+        if (attempt < MAX_RETRIES - 1) {
+          // Use exponential backoff for transient errors
+          const exponentialBackoff = MIN_RETRY_DELAY_MS * Math.pow(2, attempt);
+          let delay = Math.min(exponentialBackoff, MAX_RETRY_DELAY_MS);
+
+          // Add random jitter (0-25%) to prevent thundering herd
+          const jitter = delay * Math.random() * 0.25;
+          delay = Math.round(delay + jitter);
+
+          const errorName = (error as Error).constructor.name;
+          console.log(
+            `   ⏳ ${errorName}, waiting ${(delay / 1000).toFixed(1)}s before retry (attempt ${attempt + 1}/${MAX_RETRIES})...`,
+          );
+          await sleep(delay);
+          continue;
+        }
+      }
+
+      // For non-retryable errors, throw immediately
       throw error;
     }
   }
