@@ -8,8 +8,7 @@
 import Link from "next/link";
 import { Box, Code, Folder, ChevronRight, FileType, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import type { UrlLanguage } from "@/lib/utils/url";
-import { buildSymbolUrl, getKindColor, getKindLabel } from "@/lib/utils/url";
+import { buildSymbolUrl, getKindColor, getKindLabel, slugifyPackageName, type UrlLanguage } from "@/lib/utils/url";
 import {
   getBuildIdForPackageId,
   getSubpageData,
@@ -20,7 +19,6 @@ import { PackageTableOfContents, type PackageTOCSection } from "./PackageTableOf
 import { MarkdownContent } from "./MarkdownContent";
 import { subpageToMarkdown } from "@/lib/ir/markdown-generator";
 import { getBaseUrl } from "@/lib/config/mcp";
-import { slugifyPackageName } from "@/lib/utils/url";
 
 interface SubpagePageProps {
   language: UrlLanguage;
@@ -94,8 +92,6 @@ function resolveSymbolRefs(
     if (match && !seenIds.has(match.id)) {
       seenIds.add(match.id);
       resolved.push(match);
-    } else if (!match) {
-      console.warn(`[SubpagePage] Could not resolve symbol reference: ${ref}`);
     }
   }
 

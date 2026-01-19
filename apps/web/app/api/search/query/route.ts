@@ -1,3 +1,4 @@
+// oxlint-disable no-console
 /**
  * Search Query API Route
  *

@@ -18,15 +18,12 @@ import { SearchModal, useSearchShortcut } from "@/components/search/SearchModal"
 import { ProjectTabs, getCurrentProject, getCurrentLanguage } from "./ProjectTabs";
 import { OfflineBadge } from "./OfflineIndicator";
 import { getEnabledProjects } from "@/lib/config/projects";
-import type { SidebarPackage } from "./Sidebar";
 
 interface HeaderProps {
-  pythonPackages?: SidebarPackage[];
-  javascriptPackages?: SidebarPackage[];
   onMobileMenuOpen?: () => void;
 }
 
-export function Header({ pythonPackages = [], javascriptPackages = [], onMobileMenuOpen }: HeaderProps) {
+export function Header({ onMobileMenuOpen }: HeaderProps) {
   const { theme, setTheme } = useTheme();
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();

@@ -21,7 +21,6 @@ import { putWithRetry } from "../upload.js";
 import {
   PROJECTS,
   OUTPUT_LANGUAGES,
-  type Project,
   type OutputLanguage,
 } from "../constants.js";
 
@@ -225,7 +224,7 @@ async function main() {
   // Upload project indexes
   console.log("\n📋 Uploading project indexes...");
 
-  for (const [key, index] of projectIndexes) {
+  for (const [_, index] of projectIndexes) {
     const indexPath = `${POINTERS_PATH}/index-${index.project}-${index.language}.json`;
     await uploadPointer(indexPath, index, dryRun);
     console.log(`   ✓ ${indexPath} (${Object.keys(index.packages).length} packages)`);

@@ -54,7 +54,7 @@ const buildCmd = packageFilter
 try {
   execSync(buildCmd, { stdio: 'inherit', cwd: path.resolve(import.meta.dirname, '..') });
 } catch (error) {
-  console.error('Build failed');
+  console.error(`Build failed: ${error}`);
   process.exit(1);
 }
 

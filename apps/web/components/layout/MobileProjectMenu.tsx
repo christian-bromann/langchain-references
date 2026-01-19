@@ -150,8 +150,7 @@ export function MobileProjectMenu({
       const result: ResolveSymbolResponse = await response.json();
       onClose();
       router.push(result.targetUrl);
-    } catch (error) {
-      console.error("[MobileProjectMenu] Resolution failed:", error);
+    } catch {
       onClose();
       router.push(`/${targetLang}/${currentProject?.slug || "langchain"}`);
     } finally {
@@ -162,24 +161,24 @@ export function MobileProjectMenu({
 
   return (
     <Fragment>
-      {/* Backdrop - covers everything with blur */}
+      {/* Backdrop - covers everything with blur (higher z-index than TOC button at 9999) */}
       <div
         className="fixed inset-0 lg:hidden"
         onClick={onClose}
         aria-hidden="true"
         style={{
-          zIndex: 9998,
+          zIndex: 10000,
           backgroundColor: "rgba(0, 0, 0, 0.5)",
           backdropFilter: "blur(4px)",
           WebkitBackdropFilter: "blur(4px)",
         }}
       />
 
-      {/* Drawer - full viewport height */}
+      {/* Drawer - full viewport height (higher z-index than backdrop) */}
       <div
         className="fixed top-0 right-0 bottom-0 w-full max-w-sm lg:hidden"
         style={{
-          zIndex: 9999,
+          zIndex: 10001,
           height: "100dvh",
         }}
       >

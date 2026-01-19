@@ -26,8 +26,6 @@ import type { PackageChangelog, SymbolSnapshot } from "@langchain/ir-schema";
 import {
   getPackageBuildId,
   getManifestData,
-  getSymbols,
-  getSymbolData,
   getIndividualSymbolData,
   getSymbolLookupIndexData,
   getCrossProjectPackages,
@@ -720,69 +718,6 @@ function generateTOCData(symbol: DisplaySymbol): {
   }
 
   return { topItems, sections, inheritedGroups };
-}
-
-/**
- * Find a symbol by path, trying different variations
- */
-async function findSymbol(
-  buildId: string,
-  packageId: string,
-  symbolPath: string,
-): Promise<SymbolRecord | null> {
-  // Generate variations of the path to try
-  const pathVariations: string[] = [symbolPath];
-
-  // Strip kind prefix if present (e.g., "modules.chat_models.universal" -> "chat_models.universal")
-  for (const prefix of KIND_PREFIXES) {
-    if (symbolPath.startsWith(`${prefix}.`)) {
-      const withoutPrefix = symbolPath.slice(prefix.length + 1);
-      pathVariations.push(withoutPrefix);
-      // Also try with slashes instead of dots (for TypeScript modules)
-      pathVariations.push(withoutPrefix.replace(/\./g, "/"));
-    }
-  }
-
-  // Try dots replaced with slashes (for TypeScript module paths like chat_models/universal)
-  pathVariations.push(symbolPath.replace(/\./g, "/"));
-
-  // Try underscores instead of dots (for Python module paths)
-  pathVariations.push(symbolPath.replace(/\./g, "_"));
-
-  // Try each variation
-  for (const path of pathVariations) {
-    const symbol = await getSymbolData(buildId, packageId, path);
-    if (symbol) return symbol;
-  }
-
-  // Try searching in all symbols
-  const result = await getSymbols(buildId, packageId);
-  if (result?.symbols) {
-    // Build a list of paths to try matching
-    const pathsToMatch = new Set(pathVariations);
-
-    // Try to find by qualified name or name
-    const found = result.symbols.find((s) => {
-      // Exact match on any variation
-      if (pathsToMatch.has(s.qualifiedName)) return true;
-      if (pathsToMatch.has(s.name)) return true;
-
-      // Check if qualified name ends with any variation
-      for (const path of pathsToMatch) {
-        if (s.qualifiedName.endsWith(`.${path}`) || s.qualifiedName.endsWith(`/${path}`)) {
-          return true;
-        }
-      }
-
-      // Last resort: match by final symbol name
-      const lastPart = symbolPath.split(".").pop() || symbolPath.split("/").pop();
-      return s.name === lastPart;
-    });
-
-    if (found) return found;
-  }
-
-  return null;
 }
 
 /**

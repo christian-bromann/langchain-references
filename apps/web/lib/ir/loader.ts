@@ -1,3 +1,4 @@
+// oxlint-disable no-console
 /**
  * IR Loader - Utilities for loading IR data via HTTP
  *
@@ -1706,7 +1707,6 @@ export async function getStaticParamsForLanguage(
 
   const params: { slug: string[] }[] = [];
   const ecosystem = language === "python" ? "python" : "javascript";
-  const irLanguage = language === "python" ? "python" : "typescript";
 
   // Filter packages by ecosystem
   const packages = manifest.packages.filter((p) => p.ecosystem === ecosystem);
@@ -1811,8 +1811,6 @@ async function fetchCrossProjectPackagesData(
     if (!manifest) continue;
 
     const ecosystem = language === "python" ? "python" : "javascript";
-    const irLanguage = language === "python" ? "python" : "typescript";
-
     for (const pkg of manifest.packages) {
       if (pkg.ecosystem !== ecosystem) continue;
 

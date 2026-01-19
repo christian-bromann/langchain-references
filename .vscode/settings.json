@@ -20,6 +20,9 @@
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "oxc.enable": true,
+  "oxc.path.server": "./node_modules/.bin/oxlint",
+  "oxc.path.formatter": "./node_modules/.bin/oxfmt",
+  "oxc.configPath": "oxlint.json",
   "eslint.enable": false,
   "prettier.enable": false
 }

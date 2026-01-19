@@ -21,14 +21,16 @@
  *   pnpm update-indexes --all
  */
 
-import { Command } from "commander";
-import * as fs from "fs/promises";
-import * as path from "path";
-import { fileURLToPath } from "url";
-import { regenerateProjectPackageIndex } from "../pointers.js";
-import { PROJECTS, OUTPUT_LANGUAGES, type OutputLanguage } from "../constants.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import fs from "node:fs/promises";
+import path from "node:path";
+import url from "node:url";
+
+import { Command } from "commander";
+import { regenerateProjectPackageIndex } from "../pointers.js";
+import { PROJECTS, OUTPUT_LANGUAGES } from "../constants.js";
+
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
 interface ConfigFile {
   project?: string;

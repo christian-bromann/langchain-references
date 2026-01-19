@@ -11,7 +11,7 @@ import Link from "next/link";
 import { Box, Code, Folder, ChevronRight, FileType, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
-import { buildSymbolUrl, getKindColor, getKindLabel } from "@/lib/utils/url";
+import { buildSymbolUrl, getKindColor, getKindLabel, slugifyPackageName } from "@/lib/utils/url";
 import {
   getPackageBuildId,
   getCatalogEntries,
@@ -22,7 +22,6 @@ import { PackageTableOfContents, type PackageTOCSection } from "./PackageTableOf
 import { MarkdownContent } from "./MarkdownContent";
 import { packageToMarkdownFromCatalog } from "@/lib/ir/markdown-generator";
 import { getBaseUrl } from "@/lib/config/mcp";
-import { slugifyPackageName } from "@/lib/utils/url";
 
 interface PackagePageProps {
   language: UrlLanguage;
