@@ -136,11 +136,25 @@ export class JavaTransformer {
   }
 
   /**
+   * Build a consistent symbol ID for a member.
+   * This ID must match the ID used for top-level method/constructor symbols
+   * so that member lookups work correctly.
+   */
+  private buildMemberSymbolId(type: JavaType, memberName: string): string {
+    const parentQualifiedName = type.packageName
+      ? `${type.packageName}.${type.name}`
+      : type.name;
+    const qualifiedName = `${parentQualifiedName}.${memberName}`;
+    const symbolId = qualifiedName.replace(/\./g, "_");
+    return `${this.packageId}:${symbolId}`;
+  }
+
+  /**
    * Transform a constructor to a member record.
    */
   private transformConstructor(ctor: JavaConstructor, type: JavaType): MemberRecord {
     return {
-      id: `${this.packageId}:${type.name}.${type.name}`,
+      id: this.buildMemberSymbolId(type, type.name),
       name: type.name,
       kind: "constructor",
       signature: this.buildConstructorSignature(ctor, type),
@@ -156,7 +170,7 @@ export class JavaTransformer {
    */
   private transformMethod(method: JavaMethod, type: JavaType): MemberRecord {
     return {
-      id: `${this.packageId}:${type.name}.${method.name}`,
+      id: this.buildMemberSymbolId(type, method.name),
       name: method.name,
       kind: "method",
       signature: this.buildMethodSignature(method),
@@ -176,7 +190,7 @@ export class JavaTransformer {
    */
   private transformField(field: JavaField, type: JavaType): MemberRecord {
     return {
-      id: `${this.packageId}:${type.name}.${field.name}`,
+      id: this.buildMemberSymbolId(type, field.name),
       name: field.name,
       kind: "property",
       signature: this.buildFieldSignature(field),

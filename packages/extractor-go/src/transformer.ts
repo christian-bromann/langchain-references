@@ -206,11 +206,22 @@ export class GoTransformer {
   }
 
   /**
+   * Build a consistent symbol ID for a member.
+   * This ID must match the ID used for top-level method symbols
+   * so that member lookups work correctly.
+   */
+  private buildMemberSymbolId(typeName: string, memberName: string): string {
+    const qualifiedName = `${typeName}.${memberName}`;
+    const symbolId = qualifiedName.replace(/\./g, "_");
+    return `${this.packageId}:${symbolId}`;
+  }
+
+  /**
    * Transform a method to a member record.
    */
   private transformMethod(method: GoMethod, type: GoType): MemberRecord {
     return {
-      id: `${this.packageId}:${type.name}.${method.name}`,
+      id: this.buildMemberSymbolId(type.name, method.name),
       name: method.name,
       kind: "method",
       signature: method.signature,
@@ -262,7 +273,7 @@ export class GoTransformer {
       : `${field.name} ${field.type}`;
 
     return {
-      id: `${this.packageId}:${type.name}.${field.name}`,
+      id: this.buildMemberSymbolId(type.name, field.name),
       name: field.name,
       kind: "property",
       signature,

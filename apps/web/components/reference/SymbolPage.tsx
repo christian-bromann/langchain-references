@@ -372,7 +372,10 @@ function toDisplaySymbol(
   });
 
   const members: DisplayMember[] | undefined = filteredMembers?.map((m) => {
-    const memberSymbol = memberSymbols?.get(m.refId);
+    // Use refId if available (MemberReference format), fall back to id (ExtractorMember format)
+    // This handles both TypeScript/Python (refId) and Java/Go (id) member formats
+    const memberId = m.refId || (m as unknown as { id?: string }).id;
+    const memberSymbol = memberId ? memberSymbols?.get(memberId) : undefined;
     // Use type from member reference (for attributes) or extract from signature
     const type = m.type || (memberSymbol
       ? extractTypeFromSignature(memberSymbol.signature, m.kind)
@@ -381,7 +384,7 @@ function toDisplaySymbol(
     return {
       name: m.name,
       kind: m.kind,
-      refId: m.refId,
+      refId: memberId,
       visibility: m.visibility,
       type,
       summary: memberSymbol?.docs?.summary || undefined,
@@ -1062,10 +1065,14 @@ async function resolveInheritedMembers(
       // Skip private members
       if (member.visibility === "private") continue;
 
-      // Resolve member details
-      let memberSymbol = symbolsById.get(member.refId);
+      // Use refId if available (MemberReference format), fall back to id (ExtractorMember format)
+      // This handles both TypeScript/Python (refId) and Java/Go (id) member formats
+      const memberId = member.refId || (member as unknown as { id?: string }).id;
 
-      // If refId lookup fails, try to find by name in the routing map (for re-exported symbols)
+      // Resolve member details
+      let memberSymbol = memberId ? symbolsById.get(memberId) : undefined;
+
+      // If ID lookup fails, try to find by name in the routing map (for re-exported symbols)
       if (!memberSymbol) {
         const qualifiedName = await findSymbolQualifiedNameByName(
           buildId,
@@ -1085,7 +1092,7 @@ async function resolveInheritedMembers(
       inheritedMembers.push({
         name: member.name,
         kind: member.kind,
-        refId: member.refId,
+        refId: memberId,
         visibility: member.visibility,
         type,
         summary: memberSymbol?.docs?.summary || undefined,
@@ -1264,10 +1271,16 @@ export async function SymbolPage({
         memberSymbols = new Map();
         // Fetch each member symbol individually in parallel
         const memberPromises = irSymbol.members.map(async (member) => {
-          // First, try to fetch the symbol by refId
-          let memberSymbol = await getIndividualSymbolData(buildId, member.refId, packageId);
+          // Use refId if available (MemberReference format), fall back to id (ExtractorMember format)
+          // This handles both TypeScript/Python (refId) and Java/Go (id) member formats
+          const memberId = member.refId || (member as unknown as { id?: string }).id;
 
-          // If refId lookup fails (common for re-exported symbols), try to find by name
+          // First, try to fetch the symbol by member ID
+          let memberSymbol = memberId
+            ? await getIndividualSymbolData(buildId, memberId, packageId)
+            : null;
+
+          // If ID lookup fails (common for re-exported symbols), try to find by name
           if (!memberSymbol) {
             const qualifiedName = await findSymbolQualifiedNameByName(
               buildId,
@@ -1282,15 +1295,15 @@ export async function SymbolPage({
           }
 
           if (memberSymbol) {
-            return { refId: member.refId, symbol: memberSymbol };
+            return { memberId, symbol: memberSymbol };
           }
           return null;
         });
 
         const memberResults = await Promise.all(memberPromises);
         for (const result of memberResults) {
-          if (result) {
-            memberSymbols.set(result.refId, result.symbol);
+          if (result && result.memberId) {
+            memberSymbols.set(result.memberId, result.symbol);
           }
         }
       }
