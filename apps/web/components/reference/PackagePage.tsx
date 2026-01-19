@@ -72,7 +72,8 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
     packageName.startsWith("langchain") ||
     packageName.startsWith("@langchain/") ||
     packageName.startsWith("langgraph") ||
-    packageName.startsWith("deepagent");
+    packageName.startsWith("deepagent") ||
+    packageName === "langsmith";
 
   if (!isLikelyPackage) {
     // This is likely a project name or invalid URL, not a package
