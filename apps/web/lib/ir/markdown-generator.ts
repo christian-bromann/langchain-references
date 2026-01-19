@@ -324,10 +324,12 @@ export function symbolToMarkdown(
       // Some IR builds store `symbol.source.path` relative to the package root (e.g. `src/...`).
       // If the caller provides `repoPathPrefix` (from the manifest's package repo path),
       // we join it to build a correct GitHub URL for monorepos.
+      // Treat "." as empty (means package is at repo root)
       const cleanPrefix = opts.repoPathPrefix ? opts.repoPathPrefix.replace(/\/+$/, "") : "";
+      const effectivePrefix = cleanPrefix === "." ? "" : cleanPrefix;
       const githubPath =
-        cleanPrefix && !cleanedPath.startsWith(`${cleanPrefix}/`)
-          ? `${cleanPrefix}/${cleanedPath}`
+        effectivePrefix && !cleanedPath.startsWith(`${effectivePrefix}/`)
+          ? `${effectivePrefix}/${cleanedPath}`
           : cleanedPath;
 
       const sourceUrl = symbol.source.line

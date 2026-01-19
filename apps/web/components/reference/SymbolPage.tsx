@@ -853,7 +853,8 @@ function joinRepoPathPrefix(prefix: string, sourcePath: string): string {
   const cleanPrefix = prefix.replace(/\/+$/, "");
   const cleanSource = sourcePath.replace(/^[./]+/, "");
 
-  if (!cleanPrefix) return cleanSource;
+  // Treat "." as empty (means package is at repo root)
+  if (!cleanPrefix || cleanPrefix === ".") return cleanSource;
   if (cleanSource === cleanPrefix) return cleanSource;
   if (cleanSource.startsWith(`${cleanPrefix}/`)) return cleanSource;
 
