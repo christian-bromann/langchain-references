@@ -1122,12 +1122,17 @@ export class TypeDocTransformer {
       })
       .map((child) => {
         const kind = this.mapKind(child.kind) || "property";
-        return {
+        const memberRef: MemberReference = {
           name: child.name,
           refId: this.generateSymbolId(kind, [reflection.name, child.name]),
           kind,
           visibility: this.getVisibility(child),
         };
+        // Include type annotation for properties (attributes)
+        if (kind === "property" && "type" in child && child.type) {
+          memberRef.type = this.formatType(child.type as TypeDocType);
+        }
+        return memberRef;
       });
   }
 

@@ -16,14 +16,19 @@ import { Search, MessageCircle, Github, Moon, Sun, MoreVertical, BookOpen } from
 import { cn } from "@/lib/utils/cn";
 import { SearchModal, useSearchShortcut } from "@/components/search/SearchModal";
 import { ProjectTabs, getCurrentProject, getCurrentLanguage } from "./ProjectTabs";
-import { MobileProjectMenu } from "./MobileProjectMenu";
 import { OfflineBadge } from "./OfflineIndicator";
 import { getEnabledProjects } from "@/lib/config/projects";
+import type { SidebarPackage } from "./Sidebar";
 
-export function Header() {
+interface HeaderProps {
+  pythonPackages?: SidebarPackage[];
+  javascriptPackages?: SidebarPackage[];
+  onMobileMenuOpen?: () => void;
+}
+
+export function Header({ pythonPackages = [], javascriptPackages = [], onMobileMenuOpen }: HeaderProps) {
   const { theme, setTheme } = useTheme();
   const [searchOpen, setSearchOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
   // Get projects and current context
@@ -190,8 +195,8 @@ export function Header() {
             </button>
             <button
               aria-label="Open project menu"
-              className="h-7 w-5 flex items-center justify-end"
-              onClick={() => setMobileMenuOpen(true)}
+              className="h-7 w-5 flex items-center justify-end cursor-pointer"
+              onClick={onMobileMenuOpen}
             >
               <MoreVertical className="h-4 w-4 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
             </button>
@@ -207,15 +212,6 @@ export function Header() {
 
       {/* Search Modal */}
       <SearchModal open={searchOpen} onOpenChange={setSearchOpen} />
-
-      {/* Mobile Project Menu */}
-      <MobileProjectMenu
-        open={mobileMenuOpen}
-        onClose={() => setMobileMenuOpen(false)}
-        projects={projects}
-        currentProject={currentProject}
-        currentLanguage={currentLanguage}
-      />
     </header>
   );
 }

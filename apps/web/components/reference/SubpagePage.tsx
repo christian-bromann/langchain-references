@@ -18,6 +18,9 @@ import {
 } from "@/lib/ir/loader";
 import { PackageTableOfContents, type PackageTOCSection } from "./PackageTableOfContents";
 import { MarkdownContent } from "./MarkdownContent";
+import { subpageToMarkdown } from "@/lib/ir/markdown-generator";
+import { getBaseUrl } from "@/lib/config/mcp";
+import { slugifyPackageName } from "@/lib/utils/url";
 
 interface SubpagePageProps {
   language: UrlLanguage;
@@ -307,7 +310,17 @@ export async function SubpagePage({
       </div>
 
       {/* Table of Contents sidebar */}
-      <PackageTableOfContents sections={tocSections} />
+      <PackageTableOfContents
+        sections={tocSections}
+        markdown={subpageToMarkdown(
+          subpageData.title,
+          packageName,
+          subpageData.markdownContent || "",
+          resolvedEntries,
+          language === "python" ? "python" : "typescript",
+        )}
+        pageUrl={`${getBaseUrl()}/${languagePath}/${slugifyPackageName(packageName)}/${subpageSlug}`}
+      />
     </div>
   );
 }

@@ -1717,6 +1717,7 @@ function TypeReferenceDisplay({
   language,
   packageName,
   typeUrlMap,
+  disableLinks = false,
 }: {
   typeStr: string;
   knownSymbols: Map<string, string>;
@@ -1724,6 +1725,8 @@ function TypeReferenceDisplay({
   packageName: string;
   /** Map of type names to their resolved URLs (for cross-project linking) */
   typeUrlMap?: Map<string, string>;
+  /** Disable rendering links (useful when inside another link to avoid nested <a> tags) */
+  disableLinks?: boolean;
 }) {
   // Regex to match potential type names (identifiers starting with uppercase or lowercase for Python builtins)
   const typeNamePattern = /([A-Za-z][a-zA-Z0-9_]*)/g;
@@ -1751,43 +1754,76 @@ function TypeReferenceDisplay({
       const urlPath = slugifySymbolPath(symbolPath, hasPackagePrefix);
       const href = `/${langPath}/${pkgSlug}/${urlPath}`;
 
-      parts.push(
-        <Link
-          key={`link-${startIndex}`}
-          href={href}
-          className="text-primary hover:text-primary/80 underline decoration-dashed decoration-primary/50 underline-offset-2"
-        >
-          {typeName}
-        </Link>,
-      );
+      if (disableLinks) {
+        parts.push(
+          <span
+            key={`link-${startIndex}`}
+            className="text-primary"
+          >
+            {typeName}
+          </span>,
+        );
+      } else {
+        parts.push(
+          <Link
+            key={`link-${startIndex}`}
+            href={href}
+            className="text-primary hover:text-primary/80 underline decoration-dashed decoration-primary/50 underline-offset-2"
+          >
+            {typeName}
+          </Link>,
+        );
+      }
     }
     // Check if we have a cross-project URL for this type
     else if (typeUrlMap?.has(typeName)) {
-      parts.push(
-        <Link
-          key={`link-${startIndex}`}
-          href={typeUrlMap.get(typeName)!}
-          className="text-primary hover:text-primary/80 underline decoration-dashed decoration-primary/50 underline-offset-2"
-        >
-          {typeName}
-        </Link>,
-      );
+      if (disableLinks) {
+        parts.push(
+          <span
+            key={`link-${startIndex}`}
+            className="text-primary"
+          >
+            {typeName}
+          </span>,
+        );
+      } else {
+        parts.push(
+          <Link
+            key={`link-${startIndex}`}
+            href={typeUrlMap.get(typeName)!}
+            className="text-primary hover:text-primary/80 underline decoration-dashed decoration-primary/50 underline-offset-2"
+          >
+            {typeName}
+          </Link>,
+        );
+      }
     }
     // Check if this is a built-in type with external documentation
     else {
       const builtinUrl = getBuiltinTypeDocUrl(typeName, language);
       if (builtinUrl) {
-        parts.push(
-          <a
-            key={`builtin-${startIndex}`}
-            href={builtinUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-foreground-secondary hover:text-foreground underline decoration-dotted decoration-foreground-muted/50 underline-offset-2"
-          >
-            {typeName}
-          </a>,
-        );
+        if (disableLinks) {
+          parts.push(
+            <span
+              key={`builtin-${startIndex}`}
+              className="text-foreground-secondary"
+            >
+              {typeName}
+            </span>,
+          );
+        } else {
+          parts.push(
+            <a
+              key={`builtin-${startIndex}`}
+              href={builtinUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-foreground-secondary hover:text-foreground underline decoration-dotted decoration-foreground-muted/50 underline-offset-2"
+            >
+              {typeName}
+            </a>,
+          );
+        }
       } else {
         parts.push(<span key={`type-${startIndex}`}>{typeName}</span>);
       }
@@ -2070,6 +2106,7 @@ function MemberCard({
                   language={language}
                   packageName={packageName}
                   typeUrlMap={typeUrlMap}
+                  disableLinks={isLinkable}
                 />
             </span>
           )}
@@ -2083,6 +2120,7 @@ function MemberCard({
                   language={language}
                   packageName={packageName}
                   typeUrlMap={typeUrlMap}
+                  disableLinks={isLinkable}
                 />
             </span>
           )}

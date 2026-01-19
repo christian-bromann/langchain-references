@@ -6,29 +6,32 @@
  */
 
 import { Suspense } from "react";
-import { Header } from "@/components/layout/Header";
-import { SidebarLoader } from "@/components/layout/SidebarLoader";
+import { SidebarLoader, loadNavigationData } from "@/components/layout/SidebarLoader";
+import { LayoutClient } from "@/components/layout/LayoutClient";
 
-export default function ReferenceLayout({ children }: { children: React.ReactNode }) {
+export default async function ReferenceLayout({ children }: { children: React.ReactNode }) {
+  // Load navigation data at the layout level so it can be shared
+  // between Header (MobileProjectMenu) and Sidebar
+  const { pythonPackages, javascriptPackages } = await loadNavigationData();
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <Header />
+      <LayoutClient pythonPackages={pythonPackages} javascriptPackages={javascriptPackages}>
+        {/* Main layout with sidebar */}
+        <div className="max-w-8xl mx-auto px-0 lg:px-5">
+          <div className="flex pt-header">
+            {/* Sidebar */}
+            <Suspense fallback={<SidebarSkeleton />}>
+              <SidebarLoader />
+            </Suspense>
 
-      {/* Main layout with sidebar */}
-      <div className="max-w-8xl mx-auto px-0 lg:px-5">
-        <div className="flex pt-header">
-          {/* Sidebar */}
-          <Suspense fallback={<SidebarSkeleton />}>
-            <SidebarLoader />
-          </Suspense>
-
-          {/* Main content - full width on mobile */}
-          <main className="flex-1 min-w-0">
-            <div className="px-6 py-8">{children}</div>
-          </main>
+            {/* Main content - full width on mobile */}
+            <main className="flex-1 min-w-0">
+              <div className="px-6 py-8">{children}</div>
+            </main>
+          </div>
         </div>
-      </div>
+      </LayoutClient>
     </div>
   );
 }

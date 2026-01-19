@@ -197,3 +197,16 @@ export async function SidebarLoader() {
 
   return <Sidebar pythonPackages={pythonPackages} javascriptPackages={javascriptPackages} />;
 }
+
+/**
+ * Load navigation data for use by NavigationProvider.
+ * This is exported so it can be called at the layout level.
+ */
+export async function loadNavigationData() {
+  const [pythonPackages, javascriptPackages] = await Promise.all([
+    loadSidebarPackages("python"),
+    loadSidebarPackages("javascript"),
+  ]);
+
+  return { pythonPackages, javascriptPackages };
+}

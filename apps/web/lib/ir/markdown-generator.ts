@@ -241,11 +241,17 @@ export function symbolToMarkdown(
     const methods = symbol.members.filter((m) => m.kind === "method" || m.kind === "function");
     const constructors = symbol.members.filter((m) => m.kind === "constructor");
 
+    // Helper to build member URL
+    const buildMemberUrl = (memberName: string): string => {
+      return `${canonicalUrl}/${memberName}`;
+    };
+
     if (constructors.length > 0) {
       lines.push("## Constructors");
       lines.push("");
       for (const ctor of constructors) {
-        lines.push(`- \`${ctor.name}()\``);
+        const url = buildMemberUrl(ctor.name);
+        lines.push(`- [\`${ctor.name}()\`](${url})`);
       }
       lines.push("");
     }
@@ -263,7 +269,8 @@ export function symbolToMarkdown(
       lines.push("## Methods");
       lines.push("");
       for (const method of methods) {
-        lines.push(`- \`${method.name}()\``);
+        const url = buildMemberUrl(method.name);
+        lines.push(`- [\`${method.name}()\`](${url})`);
       }
       lines.push("");
     }
@@ -544,6 +551,125 @@ export function packageToMarkdownFromCatalog(
       const url = buildEntryUrl(fn);
       const summary = fn.summary ? ` - ${fn.summary}` : "";
       lines.push(`- [\`${fn.name}()\`](${url})${summary}`);
+    }
+    lines.push("");
+  }
+
+  if (interfaces.length > 0) {
+    lines.push("## Interfaces");
+    lines.push("");
+    for (const iface of interfaces) {
+      const url = buildEntryUrl(iface);
+      const summary = iface.summary ? ` - ${iface.summary}` : "";
+      lines.push(`- [\`${iface.name}\`](${url})${summary}`);
+    }
+    lines.push("");
+  }
+
+  if (types.length > 0) {
+    lines.push("## Types");
+    lines.push("");
+    for (const type of types) {
+      const url = buildEntryUrl(type);
+      const summary = type.summary ? ` - ${type.summary}` : "";
+      lines.push(`- [\`${type.name}\`](${url})${summary}`);
+    }
+    lines.push("");
+  }
+
+  if (enums.length > 0) {
+    lines.push("## Enums");
+    lines.push("");
+    for (const enumSym of enums) {
+      const url = buildEntryUrl(enumSym);
+      const summary = enumSym.summary ? ` - ${enumSym.summary}` : "";
+      lines.push(`- [\`${enumSym.name}\`](${url})${summary}`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Generate markdown documentation for a subpage.
+ * Combines markdown content with grouped symbol entries.
+ *
+ * @param title - The subpage title
+ * @param packageName - The parent package name
+ * @param markdownContent - The markdown content from the subpage
+ * @param entries - Array of resolved catalog entries
+ * @param language - The language (python or typescript)
+ * @returns Markdown string
+ */
+export function subpageToMarkdown(
+  title: string,
+  packageName: string,
+  markdownContent: string,
+  entries: CatalogEntry[],
+  language: Language,
+): string {
+  const lines: string[] = [];
+  const baseUrl = getBaseUrl();
+  const langPath = language === "python" ? "python" : "javascript";
+  const packageSlug = slugifyPackageName(packageName);
+
+  lines.push(`# ${title}`);
+  lines.push("");
+  lines.push(`> ${packageName} → ${title}`);
+  lines.push("");
+
+  // Include markdown content if available
+  if (markdownContent) {
+    lines.push(markdownContent);
+    lines.push("");
+  }
+
+  // Helper to build a symbol URL
+  const buildEntryUrl = (entry: CatalogEntry): string => {
+    const parts = entry.qualifiedName.split(".");
+    const hasPackagePrefix = language === "python" && parts.length > 1 && parts[0].includes("_");
+    const symbolSlug = slugifySymbolPath(entry.qualifiedName, hasPackagePrefix);
+    return `${baseUrl}/${langPath}/${packageSlug}/${symbolSlug}`;
+  };
+
+  // Group entries by kind
+  const classes = entries.filter((e) => e.kind === "class");
+  const functions = entries.filter((e) => e.kind === "function");
+  const interfaces = entries.filter((e) => e.kind === "interface");
+  const types = entries.filter((e) => e.kind === "typeAlias");
+  const enums = entries.filter((e) => e.kind === "enum");
+  const modules = entries.filter((e) => e.kind === "module");
+
+  if (classes.length > 0) {
+    lines.push("## Classes");
+    lines.push("");
+    for (const cls of classes) {
+      const url = buildEntryUrl(cls);
+      const summary = cls.summary ? ` - ${cls.summary}` : "";
+      lines.push(`- [\`${cls.name}\`](${url})${summary}`);
+    }
+    lines.push("");
+  }
+
+  if (functions.length > 0) {
+    lines.push("## Functions");
+    lines.push("");
+    for (const fn of functions) {
+      const url = buildEntryUrl(fn);
+      const summary = fn.summary ? ` - ${fn.summary}` : "";
+      lines.push(`- [\`${fn.name}()\`](${url})${summary}`);
+    }
+    lines.push("");
+  }
+
+  if (modules.length > 0) {
+    lines.push("## Modules");
+    lines.push("");
+    for (const mod of modules) {
+      const url = buildEntryUrl(mod);
+      const summary = mod.summary ? ` - ${mod.summary}` : "";
+      lines.push(`- [\`${mod.name}\`](${url})${summary}`);
     }
     lines.push("");
   }

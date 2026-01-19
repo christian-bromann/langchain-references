@@ -7,8 +7,9 @@
  * Shows sections like Constructors, Properties, Methods, etc. in collapsible groups.
  */
 
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { ChevronDown, List, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { CopyPageButton } from "./CopyPageButton";
 import { PageContextMenu } from "./PageContextMenu";
@@ -282,6 +283,393 @@ function TopItemIcon({ label }: { label: string }) {
 }
 
 /**
+ * Shared TOC content component (used in both desktop and mobile views)
+ */
+function TOCContent({
+  topItems,
+  sections,
+  inheritedGroups,
+  markdown,
+  pageUrl,
+  onItemClick,
+}: {
+  topItems?: TOCItem[];
+  sections: TOCSection[];
+  inheritedGroups?: TOCInheritedGroup[];
+  markdown?: string;
+  pageUrl?: string;
+  onItemClick?: () => void;
+}) {
+  const handleScrollToId = (id: string) => {
+    scrollToId(id);
+    onItemClick?.();
+  };
+
+  return (
+    <div className="pl-4 pb-8">
+      {/* AI Actions - Copy page button and context menu */}
+      {markdown && pageUrl && (
+        <div className="flex items-center mb-8">
+          <CopyPageButton markdown={markdown} />
+          <PageContextMenu pageUrl={pageUrl} markdown={markdown} />
+        </div>
+      )}
+
+      <h3 className="text-sm font-semibold text-foreground mb-3">On This Page</h3>
+
+      {/* Top-level items (examples, etc.) */}
+      {topItems && topItems.length > 0 && (
+        <div className="space-y-0 mb-2">
+          {topItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => handleScrollToId(item.id)}
+              className="flex items-center gap-1.5 w-full text-left text-sm text-foreground-secondary hover:text-primary transition-colors py-1"
+            >
+              <TopItemIcon label={item.label} />
+              <span className="truncate">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Collapsible sections for own members */}
+      {sections.length > 0 && (
+        <div className="space-y-0">
+          {sections.map((section) => (
+            <CollapsibleSectionWithCallback
+              key={section.id}
+              section={section}
+              onItemClick={onItemClick}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Inherited member groups */}
+      {inheritedGroups && inheritedGroups.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-border/30 space-y-0.5">
+          {inheritedGroups.map((group) => (
+            <InheritedGroupSectionWithCallback
+              key={group.id}
+              group={group}
+              onItemClick={onItemClick}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Collapsible section with optional callback
+ */
+function CollapsibleSectionWithCallback({
+  section,
+  onItemClick,
+}: {
+  section: TOCSection;
+  onItemClick?: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  const handleScrollToId = (id: string) => {
+    scrollToId(id);
+    onItemClick?.();
+  };
+
+  return (
+    <div>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-1.5 w-full py-1 text-left text-sm font-medium text-foreground hover:text-primary transition-colors"
+        aria-expanded={isOpen}
+      >
+        <ChevronDown
+          className={cn(
+            "h-3 w-3 shrink-0 text-foreground-muted transition-transform duration-200",
+            isOpen && "rotate-180",
+          )}
+        />
+        <span className="truncate">{section.title}</span>
+      </button>
+
+      <div
+        className={cn(
+          "overflow-hidden transition-all duration-200",
+          isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0",
+        )}
+      >
+        <div className="pl-4 space-y-0">
+          {section.items.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => handleScrollToId(item.id)}
+              className="flex items-center gap-1.5 w-full py-0.5 text-left text-xs text-foreground-secondary hover:text-primary transition-colors"
+            >
+              {item.kind && <KindIcon kind={item.kind} size="small" />}
+              <span className="truncate font-mono">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Nested collapsible section with optional callback
+ */
+function NestedCollapsibleSectionWithCallback({
+  section,
+  onItemClick,
+}: {
+  section: TOCSection;
+  onItemClick?: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleScrollToId = (id: string) => {
+    scrollToId(id);
+    onItemClick?.();
+  };
+
+  return (
+    <div>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-1.5 w-full py-0.5 text-left text-xs text-foreground-secondary hover:text-primary transition-colors"
+        aria-expanded={isOpen}
+      >
+        <ChevronDown
+          className={cn(
+            "h-2.5 w-2.5 shrink-0 text-foreground-muted transition-transform duration-200",
+            isOpen && "rotate-180",
+          )}
+        />
+        <SectionIcon title={section.title} size="small" />
+        <span className="truncate">{section.title}</span>
+      </button>
+
+      <div
+        className={cn(
+          "overflow-hidden transition-all duration-200",
+          isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0",
+        )}
+      >
+        <div className="pl-4 space-y-0">
+          {section.items.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => handleScrollToId(item.id)}
+              className="flex items-center gap-1.5 w-full py-0.5 text-left text-xs text-foreground-muted hover:text-primary transition-colors"
+            >
+              {item.kind && <KindIcon kind={item.kind} size="small" />}
+              <span className="truncate font-mono">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Collapsible inherited group component with optional callback
+ */
+function InheritedGroupSectionWithCallback({
+  group,
+  onItemClick,
+}: {
+  group: TOCInheritedGroup;
+  onItemClick?: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-1.5 w-full py-1 text-left text-xs text-foreground-secondary hover:text-primary transition-colors"
+        aria-expanded={isOpen}
+      >
+        <ChevronDown
+          className={cn(
+            "h-3 w-3 shrink-0 text-foreground-muted transition-transform duration-200",
+            isOpen && "rotate-180",
+          )}
+        />
+        <span className="truncate">
+          <span className="text-foreground-muted">from </span>
+          <span className="font-mono font-medium text-foreground">{group.baseName}</span>
+        </span>
+      </button>
+
+      <div
+        className={cn(
+          "overflow-hidden transition-all duration-200",
+          isOpen ? "max-h-[4000px] opacity-100" : "max-h-0 opacity-0",
+        )}
+      >
+        <div className="pl-4 space-y-0">
+          {group.sections.map((section) => (
+            <NestedCollapsibleSectionWithCallback
+              key={section.id}
+              section={section}
+              onItemClick={onItemClick}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Mobile TOC Component
+ * Renders the mobile TOC button and slide-in panel
+ */
+function MobileTOC({
+  isOpen,
+  onOpen,
+  onClose,
+  topItems,
+  sections,
+  inheritedGroups,
+  markdown,
+  pageUrl,
+}: {
+  isOpen: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  topItems?: TOCItem[];
+  sections: TOCSection[];
+  inheritedGroups?: TOCInheritedGroup[];
+  markdown?: string;
+  pageUrl?: string;
+}) {
+  const [isMounted, setIsMounted] = useState(false);
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+
+  // Only render on client side after hydration
+  useEffect(() => {
+    setIsMounted(true);
+
+    // Check screen size
+    const checkScreenSize = () => {
+      setIsSmallScreen(window.innerWidth < 1280);
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  // During SSR or before hydration, don't render anything
+  if (!isMounted) {
+    return null;
+  }
+
+  // Don't render mobile TOC on large screens
+  if (!isSmallScreen) {
+    return null;
+  }
+
+  const mobileContent = (
+    <>
+      {/* Mobile TOC toggle button - visible below xl screens */}
+      {!isOpen && (
+        <button
+          onClick={onOpen}
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 9999,
+            width: '48px',
+            height: '48px',
+            borderRadius: '50%',
+            backgroundColor: '#2F6868',
+            color: 'white',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+          className="flex items-center justify-center hover:opacity-90 transition-opacity"
+          aria-label="Open table of contents"
+        >
+          <List className="h-5 w-5" />
+        </button>
+      )}
+
+      {/* Mobile TOC overlay - backdrop */}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9998,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backdropFilter: 'blur(4px)',
+          opacity: isOpen ? 1 : 0,
+          pointerEvents: isOpen ? 'auto' : 'none',
+          transition: 'opacity 200ms',
+        }}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Mobile TOC slide-in panel */}
+      <nav
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          zIndex: 9999,
+          height: '100%',
+          width: '320px',
+          maxWidth: '85vw',
+          backgroundColor: 'var(--bg-primary)',
+          borderLeft: '1px solid var(--border-light)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 300ms ease-out',
+        }}
+        aria-label="On this page"
+        aria-hidden={!isOpen}
+      >
+        {/* Panel header */}
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <span className="font-semibold text-foreground">On This Page</span>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-md text-foreground-secondary hover:text-foreground hover:bg-background-secondary transition-colors cursor-pointer"
+            aria-label="Close table of contents"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Panel content */}
+        <div className="overflow-y-auto h-[calc(100%-4rem)] p-4">
+          <TOCContent
+            topItems={topItems}
+            sections={sections}
+            inheritedGroups={inheritedGroups}
+            markdown={markdown}
+            pageUrl={pageUrl}
+            onItemClick={onClose}
+          />
+        </div>
+      </nav>
+    </>
+  );
+
+  // Use portal to render at document.body level for proper fixed positioning
+  return createPortal(mobileContent, document.body);
+}
+
+/**
  * Main Table of Contents component
  */
 export function TableOfContents({
@@ -291,6 +679,31 @@ export function TableOfContents({
   markdown,
   pageUrl,
 }: TableOfContentsProps) {
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // Close mobile TOC when pressing Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isMobileOpen) {
+        setIsMobileOpen(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isMobileOpen]);
+
+  // Prevent body scroll when mobile TOC is open
+  useEffect(() => {
+    if (isMobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobileOpen]);
+
   // Don't render if there's nothing to show
   const hasContent =
     (topItems && topItems.length > 0) ||
@@ -302,55 +715,32 @@ export function TableOfContents({
   }
 
   return (
-    <nav
-      className="hidden xl:block sticky top-[calc(var(--header-height)+2rem)] self-start w-toc shrink-0 pl-8 max-h-[calc(100vh-var(--header-height)-4rem)] overflow-y-auto scrollbar-hide"
-      aria-label="On this page"
-    >
-      <div className="pl-4 pb-8">
-        {/* AI Actions - Copy page button and context menu */}
-        {markdown && pageUrl && (
-          <div className="flex items-center mb-8">
-            <CopyPageButton markdown={markdown} />
-            <PageContextMenu pageUrl={pageUrl} markdown={markdown} />
-          </div>
-        )}
+    <>
+      {/* Desktop TOC - visible on xl screens */}
+      <nav
+        className="hidden xl:block sticky top-[calc(var(--header-height)+2rem)] self-start w-toc shrink-0 pl-8 max-h-[calc(100vh-var(--header-height)-4rem)] overflow-y-auto scrollbar-hide"
+        aria-label="On this page"
+      >
+        <TOCContent
+          topItems={topItems}
+          sections={sections}
+          inheritedGroups={inheritedGroups}
+          markdown={markdown}
+          pageUrl={pageUrl}
+        />
+      </nav>
 
-        <h3 className="text-sm font-semibold text-foreground mb-3">On This Page</h3>
-
-        {/* Top-level items (examples, etc.) */}
-        {topItems && topItems.length > 0 && (
-          <div className="space-y-0 mb-2">
-            {topItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => scrollToId(item.id)}
-                className="flex items-center gap-1.5 w-full text-left text-sm text-foreground-secondary hover:text-primary transition-colors py-1"
-              >
-                <TopItemIcon label={item.label} />
-                <span className="truncate">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Collapsible sections for own members */}
-        {sections.length > 0 && (
-          <div className="space-y-0">
-            {sections.map((section) => (
-              <CollapsibleSection key={section.id} section={section} />
-            ))}
-          </div>
-        )}
-
-        {/* Inherited member groups */}
-        {inheritedGroups && inheritedGroups.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-border/30 space-y-0.5">
-            {inheritedGroups.map((group) => (
-              <InheritedGroupSection key={group.id} group={group} />
-            ))}
-          </div>
-        )}
-      </div>
-    </nav>
+      {/* Mobile TOC - rendered via portal to document.body for proper fixed positioning */}
+      <MobileTOC
+        isOpen={isMobileOpen}
+        onOpen={() => setIsMobileOpen(true)}
+        onClose={() => setIsMobileOpen(false)}
+        topItems={topItems}
+        sections={sections}
+        inheritedGroups={inheritedGroups}
+        markdown={markdown}
+        pageUrl={pageUrl}
+      />
+    </>
   );
 }

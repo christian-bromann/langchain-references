@@ -138,9 +138,10 @@ export function PageContextMenu({
         <DropdownMenu.Content
           align="end"
           sideOffset={8}
+          style={{ zIndex: 10000 }}
           className={cn(
             // Container
-            "z-50 min-w-[260px] p-1.5",
+            "min-w-[260px] p-1.5",
             "rounded-xl border shadow-xl",
             "border-gray-200 dark:border-white/[0.07]",
             "bg-white dark:bg-gray-900",
