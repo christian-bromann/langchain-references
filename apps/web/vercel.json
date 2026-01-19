@@ -52,6 +52,14 @@
     {
       "source": "/javascript",
       "destination": "/javascript"
+    },
+    {
+      "source": "/java",
+      "destination": "/java"
+    },
+    {
+      "source": "/go",
+      "destination": "/go"
     }
   ]
 }

@@ -161,12 +161,18 @@ export async function middleware(request: NextRequest) {
   // Only handle reference doc pages:
   // - /python...
   // - /javascript...
+  // - /java...
+  // - /go...
   // - /v0.3/python... (legacy)
   const isRefPage =
     pathname === "/python" ||
     pathname.startsWith("/python/") ||
     pathname === "/javascript" ||
     pathname.startsWith("/javascript/") ||
+    pathname === "/java" ||
+    pathname.startsWith("/java/") ||
+    pathname === "/go" ||
+    pathname.startsWith("/go/") ||
     pathname === "/v0.3/python" ||
     pathname.startsWith("/v0.3/python/");
 
@@ -281,10 +287,14 @@ export const config = {
      * Match all reference doc paths:
      * - /python/...
      * - /javascript/...
+     * - /java/...
+     * - /go/...
      * - /v0.3/python/... (legacy)
      */
     "/python/:path*",
     "/javascript/:path*",
+    "/java/:path*",
+    "/go/:path*",
     "/v0.3/python/:path*",
   ],
 };

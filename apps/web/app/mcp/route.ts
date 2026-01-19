@@ -76,8 +76,8 @@ const TOOLS: McpTool[] = [
         },
         language: {
           type: "string",
-          enum: ["python", "javascript"],
-          description: "Programming language to search (defaults to both if not specified)",
+          enum: ["python", "javascript", "java", "go"],
+          description: "Programming language to search (defaults to all if not specified)",
         },
         limit: {
           type: "number",
@@ -340,10 +340,10 @@ async function searchSymbols(
   const baseUrl = getBaseUrl();
   const projects = getEnabledProjects();
 
-  // Search both languages if not specified
-  const languages: Array<"python" | "javascript"> = language
+  // Search all languages if not specified
+  const languages: Array<"python" | "javascript" | "java" | "go"> = language
     ? [language]
-    : ["python", "javascript"];
+    : ["python", "javascript", "java", "go"];
 
   // Search across all projects
   for (const project of projects) {
@@ -354,7 +354,14 @@ async function searchSymbols(
       const manifest = await getManifestData(buildId);
       if (!manifest) continue;
 
-      const targetLang = lang === "python" ? "python" : "typescript";
+      // Map URL language to symbol language
+      const langMap: Record<string, string> = {
+        python: "python",
+        javascript: "typescript",
+        java: "java",
+        go: "go",
+      };
+      const targetLang = langMap[lang] || lang;
       const packages = manifest.packages.filter((p) => p.language === targetLang);
 
       for (const pkg of packages) {

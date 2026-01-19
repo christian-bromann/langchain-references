@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import MiniSearch from "minisearch";
-import type { SearchRecord, Language as IRLanguage } from "@langchain/ir-schema";
+import { LANGUAGE, type SearchRecord, type Language as IRLanguage } from "@langchain/ir-schema";
 import { getBuildIdForLanguage, getManifestData, getSymbols } from "@/lib/ir/loader";
 import { getEnabledProjects } from "@/lib/config/projects";
 import { slugifyPackageName, slugifySymbolPath } from "@/lib/utils/url";
@@ -332,16 +332,19 @@ export async function GET(request: NextRequest): Promise<Response> {
     );
   }
 
-  if (!["python", "javascript"].includes(targetLanguage)) {
+  const supportedLanguages = ["python", "javascript", "java", "go"];
+  if (!LANGUAGE.includes(targetLanguage)) {
     return NextResponse.json(
-      { error: "Invalid targetLanguage. Must be 'python' or 'javascript'" },
+      { error: "Invalid targetLanguage. Must be 'python', 'javascript', 'java', or 'go'" },
       { status: 400 },
     );
   }
 
   try {
+    // Determine effective source language
+    // For cross-language resolution, we need a valid source language
     const effectiveSourceLanguage: Language =
-      sourceLanguage && ["python", "javascript"].includes(sourceLanguage)
+      sourceLanguage && supportedLanguages.includes(sourceLanguage)
         ? sourceLanguage
         : targetLanguage === "python"
           ? "javascript"

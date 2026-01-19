@@ -12,7 +12,7 @@
  */
 
 import { unstable_cache } from "next/cache";
-import type { Language } from "@langchain/ir-schema";
+import { type Language, LANGUAGE } from "@langchain/ir-schema";
 
 import type { Manifest, Package, SymbolRecord, RoutingMap } from "./types";
 
@@ -701,14 +701,12 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
  */
 async function buildManifestFromPackageIndexes(): Promise<Manifest | null> {
   const projects = ["langchain", "langgraph", "deepagent", "integrations", "langsmith"] as const;
-  const languages = ["python", "javascript"] as const;
-
   const packages: Package[] = [];
   let latestBuildId = "";
 
   // Fetch all project indexes in parallel
   const indexPromises = projects.flatMap((project) =>
-    languages.map(async (language) => {
+    LANGUAGE.map(async (language) => {
       const index = await getProjectPackageIndex(project, language);
       return { project, language, index };
     }),
