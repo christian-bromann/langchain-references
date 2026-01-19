@@ -9,13 +9,13 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
-import type { ProjectConfig } from "@langchain/ir-schema";
+import type { ProjectConfig, Language } from "@langchain/ir-schema";
 import { getDefaultPackageSlug } from "@/lib/config/projects";
 
 interface ProjectTabsProps {
   projects: ProjectConfig[];
   currentProject: ProjectConfig | null;
-  currentLanguage: "python" | "javascript";
+  currentLanguage: Language;
 }
 
 export function ProjectTabs({ projects, currentProject, currentLanguage }: ProjectTabsProps) {
