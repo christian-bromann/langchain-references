@@ -6,9 +6,10 @@
  * and the rendering layer.
  */
 
-export * from "./manifest.js";
-export * from "./symbol.js";
-export * from "./search.js";
-export * from "./routing.js";
-export * from "./project.js";
-export * from "./versioning.js";
+export * from "./manifest";
+export * from "./symbol";
+export * from "./search";
+export * from "./routing";
+export * from "./project";
+export * from "./versioning";
+export * from "./language";

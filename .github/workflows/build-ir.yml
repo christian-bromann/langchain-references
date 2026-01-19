@@ -28,7 +28,9 @@ on:
           - ""
           - langchain
           - langgraph
+          - langsmith
           - deepagent
+          - integrations
       language:
         description: "Language to build (leave empty for all)"
         required: false
@@ -37,6 +39,8 @@ on:
           - ""
           - python
           - typescript
+          - java
+          - go
       with_versions:
         description: "Include version history tracking"
         required: false
@@ -117,8 +121,8 @@ jobs:
           fi
 
           # Download all project pointers and manifests
-          PROJECTS=("langchain" "langgraph" "deepagent")
-          LANGUAGES=("python" "javascript")
+          PROJECTS=("langchain" "langgraph" "langsmith" "deepagent" "integrations")
+          LANGUAGES=("python" "javascript" "java" "go")
           DOWNLOADED=0
 
           for project in "${PROJECTS[@]}"; do
@@ -220,7 +224,7 @@ jobs:
           # Generate matrix entries from config files
           PACKAGES="[]"
 
-          for config_file in configs/*-python.json configs/*-typescript.json; do
+          for config_file in configs/*-python.json configs/*-typescript.json configs/*-java.json configs/*-go.json; do
             # Skip if no files match
             [ -f "$config_file" ] || continue
 
@@ -229,8 +233,8 @@ jobs:
             [[ "$config_file" == *"-versions.json" ]] && continue
 
             config_name=$(basename "$config_file")
-            file_project=$(echo "$config_name" | sed 's/-\(python\|typescript\)\.json$//')
-            file_language=$(echo "$config_name" | sed 's/.*-\(python\|typescript\)\.json$/\1/')
+            file_project=$(echo "$config_name" | sed 's/-\(python\|typescript\|java\|go\)\.json$//')
+            file_language=$(echo "$config_name" | sed 's/.*-\(python\|typescript\|java\|go\)\.json$/\1/')
 
             # Apply project filter
             if [ -n "$PROJECT" ] && [ "$file_project" != "$PROJECT" ]; then
@@ -349,11 +353,13 @@ jobs:
 
           # Check if this SHA exists in the blob cache
           # Look for this package's symbols.json and check if the SHA matches
-          if [ "${{ matrix.language }}" == "python" ]; then
-            ECOSYSTEM="py"
-          else
-            ECOSYSTEM="js"
-          fi
+          case "${{ matrix.language }}" in
+            python) ECOSYSTEM="py" ;;
+            typescript) ECOSYSTEM="js" ;;
+            java) ECOSYSTEM="java" ;;
+            go) ECOSYSTEM="go" ;;
+            *) ECOSYSTEM="js" ;;
+          esac
           PKG_ID="pkg_${ECOSYSTEM}_$(echo "$PACKAGE_NAME" | sed 's/@//g' | sed 's/\//_/g' | sed 's/-/_/g' | tr '[:upper:]' '[:lower:]')"
 
           # Search for existing symbols.json in any build
@@ -402,6 +408,19 @@ jobs:
         run: |
           cd packages/extractor-python
           pip install -e .
+
+      - name: Setup Java (for Java builds)
+        if: steps.check-existing.outputs.needs_compile == 'true' && matrix.language == 'java'
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Go (for Go builds)
+        if: steps.check-existing.outputs.needs_compile == 'true' && matrix.language == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
 
       - name: Build and Upload IR for ${{ matrix.package }}
         id: build

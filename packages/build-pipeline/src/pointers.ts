@@ -5,7 +5,7 @@
  * Handles latest build pointers, build history, and package version tracking.
  */
 
-import type { Manifest } from "@langchain/ir-schema";
+import type { Manifest, Language, SymbolLanguage } from "@langchain/ir-schema";
 import { putWithRetry } from "./upload.js";
 import { getBlobBaseUrl } from "./blob-utils.js";
 
@@ -28,7 +28,7 @@ export interface PointerUpdateOptions {
 export interface PackagePointerData {
   packageId: string;
   packageName: string;
-  ecosystem: "python" | "javascript";
+  ecosystem: Language;
   project: string;
   buildId: string;
   version: string;
@@ -66,7 +66,7 @@ export interface PackagePointer {
  */
 export interface ProjectPackageIndex {
   project: string;
-  language: "python" | "javascript";
+  language: Language;
   updatedAt: string;
   packages: Record<
     string,
@@ -89,7 +89,7 @@ export interface BuildMetadata {
   packages: Array<{
     packageId: string;
     displayName: string;
-    language: "python" | "typescript";
+    language: SymbolLanguage;
     version: string;
   }>;
   status: "complete" | "failed";
@@ -204,7 +204,8 @@ export async function updatePointers(options: PointerUpdateOptions): Promise<voi
 
   // 2. Update per-package latest pointers
   for (const pkg of manifest.packages) {
-    const ecosystem = pkg.language === "python" ? "python" : "javascript";
+    // Map config language (typescript) to output language (javascript), others pass through
+    const ecosystem: Language = pkg.language === "typescript" ? "javascript" : pkg.language as Language;
     const pointer: LatestPointer = {
       buildId,
       version: pkg.version,
@@ -369,7 +370,7 @@ async function updatePackagePointer(data: PackagePointerData, dryRun: boolean): 
  */
 async function updateProjectPackageIndex(
   project: string,
-  language: "python" | "javascript",
+  language: Language,
   packageName: string,
   packageInfo: { buildId: string; version: string; sha: string },
   dryRun: boolean,
@@ -405,7 +406,7 @@ async function updateProjectPackageIndex(
  * Get the package pointer for a specific package.
  */
 export async function getPackagePointer(
-  ecosystem: "python" | "javascript",
+  ecosystem: Language,
   packageName: string,
 ): Promise<PackagePointer | null> {
   return fetchPointer<PackagePointer>(`${POINTERS_PATH}/packages/${ecosystem}/${packageName}.json`);
@@ -427,7 +428,7 @@ export async function getProjectPackageIndex(
  */
 export async function regenerateProjectPackageIndex(
   project: string,
-  language: "python" | "javascript",
+  language: Language,
   packageNames: string[],
   dryRun: boolean = false,
 ): Promise<void> {

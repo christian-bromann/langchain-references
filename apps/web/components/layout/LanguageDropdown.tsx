@@ -3,7 +3,7 @@
 /**
  * Language Dropdown Component
  *
- * A dropdown in the sidebar to switch between Python and JavaScript documentation.
+ * A dropdown in the sidebar to switch between available language documentation.
  * Styled similarly to Mintlify's nav dropdown.
  *
  * When switching languages, attempts to navigate to the equivalent symbol in the
@@ -17,7 +17,10 @@ import { Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { ResolveSymbolResponse } from "@/lib/symbol-resolution";
 
-const LANGUAGES = [
+/**
+ * All supported languages with their icons.
+ */
+const ALL_LANGUAGES = [
   {
     id: "python",
     name: "Python",
@@ -36,7 +39,28 @@ const LANGUAGES = [
       </svg>
     ),
   },
+  {
+    id: "java",
+    name: "Java",
+    icon: (
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M8.851 18.56s-.917.534.653.714c1.902.218 2.874.187 4.969-.211 0 0 .552.346 1.321.646-4.699 2.013-10.633-.118-6.943-1.149M8.276 15.933s-1.028.761.542.924c2.032.209 3.636.227 6.413-.308 0 0 .384.389.987.602-5.679 1.661-12.007.13-7.942-1.218M13.116 11.475c1.158 1.333-.304 2.533-.304 2.533s2.939-1.518 1.589-3.418c-1.261-1.772-2.228-2.652 3.007-5.688 0-.001-8.216 2.051-4.292 6.573M19.33 20.504s.679.559-.747.991c-2.712.822-11.288 1.069-13.669.033-.856-.373.75-.89 1.254-.998.527-.114.828-.093.828-.093-.953-.671-6.156 1.317-2.643 1.887 9.58 1.553 17.462-.7 14.977-1.82M9.292 13.21s-4.362 1.036-1.544 1.412c1.189.159 3.561.123 5.77-.062 1.806-.152 3.618-.477 3.618-.477s-.637.272-1.098.587c-4.429 1.165-12.986.623-10.522-.568 2.082-1.006 3.776-.892 3.776-.892M17.116 17.584c4.503-2.34 2.421-4.589.968-4.285-.355.074-.515.138-.515.138s.132-.207.385-.297c2.875-1.011 5.086 2.981-.928 4.562 0-.001.07-.062.09-.118M14.401 0s2.494 2.494-2.365 6.33c-3.896 3.077-.889 4.832 0 6.836-2.274-2.053-3.943-3.858-2.824-5.539 1.644-2.469 6.197-3.665 5.189-7.627M9.734 23.924c4.322.277 10.959-.153 11.116-2.198 0 0-.302.775-3.572 1.391-3.688.694-8.239.613-10.937.168 0-.001.553.457 3.393.639" />
+      </svg>
+    ),
+  },
+  {
+    id: "go",
+    name: "Go",
+    icon: (
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M1.811 10.231c-.047 0-.058-.023-.035-.059l.246-.315c.023-.035.081-.058.128-.058h4.172c.046 0 .058.035.035.07l-.199.303c-.023.036-.082.07-.117.07zM.047 11.306c-.047 0-.059-.023-.035-.058l.245-.316c.023-.035.082-.058.129-.058h5.328c.047 0 .07.035.058.07l-.093.28c-.012.047-.058.07-.105.07zm2.828 1.075c-.047 0-.059-.035-.035-.07l.163-.292c.023-.035.07-.07.117-.07h2.337c.047 0 .07.035.07.082l-.023.28c0 .047-.047.082-.082.082zM12.129 10.09l-1.764.502c-.14.035-.152.047-.269-.093-.14-.163-.233-.27-.42-.374-.56-.316-1.107-.222-1.611.14-.596.433-.893 1.074-.88 1.846.012.737.502 1.376 1.227 1.529.631.14 1.168-.035 1.611-.479.093-.093.175-.199.269-.303H9.286c-.199 0-.245-.117-.175-.292.117-.315.35-.842.432-1.11.023-.081.082-.21.257-.21h2.465c-.012.152-.012.304-.035.456-.094.726-.327 1.4-.735 2.009-.653.968-1.529 1.587-2.652 1.822-.933.199-1.822.14-2.652-.269-1.056-.514-1.67-1.435-1.857-2.582-.164-1.01.082-1.962.596-2.828.525-.902 1.273-1.517 2.232-1.892.806-.316 1.634-.386 2.49-.222 1.134.199 2.022.764 2.664 1.716.233.339.42.702.502 1.11-.012.035-.035.058-.082.07zM18.641 15.262c-1.003-.012-1.939-.257-2.771-.781-.667-.42-1.157-.98-1.46-1.693-.328-.769-.433-1.587-.293-2.419.175-1.075.749-1.927 1.6-2.594.769-.596 1.657-.921 2.63-1.015.889-.082 1.741.047 2.534.432.91.444 1.553 1.11 1.927 2.032.328.815.41 1.67.246 2.547-.187 1.145-.726 2.115-1.647 2.863-.772.632-1.665.991-2.666 1.121-.339.047-.667.059-1.1.07v-.563zm2.396-3.72c-.012-.14-.012-.257-.035-.374-.14-.714-.467-1.308-1.05-1.751-.538-.409-1.167-.514-1.834-.386-.725.14-1.297.514-1.716 1.11-.432.608-.583 1.297-.467 2.032.117.713.467 1.295 1.05 1.728.478.351 1.027.479 1.622.432.769-.059 1.39-.374 1.857-.98.374-.467.561-1.004.573-1.81z" />
+      </svg>
+    ),
+  },
 ] as const;
+
+/** Default languages if no availableLanguages prop is provided */
+const DEFAULT_LANGUAGES = ["python", "javascript"];
 
 // =============================================================================
 // URL Parsing Utilities
@@ -87,20 +111,39 @@ function isSymbolPage(pathname: string): boolean {
 // Component
 // =============================================================================
 
-export function LanguageDropdown() {
+interface LanguageDropdownProps {
+  /** List of available language IDs for this project. If not provided, defaults to Python and JavaScript. */
+  availableLanguages?: string[];
+}
+
+export function LanguageDropdown({ availableLanguages }: LanguageDropdownProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isResolving, setIsResolving] = useState(false);
+
+  // Filter languages based on what's available
+  const languages = availableLanguages
+    ? ALL_LANGUAGES.filter((l) => availableLanguages.includes(l.id))
+    : ALL_LANGUAGES.filter((l) => DEFAULT_LANGUAGES.includes(l.id));
 
   // Determine current language from pathname
   const currentLang = pathname.startsWith("/python")
     ? "python"
     : pathname.startsWith("/javascript")
       ? "javascript"
-      : null;
+      : pathname.startsWith("/java")
+        ? "java"
+        : pathname.startsWith("/go")
+          ? "go"
+          : null;
 
-  const currentLanguage = LANGUAGES.find((l) => l.id === currentLang) ?? LANGUAGES[1];
+  const currentLanguage = ALL_LANGUAGES.find((l) => l.id === currentLang) ?? ALL_LANGUAGES[0];
+
+  // Hide dropdown if only one language is available
+  if (languages.length <= 1) {
+    return null;
+  }
 
   const isLoading = isPending || isResolving;
 
@@ -110,10 +153,13 @@ export function LanguageDropdown() {
   const handleLanguageChange = async (langId: string) => {
     if (langId === currentLang) return;
 
-    // If not on a symbol page, just navigate to language root
+    const packageSlug = extractPackageFromPath(pathname);
+
+    // If not on a symbol page, navigate to same package in target language (or language root)
     if (!isSymbolPage(pathname)) {
       startTransition(() => {
-        router.push(`/${langId}`);
+        // Preserve the package when switching languages
+        router.push(packageSlug ? `/${langId}/${packageSlug}` : `/${langId}`);
       });
       return;
     }
@@ -197,7 +243,7 @@ export function LanguageDropdown() {
           {/* Icon container */}
           <div
             className={cn(
-              "h-8 w-8 flex items-center justify-center rounded-lg flex-shrink-0",
+              "h-8 w-8 flex items-center justify-center rounded-lg shrink-0",
               "border border-gray-200/70 dark:border-white/[0.07]",
               "text-primary dark:text-primary-light",
             )}
@@ -243,7 +289,7 @@ export function LanguageDropdown() {
           sideOffset={4}
           align="start"
           className={cn(
-            "z-50 min-w-[var(--radix-dropdown-menu-trigger-width)] w-full",
+            "z-50 min-w-(--radix-dropdown-menu-trigger-width) w-full",
             "max-h-96 overflow-y-auto rounded-xl p-1",
             "bg-white dark:bg-[#0D0D0D]",
             "border border-gray-200/70 dark:border-white/[0.07]",
@@ -259,7 +305,7 @@ export function LanguageDropdown() {
             "data-[side=top]:slide-in-from-bottom-2",
           )}
         >
-          {LANGUAGES.map((lang) => {
+          {languages.map((lang) => {
             const isSelected = lang.id === currentLang;
 
             return (
@@ -279,7 +325,7 @@ export function LanguageDropdown() {
                 {/* Icon container */}
                 <div
                   className={cn(
-                    "h-8 w-8 flex items-center justify-center rounded-lg flex-shrink-0",
+                    "h-8 w-8 flex items-center justify-center rounded-lg shrink-0",
                     "border border-gray-200/70 dark:border-white/[0.07]",
                     "text-primary dark:text-primary-light",
                   )}

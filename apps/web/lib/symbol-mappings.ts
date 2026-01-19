@@ -37,7 +37,7 @@ export interface SymbolAliases {
   pythonToJs: Record<string, string>;
 }
 
-export type Language = "python" | "javascript";
+export type Language = "python" | "javascript" | "java" | "go";
 
 // =============================================================================
 // Explicit Symbol Mappings

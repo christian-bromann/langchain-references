@@ -11,7 +11,7 @@ import type { SearchResult, SearchOptions } from "@langchain/ir-schema";
 export type { SearchResult, SearchOptions };
 
 /** Supported search languages */
-type SearchLanguage = "python" | "javascript";
+export type SearchLanguage = "python" | "javascript" | "java" | "go";
 
 /**
  * Search API response

@@ -5,7 +5,7 @@
  * client-side full-text search.
  */
 
-import type { Language } from "./symbol.js";
+import type { Language } from "./language";
 
 /**
  * A single search record representing a searchable symbol.

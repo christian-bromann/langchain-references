@@ -30,7 +30,8 @@ async function fetchLatestBuildId(
   project: string,
   language: string,
 ): Promise<string | null> {
-  const langSuffix = language === "python" ? "python" : "javascript";
+  // Map config language (typescript) to output language (javascript), others pass through
+  const langSuffix = language === "typescript" ? "javascript" : language;
   const pointerUrl = `${blobBaseUrl}/pointers/latest-${project}-${langSuffix}.json`;
 
   try {

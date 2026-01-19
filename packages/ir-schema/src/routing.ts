@@ -5,7 +5,8 @@
  * to symbol reference IDs.
  */
 
-import type { Language, SymbolKind } from "./symbol.js";
+import type { Language } from "./language";
+import type { SymbolKind } from "./symbol";
 
 /**
  * The routing map for a package.

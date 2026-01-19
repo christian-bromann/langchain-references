@@ -24,22 +24,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   // Add language index pages
-  entries.push({
-    url: `${BASE_URL}/python`,
-    lastModified: new Date(),
-    changeFrequency: "weekly",
-    priority: 0.9,
-  });
+  const languages = ["python", "javascript", "java", "go"] as const;
 
-  entries.push({
-    url: `${BASE_URL}/javascript`,
-    lastModified: new Date(),
-    changeFrequency: "weekly",
-    priority: 0.9,
-  });
+  for (const language of languages) {
+    entries.push({
+      url: `${BASE_URL}/${language}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+    });
+  }
 
-  // Generate entries for both languages across all projects
-  const languages = ["python", "javascript"] as const;
+  // Generate entries for all languages across all projects
 
   for (const language of languages) {
     for (const project of projects) {

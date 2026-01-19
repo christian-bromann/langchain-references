@@ -8,6 +8,8 @@
  * - llms.txt generation
  */
 
+import { symbolLanguageToLanguage } from "@langchain/ir-schema";
+
 import type { SymbolRecord, SymbolKind, Language } from "./types";
 import { slugifyPackageName, slugifySymbolPath } from "../utils/url";
 import { getBaseUrl } from "../config/mcp";
@@ -94,13 +96,6 @@ function getKindLabel(kind: SymbolKind): string {
 }
 
 /**
- * Get the code language identifier for syntax highlighting
- */
-function getCodeLanguage(language: Language): string {
-  return language === "python" ? "python" : "typescript";
-}
-
-/**
  * Escape pipe characters in table cells
  */
 function escapeTableCell(text: string): string {
@@ -150,7 +145,7 @@ export function symbolToMarkdown(
 
   // Signature
   if (symbol.signature) {
-    const codeLang = getCodeLanguage(symbol.language);
+    const codeLang = symbolLanguageToLanguage(symbol.language);
     lines.push("## Signature");
     lines.push("");
     lines.push("```" + codeLang);
@@ -293,7 +288,7 @@ export function symbolToMarkdown(
         lines.push(`### Example ${i + 1}`);
         lines.push("");
       }
-      const exampleLang = example.language || getCodeLanguage(symbol.language);
+      const exampleLang = example.language || symbolLanguageToLanguage(symbol.language);
       lines.push("```" + exampleLang);
       lines.push(cleanedCode);
       lines.push("```");
@@ -369,7 +364,7 @@ export function symbolToCompactMarkdown(symbol: SymbolRecord, packageName: strin
 
   if (symbol.signature) {
     lines.push("");
-    lines.push("```" + getCodeLanguage(symbol.language));
+    lines.push("```" + symbolLanguageToLanguage(symbol.language));
     lines.push(symbol.signature);
     lines.push("```");
   }

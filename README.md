@@ -216,6 +216,13 @@ pnpm build:ir --local --config ./configs/langchain-python.json --package langcha
 
 # Build LangGraph Python IR
 pnpm build:ir --local --config ./configs/langgraph-python.json
+
+# Build LangSmith Go
+pnpm build:ir --local --config ./configs/langsmith-go.json
+
+# Build LangSmith Java
+pnpm build:ir --local --config ./configs/langsmith-java.json
+
 ```
 
 > **Note:** The `build:ir --local` command only generates `symbols.json` and `package.json`.

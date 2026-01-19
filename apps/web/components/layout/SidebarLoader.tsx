@@ -9,20 +9,33 @@
  */
 
 import { Sidebar, type SidebarPackage, type SidebarSubpage } from "./Sidebar";
-import { getBuildIdForLanguage, getManifestData, getRoutingMapData, getPackageInfoV2 } from "@/lib/ir/loader";
+import { getBuildIdForLanguage, getManifestData, getRoutingMapData, getPackageInfoV2, getProjectPackageIndex } from "@/lib/ir/loader";
 import { getEnabledProjects } from "@/lib/config/projects";
 import type { Package, RoutingMap, SymbolKind } from "@/lib/ir/types";
+import type { Language } from "@langchain/ir-schema";
 
 /**
  * Get package URL slug from published name
  */
-function getPackageSlug(pkg: Package, language: "python" | "javascript"): string {
+function getPackageSlug(pkg: Package, language: Language): string {
+  const name = pkg.publishedName || pkg.displayName || pkg.packageId || "";
+
   if (language === "javascript") {
     // Convert @langchain/core -> langchain-core
-    return pkg.publishedName.replace(/^@/, "").replace(/\//g, "-").replace(/_/g, "-").toLowerCase();
+    return name.replace(/^@/, "").replace(/\//g, "-").replace(/_/g, "-").toLowerCase();
   }
-  // Convert langchain_core -> langchain-core
-  return pkg.publishedName.replace(/_/g, "-").toLowerCase();
+  if (language === "java") {
+    // Convert io.langchain.langsmith -> langsmith
+    const parts = name.split(".");
+    return parts[parts.length - 1].replace(/_/g, "-").toLowerCase();
+  }
+  if (language === "go") {
+    // Convert github.com/langchain-ai/langsmith-go -> langsmith
+    const parts = name.split("/");
+    return parts[parts.length - 1].replace(/_/g, "-").replace(/-go$/, "").toLowerCase();
+  }
+  // Python: Convert langchain_core -> langchain-core
+  return name.replace(/_/g, "-").toLowerCase();
 }
 
 /**
@@ -33,7 +46,7 @@ function getPackageSlug(pkg: Package, language: "python" | "javascript"): string
  */
 function buildNavItemsFromRouting(
   routingMap: RoutingMap,
-  language: "python" | "javascript",
+  language: Language,
   packageSlug: string,
 ): SidebarPackage["items"] {
   const modules: { name: string; path: string; kind: SymbolKind }[] = [];
@@ -97,9 +110,65 @@ function buildNavItemsFromRouting(
  * Load sidebar data for a language from a specific project
  */
 async function loadSidebarPackagesForProject(
-  language: "python" | "javascript",
+  language: Language,
   projectId: string,
 ): Promise<SidebarPackage[]> {
+  // First try package-level architecture (Java/Go use this)
+  const packageIndex = await getProjectPackageIndex(projectId, language);
+  if (packageIndex && Object.keys(packageIndex.packages).length > 0) {
+    // Package-level architecture: build sidebar from package index
+    const sidebarPackages: SidebarPackage[] = [];
+
+    for (const [packageId, pkgPointer] of Object.entries(packageIndex.packages)) {
+      const pkgBuildId = pkgPointer.buildId;
+
+      // Load package info to get display name and subpages
+      const packageInfoV2 = await getPackageInfoV2(packageId, pkgBuildId);
+      const displayName = packageInfoV2?.displayName || pkgPointer.displayName || pkgPointer.publishedName;
+
+      // Create a minimal Package-like object for getPackageSlug
+      const pkg = {
+        packageId,
+        displayName,
+        publishedName: pkgPointer.publishedName,
+        language: language === "javascript" ? "typescript" : language,
+        ecosystem: language,
+        version: pkgPointer.version || "0.0.0",
+      } as Package;
+
+      const slug = getPackageSlug(pkg, language);
+
+      // For Java/Go, only show package names in sidebar (no sub-module listing)
+      let items: SidebarPackage["items"] = [];
+      if (language === "javascript") {
+        const routingMap = await getRoutingMapData(pkgBuildId, packageId);
+        items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
+      }
+
+      // Load subpages from package info if available
+      let subpages: SidebarSubpage[] | undefined;
+      if (packageInfoV2?.subpages && Array.isArray(packageInfoV2.subpages)) {
+        subpages = packageInfoV2.subpages.map((sp: { slug: string; title: string }) => ({
+          slug: sp.slug,
+          title: sp.title,
+          path: `/${language}/${slug}/${sp.slug}`,
+        }));
+      }
+
+      sidebarPackages.push({
+        id: packageId,
+        name: displayName,
+        path: `/${language}/${slug}`,
+        items,
+        project: projectId,
+        subpages,
+      });
+    }
+
+    return sidebarPackages;
+  }
+
+  // Fallback to manifest-based architecture (Python/JavaScript)
   const buildId = await getBuildIdForLanguage(language, projectId);
   if (!buildId) return [];
 
@@ -108,10 +177,16 @@ async function loadSidebarPackagesForProject(
 
   // Filter by language/ecosystem AND by project
   const packages = manifest.packages.filter((p) => {
-    const matchesLanguage =
-      language === "python"
-        ? p.language === "python"
-        : p.language === "typescript" || p.ecosystem === "javascript";
+    let matchesLanguage = false;
+    if (language === "python") {
+      matchesLanguage = p.language === "python";
+    } else if (language === "javascript") {
+      matchesLanguage = p.language === "typescript" || p.ecosystem === "javascript";
+    } else if (language === "java") {
+      matchesLanguage = p.language === "java";
+    } else if (language === "go") {
+      matchesLanguage = p.language === "go";
+    }
 
     // Filter by project (using extended package info)
     const pkg = p as { project?: string };
@@ -128,8 +203,9 @@ async function loadSidebarPackagesForProject(
     // Use each package's own buildId (package-level architecture)
     const pkgBuildId = (pkg as { buildId?: string }).buildId || buildId;
 
-    // For Python, only show package names in sidebar (no sub-module listing)
-    // since Python packages have a different export structure with many modules
+    // For Python/Java/Go, only show package names in sidebar (no sub-module listing)
+    // since these packages have a different export structure with many modules
+    // JavaScript/TypeScript packages show submodule navigation
     let items: SidebarPackage["items"] = [];
     if (language === "javascript") {
       // Use routing map instead of full symbols (~100KB vs ~14MB)
@@ -164,7 +240,7 @@ async function loadSidebarPackagesForProject(
 /**
  * Load sidebar data for a language from ALL enabled projects
  */
-async function loadSidebarPackages(language: "python" | "javascript"): Promise<SidebarPackage[]> {
+async function loadSidebarPackages(language: Language): Promise<SidebarPackage[]> {
   const projects = getEnabledProjects();
 
   // Load packages from all projects in parallel
@@ -190,12 +266,21 @@ async function loadSidebarPackages(language: "python" | "javascript"): Promise<S
 }
 
 export async function SidebarLoader() {
-  const [pythonPackages, javascriptPackages] = await Promise.all([
+  const [pythonPackages, javascriptPackages, javaPackages, goPackages] = await Promise.all([
     loadSidebarPackages("python"),
     loadSidebarPackages("javascript"),
+    loadSidebarPackages("java"),
+    loadSidebarPackages("go"),
   ]);
 
-  return <Sidebar pythonPackages={pythonPackages} javascriptPackages={javascriptPackages} />;
+  return (
+    <Sidebar
+      pythonPackages={pythonPackages}
+      javascriptPackages={javascriptPackages}
+      javaPackages={javaPackages}
+      goPackages={goPackages}
+    />
+  );
 }
 
 /**
@@ -203,10 +288,12 @@ export async function SidebarLoader() {
  * This is exported so it can be called at the layout level.
  */
 export async function loadNavigationData() {
-  const [pythonPackages, javascriptPackages] = await Promise.all([
+  const [pythonPackages, javascriptPackages, javaPackages, goPackages] = await Promise.all([
     loadSidebarPackages("python"),
     loadSidebarPackages("javascript"),
+    loadSidebarPackages("java"),
+    loadSidebarPackages("go"),
   ]);
 
-  return { pythonPackages, javascriptPackages };
+  return { pythonPackages, javascriptPackages, javaPackages, goPackages };
 }

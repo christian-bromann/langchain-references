@@ -28,6 +28,9 @@ import path from "path";
 import fs from "fs/promises";
 import { fileURLToPath } from "url";
 import { program } from "commander";
+
+import type { Language, SymbolLanguage } from "@langchain/ir-schema";
+
 import { getBlobBaseUrl } from "../blob-utils.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -96,7 +99,7 @@ interface BuildMetadata {
   packages: Array<{
     packageId: string;
     displayName: string;
-    language: "python" | "typescript";
+    language: SymbolLanguage;
     version: string;
   }>;
   status: "complete" | "failed";
@@ -169,7 +172,7 @@ async function fetchBlobJson<T>(relativePath: string): Promise<T | null> {
  */
 async function getLatestBuildPointer(
   project: string,
-  language: "python" | "javascript",
+  language: Language,
 ): Promise<LatestLanguagePointer | null> {
   const pointerPath = `pointers/latest-${project}-${language}.json`;
   return fetchBlobJson<LatestLanguagePointer>(pointerPath);
@@ -224,7 +227,8 @@ async function checkConfig(configPath: string, verbose: boolean): Promise<Update
 
   const project = config.project || "langchain";
   const language = config.language;
-  const ecosystem = language === "python" ? "python" : "javascript";
+  // Map config language (typescript) to output language (javascript), others pass through
+  const ecosystem: Language = language === "typescript" ? "javascript" : language as Language;
 
   const result: UpdateCheckResult = {
     configPath,

@@ -2,6 +2,7 @@
   "name": "@langchain/ir-server",
   "version": "0.1.0",
   "description": "Local development server that mimics Vercel Blob storage for IR data",
+  "private": true,
   "type": "module",
   "main": "src/index.ts",
   "scripts": {

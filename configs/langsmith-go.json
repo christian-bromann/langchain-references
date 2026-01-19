@@ -1,0 +1,18 @@
+{
+  "$schema": "./config-schema.json",
+  "project": "langsmith",
+  "language": "go",
+  "repo": "langchain-ai/langsmith-go",
+  "packages": [
+    {
+      "name": "langsmith",
+      "path": ".",
+      "displayName": "LangSmith Go",
+      "versioning": {
+        "tagPattern": "v*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "readme"
+    }
+  ]
+}

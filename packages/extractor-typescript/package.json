@@ -2,6 +2,7 @@
   "name": "@langchain/extractor-typescript",
   "version": "0.1.0",
   "description": "TypeScript API extractor for LangChain reference docs",
+  "private": true,
   "bin": {
     "extract-typescript": "./src/cli.ts"
   },

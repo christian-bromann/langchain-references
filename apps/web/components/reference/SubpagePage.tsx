@@ -19,6 +19,8 @@ import { PackageTableOfContents, type PackageTOCSection } from "./PackageTableOf
 import { MarkdownContent } from "./MarkdownContent";
 import { subpageToMarkdown } from "@/lib/ir/markdown-generator";
 import { getBaseUrl } from "@/lib/config/mcp";
+import { languageToSymbolLanguage, symbolLanguageToLanguage } from "@langchain/ir-schema";
+import { LANGUAGE_CONFIG } from "@/lib/config/languages";
 
 interface SubpagePageProps {
   language: UrlLanguage;
@@ -186,7 +188,8 @@ export async function SubpagePage({
     });
   }
 
-  const languageLabel = language === "python" ? "Python" : "JavaScript";
+  const symbolLanguage = symbolLanguageToLanguage(language === "javascript" ? "typescript" : language);
+  const languageLabel = LANGUAGE_CONFIG[symbolLanguage].name;
   const languagePath = language === "python" ? "python" : "javascript";
   const packageSlug = packageName.replace(/_/g, "-").toLowerCase();
 
@@ -313,7 +316,7 @@ export async function SubpagePage({
           packageName,
           subpageData.markdownContent || "",
           resolvedEntries,
-          language === "python" ? "python" : "typescript",
+          symbolLanguageToLanguage(languageToSymbolLanguage(language === "typescript" ? "javascript" : language)),
         )}
         pageUrl={`${getBaseUrl()}/${languagePath}/${slugifyPackageName(packageName)}/${subpageSlug}`}
       />

@@ -50,6 +50,8 @@ import type {
   TypeParamSnapshot,
   ChangeRecord,
   VersionStats,
+  Language,
+  SymbolLanguage,
 } from "@langchain/ir-schema";
 import {
   TypeScriptExtractor,
@@ -82,8 +84,8 @@ async function findConfigFiles(projectFilter?: string, languageFilter?: string):
   for (const file of files) {
     if (!file.endsWith(".json") || file === "config-schema.json") continue;
 
-    // Parse project and language from filename (e.g., "langchain-python.json")
-    const match = file.match(/^(\w+)-(python|typescript)\.json$/);
+    // Parse project and language from filename (e.g., "langchain-python.json", "langsmith-java.json")
+    const match = file.match(/^(\w+)-(python|typescript|java|go)\.json$/);
     if (!match) continue;
 
     const [, project, language] = match;
@@ -127,7 +129,7 @@ interface BuildConfig {
   /** Project identifier (langchain, langgraph, deepagent) */
   project?: string;
   /** Language to extract */
-  language: "python" | "typescript";
+  language: SymbolLanguage;
   /** GitHub repository */
   repo: string;
   /** Packages to extract */
@@ -442,6 +444,114 @@ async function extractTypeScript(
 }
 
 /**
+ * Run the Java extractor on a package.
+ */
+async function extractJava(
+  packagePath: string,
+  packageName: string,
+  outputPath: string,
+  repo: string,
+  sha: string,
+): Promise<void> {
+  console.log(`   ☕ Extracting: ${packageName}`);
+
+  const extractorPath = path.resolve(__dirname, "../../../../packages/extractor-java/src/cli.ts");
+
+  const args = [
+    extractorPath,
+    "--package",
+    packageName,
+    "--path",
+    packagePath,
+    "--output",
+    outputPath,
+    "--repo",
+    repo,
+    "--sha",
+    sha,
+  ];
+
+  await runCommand("npx", ["tsx", ...args]);
+}
+
+/**
+ * Run the Go extractor on a package.
+ */
+async function extractGo(
+  packagePath: string,
+  packageName: string,
+  outputPath: string,
+  repo: string,
+  sha: string,
+): Promise<void> {
+  console.log(`   🐹 Extracting: ${packageName}`);
+
+  const extractorPath = path.resolve(__dirname, "../../../../packages/extractor-go/src/cli.ts");
+
+  const args = [
+    extractorPath,
+    "--package",
+    packageName,
+    "--path",
+    packagePath,
+    "--output",
+    outputPath,
+    "--repo",
+    repo,
+    "--sha",
+    sha,
+  ];
+
+  await runCommand("npx", ["tsx", ...args]);
+}
+
+/**
+ * Check if Java is installed and accessible.
+ * Returns true if Java is available, false otherwise.
+ */
+async function checkJavaTools(): Promise<boolean> {
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn("java", ["-version"], {
+        stdio: "pipe",
+        shell: true, // Use shell to inherit PATH
+      });
+      proc.on("close", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`java -version exited with code ${code}`));
+      });
+      proc.on("error", reject);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if Go is installed and accessible.
+ * Returns true if Go is available, false otherwise.
+ */
+async function checkGoTools(): Promise<boolean> {
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn("go", ["version"], {
+        stdio: "pipe",
+        shell: true, // Use shell to inherit PATH
+      });
+      proc.on("close", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`go version exited with code ${code}`));
+      });
+      proc.on("error", reject);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Run a command and wait for completion.
  */
 interface RunCommandOptions {
@@ -506,8 +616,14 @@ function runCommand(
 /**
  * Normalize package name to a valid ID.
  */
-function normalizePackageId(name: string, language: "python" | "typescript"): string {
-  const ecosystem = language === "python" ? "py" : "js";
+function normalizePackageId(name: string, language: SymbolLanguage): string {
+  const ecosystemMap: Record<SymbolLanguage, string> = {
+    python: "py",
+    typescript: "js",
+    java: "java",
+    go: "go",
+  };
+  const ecosystem = ecosystemMap[language] || language;
   const normalized = name.replace(/^@/, "").replace(/\//g, "_").replace(/-/g, "_");
   return `pkg_${ecosystem}_${normalized}`;
 }
@@ -542,7 +658,7 @@ interface CachedProjectVersions {
  */
 async function loadCachedVersions(
   project: string,
-  language: string,
+  language: SymbolLanguage,
 ): Promise<CachedProjectVersions | null> {
   const versionsFile = path.resolve(
     __dirname,
@@ -643,7 +759,7 @@ async function extractHistoricalVersion(
   try {
     if (config.language === "python") {
       await extractPython(packagePath, pkgConfig.name, symbolsPath, config.repo, sha, pkgConfig.excludePatterns);
-    } else {
+    } else if (config.language === "typescript") {
       await extractTypeScript(
         packagePath,
         pkgConfig.name,
@@ -654,6 +770,10 @@ async function extractHistoricalVersion(
         fetchResult.extractedPath,
         versionPath, // Package's relative path in the repo
       );
+    } else if (config.language === "java") {
+      await extractJava(packagePath, pkgConfig.name, symbolsPath, config.repo, sha);
+    } else if (config.language === "go") {
+      await extractGo(packagePath, pkgConfig.name, symbolsPath, config.repo, sha);
     }
 
     const data = JSON.parse(await fs.readFile(symbolsPath, "utf-8"));
@@ -1100,7 +1220,7 @@ async function buildVersionHistoryForPackage(
 
   const cachedVersions = await loadCachedVersions(
     config.project || "langchain",
-    config.language === "python" ? "python" : "typescript",
+    config.language,
   );
 
   if (!cachedVersions || !cachedVersions.lastSynced) {
@@ -1129,8 +1249,14 @@ async function buildVersionHistoryForPackage(
 
   const cacheDir = getCacheBaseDir();
   const project = config.project || "langchain";
-  const language = config.language === "python" ? "python" : "javascript";
-  const packageId = normalizePackageId(pkgConfig.name, config.language);
+const languageMap: Record<SymbolLanguage, Language> = {
+      python: "python",
+      typescript: "javascript",
+      java: "java",
+      go: "go",
+    };
+    const language = languageMap[config.language] || config.language;
+    const packageId = normalizePackageId(pkgConfig.name, config.language);
 
   // For package-level builds, symbols.json is directly in irOutputPath
   const latestSymbolsPath = path.join(irOutputPath, "symbols.json");
@@ -1548,6 +1674,23 @@ async function buildConfig(
   console.log(`   Repository: ${config.repo}`);
   console.log(`   Packages: ${packagesToProcess.map((p) => p.name).join(", ")}`);
 
+  // Check for required language tools
+  if (config.language === "java") {
+    const hasJava = await checkJavaTools();
+    if (!hasJava) {
+      console.warn(`\n⚠️  Java is not installed or not accessible. Skipping Java extraction.`);
+      console.warn(`   Install Java and ensure 'java' is in your PATH to build Java docs.`);
+      return { buildId: "(tools-missing)", success: false };
+    }
+  } else if (config.language === "go") {
+    const hasGo = await checkGoTools();
+    if (!hasGo) {
+      console.warn(`\n⚠️  Go is not installed or not accessible. Skipping Go extraction.`);
+      console.warn(`   Install Go and ensure 'go' is in your PATH to build Go docs.`);
+      return { buildId: "(tools-missing)", success: false };
+    }
+  }
+
   const sha = opts.sha || (await getLatestSha(config.repo));
   console.log(`\n📌 Target SHA: ${sha.substring(0, 7)}`);
 
@@ -1648,7 +1791,7 @@ async function buildConfig(
     try {
       if (config.language === "python") {
         await extractPython(packagePath, pkgConfig.name, outputPath, config.repo, sha, pkgConfig.excludePatterns);
-      } else {
+      } else if (config.language === "typescript") {
         await extractTypeScript(
           packagePath,
           pkgConfig.name,
@@ -1659,6 +1802,10 @@ async function buildConfig(
           fetchResult.extractedPath,
           pkgConfig.path, // Package's relative path in the repo
         );
+      } else if (config.language === "java") {
+        await extractJava(packagePath, pkgConfig.name, outputPath, config.repo, sha);
+      } else if (config.language === "go") {
+        await extractGo(packagePath, pkgConfig.name, outputPath, config.repo, sha);
       }
       console.log(`   ✓ ${pkgConfig.name}`);
     } catch (error) {
@@ -1702,7 +1849,7 @@ async function buildConfig(
       displayName: pkgConfig.displayName || pkgConfig.name,
       publishedName: pkgConfig.name,
       language: config.language,
-      ecosystem: config.language === "python" ? "python" : "javascript",
+      ecosystem: { python: "python", typescript: "javascript", java: "java", go: "go" }[config.language] || config.language,
       version,
       buildId: pkgInfo.buildId,
       project: config.project || "langchain",
@@ -1745,6 +1892,74 @@ async function buildConfig(
 
     const packageInfoPath = path.join(pkgInfo.outputDir, "package.json");
     await fs.writeFile(packageInfoPath, JSON.stringify(packageInfo, null, 2));
+
+    // Generate catalog, routing, and lookup files for local builds
+    try {
+      const symbolsContent = await fs.readFile(symbolsPath, "utf-8");
+      const symbolsData = JSON.parse(symbolsContent);
+      if (symbolsData.symbols) {
+        const { generateShardedCatalog, generateRoutingMap, generateShardedLookupIndex } = await import("../upload.js");
+        const ecosystemMap: Record<string, Language> = {
+          python: "python",
+          typescript: "javascript",
+          java: "java",
+          go: "go",
+        };
+        const ecosystem: Language = ecosystemMap[config.language] || "python";
+
+        // Generate and write routing map
+        const routingMap = generateRoutingMap(
+          pkgInfo.packageId,
+          pkgConfig.displayName || pkgConfig.name,
+          ecosystem,
+          symbolsData.symbols,
+        );
+        await fs.writeFile(
+          path.join(pkgInfo.outputDir, "routing.json"),
+          JSON.stringify(routingMap, null, 2),
+        );
+
+        // Generate and write lookup index
+        const { index: lookupIndex, shards: lookupShards } = generateShardedLookupIndex(
+          pkgInfo.packageId,
+          symbolsData.symbols,
+        );
+        const lookupDir = path.join(pkgInfo.outputDir, "lookup");
+        await fs.mkdir(lookupDir, { recursive: true });
+        await fs.writeFile(
+          path.join(lookupDir, "index.json"),
+          JSON.stringify(lookupIndex, null, 2),
+        );
+        for (const [shardKey, shardData] of lookupShards) {
+          await fs.writeFile(
+            path.join(lookupDir, `${shardKey}.json`),
+            JSON.stringify(shardData, null, 2),
+          );
+        }
+
+        // Generate and write catalog
+        const { index: catalogIndex, shards: catalogShards } = generateShardedCatalog(
+          pkgInfo.packageId,
+          symbolsData.symbols,
+        );
+        const catalogDir = path.join(pkgInfo.outputDir, "catalog");
+        await fs.mkdir(catalogDir, { recursive: true });
+        await fs.writeFile(
+          path.join(catalogDir, "index.json"),
+          JSON.stringify(catalogIndex, null, 2),
+        );
+        for (const [shardKey, shardData] of catalogShards) {
+          await fs.writeFile(
+            path.join(catalogDir, `${shardKey}.json`),
+            JSON.stringify(shardData, null, 2),
+          );
+        }
+      }
+    } catch (catalogError) {
+      // Non-fatal: these files are optional for local builds with fallback
+      console.log(`      ℹ️  Index generation skipped: ${catalogError}`);
+    }
+
     console.log(
       `   ✓ ${pkgInfo.packageId} (${symbolCount} symbols${description ? ", with description" : ""}${processedSubpages.length > 0 ? `, ${processedSubpages.length} subpages` : ""})`,
     );
@@ -1798,7 +2013,13 @@ async function buildConfig(
 
   if (!opts.skipPointers) {
     console.log("\n🔄 Updating build pointers...");
-    const ecosystem = config.language === "python" ? "python" : "javascript";
+    const ecosystemMap: Record<SymbolLanguage, Language> = {
+      python: "python",
+      typescript: "javascript",
+      java: "java",
+      go: "go",
+    };
+    const ecosystem: Language = ecosystemMap[config.language] || config.language;
 
     // Update pointers for each package individually (all builds are now package-level)
     for (const pkgConfig of packagesToProcess) {

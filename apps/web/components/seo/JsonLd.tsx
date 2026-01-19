@@ -7,6 +7,8 @@
  */
 
 import Script from "next/script";
+import type { Language } from "@langchain/ir-schema";
+
 import { BASE_URL } from "@/lib/config/base-url";
 
 /**
@@ -51,7 +53,7 @@ interface TechArticleJsonLdProps {
   description: string;
   url: string;
   dateModified?: string;
-  language: "python" | "javascript";
+  language: Language;
   packageName: string;
 }
 

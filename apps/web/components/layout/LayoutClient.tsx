@@ -38,11 +38,7 @@ export function LayoutClient({
   return (
     <>
       {/* Header */}
-      <Header
-        pythonPackages={pythonPackages}
-        javascriptPackages={javascriptPackages}
-        onMobileMenuOpen={() => setMobileMenuOpen(true)}
-      />
+      <Header onMobileMenuOpen={() => setMobileMenuOpen(true)} />
 
       {/* Main content */}
       {children}

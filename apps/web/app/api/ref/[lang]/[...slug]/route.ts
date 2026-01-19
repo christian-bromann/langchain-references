@@ -13,6 +13,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { isLanguage } from "@langchain/ir-schema";
+
 import { parseSlugWithLanguage } from "@/lib/utils/url";
 import {
   getBuildIdForPackageId,
@@ -23,7 +25,6 @@ import {
 } from "@/lib/ir/loader";
 import { symbolToMarkdown, packageToMarkdownFromCatalog } from "@/lib/ir/markdown-generator";
 import { getContentTypeForFormat, getCacheHeaders } from "@/lib/utils/content-negotiation";
-import type { UrlLanguage } from "@/lib/utils/url";
 
 interface RouteParams {
   params: Promise<{
@@ -36,21 +37,19 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
   const { lang, slug } = await params;
 
   // Validate language
-  if (lang !== "python" && lang !== "javascript") {
+  if (!isLanguage(lang)) {
     return NextResponse.json(
-      { error: "Invalid language. Use 'python' or 'javascript'." },
+      { error: "Invalid language. Use 'python', 'javascript', 'java', or 'go'." },
       { status: 400 },
     );
   }
-
-  const language: UrlLanguage = lang;
 
   // Get format from query params (default to markdown)
   const format = request.nextUrl.searchParams.get("format")?.toLowerCase();
   const wantsJson = format === "json";
 
   // Parse the slug
-  const parsed = parseSlugWithLanguage(slug, language);
+  const parsed = parseSlugWithLanguage(slug, lang);
   if (!parsed) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
@@ -101,8 +100,9 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
       );
     }
 
-    const irLanguage = language === "python" ? "python" : "typescript";
-    const markdown = packageToMarkdownFromCatalog(parsed.packageName, catalogEntries, irLanguage);
+    // Use validated language directly - it's already one of the valid Language values
+    // (typescript URLs are not supported, only javascript)
+    const markdown = packageToMarkdownFromCatalog(parsed.packageName, catalogEntries, lang);
 
     return new Response(markdown, {
       headers: {

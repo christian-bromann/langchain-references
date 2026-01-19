@@ -5,7 +5,7 @@
  * Supports delta-based changelog storage with compact snapshots.
  */
 
-import type { SymbolKind, Visibility } from "./symbol.js";
+import type { SymbolKind, Visibility } from "./symbol";
 
 // =============================================================================
 // VERSION INDEX TYPES (versions.json)

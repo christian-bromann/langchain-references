@@ -17,7 +17,7 @@ import {
 import { createHash } from "crypto";
 import fs from "fs/promises";
 import path from "path";
-import type { SymbolRecord, RoutingMap, PackageChangelog } from "@langchain/ir-schema";
+import type { SymbolRecord, RoutingMap, PackageChangelog, Language } from "@langchain/ir-schema";
 
 // Maximum concurrent uploads to avoid overwhelming the Vercel Blob API
 // Vercel Blob has strict rate limits, so we keep this conservative
@@ -237,10 +237,10 @@ interface SymbolLookupEntry {
  * Example: "langchain_classic.model_laboratory.ModelLaboratory" ->
  *          /python/langchain-classic/model_laboratory/ModelLaboratory
  */
-function generateRoutingMap(
+export function generateRoutingMap(
   packageId: string,
   displayName: string,
-  language: "python" | "typescript",
+  language: Language,
   symbols: SymbolRecord[],
 ): RoutingMap {
   const slugs: RoutingMap["slugs"] = {};
@@ -335,7 +335,7 @@ type LookupShard = Record<string, SymbolLookupEntry>;
  * Each shard contains qualifiedName -> { id, kind, name } mappings for symbols
  * whose qualifiedName hashes to that shard.
  */
-function generateShardedLookupIndex(
+export function generateShardedLookupIndex(
   packageId: string,
   symbols: SymbolRecord[],
 ): { index: ShardedLookupIndex; shards: Map<string, LookupShard> } {
@@ -394,10 +394,31 @@ interface ShardedCatalogIndex {
 }
 
 /**
+ * Catalog entry - lightweight symbol summary for package overview
+ */
+export interface CatalogEntryPublic {
+  id: string;
+  kind: string;
+  name: string;
+  qualifiedName: string;
+  summary?: string;
+  signature?: string;
+}
+
+/**
+ * Sharded catalog manifest
+ */
+export interface ShardedCatalogIndexPublic {
+  packageId: string;
+  symbolCount: number;
+  shards: string[];
+}
+
+/**
  * Generate sharded catalog files for package overview pages.
  * Each shard contains lightweight symbol summaries.
  */
-function generateShardedCatalog(
+export function generateShardedCatalog(
   packageId: string,
   symbols: SymbolRecord[],
 ): { index: ShardedCatalogIndex; shards: Map<string, CatalogEntry[]> } {
@@ -633,7 +654,7 @@ async function uploadPackageIR(options: UploadOptions): Promise<UploadResult> {
   const routingMap = generateRoutingMap(
     packageId,
     displayName,
-    language as "python" | "typescript",
+    language as Language,
     symbols,
   );
   uploadTasks.push({

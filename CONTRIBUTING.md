@@ -31,7 +31,11 @@ Before you begin, ensure you have the following installed:
 - **Node.js** 20+ (check `.nvmrc` for exact version)
 - **pnpm** 10+
 - **Python** 3.11+ (for Python extractor)
+- **Java** 11+ (for Java extractor - optional)
+- **Go** 1.21+ (for Go extractor - optional)
 - **Git**
+
+> **Note**: Java and Go are only required if you need to build IR for Java or Go packages (e.g., LangSmith Java/Go SDKs). The build pipeline will automatically skip languages if the tools are not installed.
 
 ### Quick Setup
 
@@ -45,6 +49,12 @@ pnpm install
 
 # Install Python dependencies (for Python extractor)
 pip install griffe
+
+# Optional: Verify Java installation (for Java extractor)
+java -version  # Should show Java 11+
+
+# Optional: Verify Go installation (for Go extractor)
+go version  # Should show Go 1.21+
 
 # Start development server
 pnpm dev
@@ -80,14 +90,22 @@ To work with documentation locally, you need to build the IR:
 
 ```bash
 # Build TypeScript packages
-pnpm build:ir:local --config configs/typescript.json
+pnpm build:ir:local --config configs/langchain-typescript.json
 
 # Build Python packages (requires griffe)
 pip install griffe
-pnpm build:ir:local --config configs/python.json
+pnpm build:ir:local --config configs/langchain-python.json
+
+# Build Java packages (requires Java 11+)
+pnpm build:ir:local --config configs/langsmith-java.json
+
+# Build Go packages (requires Go 1.21+)
+pnpm build:ir:local --config configs/langsmith-go.json
 ```
 
 This creates IR data in `./ir-output/` which the Next.js app reads.
+
+> **Note**: If Java or Go are not installed, the build will skip those languages and log a warning.
 
 ### Editor Setup
 
@@ -112,10 +130,13 @@ langchain-reference-docs/
 │
 ├── packages/
 │   ├── ir-schema/              # TypeScript types for IR
+│   ├── build-pipeline/         # Build orchestration
 │   ├── extractor-python/       # Python extractor (griffe)
-│   └── extractor-typescript/   # TypeScript extractor (TypeDoc)
+│   ├── extractor-typescript/   # TypeScript extractor (TypeDoc)
+│   ├── extractor-java/         # Java extractor
+│   └── extractor-go/           # Go extractor
 │
-├── scripts/                    # Build pipeline
+├── scripts/                    # Build scripts
 ├── configs/                    # Build configurations
 └── .github/workflows/          # CI/CD workflows
 ```
@@ -192,6 +213,7 @@ Reference documentation for middleware classes.
 ```
 
 The parser:
+
 - Splits content at the first `:::` line
 - Extracts qualified names from `:::` directives (ignoring options blocks)
 - Resolves symbol references to catalog entries for display as cards
@@ -455,6 +477,36 @@ pip install griffe
 
 - Ensure Node.js 20+
 - Check that source packages compile without errors
+
+#### Java extractor fails
+
+- Ensure Java 11+ is installed: `java -version`
+- Verify `JAVA_HOME` is set correctly
+- Check that source files have valid package declarations
+
+#### Go extractor fails
+
+- Ensure Go 1.21+ is installed: `go version`
+- Verify Go is in your PATH
+- Check that source files have valid package declarations
+
+#### Build skips Java/Go packages
+
+This is expected if Java or Go are not installed. Install the required tools:
+
+```bash
+# macOS
+brew install openjdk@17
+brew install go
+
+# Ubuntu/Debian
+sudo apt install openjdk-17-jdk
+sudo apt install golang-go
+
+# Windows (using scoop)
+scoop install openjdk17
+scoop install go
+```
 
 #### Upload fails with 401
 

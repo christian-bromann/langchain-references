@@ -10,6 +10,7 @@ import { ChevronRight, Home } from "lucide-react";
 import type { ProjectConfig } from "@langchain/ir-schema";
 import { cn } from "@/lib/utils/cn";
 import { getDefaultPackageSlug } from "@/lib/config/projects";
+import { LANGUAGE_CONFIG } from "@/lib/config/languages";
 
 interface BreadcrumbItem {
   label: string;
@@ -33,7 +34,7 @@ export function ProjectBreadcrumbs({
   const packageSlug = getDefaultPackageSlug(project.id, language);
   const allItems: BreadcrumbItem[] = [
     { label: project.displayName, href: `/${language}/${packageSlug}` },
-    { label: language === "python" ? "Python" : "JavaScript" },
+    { label: LANGUAGE_CONFIG[language].name },
     ...items,
   ];
 
@@ -109,7 +110,7 @@ export function SimpleBreadcrumbs({
 
       {items.map((item, index) => (
         <span key={index} className="flex items-center">
-          <ChevronRight className="h-4 w-4 mx-2 flex-shrink-0" />
+          <ChevronRight className="h-4 w-4 mx-2 shrink-0" />
           {item.href ? (
             <Link
               href={item.href}

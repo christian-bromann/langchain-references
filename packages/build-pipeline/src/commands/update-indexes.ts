@@ -27,6 +27,7 @@ import path from "node:path";
 import url from "node:url";
 
 import { Command } from "commander";
+import type { Language, SymbolLanguage } from "@langchain/ir-schema";
 import { regenerateProjectPackageIndex } from "../pointers.js";
 import { PROJECTS, OUTPUT_LANGUAGES } from "../constants.js";
 
@@ -34,7 +35,7 @@ const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
 interface ConfigFile {
   project?: string;
-  language: "python" | "typescript";
+  language: SymbolLanguage;
   packages: Array<{ name: string }>;
 }
 
@@ -62,7 +63,7 @@ async function main(): Promise<void> {
     .name("update-indexes")
     .description("Regenerate project package indexes from individual package pointers")
     .option("--project <name>", `Project to update (${PROJECTS.join(", ")})`)
-    .option("--language <lang>", `Language to update (python, javascript)`)
+    .option("--language <lang>", `Language to update (${OUTPUT_LANGUAGES.join(", ")})`)
     .option("--all", "Update indexes for all project/language combinations")
     .option("--dry-run", "Print what would be updated without making changes")
     .action(
@@ -74,7 +75,7 @@ async function main(): Promise<void> {
         }
 
         // Determine which project/language combinations to update
-        const combinations: Array<{ project: string; language: "python" | "javascript" }> = [];
+        const combinations: { project: string; language: Language }[] = [];
 
         if (options.all) {
           for (const project of PROJECTS) {
@@ -87,17 +88,18 @@ async function main(): Promise<void> {
           const lang = options.language === "typescript" ? "javascript" : options.language;
           combinations.push({
             project: options.project,
-            language: lang as "python" | "javascript",
+            language: lang as Language,
           });
         } else if (options.project) {
-          // Update both languages for the project
-          combinations.push({ project: options.project, language: "python" });
-          combinations.push({ project: options.project, language: "javascript" });
+          // Update all languages for the project
+          for (const language of OUTPUT_LANGUAGES) {
+            combinations.push({ project: options.project, language });
+          }
         } else if (options.language) {
           // Update all projects for the language
           const lang = options.language === "typescript" ? "javascript" : options.language;
           for (const project of PROJECTS) {
-            combinations.push({ project, language: lang as "python" | "javascript" });
+            combinations.push({ project, language: lang as Language });
           }
         } else {
           console.error("❌ Must specify --project, --language, or --all");
@@ -115,6 +117,7 @@ async function main(): Promise<void> {
 
         for (const { project, language } of combinations) {
           // Map javascript back to typescript for config file lookup
+          // Java and Go are pass-through (same in config and output)
           const configLanguage = language === "javascript" ? "typescript" : language;
 
           console.log(`\n📋 ${project}-${language}:`);

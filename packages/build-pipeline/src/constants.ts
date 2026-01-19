@@ -42,10 +42,12 @@ export type Project = (typeof PROJECTS)[number];
  * Config files are named `{project}-{language}.json`, e.g.:
  * - langchain-python.json
  * - langchain-typescript.json
+ * - langsmith-java.json
+ * - langsmith-go.json
  *
  * Used by: build-ir command when finding config files.
  */
-export const CONFIG_LANGUAGES = ["python", "typescript"] as const;
+export const CONFIG_LANGUAGES = ["python", "typescript", "java", "go"] as const;
 
 /** Type for config file language identifiers */
 export type ConfigLanguage = (typeof CONFIG_LANGUAGES)[number];
@@ -57,10 +59,12 @@ export type ConfigLanguage = (typeof CONFIG_LANGUAGES)[number];
  * to represent the JS/TS ecosystem consistently:
  * - pointers/index-langchain-javascript.json
  * - pointers/packages/javascript/langchain-core.json
+ * - pointers/index-langsmith-java.json
+ * - pointers/index-langsmith-go.json
  *
  * Used by: pull-ir, upload-pointers, update-indexes commands.
  */
-export const OUTPUT_LANGUAGES = ["python", "javascript"] as const;
+export const OUTPUT_LANGUAGES = ["python", "javascript", "java", "go"] as const;
 
 /** Type for output/storage language identifiers */
 export type OutputLanguage = (typeof OUTPUT_LANGUAGES)[number];
@@ -72,15 +76,19 @@ export type OutputLanguage = (typeof OUTPUT_LANGUAGES)[number];
 /**
  * Convert a config language to its output equivalent.
  * TypeScript -> JavaScript for JS ecosystem consistency.
+ * Java and Go pass through unchanged.
  */
 export function configToOutputLanguage(lang: ConfigLanguage): OutputLanguage {
-  return lang === "typescript" ? "javascript" : lang;
+  if (lang === "typescript") return "javascript";
+  return lang;
 }
 
 /**
  * Convert an output language to its config equivalent.
  * JavaScript -> TypeScript for config file matching.
+ * Java and Go pass through unchanged.
  */
 export function outputToConfigLanguage(lang: OutputLanguage): ConfigLanguage {
-  return lang === "javascript" ? "typescript" : lang;
+  if (lang === "javascript") return "typescript";
+  return lang;
 }

@@ -5,6 +5,8 @@
  * any API element (class, function, method, etc.) in the IR.
  */
 
+import type { SymbolLanguage } from "./language";
+
 /**
  * All possible symbol kinds in the IR.
  */
@@ -23,11 +25,6 @@ export type SymbolKind =
   | "namespace"
   | "constructor"
   | "parameter";
-
-/**
- * Source language of the symbol.
- */
-export type Language = "python" | "typescript";
 
 /**
  * Visibility level of the symbol.
@@ -50,7 +47,7 @@ export interface SymbolRecord {
   packageId: string;
 
   /** Source language */
-  language: Language;
+  language: SymbolLanguage;
 
   /** Symbol kind */
   kind: SymbolKind;
@@ -330,4 +327,93 @@ export interface SymbolTags {
 
   /** Whether the method is static */
   isStatic?: boolean;
+}
+
+// ============================================================================
+// Extractor Output Types
+// ============================================================================
+// These types represent the simplified format that extractors output.
+// The build pipeline transforms these into the full SymbolRecord format.
+
+/**
+ * Simplified symbol record output by extractors.
+ * Uses a flatter structure than SymbolRecord for easier generation.
+ */
+export interface ExtractorSymbol {
+  /** Unique symbol identifier */
+  id: string;
+
+  /** Simple name */
+  name: string;
+
+  /** Fully qualified name */
+  qualifiedName: string;
+
+  /** Symbol kind */
+  kind: SymbolKind;
+
+  /** Source language */
+  language: SymbolLanguage;
+
+  /** Visibility level */
+  visibility: Visibility;
+
+  /** One-line summary */
+  summary?: string;
+
+  /** Full description (markdown) */
+  description?: string;
+
+  /** Signature string */
+  signature: string;
+
+  /** Type parameters (generics) */
+  typeParameters?: TypeParam[];
+
+  /** Function/method parameters */
+  parameters?: SymbolParam[];
+
+  /** Return type information */
+  returns?: SymbolReturns;
+
+  /** Class members */
+  members?: ExtractorMember[];
+
+  /** Source location */
+  source?: SymbolSource;
+
+  /** Metadata tags */
+  tags?: SymbolTags;
+}
+
+/**
+ * Simplified member record output by extractors.
+ */
+export interface ExtractorMember {
+  /** Unique member identifier */
+  id: string;
+
+  /** Member name */
+  name: string;
+
+  /** Member kind */
+  kind: SymbolKind;
+
+  /** Signature string */
+  signature: string;
+
+  /** One-line summary */
+  summary?: string;
+
+  /** Full description (markdown) */
+  description?: string;
+
+  /** Function/method parameters */
+  parameters?: SymbolParam[];
+
+  /** Return type information */
+  returns?: SymbolReturns;
+
+  /** Source location */
+  source?: SymbolSource;
 }

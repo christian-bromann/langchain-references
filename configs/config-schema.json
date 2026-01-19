@@ -11,7 +11,7 @@
     },
     "language": {
       "type": "string",
-      "enum": ["python", "typescript"],
+      "enum": ["python", "typescript", "java", "go"],
       "description": "The programming language to extract"
     },
     "repo": {

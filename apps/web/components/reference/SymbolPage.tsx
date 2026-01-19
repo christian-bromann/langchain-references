@@ -6,6 +6,8 @@
 
 import Link from "next/link";
 import { ChevronRight, ExternalLink } from "lucide-react";
+import { symbolLanguageToLanguage } from "@langchain/ir-schema";
+
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
 import {
@@ -22,7 +24,7 @@ import type {
   SymbolRecord,
   TypeReference,
 } from "@/lib/ir/types";
-import type { PackageChangelog, SymbolSnapshot } from "@langchain/ir-schema";
+import type { PackageChangelog, SymbolSnapshot, Language } from "@langchain/ir-schema";
 import {
   getPackageBuildId,
   getManifestData,
@@ -53,9 +55,10 @@ import path from "path";
 import { cleanExampleCode } from "@/lib/utils/clean-example";
 import { getBuiltinTypeDocUrl } from "@/lib/constants/builtin-types";
 import { TechArticleJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { LANGUAGE_CONFIG } from "@/lib/config/languages";
 
 interface SymbolPageProps {
-  language: "python" | "javascript";
+  language: Language;
   packageId: string;
   packageName: string;
   symbolPath: string;
@@ -445,7 +448,7 @@ interface LatestPointer {
  * Get the local IR path for a project+language.
  */
 function getLocalIrPath(project: string, language: string): string {
-  const langSuffix = language === "python" ? "python" : "javascript";
+  const langSuffix = language;
   return `latest-${project}-${langSuffix}`;
 }
 
@@ -457,7 +460,7 @@ async function fetchLatestBuildId(
   project: string,
   language: string,
 ): Promise<string | null> {
-  const langSuffix = language === "python" ? "python" : "javascript";
+  const langSuffix = language;
   const pointerUrl = `${blobBaseUrl}/pointers/latest-${project}-${langSuffix}.json`;
 
   try {
@@ -658,8 +661,8 @@ function generateTOCData(symbol: DisplaySymbol): {
         sections.push({
           id: `section-${kind}`,
           title: kindLabels[kind] || `${kind.charAt(0).toUpperCase()}${kind.slice(1)}s`,
-          items: groupedMembers[kind].map((member) => ({
-            id: `member-${member.name}`,
+          items: groupedMembers[kind].map((member, idx) => ({
+            id: `member-${member.name}-${idx}`,
             label: member.name,
             kind: member.kind,
           })),
@@ -698,8 +701,8 @@ function generateTOCData(symbol: DisplaySymbol): {
           nestedSections.push({
             id: `inherited-${group.baseName}-${kind}`,
             title: kindLabels[kind] || `${kind.charAt(0).toUpperCase()}${kind.slice(1)}s`,
-            items: inheritedGrouped[kind].map((member) => ({
-              id: `inherited-${group.baseName}-${member.name}`,
+            items: inheritedGrouped[kind].map((member, idx) => ({
+              id: `inherited-${group.baseName}-${member.name}-${idx}`,
               label: member.name,
               kind: member.kind,
             })),
@@ -755,7 +758,7 @@ async function findSymbolOptimized(
   const packagePrefix =
     pkgInfo?.publishedName ||
     pkgInfo?.displayName ||
-    packageId.replace(/^pkg_(py|js)_/, "");
+    packageId.replace(/^pkg_(py|js|java|go)_/, "");
 
   if (routingMap?.slugs) {
     const candidates: string[] = [];
@@ -1154,11 +1157,8 @@ export async function SymbolPage({
   symbolPath,
   version,
 }: SymbolPageProps) {
-  const ecosystem = language === "python" ? "python" : "javascript";
-  const irLanguage = ecosystem; // alias for backwards compatibility
-
   // Get the package-specific buildId
-  const buildId = await getPackageBuildId(ecosystem, packageName);
+  const buildId = await getPackageBuildId(language, packageName);
 
   // Get project info for version history/switching
   const { getProjectForPackage } = await import("@/lib/config/projects");
@@ -1235,7 +1235,7 @@ export async function SymbolPage({
     if (version && irSymbol) {
       const historicalData = await getHistoricalSnapshot(
         project.id,
-        irLanguage,
+        language,
         packageId,
         irSymbol.qualifiedName,
         version,
@@ -1317,14 +1317,15 @@ export async function SymbolPage({
 
   // Show not found state if symbol wasn't loaded
   if (!symbol) {
+    const symbolLanguage = symbolLanguageToLanguage(language === "javascript" ? "typescript" : language);
     return (
       <div className="space-y-8">
         <nav className="flex items-center gap-2 text-sm text-foreground-secondary">
           <Link
-            href={`/${language === "python" ? "python" : "javascript"}`}
+            href={`/${language}`}
             className="hover:text-foreground transition-colors"
           >
-            {language === "python" ? "Python" : "JavaScript"}
+            {LANGUAGE_CONFIG[symbolLanguage].name}
           </Link>
           <ChevronRight className="h-4 w-4" />
           <Link
@@ -1352,8 +1353,8 @@ export async function SymbolPage({
   // Pre-populate with ALL known symbols from ALL cross-project packages
   // This ensures any type that exists can be linked, not just those in typeRefs
   const typeUrlMap = new Map<string, string>();
-  const crossProjectPackages = await getCrossProjectPackages(irLanguage);
-  const langPath = language === "python" ? "python" : "javascript";
+  const crossProjectPackages = await getCrossProjectPackages(language);
+  const langPath = language;
   const currentPkgSlug = slugifyPackageName(packageName);
 
   // Add all symbols from cross-project packages to typeUrlMap
@@ -1413,12 +1414,11 @@ export async function SymbolPage({
   const { topItems, sections, inheritedGroups } = generateTOCData(symbol);
 
   // Build breadcrumb items for structured data
-  const urlLangPath = language === "python" ? "python" : "javascript";
-  const urlLangLabel = language === "python" ? "Python" : "JavaScript";
+  const urlLangLabel = LANGUAGE_CONFIG[language].name;
   const breadcrumbItems = [
-    { name: urlLangLabel, url: `/${urlLangPath}` },
+    { name: urlLangLabel, url: `/${language}` },
     { name: packageName, url: buildPackageUrl(language, packageName) },
-    { name: symbol.name, url: `/${urlLangPath}/${slugifyPackageName(packageName)}/${symbolPath}` },
+    { name: symbol.name, url: `/${language}/${slugifyPackageName(packageName)}/${symbolPath}` },
   ];
 
   return (
@@ -1431,7 +1431,7 @@ export async function SymbolPage({
           symbol.docs.description ||
           `API reference for ${symbol.name} in ${packageName}`
         }
-        url={`/${urlLangPath}/${slugifyPackageName(packageName)}/${symbolPath}`}
+        url={`/${language}/${slugifyPackageName(packageName)}/${symbolPath}`}
         language={language}
         packageName={packageName}
       />
@@ -1443,10 +1443,10 @@ export async function SymbolPage({
           {/* Breadcrumbs */}
           <nav className="flex items-center gap-2 text-sm text-foreground-secondary flex-wrap">
             <Link
-              href={`/${language === "python" ? "python" : "javascript"}`}
+              href={`/${language}`}
               className="hover:text-foreground transition-colors"
             >
-              {language === "python" ? "Python" : "JavaScript"}
+              {urlLangLabel}
             </Link>
             <ChevronRight className="h-4 w-4 shrink-0" />
             <Link
@@ -1461,7 +1461,7 @@ export async function SymbolPage({
               // Use slashes for URL path
               const urlPath = pathParts.join("/");
               const isLast = i === arr.length - 1;
-              const langPath = language === "python" ? "python" : "javascript";
+              const langPath = language;
               const packageSlug = slugifyPackageName(packageName);
               const href = `/${langPath}/${packageSlug}/${urlPath}`;
 
@@ -1491,7 +1491,7 @@ export async function SymbolPage({
               <VersionSwitcher
                 qualifiedName={symbol.qualifiedName}
                 project={project.id}
-                language={irLanguage}
+                language={language}
                 packageId={packageId}
                 currentVersion={version}
               />
@@ -1615,7 +1615,7 @@ export async function SymbolPage({
           <VersionHistory
             qualifiedName={symbol.qualifiedName}
             project={project.id}
-            language={irLanguage}
+            language={language}
             packageId={packageId}
             className="mt-6"
           />
@@ -1634,7 +1634,7 @@ export async function SymbolPage({
                 })
               : undefined
           }
-          pageUrl={`${getBaseUrl()}/${language === "python" ? "python" : "javascript"}/${slugifyPackageName(packageName)}/${symbolPath}`}
+          pageUrl={`${getBaseUrl()}/${language}/${slugifyPackageName(packageName)}/${symbolPath}`}
         />
       </div>
     </>
@@ -1681,7 +1681,7 @@ function TypeReferenceDisplay({
 
     // Check if this type is a known symbol in current package
     if (knownSymbols.has(typeName)) {
-      const langPath = language === "python" ? "python" : "javascript";
+      const langPath = language;
       const pkgSlug = slugifyPackageName(packageName);
       const symbolPath = knownSymbols.get(typeName)!;
       // Use slugifySymbolPath to properly strip package prefix for Python
@@ -1948,10 +1948,11 @@ function MembersSection({
             {kindLabels[kind] || `${kind.charAt(0).toUpperCase()}${kind.slice(1)}s`}
           </h2>
           <div className="space-y-2">
-            {groupedMembers[kind].map((member) => (
+            {groupedMembers[kind].map((member, idx) => (
               <MemberCard
-                key={member.name}
+                key={`${member.name}-${idx}`}
                 member={member}
+                index={idx}
                 language={language}
                 packageName={packageName}
                 parentQualifiedName={parentQualifiedName}
@@ -1990,6 +1991,7 @@ function MemberCard({
   parentQualifiedName,
   knownSymbols,
   typeUrlMap,
+  index,
 }: {
   member: DisplayMember;
   language: UrlLanguage;
@@ -1997,6 +1999,7 @@ function MemberCard({
   parentQualifiedName: string;
   knownSymbols: Map<string, string>;
   typeUrlMap?: Map<string, string>;
+  index: number;
 }) {
   const isMethodOrFunction =
     member.kind === "method" || member.kind === "function" || member.kind === "constructor";
@@ -2007,7 +2010,7 @@ function MemberCard({
   // Use the member's actual qualifiedName if available (handles re-exports correctly)
   // Fall back to constructing from parent path for backwards compatibility
   const symbolPath = member.qualifiedName || `${parentQualifiedName}.${member.name}`;
-  const langPath = language === "python" ? "python" : "javascript";
+  const langPath = language;
   const packageSlug = slugifyPackageName(packageName);
   // Use slugifySymbolPath to properly strip package prefix for Python
   const hasPackagePrefix = language === "python" && symbolPath.includes("_");
@@ -2078,7 +2081,7 @@ function MemberCard({
   if (isLinkable) {
     return (
       <Link
-        id={`member-${member.name}`}
+        id={`member-${member.name}-${index}`}
         href={href}
         className="group flex items-start gap-3 p-3 rounded-lg border border-border bg-background-secondary hover:border-primary/50 hover:bg-background transition-colors"
         style={{ cursor: "pointer" }}
@@ -2091,7 +2094,7 @@ function MemberCard({
   // Render as non-clickable div for attributes and other non-linkable kinds
   return (
     <div
-      id={`member-${member.name}`}
+      id={`member-${member.name}-${index}`}
       className="flex items-start gap-3 p-3 rounded-lg border border-border bg-background-secondary"
     >
       {cardContent}
@@ -2161,7 +2164,7 @@ function InheritedMembersSection({
               <span>Inherited from</span>
               {group.basePackageName && group.basePackageName !== packageName ? (
                 <Link
-                  href={`/${language === "python" ? "python" : "javascript"}/${slugifyPackageName(group.basePackageName)}/${group.baseName}`}
+                  href={`/${language}/${slugifyPackageName(group.basePackageName)}/${group.baseName}`}
                   className="font-mono text-primary hover:text-primary/80 underline decoration-dashed underline-offset-2"
                 >
                   {group.baseName}
@@ -2181,10 +2184,11 @@ function InheritedMembersSection({
                     {kindLabels[kind] || `${kind.charAt(0).toUpperCase()}${kind.slice(1)}s`}
                   </h3>
                   <div className="space-y-1">
-                    {groupedMembers[kind].map((member) => (
+                    {groupedMembers[kind].map((member, idx) => (
                       <InheritedMemberRow
-                        key={member.name}
+                        key={`${member.name}-${idx}`}
                         member={member}
+                        index={idx}
                         language={language}
                         basePackageName={group.basePackageName || packageName}
                         baseClassName={group.baseName}
@@ -2209,16 +2213,18 @@ function InheritedMemberRow({
   language,
   basePackageName,
   baseClassName,
+  index,
 }: {
   member: DisplayMember;
   language: UrlLanguage;
   basePackageName: string;
   baseClassName: string;
+  index: number;
 }) {
   const isMethodOrFunction = member.kind === "method" || member.kind === "function";
 
   // Link to the base class's member page
-  const langPath = language === "python" ? "python" : "javascript";
+  const langPath = language;
   const packageSlug = slugifyPackageName(basePackageName);
   const symbolPath = `${baseClassName}.${member.name}`;
   // Use slugifySymbolPath to properly strip package prefix for Python
@@ -2228,7 +2234,7 @@ function InheritedMemberRow({
 
   return (
     <Link
-      id={`inherited-${baseClassName}-${member.name}`}
+      id={`inherited-${baseClassName}-${member.name}-${index}`}
       href={href}
       className="group flex items-center gap-3 py-2 px-3 rounded-md hover:bg-background-secondary transition-colors"
     >

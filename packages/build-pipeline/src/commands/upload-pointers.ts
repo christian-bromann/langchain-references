@@ -179,7 +179,7 @@ async function main() {
     }
 
     const ecosystem = language;
-    const packageName = packageJson.publishedName || packageId.replace(/^pkg_(py|js)_/, "").replace(/_/g, "-");
+    const packageName = packageJson.publishedName || packageId.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
 
     console.log(`\n   Processing: ${packageName} (${project}/${language})`);
     console.log(`     Build: ${buildId.slice(0, 8)}... v${packageJson.version}`);

@@ -6,6 +6,8 @@
  * LangChain ecosystem projects (LangChain, LangGraph, DeepAgent).
  */
 
+import type { Language } from "./language";
+
 /**
  * Configuration for a project in the LangChain ecosystem.
  */
@@ -37,7 +39,7 @@ export interface ProjectConfig {
  */
 export interface ProjectVariant {
   /** Language identifier */
-  language: "python" | "javascript";
+  language: Language;
 
   /** GitHub repository (e.g., "langchain-ai/langchain") */
   repo: string;

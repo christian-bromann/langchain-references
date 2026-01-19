@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   // Enable React strict mode for better development experience
   reactStrictMode: true,
 
+  // Transpile internal packages from the monorepo
+  transpilePackages: ["@langchain/ir-schema"],
+
   // Configure image domains for external images
   images: {
     remotePatterns: [

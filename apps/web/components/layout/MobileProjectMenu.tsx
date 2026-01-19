@@ -15,20 +15,26 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { X, ChevronRight, Loader2, Sun, Moon, Layers, FolderTree } from "lucide-react";
-import type { ProjectConfig } from "@langchain/ir-schema";
+import type { ProjectConfig, Language } from "@langchain/ir-schema";
+
 import { cn } from "@/lib/utils/cn";
 import { getDefaultPackageSlug } from "@/lib/config/projects";
 import type { ResolveSymbolResponse } from "@/lib/symbol-resolution";
 import type { SidebarPackage, NavItem } from "./Sidebar";
+import { LANGUAGE_CONFIG } from "@/lib/config/languages";
 
 interface MobileProjectMenuProps {
   open: boolean;
   onClose: () => void;
   projects: ProjectConfig[];
   currentProject: ProjectConfig | null;
-  currentLanguage: "python" | "javascript";
+  currentLanguage: Language;
   pythonPackages?: SidebarPackage[];
   javascriptPackages?: SidebarPackage[];
+  javaPackages?: SidebarPackage[];
+  goPackages?: SidebarPackage[];
+  /** Languages available for the current project */
+  availableLanguages?: Language[];
 }
 
 // =============================================================================
@@ -67,7 +73,6 @@ type TabType = "projects" | "navigation";
 // =============================================================================
 // Component
 // =============================================================================
-
 export function MobileProjectMenu({
   open,
   onClose,
@@ -76,6 +81,9 @@ export function MobileProjectMenu({
   currentLanguage,
   pythonPackages = [],
   javascriptPackages = [],
+  javaPackages = [],
+  goPackages = [],
+  availableLanguages = ["python", "javascript"],
 }: MobileProjectMenuProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -86,10 +94,16 @@ export function MobileProjectMenu({
 
   // Filter packages by current language and project
   const packages = useMemo(() => {
-    const languagePackages = currentLanguage === "python" ? pythonPackages : javascriptPackages;
+    const packagesByLanguage: Record<Language, SidebarPackage[]> = {
+      python: pythonPackages,
+      javascript: javascriptPackages,
+      java: javaPackages,
+      go: goPackages,
+    };
+    const languagePackages = packagesByLanguage[currentLanguage] || [];
     if (!currentProject) return languagePackages;
     return languagePackages.filter((pkg) => pkg.project === currentProject.id);
-  }, [pythonPackages, javascriptPackages, currentLanguage, currentProject]);
+  }, [pythonPackages, javascriptPackages, javaPackages, goPackages, currentLanguage, currentProject]);
 
   // Lock body scroll when menu is open
   useEffect(() => {
@@ -108,7 +122,7 @@ export function MobileProjectMenu({
   /**
    * Handle language change with cross-language symbol resolution.
    */
-  const handleLanguageClick = async (targetLang: "python" | "javascript") => {
+  const handleLanguageClick = async (targetLang: Language) => {
     if (targetLang === currentLanguage) return;
 
     if (!isSymbolPage(pathname)) {
@@ -254,49 +268,36 @@ export function MobileProjectMenu({
           {/* Footer: Language and Theme */}
           <div className="border-t border-gray-200 dark:border-gray-800 p-4 space-y-4">
             {/* Language Toggle */}
-            <div>
-              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                Language
+            {availableLanguages.length > 1 && (
+              <div>
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                  Language
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {availableLanguages.map((lang) => (
+                    <button
+                      key={lang}
+                      type="button"
+                      onClick={() => handleLanguageClick(lang)}
+                      disabled={isResolving}
+                      className={cn(
+                        "flex-1 min-w-[80px] py-2.5 px-3 text-center rounded-lg text-sm font-medium transition-colors",
+                        "flex items-center justify-center gap-2",
+                        currentLanguage === lang
+                          ? "bg-primary text-white"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700",
+                        isResolving && "opacity-70 cursor-wait",
+                      )}
+                    >
+                      {isResolving && resolvingLang === lang ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : null}
+                      {LANGUAGE_CONFIG[lang].name}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleLanguageClick("python")}
-                  disabled={isResolving}
-                  className={cn(
-                    "flex-1 py-2.5 px-3 text-center rounded-lg text-sm font-medium transition-colors",
-                    "flex items-center justify-center gap-2",
-                    currentLanguage === "python"
-                      ? "bg-primary text-white"
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700",
-                    isResolving && "opacity-70 cursor-wait",
-                  )}
-                >
-                  {isResolving && resolvingLang === "python" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : null}
-                  Python
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleLanguageClick("javascript")}
-                  disabled={isResolving}
-                  className={cn(
-                    "flex-1 py-2.5 px-3 text-center rounded-lg text-sm font-medium transition-colors",
-                    "flex items-center justify-center gap-2",
-                    currentLanguage === "javascript"
-                      ? "bg-primary text-white"
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700",
-                    isResolving && "opacity-70 cursor-wait",
-                  )}
-                >
-                  {isResolving && resolvingLang === "javascript" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : null}
-                  JavaScript
-                </button>
-              </div>
-            </div>
+            )}
 
             {/* Theme Toggle */}
             <div className="flex items-center justify-between">
@@ -337,7 +338,7 @@ function ProjectsList({
 }: {
   projects: ProjectConfig[];
   currentProject: ProjectConfig | null;
-  currentLanguage: "python" | "javascript";
+  currentLanguage: Language;
   onClose: () => void;
 }) {
   if (projects.length === 0) {

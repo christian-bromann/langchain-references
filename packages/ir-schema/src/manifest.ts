@@ -5,6 +5,8 @@
  * the IR build, source repositories, and included packages.
  */
 
+import type { SymbolLanguage, Language } from "./language";
+
 /**
  * The root manifest for a reference documentation build.
  */
@@ -67,10 +69,10 @@ export interface Package {
   publishedName: string;
 
   /** Programming language */
-  language: "python" | "typescript";
+  language: SymbolLanguage;
 
   /** Package ecosystem */
-  ecosystem: "python" | "javascript";
+  ecosystem: Language;
 
   /** Version string */
   version: string;

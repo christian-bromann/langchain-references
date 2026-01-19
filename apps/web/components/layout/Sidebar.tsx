@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils/cn";
 import type { SymbolKind } from "@/lib/ir/types";
 import { LanguageDropdown } from "./LanguageDropdown";
 import { getProjectFromPathname } from "@/lib/config/projects";
+import { getAvailableLanguages } from "@/lib/config/languages";
 
 /**
  * Navigation item structure
@@ -51,18 +52,41 @@ export interface SidebarPackage {
 interface SidebarProps {
   pythonPackages?: SidebarPackage[];
   javascriptPackages?: SidebarPackage[];
+  javaPackages?: SidebarPackage[];
+  goPackages?: SidebarPackage[];
 }
 
-export function Sidebar({ pythonPackages = [], javascriptPackages = [] }: SidebarProps) {
+export function Sidebar({
+  pythonPackages = [],
+  javascriptPackages = [],
+  javaPackages = [],
+  goPackages = [],
+}: SidebarProps) {
   const pathname = usePathname();
   const isPython = pathname.startsWith("/python");
   const isJavaScript = pathname.startsWith("/javascript");
+  const isJava = pathname.startsWith("/java");
+  const isGo = pathname.startsWith("/go");
 
   // Get current project from URL
   const currentProject = useMemo(() => getProjectFromPathname(pathname), [pathname]);
 
+  // Get available languages for this project
+  const availableLanguages = useMemo(() => {
+    if (!currentProject) return ["python", "javascript"];
+    return getAvailableLanguages(currentProject.id);
+  }, [currentProject]);
+
   // Filter packages by language first
-  const languagePackages = isPython ? pythonPackages : isJavaScript ? javascriptPackages : [];
+  const languagePackages = isPython
+    ? pythonPackages
+    : isJavaScript
+    ? javascriptPackages
+    : isJava
+    ? javaPackages
+    : isGo
+    ? goPackages
+    : [];
 
   // Then filter by project using the project field passed from SidebarLoader
   const packages = useMemo(() => {
@@ -82,7 +106,7 @@ export function Sidebar({ pythonPackages = [], javascriptPackages = [] }: Sideba
       <div className="flex-1 pr-5 pt-5 pb-4 overflow-y-auto scrollbar-hide" id="navigation-items">
         {/* Language Dropdown */}
         <div className="pl-4 mb-6">
-          <LanguageDropdown />
+          <LanguageDropdown availableLanguages={availableLanguages} />
         </div>
 
         {/* Project Title */}

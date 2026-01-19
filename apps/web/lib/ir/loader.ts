@@ -12,6 +12,8 @@
  */
 
 import { unstable_cache } from "next/cache";
+import type { Language } from "@langchain/ir-schema";
+
 import type { Manifest, Package, SymbolRecord, RoutingMap } from "./types";
 
 const IR_BASE_PATH = "ir";
@@ -162,20 +164,20 @@ interface PackagePointer {
   };
 }
 
-/**
- * Project package index - aggregates all package pointers for a project/language.
- * Path: pointers/index-{project}-{language}.json
- */
 interface ProjectPackageIndex {
   project: string;
-  language: "python" | "javascript";
-  updatedAt: string;
+  language: Language;
+  updatedAt?: string;
   packages: Record<
     string,
     {
+      packageId: string;
       buildId: string;
+      displayName: string;
+      publishedName: string;
+      ecosystem: string;
       version: string;
-      sha: string;
+      sha?: string;
     }
   >;
 }
@@ -271,7 +273,7 @@ export async function getLatestBuildId(): Promise<string | null> {
  * Get the latest build ID for a specific language and project
  */
 export async function getLatestBuildIdForLanguage(
-  language: "python" | "javascript",
+  language: Language,
   project: string = "langchain",
 ): Promise<string | null> {
   try {
@@ -299,7 +301,7 @@ export async function getLatestBuildIdForLanguage(
  * to match the stored pointer filename.
  */
 export async function getPackagePointer(
-  ecosystem: "python" | "javascript",
+  ecosystem: Language,
   packageName: string,
 ): Promise<PackagePointer | null> {
   const cacheKey = `${ecosystem}:${packageName}`;
@@ -330,7 +332,7 @@ export async function getPackagePointer(
  * Uses the new package-level pointer system.
  */
 export async function getPackageBuildId(
-  ecosystem: "python" | "javascript",
+  ecosystem: Language,
   packageName: string,
 ): Promise<string | null> {
   const pointer = await getPackagePointer(ecosystem, packageName);
@@ -342,11 +344,16 @@ export async function getPackageBuildId(
  *
  * @example packageIdToName("pkg_js_langchain_core") => "@langchain/core"
  * @example packageIdToName("pkg_py_langchain_openai") => "langchain-openai"
+ * @example packageIdToName("pkg_java_langsmith") => "langsmith"
+ * @example packageIdToName("pkg_go_langsmith") => "langsmith"
  */
 export function packageIdToName(packageId: string): string {
   const isJs = packageId.startsWith("pkg_js_");
+  const isJava = packageId.startsWith("pkg_java_");
+  const isGo = packageId.startsWith("pkg_go_");
+
   // Remove prefix: pkg_js_langchain_core -> langchain_core
-  const baseName = packageId.replace(/^pkg_(py|js)_/, "");
+  const baseName = packageId.replace(/^pkg_(py|js|java|go)_/, "");
 
   if (isJs) {
     // JavaScript packages are scoped: langchain_core -> @langchain/core
@@ -358,6 +365,9 @@ export function packageIdToName(packageId: string): string {
     }
     // Fallback for non-scoped packages
     return baseName.replace(/_/g, "-");
+  } else if (isJava || isGo) {
+    // Java and Go packages use the base name as-is (with underscores converted to hyphens)
+    return baseName.replace(/_/g, "-");
   } else {
     // Python packages use hyphens: langchain_openai -> langchain-openai
     return baseName.replace(/_/g, "-");
@@ -365,11 +375,22 @@ export function packageIdToName(packageId: string): string {
 }
 
 /**
+ * Get the ecosystem (language) from a packageId.
+ */
+function getEcosystemFromPackageId(packageId: string): Language {
+  if (packageId.startsWith("pkg_py_")) return "python";
+  if (packageId.startsWith("pkg_js_")) return "javascript";
+  if (packageId.startsWith("pkg_java_")) return "java";
+  if (packageId.startsWith("pkg_go_")) return "go";
+  return "javascript"; // default fallback
+}
+
+/**
  * Get the build ID for a package given its packageId.
  * Convenience wrapper around getPackageBuildId that handles packageId-to-name conversion.
  */
 export async function getBuildIdForPackageId(packageId: string): Promise<string | null> {
-  const ecosystem = packageId.startsWith("pkg_py_") ? "python" : "javascript";
+  const ecosystem = getEcosystemFromPackageId(packageId);
   const packageName = packageIdToName(packageId);
   return getPackageBuildId(ecosystem, packageName);
 }
@@ -382,7 +403,7 @@ export async function getBuildIdForPackageId(packageId: string): Promise<string 
  */
 export async function getProjectPackageIndex(
   project: string,
-  language: "python" | "javascript",
+  language: Language,
 ): Promise<ProjectPackageIndex | null> {
   const cacheKey = `${project}:${language}`;
   if (projectPackageIndexCache.has(cacheKey)) {
@@ -736,8 +757,14 @@ async function buildManifestFromPackageIndexes(): Promise<Manifest | null> {
 /**
  * Helper to normalize package name to packageId
  */
-function normalizePackageId(pkgName: string, language: "python" | "javascript"): string {
-  const prefix = language === "python" ? "pkg_py_" : "pkg_js_";
+function normalizePackageId(pkgName: string, language: Language): string {
+  const prefixMap: Record<Language, string> = {
+    python: "pkg_py_",
+    javascript: "pkg_js_",
+    java: "pkg_java_",
+    go: "pkg_go_",
+  };
+  const prefix = prefixMap[language];
   const normalized = pkgName
     .replace(/^@/, "")
     .replace(/\//g, "_")
@@ -1168,7 +1195,7 @@ export async function getPackageInfo(buildId: string, packageId: string): Promis
  */
 export async function getPackagesForLanguage(
   buildId: string,
-  language: "python" | "javascript",
+  language: Language,
 ): Promise<Package[]> {
   // Use unified getManifestData to support both blob and local
   const manifest = await getManifestData(buildId);
@@ -1193,7 +1220,7 @@ export async function getPackagesForLanguage(
  * This function returns the first available build ID for backwards compatibility.
  */
 export async function getBuildIdForLanguage(
-  language: "python" | "javascript",
+  language: Language,
   project: string = "langchain",
 ): Promise<string | null> {
   // First, try the project package index (new architecture)
@@ -1217,7 +1244,7 @@ export async function getBuildIdForLanguage(
  */
 export async function getManifestData(
   buildId: string,
-  _language?: "python" | "javascript",
+  _language?: Language,
   _project?: string,
 ): Promise<Manifest | null> {
   return getManifest(buildId);
@@ -1375,7 +1402,7 @@ export async function findSymbolWithVariations(
   const packagePrefix =
     pkgInfo?.publishedName ||
     pkgInfo?.displayName ||
-    packageId.replace(/^pkg_(py|js)_/, "");
+    packageId.replace(/^pkg_(py|js|java|go)_/, "");
 
   if (routingMap?.slugs) {
     const candidates: string[] = [];
@@ -1692,7 +1719,7 @@ function slugifySymbolPath(symbolPath: string, hasPackagePrefix = true): string 
  * Other symbol types are rendered on-demand via dynamicParams.
  */
 export async function getStaticParamsForLanguage(
-  language: "python" | "javascript",
+  language: Language,
   project: string = "langchain",
 ): Promise<{ slug: string[] }[]> {
   const buildId = await getBuildIdForLanguage(language, project);
@@ -1706,7 +1733,7 @@ export async function getStaticParamsForLanguage(
   }
 
   const params: { slug: string[] }[] = [];
-  const ecosystem = language === "python" ? "python" : "javascript";
+  const ecosystem = language;
 
   // Filter packages by ecosystem
   const packages = manifest.packages.filter((p) => p.ecosystem === ecosystem);
@@ -1765,7 +1792,7 @@ export interface CrossProjectPackage {
   /** URL slug for the package (e.g., "langchain_core") */
   slug: string;
   /** Language of the package */
-  language: "python" | "javascript";
+  language: Language;
   /** Map of symbol names to their URL paths in this package */
   knownSymbols: Map<string, string>;
 }
@@ -1781,7 +1808,7 @@ const crossProjectPackageCache = new Map<string, Map<string, CrossProjectPackage
  */
 interface SerializableCrossProjectPackage {
   slug: string;
-  language: "python" | "javascript";
+  language: Language;
   /** Array of [symbolName, urlPath] pairs (serializable form of knownSymbols Map) */
   knownSymbols: [string, string][];
 }
@@ -1791,7 +1818,7 @@ interface SerializableCrossProjectPackage {
  * Returns serializable data structure for caching.
  */
 async function fetchCrossProjectPackagesData(
-  language: "python" | "javascript",
+  language: Language,
 ): Promise<[string, SerializableCrossProjectPackage][]> {
   const packages: [string, SerializableCrossProjectPackage][] = [];
 
@@ -1810,7 +1837,7 @@ async function fetchCrossProjectPackagesData(
     const manifest = await getManifestData(buildId);
     if (!manifest) continue;
 
-    const ecosystem = language === "python" ? "python" : "javascript";
+    const ecosystem = language;
     for (const pkg of manifest.packages) {
       if (pkg.ecosystem !== ecosystem) continue;
 
@@ -1885,7 +1912,7 @@ const getCachedCrossProjectPackagesData = unstable_cache(
  * on cold starts.
  */
 export async function getCrossProjectPackages(
-  language: "python" | "javascript",
+  language: Language,
 ): Promise<Map<string, CrossProjectPackage>> {
   // Check in-memory cache first (fastest path for same-request reuse)
   const cacheKey = language;
@@ -1922,7 +1949,7 @@ export async function getCrossProjectPackages(
 export async function resolveTypeReferenceUrl(
   typeName: string,
   qualifiedName: string | undefined,
-  language: "python" | "javascript",
+  language: Language,
 ): Promise<string | null> {
   if (!qualifiedName) return null;
 
@@ -1940,7 +1967,7 @@ export async function resolveTypeReferenceUrl(
     const pkg = packages.get(prefix);
 
     if (pkg && pkg.knownSymbols.has(typeName)) {
-      const langPath = language === "python" ? "python" : "javascript";
+      const langPath = language;
       const symbolPath = pkg.knownSymbols.get(typeName)!;
       // Convert underscore slug to hyphen slug for URLs (e.g., langchain_core -> langchain-core)
       const urlSlug = pkg.slug.replace(/_/g, "-").toLowerCase();

@@ -22,6 +22,8 @@ import { PackageTableOfContents, type PackageTOCSection } from "./PackageTableOf
 import { MarkdownContent } from "./MarkdownContent";
 import { packageToMarkdownFromCatalog } from "@/lib/ir/markdown-generator";
 import { getBaseUrl } from "@/lib/config/mcp";
+import { languageToSymbolLanguage, symbolLanguageToLanguage } from "@langchain/ir-schema";
+import { LANGUAGE_CONFIG } from "@/lib/config/languages";
 
 interface PackagePageProps {
   language: UrlLanguage;
@@ -64,7 +66,7 @@ function toDisplaySymbol(entry: CatalogEntry): DisplaySymbol {
 }
 
 export async function PackagePage({ language, packageId, packageName }: PackagePageProps) {
-  const ecosystem = language === "python" ? "python" : "javascript";
+  const ecosystem = language === "typescript" ? "javascript" : language;
 
   // Validate that packageName looks like a real package (not a project name)
   // Real packages have prefixes like "langchain-", "@langchain/", etc.
@@ -90,14 +92,34 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
     buildId ? getPackageDescription(packageId, buildId) : Promise.resolve(null),
   ]);
 
-  // If no catalog entries found, the package doesn't exist
-  if (!catalogEntries || catalogEntries.length === 0) {
+  // If no catalog entries, try loading from symbols.json directly (fallback for Java/Go)
+  let symbols: DisplaySymbol[] = [];
+  if (catalogEntries && catalogEntries.length > 0) {
+    // Convert to display symbols (catalog already filters to public symbols)
+    symbols = catalogEntries.map(toDisplaySymbol);
+  } else if (buildId) {
+    // Fallback: load from symbols.json directly
+    const { getPackageSymbols } = await import("@/lib/ir/loader");
+    const symbolsData = await getPackageSymbols(buildId, packageId);
+    if (symbolsData?.symbols) {
+      symbols = symbolsData.symbols
+        .filter((s) => s.tags?.visibility === "public" || !s.tags?.visibility)
+        .map((s) => ({
+          id: s.id,
+          kind: s.kind as DisplaySymbol["kind"],
+          name: s.name,
+          qualifiedName: s.qualifiedName,
+          summary: s.docs?.summary,
+          signature: s.signature,
+        }));
+    }
+  }
+
+  // If no symbols found, the package doesn't exist
+  if (symbols.length === 0) {
     const { notFound } = await import("next/navigation");
     notFound();
   }
-
-  // Convert to display symbols (catalog already filters to public symbols)
-  const symbols: DisplaySymbol[] = catalogEntries.map(toDisplaySymbol);
 
   // Group symbols by kind
   const classes = symbols.filter((s) => s.kind === "class");
@@ -151,6 +173,7 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
     tocSections.push({ id: "section-types", title: "Types", icon: "type", count: types.length });
   }
 
+  const symbolLanguage = symbolLanguageToLanguage(language === "javascript" ? "typescript" : language);
   return (
     <div className="flex gap-8">
       {/* Main content */}
@@ -158,10 +181,10 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-2 text-sm text-foreground-secondary">
           <Link
-            href={`/${language === "python" ? "python" : "javascript"}`}
+            href={`/${language}`}
             className="hover:text-foreground transition-colors"
           >
-            {language === "python" ? "Python" : "JavaScript"}
+            {LANGUAGE_CONFIG[symbolLanguage].name}
           </Link>
           <ChevronRight className="h-4 w-4" />
           <span className="text-foreground">{packageName}</span>
@@ -274,10 +297,10 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
         markdown={packageToMarkdownFromCatalog(
           packageName,
           catalogEntries,
-          language === "python" ? "python" : "typescript",
+          symbolLanguageToLanguage(languageToSymbolLanguage(language === "typescript" ? "javascript" : language)),
           { description },
         )}
-        pageUrl={`${getBaseUrl()}/${language === "python" ? "python" : "javascript"}/${slugifyPackageName(packageName)}`}
+        pageUrl={`${getBaseUrl()}/${language}/${slugifyPackageName(packageName)}`}
       />
     </div>
   );

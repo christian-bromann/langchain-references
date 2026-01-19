@@ -6,7 +6,7 @@
  * variants, and their configuration paths.
  */
 
-import type { ProjectConfig } from "@langchain/ir-schema";
+import type { ProjectConfig, Language } from "@langchain/ir-schema";
 
 /**
  * All projects in the LangChain ecosystem.
@@ -120,6 +120,18 @@ export const PROJECTS: ProjectConfig[] = [
         configPath: "configs/langsmith-typescript.json",
         enabled: true,
       },
+      {
+        language: "java",
+        repo: "langchain-ai/langsmith-java",
+        configPath: "configs/langsmith-java.json",
+        enabled: true,
+      },
+      {
+        language: "go",
+        repo: "langchain-ai/langsmith-go",
+        configPath: "configs/langsmith-go.json",
+        enabled: true,
+      },
     ],
   },
 ];
@@ -157,6 +169,8 @@ const DEFAULT_PACKAGE_SLUGS: Record<string, Record<string, string>> = {
   langsmith: {
     python: "langsmith",
     javascript: "langsmith",
+    java: "langsmith",
+    go: "langsmith",
   },
 };
 
@@ -166,7 +180,7 @@ const DEFAULT_PACKAGE_SLUGS: Record<string, Record<string, string>> = {
  */
 export function getDefaultPackageSlug(
   projectId: string,
-  language: "python" | "javascript",
+  language: Language,
 ): string {
   return DEFAULT_PACKAGE_SLUGS[projectId]?.[language] || projectId;
 }
@@ -201,7 +215,7 @@ export function getDefaultProject(): ProjectConfig {
  */
 export function hasLanguageVariant(
   project: ProjectConfig,
-  language: "python" | "javascript",
+  language: Language,
 ): boolean {
   return project.variants.some((v) => v.language === language && v.enabled);
 }

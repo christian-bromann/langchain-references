@@ -2,12 +2,14 @@
  * URL Utilities - URL parsing and building for reference docs
  */
 
+import type { Language, SymbolLanguage } from "@langchain/ir-schema";
 import type { SymbolKind } from "../ir/types";
 
 /**
  * Extended language type that includes "javascript" as a URL segment alias for "typescript"
+ * Also supports "java" and "go" for additional language SDKs.
  */
-export type UrlLanguage = "python" | "javascript" | "typescript";
+export type UrlLanguage = Language | SymbolLanguage;
 
 /**
  * Parsed slug information
@@ -60,6 +62,9 @@ export function unslugifyPackageName(slug: string, language: UrlLanguage): strin
 
     // Otherwise, treat as unscoped package
     return slug;
+  } else if (language === "java" || language === "go") {
+    // Java and Go packages use the slug as-is
+    return slug;
   } else {
     // Python packages use snake_case
     return slug.replace(/-/g, "_");
@@ -72,7 +77,14 @@ export function unslugifyPackageName(slug: string, language: UrlLanguage): strin
  * @example "langchain_core" -> "pkg_py_langchain_core"
  */
 export function packageNameToId(packageName: string, language: UrlLanguage): string {
-  const ecosystem = language === "python" ? "py" : "js";
+  const ecosystemMap: Record<string, string> = {
+    python: "py",
+    javascript: "js",
+    typescript: "js",
+    java: "java",
+    go: "go",
+  };
+  const ecosystem = ecosystemMap[language] || language;
   const normalized = packageName
     .replace(/^@/, "")
     .replace(/\//g, "_")
@@ -157,7 +169,14 @@ export function buildSymbolUrl(
   packageName: string,
   symbolPath?: string,
 ): string {
-  const langSegment = language === "python" ? "python" : "javascript";
+  const langSegmentMap: Record<string, string> = {
+    python: "python",
+    javascript: "javascript",
+    typescript: "javascript",
+    java: "java",
+    go: "go",
+  };
+  const langSegment = langSegmentMap[language] || language;
   const packageSlug = slugifyPackageName(packageName);
 
   if (!symbolPath) {
@@ -207,10 +226,24 @@ export interface BreadcrumbItem {
 }
 
 export function getBreadcrumbs(parsed: ParsedSlug): BreadcrumbItem[] {
+  const languageLabels: Record<string, string> = {
+    python: "Python",
+    javascript: "JavaScript",
+    typescript: "JavaScript",
+    java: "Java",
+    go: "Go",
+  };
+  const langSegmentMap: Record<string, string> = {
+    python: "python",
+    javascript: "javascript",
+    typescript: "javascript",
+    java: "java",
+    go: "go",
+  };
   const breadcrumbs: BreadcrumbItem[] = [
     {
-      label: parsed.language === "python" ? "Python" : "JavaScript",
-      href: `/${parsed.language === "python" ? "python" : "javascript"}`,
+      label: languageLabels[parsed.language] || parsed.language,
+      href: `/${langSegmentMap[parsed.language] || parsed.language}`,
     },
     {
       label: parsed.packageName,

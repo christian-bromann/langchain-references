@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import MiniSearch from "minisearch";
 import type { SearchRecord, SearchResult, Language } from "@langchain/ir-schema";
+import { symbolLanguageToLanguage, isLanguage, languageToSymbolLanguage } from "@langchain/ir-schema";
 import { getBuildIdForLanguage, getManifestData, getSymbols } from "@/lib/ir/loader";
 import { getEnabledProjects } from "@/lib/config/projects";
 import { slugifyPackageName, slugifySymbolPath } from "@/lib/utils/url";
@@ -195,18 +196,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing required 'q' parameter" }, { status: 400 });
   }
 
-  if (!languageParam || !["python", "javascript"].includes(languageParam)) {
+  if (!languageParam || !isLanguage(languageParam)) {
     return NextResponse.json(
-      { error: "Invalid language parameter. Must be 'python' or 'javascript'" },
+      { error: "Invalid language parameter. Must be 'python', 'javascript', 'java', or 'go'" },
       { status: 400 },
     );
   }
 
-  const language: Language = languageParam === "python" ? "python" : "typescript";
+  // languageParam is already validated as Language ("python" | "javascript" | "java" | "go")
   const limit = Math.min(parseInt(limitParam || "20", 10), 50); // Max 50 results
 
   try {
-    const index = await getSearchIndex(language);
+    const index = await getSearchIndex(languageParam);
 
     if (!index) {
       return NextResponse.json(
@@ -229,6 +230,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Map to SearchResult format and limit
+    // Convert SymbolLanguage back to Language for the response
+    const outputLanguage = symbolLanguageToLanguage(languageToSymbolLanguage(languageParam));
     const results: SearchResult[] = searchResults.slice(0, limit).map((r) => ({
       id: r.id as string,
       url: r.url as string,
@@ -236,7 +239,7 @@ export async function GET(request: NextRequest) {
       breadcrumbs: r.breadcrumbs as string[],
       excerpt: r.excerpt as string,
       kind: r.kind as string,
-      language,
+      language: outputLanguage,
       packageId: r.packageId as string,
       keywords: [],
       score: r.score,

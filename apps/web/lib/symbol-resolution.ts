@@ -124,7 +124,20 @@ export function parseSymbolUrl(url: string): ParsedSymbolUrl {
 
   // First part is language
   const languageStr = parts[0] || "";
-  const language: Language = languageStr === "python" ? "python" : "javascript";
+  let language: Language;
+  switch (languageStr) {
+    case "python":
+      language = "python";
+      break;
+    case "java":
+      language = "java";
+      break;
+    case "go":
+      language = "go";
+      break;
+    default:
+      language = "javascript";
+  }
 
   // Second part is package slug
   const packageSlug = parts[1] || "";
@@ -316,6 +329,9 @@ export async function searchTargetLanguage(
  * 4. Package fallback
  * 5. Language fallback
  *
+ * Note: Cross-language resolution is currently only supported between Python and JavaScript.
+ * For Java and Go, we fall back to the language landing page.
+ *
  * @param symbolPath - Full symbol path from URL (e.g., "langchain-core/messages/BaseMessage")
  * @param symbolName - Symbol name (e.g., "BaseMessage")
  * @param sourceLanguage - Source language
@@ -330,6 +346,18 @@ export async function resolveSymbol(
   targetLanguage: Language,
   sourcePackage?: string,
 ): Promise<ResolveSymbolResponse> {
+  // Cross-language resolution is only supported between Python and JavaScript for now
+  // For Java and Go, fall back to the target language landing page
+  if (targetLanguage === "java" || targetLanguage === "go" ||
+      sourceLanguage === "java" || sourceLanguage === "go") {
+    console.log(`[symbol-resolution] Cross-language resolution not yet available for ${sourceLanguage} -> ${targetLanguage}, falling back to language root`);
+    return {
+      found: false,
+      targetUrl: `/${targetLanguage}`,
+      matchType: "language",
+      score: 0,
+    };
+  }
   // 1. Check explicit path mappings (highest priority)
   const explicitMapping = getExplicitMapping(symbolPath, sourceLanguage, targetLanguage);
   if (explicitMapping) {

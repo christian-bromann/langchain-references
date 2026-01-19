@@ -82,7 +82,9 @@ export function getCurrentProject(
 /**
  * Helper to extract current language from pathname.
  */
-export function getCurrentLanguage(pathname: string): "python" | "javascript" {
+export function getCurrentLanguage(pathname: string): "python" | "javascript" | "java" | "go" {
   if (pathname.startsWith("/javascript")) return "javascript";
+  if (pathname.startsWith("/java")) return "java";
+  if (pathname.startsWith("/go")) return "go";
   return "python";
 }
