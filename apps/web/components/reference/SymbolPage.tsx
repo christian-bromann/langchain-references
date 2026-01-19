@@ -454,6 +454,7 @@ function getLocalIrPath(project: string, language: string): string {
 
 /**
  * Fetch the latest build pointer for a project+language from Vercel Blob.
+ * Uses time-based revalidation instead of no-store to be compatible with ISR.
  */
 async function fetchLatestBuildId(
   blobBaseUrl: string,
@@ -464,7 +465,7 @@ async function fetchLatestBuildId(
   const pointerUrl = `${blobBaseUrl}/pointers/latest-${project}-${langSuffix}.json`;
 
   try {
-    const response = await fetch(pointerUrl, { cache: "no-store" });
+    const response = await fetch(pointerUrl, { next: { revalidate: 3600 } });
     if (!response.ok) return null;
     const pointer = (await response.json()) as LatestPointer;
     return pointer.buildId;

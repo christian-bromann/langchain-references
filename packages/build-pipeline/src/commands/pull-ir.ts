@@ -31,6 +31,7 @@ import { getBlobBaseUrl } from "../blob-utils.js";
 import {
   PROJECTS,
   OUTPUT_LANGUAGES,
+  outputToConfigLanguage,
   type Project,
   type OutputLanguage,
 } from "../constants.js";
@@ -135,6 +136,22 @@ async function fetchBlobRaw(relativePath: string): Promise<string | null> {
 // =============================================================================
 
 /**
+ * Check if a config file exists for a project/language combination.
+ */
+async function configFileExists(project: Project, language: Language): Promise<boolean> {
+  const configDir = path.resolve(__dirname, "../../../../configs");
+  const configLanguage = outputToConfigLanguage(language);
+  const configFile = path.join(configDir, `${project}-${configLanguage}.json`);
+
+  try {
+    await fs.access(configFile);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Load package names from config files for a project/language.
  */
 async function loadPackageNamesFromConfigs(
@@ -142,8 +159,8 @@ async function loadPackageNamesFromConfigs(
   language: Language,
 ): Promise<string[]> {
   const configDir = path.resolve(__dirname, "../../../../configs");
-  const irLanguage = language === "javascript" ? "typescript" : "python";
-  const configFile = path.join(configDir, `${project}-${irLanguage}.json`);
+  const configLanguage = outputToConfigLanguage(language);
+  const configFile = path.join(configDir, `${project}-${configLanguage}.json`);
 
   try {
     const content = await fs.readFile(configFile, "utf-8");
@@ -523,6 +540,12 @@ async function main() {
 
   for (const project of projectsToPull) {
     for (const language of languagesToPull) {
+      // Skip silently if no config file exists for this project/language
+      const hasConfig = await configFileExists(project, language);
+      if (!hasConfig) {
+        continue;
+      }
+
       console.log(`\n📦 ${project} (${language})`);
 
       const result = await pullProjectLanguage(project, language, outputDir, opts.verbose);

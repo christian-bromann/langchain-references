@@ -20,12 +20,16 @@ interface LayoutClientProps {
   children: React.ReactNode;
   pythonPackages: SidebarPackage[];
   javascriptPackages: SidebarPackage[];
+  javaPackages: SidebarPackage[];
+  goPackages: SidebarPackage[];
 }
 
 export function LayoutClient({
   children,
   pythonPackages,
   javascriptPackages,
+  javaPackages,
+  goPackages,
 }: LayoutClientProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -52,6 +56,8 @@ export function LayoutClient({
         currentLanguage={currentLanguage}
         pythonPackages={pythonPackages}
         javascriptPackages={javascriptPackages}
+        javaPackages={javaPackages}
+        goPackages={goPackages}
       />
     </>
   );

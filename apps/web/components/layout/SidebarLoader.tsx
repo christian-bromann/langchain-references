@@ -12,7 +12,7 @@ import { Sidebar, type SidebarPackage, type SidebarSubpage } from "./Sidebar";
 import { getBuildIdForLanguage, getManifestData, getRoutingMapData, getPackageInfoV2, getProjectPackageIndex } from "@/lib/ir/loader";
 import { getEnabledProjects } from "@/lib/config/projects";
 import type { Package, RoutingMap, SymbolKind } from "@/lib/ir/types";
-import type { Language } from "@langchain/ir-schema";
+import { languageToSymbolLanguage, type Language } from "@langchain/ir-schema";
 
 /**
  * Get package URL slug from published name
@@ -119,19 +119,31 @@ async function loadSidebarPackagesForProject(
     // Package-level architecture: build sidebar from package index
     const sidebarPackages: SidebarPackage[] = [];
 
-    for (const [packageId, pkgPointer] of Object.entries(packageIndex.packages)) {
+    for (const [pkgKey, pkgPointer] of Object.entries(packageIndex.packages)) {
       const pkgBuildId = pkgPointer.buildId;
+
+      // Normalize packageId: Some indexes use short names (langchain) while others
+      // use full packageId format (pkg_java_langsmith). Ensure we have the full format.
+      // Use the correct prefix: py for python, js for javascript
+      const langPrefix = language === "python" ? "py" : language === "javascript" ? "js" : language;
+      const packageId = pkgKey.startsWith("pkg_")
+        ? pkgKey
+        : `pkg_${langPrefix}_${pkgKey}`;
 
       // Load package info to get display name and subpages
       const packageInfoV2 = await getPackageInfoV2(packageId, pkgBuildId);
-      const displayName = packageInfoV2?.displayName || pkgPointer.displayName || pkgPointer.publishedName;
+      // Fallback chain: packageInfo -> pointer fields -> derive from packageId/pkgKey
+      const derivedName = pkgKey.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
+      const displayName = packageInfoV2?.displayName || pkgPointer.displayName || pkgPointer.publishedName || derivedName;
 
       // Create a minimal Package-like object for getPackageSlug
+      const publishedName = pkgPointer.publishedName || derivedName;
+      const symbolLanguage = languageToSymbolLanguage(language);
       const pkg = {
         packageId,
         displayName,
-        publishedName: pkgPointer.publishedName,
-        language: language === "javascript" ? "typescript" : language,
+        publishedName,
+        language: symbolLanguage,
         ecosystem: language,
         version: pkgPointer.version || "0.0.0",
       } as Package;
@@ -224,9 +236,13 @@ async function loadSidebarPackagesForProject(
       }));
     }
 
+    // Fallback chain: displayName -> publishedName -> derive from packageId
+    const derivedName = pkg.packageId.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
+    const pkgDisplayName = pkg.displayName || pkg.publishedName || derivedName;
+
     sidebarPackages.push({
       id: pkg.packageId,
-      name: pkg.displayName,
+      name: pkgDisplayName,
       path: `/${language}/${slug}`,
       items,
       project: projectId,

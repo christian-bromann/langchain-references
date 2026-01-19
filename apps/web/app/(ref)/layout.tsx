@@ -12,11 +12,16 @@ import { LayoutClient } from "@/components/layout/LayoutClient";
 export default async function ReferenceLayout({ children }: { children: React.ReactNode }) {
   // Load navigation data at the layout level so it can be shared
   // between Header (MobileProjectMenu) and Sidebar
-  const { pythonPackages, javascriptPackages } = await loadNavigationData();
+  const { pythonPackages, javascriptPackages, javaPackages, goPackages } = await loadNavigationData();
 
   return (
     <div className="min-h-screen bg-background">
-      <LayoutClient pythonPackages={pythonPackages} javascriptPackages={javascriptPackages}>
+      <LayoutClient
+        pythonPackages={pythonPackages}
+        javascriptPackages={javascriptPackages}
+        javaPackages={javaPackages}
+        goPackages={goPackages}
+      >
         {/* Main layout with sidebar */}
         <div className="max-w-8xl mx-auto px-0 lg:px-5">
           <div className="flex pt-header">
