@@ -30,7 +30,7 @@ import {
   getManifestData,
   getIndividualSymbolData,
   getSymbolLookupIndexData,
-  getCrossProjectPackages,
+  getTypeUrlMap,
   getPackageInfo,
   getRoutingMapData,
   getSymbolViaShardedLookup,
@@ -1364,35 +1364,12 @@ export async function SymbolPage({
     );
   }
 
-  // Build typeUrlMap for cross-project type linking
-  // Pre-populate with ALL known symbols from ALL cross-project packages
-  // This ensures any type that exists can be linked, not just those in typeRefs
-  const typeUrlMap = new Map<string, string>();
-  const crossProjectPackages = await getCrossProjectPackages(language);
-  const langPath = language;
+  // Get pre-computed typeUrlMap for cross-project type linking
+  // OPTIMIZATION: This map is pre-computed and cached (via unstable_cache) so we
+  // don't iterate over 20k+ symbols on every render. See getTypeUrlMap() in loader.ts.
   const currentPkgSlug = slugifyPackageName(packageName);
-
-  // Add all symbols from cross-project packages to typeUrlMap
-  for (const [, pkg] of crossProjectPackages) {
-    // Convert underscore slug to hyphen slug for URL comparison and building
-    const pkgUrlSlug = pkg.slug.replace(/_/g, "-").toLowerCase();
-    // Skip the current package
-    if (pkgUrlSlug === currentPkgSlug) continue;
-
-    for (const [symbolName, symbolPath] of pkg.knownSymbols) {
-      // Skip if already in current package's known symbols (local takes precedence)
-      if (knownSymbols.has(symbolName)) continue;
-
-      // Skip if already mapped (first package wins for same symbol name)
-      if (typeUrlMap.has(symbolName)) continue;
-
-      // Use slugifySymbolPath to properly strip package prefix for Python
-      const isPython = pkg.language === "python";
-      const hasPackagePrefix = isPython && symbolPath.includes("_");
-      const urlPath = slugifySymbolPath(symbolPath, hasPackagePrefix);
-      typeUrlMap.set(symbolName, `/${langPath}/${pkgUrlSlug}/${urlPath}`);
-    }
-  }
+  const localSymbolSet = new Set(knownSymbols.keys());
+  const typeUrlMap = await getTypeUrlMap(language, currentPkgSlug, localSymbolSet);
 
   // Prefer package repo path prefix from the build manifest (already part of the IR data).
   // This captures monorepo layouts like `libs/<package>` without hardcoding.
