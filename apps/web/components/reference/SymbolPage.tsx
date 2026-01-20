@@ -29,7 +29,6 @@ import {
   getPackageBuildId,
   getManifestData,
   getIndividualSymbolData,
-  getSymbolLookupIndexData,
   getTypeUrlMap,
   getPackageInfo,
   getRoutingMapData,
@@ -755,8 +754,11 @@ async function findSymbolOptimized(
 
   // Prefer the routing map + individual symbol files.
   // This avoids downloading `lookup.json` which can exceed Next.js' 2MB cache limit.
-  const pkgInfo = await getPackageInfo(buildId, packageId);
-  const routingMap = await getRoutingMapData(buildId, packageId);
+  // Fetch both in parallel for speed.
+  const [pkgInfo, routingMap] = await Promise.all([
+    getPackageInfo(buildId, packageId),
+    getRoutingMapData(buildId, packageId),
+  ]);
 
   // Derive package prefix from packageId as fallback (e.g., pkg_py_langchain_core -> langchain_core)
   const packagePrefix =
@@ -907,11 +909,12 @@ async function resolveInheritedMembers(
   ).slice(0, Math.max(1, crossPackageLimit));
 
   // Helper to find a symbol by name across all packages
+  // OPTIMIZATION: Uses routing maps (already cached) instead of lookup.json (doesn't exist/slow 404s)
   async function findBaseSymbol(
     simpleBaseName: string,
   ): Promise<{ symbol: SymbolRecord; packageId: string; packageName: string } | null> {
-    // First, try to find in current package
-    let baseSymbol =
+    // First, try to find in current package symbols if we have them
+    const baseSymbol =
       currentPackageSymbols?.find(
         (s) =>
           (s.kind === "class" || s.kind === "interface") &&
@@ -929,82 +932,49 @@ async function resolveInheritedMembers(
       };
     }
 
-    // If we don't have full current package symbols (to avoid huge downloads),
-    // try resolving within the current package via the lightweight lookup index.
-    if (!currentPackageSymbols) {
-      const cacheKey = `${buildId}:${currentPackageId}:${simpleBaseName}`;
-      if (baseSymbolResolutionCache.has(cacheKey)) {
-        const cached = baseSymbolResolutionCache.get(cacheKey);
-        if (cached) return cached;
-      } else {
-        const index = await getSymbolLookupIndexData(buildId, currentPackageId);
-        if (index?.symbols) {
-          let foundId: string | null = null;
-          for (const [qualifiedName, entry] of Object.entries(index.symbols)) {
-            if (
-              qualifiedName === simpleBaseName ||
-              qualifiedName.endsWith(`.${simpleBaseName}`) ||
-              qualifiedName.endsWith(`/${simpleBaseName}`)
-            ) {
-              foundId = entry.id;
-              break;
-            }
-          }
-
-          if (foundId) {
-            const symbol = await getIndividualSymbolData(buildId, foundId, currentPackageId);
-            if (symbol) {
-              const pkg = manifestPackages.find((p) => p.packageId === currentPackageId);
-              const resolved = {
-                symbol,
-                packageId: currentPackageId,
-                packageName: pkg?.publishedName || "",
-              };
-              baseSymbolResolutionCache.set(cacheKey, resolved);
-              return resolved;
-            }
-          }
-        }
-        baseSymbolResolutionCache.set(cacheKey, null);
-      }
-    }
-
-    // Search in a small set of candidate packages using lightweight lookup indexes.
+    // Search across candidate packages using routing maps (much faster than lookup.json which may not exist)
     for (const pkgId of candidatePackageIds) {
-      if (pkgId === currentPackageId) continue;
-
       const cacheKey = `${buildId}:${pkgId}:${simpleBaseName}`;
+
+      // Check in-memory cache first
       if (baseSymbolResolutionCache.has(cacheKey)) {
         const cached = baseSymbolResolutionCache.get(cacheKey);
         if (cached) return cached;
         continue;
       }
 
-      const index = await getSymbolLookupIndexData(buildId, pkgId);
-      if (!index?.symbols) {
+      // Get the package's build ID (might be different from the current build)
+      const pkgBuildId = (manifestPackages.find((p) => p.packageId === pkgId) as { buildId?: string })?.buildId || buildId;
+
+      // Use the routing map (already cached from getRoutingMapData) to find the symbol
+      const routingMap = await getRoutingMapData(pkgBuildId, pkgId);
+      if (!routingMap?.slugs) {
         baseSymbolResolutionCache.set(cacheKey, null);
         continue;
       }
 
-      // Find a matching qualified name in the lookup index
-      let foundId: string | null = null;
-      for (const [qualifiedName, entry] of Object.entries(index.symbols)) {
+      // Find a matching entry in the routing map by title (symbol name)
+      let foundEntry: { refId: string; qualifiedName: string } | null = null;
+      for (const [qualifiedName, entry] of Object.entries(routingMap.slugs)) {
         if (
-          qualifiedName === simpleBaseName ||
-          qualifiedName.endsWith(`.${simpleBaseName}`) ||
-          qualifiedName.endsWith(`/${simpleBaseName}`)
+          (entry.kind === "class" || entry.kind === "interface") &&
+          (entry.title === simpleBaseName ||
+            qualifiedName === simpleBaseName ||
+            qualifiedName.endsWith(`.${simpleBaseName}`) ||
+            qualifiedName.endsWith(`/${simpleBaseName}`))
         ) {
-          foundId = entry.id;
+          foundEntry = { refId: entry.refId, qualifiedName };
           break;
         }
       }
 
-      if (!foundId) {
+      if (!foundEntry) {
         baseSymbolResolutionCache.set(cacheKey, null);
         continue;
       }
 
-      const symbol = await getIndividualSymbolData(buildId, foundId, pkgId);
+      // Fetch the actual symbol using the refId
+      const symbol = await getIndividualSymbolData(pkgBuildId, foundEntry.refId, pkgId);
       if (!symbol) {
         baseSymbolResolutionCache.set(cacheKey, null);
         continue;
@@ -1178,11 +1148,14 @@ export async function SymbolPage({
   let knownSymbols = new Map<string, string>();
 
   if (buildId) {
-    const pkgInfo = await getPackageInfo(buildId, packageId);
-    const routingMap = pkgInfo
-      ? await getRoutingMapData(buildId, packageId)
-      : null;
+    // Fetch package info and routing map in parallel
+    const [, routingMap] = await Promise.all([
+      getPackageInfo(buildId, packageId),
+      getRoutingMapData(buildId, packageId),
+    ]);
 
+    // Build knownSymbols map for local type linking
+    // This iterates over routing map entries but is just CPU work (no I/O), so it's fast
     if (routingMap?.slugs) {
       for (const [slug, entry] of Object.entries(routingMap.slugs)) {
         if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
