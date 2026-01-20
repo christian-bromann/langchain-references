@@ -12,7 +12,7 @@
  */
 
 import { unstable_cache } from "next/cache";
-import { type Language, LANGUAGE } from "@langchain/ir-schema";
+import { languageToSymbolLanguage, type Language, LANGUAGE } from "@langchain/ir-schema";
 
 import type { Manifest, Package, SymbolRecord, RoutingMap } from "./types";
 
@@ -714,26 +714,41 @@ async function buildManifestFromPackageIndexes(): Promise<Manifest | null> {
 
   const results = await Promise.all(indexPromises);
 
-  for (const { language, index } of results) {
+  // Fetch package.json files in parallel (bounded by withBlobFetchLimit inside fetchBlobJson)
+  const packageInfoPromises: Array<Promise<Package | null>> = [];
+
+  for (const { project, language, index } of results) {
     if (!index?.packages) continue;
 
     for (const [pkgName, pkgInfo] of Object.entries(index.packages)) {
       const packageId = normalizePackageId(pkgName, language);
 
-      // Get package details from the package.json file
-      const pkgDetails = await getPackageInfoV2(packageId, pkgInfo.buildId);
+      packageInfoPromises.push(
+        (async () => {
+          const pkgDetails = await getPackageInfoV2(packageId, pkgInfo.buildId);
+          if (!pkgDetails) return null;
 
-      if (pkgDetails) {
-        // Use the full package details from the downloaded package.json
-        packages.push(pkgDetails as Package);
-      }
+          // Ensure metadata is present even if older package.json files omit it
+          return {
+            ...pkgDetails,
+            buildId: (pkgDetails as ExtendedPackageInfo).buildId ?? pkgInfo.buildId,
+            project: (pkgDetails as ExtendedPackageInfo).project ?? project,
+            // Normalize language/ecosystem defaults for safety
+            language: (pkgDetails as ExtendedPackageInfo).language ?? languageToSymbolLanguage(language),
+            ecosystem: (pkgDetails as ExtendedPackageInfo).ecosystem ?? language,
+          } as unknown as Package;
+        })(),
+      );
 
-      // Track latest build ID
+      // Track latest build ID (best-effort; used for legacy callers)
       if (!latestBuildId) {
         latestBuildId = pkgInfo.buildId;
       }
     }
   }
+
+  const resolvedPackages = await Promise.all(packageInfoPromises);
+  packages.push(...resolvedPackages.filter(Boolean) as Package[]);
 
   if (packages.length === 0) {
     return null;
@@ -785,8 +800,9 @@ export async function getManifest(_buildId: string): Promise<Manifest | null> {
     return manifestCache.get(cacheKey)!;
   }
 
-  // Build manifest from package indexes
-  const manifest = await buildManifestFromPackageIndexes();
+  // Build (and persist) manifest from package indexes.
+  // This avoids occasional cold-start spikes from rebuilding the synthetic manifest.
+  const manifest = await getCachedSyntheticManifest();
 
   if (manifest) {
     manifestCache.set(cacheKey, manifest);
@@ -794,6 +810,16 @@ export async function getManifest(_buildId: string): Promise<Manifest | null> {
 
   return manifest;
 }
+
+/**
+ * Cached synthetic manifest built from all project package indexes.
+ * This is intentionally cached across invocations to avoid cold-start fan-out.
+ */
+const getCachedSyntheticManifest = unstable_cache(
+  async (): Promise<Manifest | null> => buildManifestFromPackageIndexes(),
+  ["synthetic-manifest:all-packages"],
+  { revalidate: 3600, tags: ["synthetic-manifest"] },
+);
 
 /**
  * Internal function to fetch routing map.
@@ -1829,55 +1855,61 @@ async function fetchCrossProjectPackagesData(
     const variant = project.variants.find((v) => v.language === language && v.enabled);
     if (!variant) continue;
 
-    const buildId = await getBuildIdForLanguage(language, project.id);
-    if (!buildId) continue;
-
-    const manifest = await getManifestData(buildId);
-    if (!manifest) continue;
+    // Use the lightweight project package index rather than the synthetic manifest.
+    // This avoids cold-start fan-out fetching per-package package.json files.
+    const packageIndex = await getProjectPackageIndex(project.id, language);
+    if (!packageIndex?.packages) continue;
 
     const ecosystem = language;
-    for (const pkg of manifest.packages) {
-      if (pkg.ecosystem !== ecosystem) continue;
+    const projectPkgs = Object.values(packageIndex.packages).filter((p) => p.ecosystem === ecosystem);
 
-      // Get the module prefix (e.g., "langchain_core" from package name)
-      const modulePrefix = pkg.publishedName
-        .replace(/-/g, "_")
-        .replace(/^@/, "")
-        .replace(/\//g, "_");
+    // Fetch routing maps in parallel (bounded by fetchBlobJson's concurrency limiter)
+    const perPkgResults = await Promise.all(
+      projectPkgs.map(async (pkg) => {
+        // Get the module prefix (e.g., "langchain_core" from package name)
+        const modulePrefix = pkg.publishedName
+          .replace(/-/g, "_")
+          .replace(/^@/, "")
+          .replace(/\//g, "_");
 
-      // Use each package's own buildId (package-level architecture)
-      const pkgBuildId = (pkg as ExtendedPackageInfo).buildId || buildId;
-
-      // Load known symbols for this package.
-      //
-      // IMPORTANT:
-      // We intentionally avoid `lookup.json` here because some packages can
-      // exceed Next.js' 2MB data cache limit (leading to cache failures and
-      // slow navigations). The routing map is significantly smaller and still
-      // contains enough info for type-linking (public, routable symbols).
-      const routingMap = await getRoutingMapData(pkgBuildId, pkg.packageId);
-      const knownSymbols: [string, string][] = [];
-      if (routingMap?.slugs) {
-        for (const [slug, entry] of Object.entries(routingMap.slugs)) {
-          if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
-            // Map symbol name to its URL path (slug)
-            knownSymbols.push([entry.title, slug]);
+        // Load known symbols for this package.
+        //
+        // IMPORTANT:
+        // We intentionally avoid `lookup.json` here because some packages can
+        // exceed Next.js' 2MB data cache limit (leading to cache failures and
+        // slow navigations). The routing map is significantly smaller and still
+        // contains enough info for type-linking (public, routable symbols).
+        const routingMap = await getRoutingMapData(pkg.buildId, pkg.packageId);
+        const knownSymbols: [string, string][] = [];
+        if (routingMap?.slugs) {
+          for (const [slug, entry] of Object.entries(routingMap.slugs)) {
+            if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
+              // Map symbol name to its URL path (slug)
+              knownSymbols.push([entry.title, slug]);
+            }
           }
         }
-      }
 
-      const serializedPackage: SerializableCrossProjectPackage = {
-        slug: modulePrefix,
-        language,
-        knownSymbols,
-      };
+        const serializedPackage: SerializableCrossProjectPackage = {
+          slug: modulePrefix,
+          language,
+          knownSymbols,
+        };
 
-      packages.push([modulePrefix, serializedPackage]);
+        const entries: [string, SerializableCrossProjectPackage][] = [];
+        entries.push([modulePrefix, serializedPackage]);
 
-      // Also add the original published name as a key for lookups
-      if (pkg.publishedName !== modulePrefix) {
-        packages.push([pkg.publishedName, serializedPackage]);
-      }
+        // Also add the original published name as a key for lookups
+        if (pkg.publishedName !== modulePrefix) {
+          entries.push([pkg.publishedName, serializedPackage]);
+        }
+
+        return entries;
+      }),
+    );
+
+    for (const entries of perPkgResults) {
+      packages.push(...entries);
     }
   }
 
