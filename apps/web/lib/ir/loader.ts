@@ -347,6 +347,12 @@ interface ProjectPackageIndex {
       sha?: string;
     }
   >;
+  /**
+   * Ordered list of package names for display.
+   * Packages with explicit `index` in config are sorted first by index value,
+   * then remaining packages follow in their config array order.
+   */
+  packageOrder?: string[];
 }
 
 // Cache for package-level data
@@ -642,6 +648,8 @@ interface ExtendedPackageInfo extends Package {
   project?: string;
   /** Curated subpages for domain-specific navigation */
   subpages?: { slug: string; title: string }[];
+  /** Export paths extracted from package.json exports (for JS/TS packages) */
+  exportPaths?: { slug: string; title: string }[];
 }
 
 /**

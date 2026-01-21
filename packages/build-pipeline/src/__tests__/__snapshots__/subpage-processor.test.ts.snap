@@ -1,0 +1,186 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`parseSubpageMarkdown > basic parsing > parses simple.md correctly 1`] = `
+{
+  "markdownContent": "# Simple Subpage
+
+This is a simple subpage with basic markdown content.
+
+## Overview
+
+A brief overview of the topic.",
+  "symbolRefs": [
+    "package.module.Symbol1",
+    "package.module.Symbol2",
+    "package.module.Symbol3",
+  ],
+}
+`;
+
+exports[`parseSubpageMarkdown > basic parsing > parses with-admonitions.md correctly, preserving MkDocs syntax 1`] = `
+{
+  "markdownContent": "!!! note "Reference docs"
+    This page contains **reference documentation** for Middleware.
+    See [the docs](https://docs.example.com) for tutorials.
+
+!!! warning
+    Some classes are deprecated.
+
+## Middleware
+
+These are the available middleware classes.",
+  "symbolRefs": [
+    "package.Middleware1",
+    "package.Middleware2",
+  ],
+}
+`;
+
+exports[`parseSubpageMarkdown > basic parsing > parses with-tables.md correctly, preserving tables 1`] = `
+{
+  "markdownContent": "# Classes Overview
+
+Reference documentation for classes.
+
+## Available Classes
+
+| CLASS | DESCRIPTION |
+| ----- | ----------- |
+| \`ClassA\` | Description for ClassA |
+| \`ClassB\` | Description for ClassB |
+| \`ClassC\` | Description for ClassC |",
+  "symbolRefs": [
+    "package.ClassA",
+    "package.ClassB",
+    "package.ClassC",
+  ],
+}
+`;
+
+exports[`parseSubpageMarkdown > complex real-world example > parses complex.md correctly 1`] = `
+{
+  "markdownContent": "!!! note "Reference docs"
+    This page contains **reference documentation** for Middleware.
+    See [the docs](https://docs.langchain.com/oss/python/langchain/middleware) for conceptual guides, tutorials, and examples on using Middleware.
+
+## Middleware classes
+
+LangChain provides prebuilt middleware for common agent use cases:
+
+| CLASS | DESCRIPTION |
+| ----- | ----------- |
+| [\`SummarizationMiddleware\`](#langchain.agents.middleware.SummarizationMiddleware) | Automatically summarize conversation history when approaching token limits |
+| [\`HumanInTheLoopMiddleware\`](#langchain.agents.middleware.HumanInTheLoopMiddleware) | Pause execution for human approval of tool calls |
+| [\`ModelCallLimitMiddleware\`](#langchain.agents.middleware.ModelCallLimitMiddleware) | Limit the number of model calls to prevent excessive costs |
+
+## Decorators
+
+Create custom middleware using these decorators:
+
+| DECORATOR | DESCRIPTION |
+| --------- | ----------- |
+| [\`@before_agent\`](#langchain.agents.middleware.before_agent) | Execute logic before agent execution starts |
+| [\`@before_model\`](#langchain.agents.middleware.before_model) | Execute logic before each model call |
+
+## Types and utilities
+
+Core types for building middleware:
+
+| TYPE | DESCRIPTION |
+| ---- | ----------- |
+| [\`AgentState\`](#langchain.agents.middleware.AgentState) | State container for agent execution |
+| [\`ModelRequest\`](#langchain.agents.middleware.ModelRequest) | Request details passed to model calls |",
+  "symbolRefs": [
+    "langchain.agents.middleware.SummarizationMiddleware",
+    "langchain.agents.middleware.HumanInTheLoopMiddleware",
+    "langchain.agents.middleware.ModelCallLimitMiddleware",
+    "langchain.agents.middleware.before_agent",
+    "langchain.agents.middleware.before_model",
+    "langchain.agents.middleware.AgentState",
+    "langchain.agents.middleware.ModelRequest",
+  ],
+}
+`;
+
+exports[`parseSubpageMarkdown > edge cases > handles empty.md - empty result 1`] = `
+{
+  "markdownContent": "",
+  "symbolRefs": [],
+}
+`;
+
+exports[`parseSubpageMarkdown > edge cases > handles no-directives.md - full content as markdown 1`] = `
+{
+  "markdownContent": "# No Directives
+
+This is a markdown file without any ::: directives.
+
+## Section 1
+
+Some content here.
+
+## Section 2
+
+More content here.
+
+- Item 1
+- Item 2
+- Item 3",
+  "symbolRefs": [],
+}
+`;
+
+exports[`parseSubpageMarkdown > edge cases > handles only-directives.md - no markdown content 1`] = `
+{
+  "markdownContent": "",
+  "symbolRefs": [
+    "package.Symbol1",
+    "package.Symbol2",
+    "package.Symbol3",
+    "package.module.nested.Symbol4",
+  ],
+}
+`;
+
+exports[`parseSubpageMarkdown > members list parsing > extracts fully qualified names from members list 1`] = `
+{
+  "markdownContent": "!!! note "Reference docs"
+
+    This page contains **reference documentation** for Messages.",
+  "symbolRefs": [
+    "langchain.messages.AIMessage",
+    "langchain.messages.AIMessageChunk",
+    "langchain.messages.HumanMessage",
+    "langchain.messages.SystemMessage",
+    "langchain.messages.AnyMessage",
+    "langchain.messages.ToolMessage",
+    "langchain.messages.ToolCall",
+  ],
+}
+`;
+
+exports[`parseSubpageMarkdown > options handling > ignores deeply nested options in nested-options.md 1`] = `
+{
+  "markdownContent": "# Nested Options Test
+
+Complex nested YAML options that should be ignored.",
+  "symbolRefs": [
+    "langchain.agents.Agent",
+    "langchain.agents.AgentExecutor",
+    "langchain.agents.SimpleAgent",
+  ],
+}
+`;
+
+exports[`parseSubpageMarkdown > options handling > ignores options blocks in options-ignored.md 1`] = `
+{
+  "markdownContent": "# Options Ignored Test
+
+Testing that options blocks are properly ignored.",
+  "symbolRefs": [
+    "langchain.agents.middleware.SummarizationMiddleware",
+    "langchain.agents.middleware.HumanInTheLoopMiddleware",
+    "langchain.agents.middleware.SimpleDecorator",
+  ],
+}
+`;

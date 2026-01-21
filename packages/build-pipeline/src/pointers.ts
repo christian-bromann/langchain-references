@@ -76,6 +76,12 @@ export interface ProjectPackageIndex {
       sha: string;
     }
   >;
+  /**
+   * Ordered list of package names for display.
+   * Packages with explicit `index` in config are sorted first by index value,
+   * then remaining packages follow in their config array order.
+   */
+  packageOrder?: string[];
 }
 
 export interface BuildMetadata {
@@ -367,6 +373,7 @@ async function updatePackagePointer(data: PackagePointerData, dryRun: boolean): 
 /**
  * Update the project package index with new package info.
  * This merges the new package info with existing packages in the index.
+ * Preserves existing packageOrder if present.
  */
 async function updateProjectPackageIndex(
   project: string,
@@ -385,7 +392,7 @@ async function updateProjectPackageIndex(
 
   const now = new Date().toISOString();
 
-  // Create or update index
+  // Create or update index, preserving existing packageOrder
   const updatedIndex: ProjectPackageIndex = {
     project,
     language,
@@ -394,6 +401,8 @@ async function updateProjectPackageIndex(
       ...existingIndex?.packages,
       [packageName]: packageInfo,
     },
+    // Preserve existing packageOrder if present
+    ...(existingIndex?.packageOrder ? { packageOrder: existingIndex.packageOrder } : {}),
   };
 
   await uploadPointer(indexPath, updatedIndex, dryRun);
@@ -425,12 +434,19 @@ export async function getProjectPackageIndex(
 /**
  * Regenerate the project package index from all individual package pointers.
  * This is used after batch updates to ensure the index is complete.
+ *
+ * @param project - Project identifier
+ * @param language - Language/ecosystem
+ * @param packageNames - List of package names to include
+ * @param dryRun - If true, don't actually upload
+ * @param packageOrder - Optional ordered list of package names for display ordering
  */
 export async function regenerateProjectPackageIndex(
   project: string,
   language: Language,
   packageNames: string[],
   dryRun: boolean = false,
+  packageOrder?: string[],
 ): Promise<void> {
   const ecosystem = language;
   const now = new Date().toISOString();
@@ -469,16 +485,23 @@ export async function regenerateProjectPackageIndex(
     console.warn(`   ⚠️  Missing pointers for: ${missingPackages.join(", ")}`);
   }
 
+  // Filter packageOrder to only include packages that exist in the index
+  const existingPackageNames = Object.keys(packages);
+  const filteredPackageOrder = packageOrder
+    ? packageOrder.filter((name) => existingPackageNames.includes(name))
+    : undefined;
+
   const index: ProjectPackageIndex = {
     project,
     language,
     updatedAt: now,
     packages,
+    ...(filteredPackageOrder && filteredPackageOrder.length > 0 ? { packageOrder: filteredPackageOrder } : {}),
   };
 
   const indexPath = `${POINTERS_PATH}/index-${project}-${language}.json`;
   await uploadPointer(indexPath, index, dryRun);
   console.log(
-    `   ✓ Regenerated index-${project}-${language}.json (${Object.keys(packages).length} packages)`,
+    `   ✓ Regenerated index-${project}-${language}.json (${Object.keys(packages).length} packages${filteredPackageOrder ? `, ordered` : ``})`,
   );
 }

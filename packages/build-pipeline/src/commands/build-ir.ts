@@ -254,6 +254,119 @@ function cleanMarkdownContent(content: string): string {
 }
 
 /**
+ * Export path information extracted from package.json exports.
+ */
+interface ExportPathInfo {
+  /** The export path (e.g., "./hub", "./load/serializable") */
+  path: string;
+  /** Display slug for navigation (e.g., "hub", "load/serializable") */
+  slug: string;
+  /** Title for display (derived from the path) */
+  title: string;
+}
+
+/**
+ * Extract export paths from a TypeScript/JavaScript package.json.
+ * 
+ * Rules:
+ * - Only includes exports with valid import/require fields (not just package.json)
+ * - Ignores the root export "."
+ * - Ignores "./package.json"
+ * - Returns the export paths for navigation
+ * 
+ * @param packagePath - Path to the package directory containing package.json
+ * @returns Array of export path info, or empty if only root export exists
+ */
+async function extractExportPaths(packagePath: string): Promise<ExportPathInfo[]> {
+  try {
+    const packageJsonPath = path.join(packagePath, "package.json");
+    const content = await fs.readFile(packageJsonPath, "utf-8");
+    const packageJson = JSON.parse(content);
+
+    if (!packageJson.exports || typeof packageJson.exports !== "object") {
+      return [];
+    }
+
+    const exportPaths: ExportPathInfo[] = [];
+
+    for (const [exportPath, exportConfig] of Object.entries(packageJson.exports)) {
+      // Skip root export "."
+      if (exportPath === ".") continue;
+
+      // Skip package.json export
+      if (exportPath === "./package.json") continue;
+
+      // Check if it's a valid module export (has import or require)
+      if (!isValidModuleExport(exportConfig)) continue;
+
+      // Convert export path to slug (remove leading ./)
+      const slug = exportPath.replace(/^\.\//, "");
+      
+      // Generate title from the path (last segment, formatted nicely)
+      const title = generateTitleFromPath(slug);
+
+      exportPaths.push({
+        path: exportPath,
+        slug,
+        title,
+      });
+    }
+
+    return exportPaths;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Check if an export config represents a valid module export.
+ * Valid exports have 'import', 'require', or 'input' fields.
+ */
+function isValidModuleExport(exportConfig: unknown): boolean {
+  if (typeof exportConfig === "string") {
+    // Direct string export like "./dist/index.js"
+    return exportConfig.endsWith(".js") || exportConfig.endsWith(".ts");
+  }
+
+  if (typeof exportConfig === "object" && exportConfig !== null) {
+    const config = exportConfig as Record<string, unknown>;
+    
+    // Check for common module export patterns
+    if (config.import || config.require || config.input) {
+      return true;
+    }
+
+    // Check nested conditions (e.g., { import: { types: ..., default: ... } })
+    for (const value of Object.values(config)) {
+      if (typeof value === "object" && value !== null) {
+        const nested = value as Record<string, unknown>;
+        if (nested.default || nested.types) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Generate a display title from an export path.
+ * e.g., "load/serializable" -> "serializable"
+ * e.g., "hub" -> "hub"
+ */
+function generateTitleFromPath(slug: string): string {
+  // Take the last segment of the path
+  const segments = slug.split("/");
+  const lastSegment = segments[segments.length - 1] || slug;
+  
+  // Convert underscores/hyphens to spaces and capitalize
+  return lastSegment
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
  * Remove directories matching exclude patterns from the package path.
  * This prevents griffe from parsing modules that cause issues (e.g., _internal).
  */
@@ -1887,6 +2000,18 @@ async function buildConfig(
         console.log(`      ✓ ${processedSubpages.length} subpages processed`);
       } else {
         console.log(`      ⚠️  No subpages successfully processed`);
+      }
+    }
+
+    // Extract export paths for TypeScript/JavaScript packages (if no subpages defined)
+    if (config.language === "typescript" && !pkgConfig.subpages?.length) {
+      const exportPaths = await extractExportPaths(pkgInfo.packagePath);
+      if (exportPaths.length > 0) {
+        packageInfo.exportPaths = exportPaths.map((ep) => ({
+          slug: ep.slug,
+          title: ep.title,
+        }));
+        console.log(`      📦 Found ${exportPaths.length} export paths`);
       }
     }
 

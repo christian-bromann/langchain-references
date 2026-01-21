@@ -147,6 +147,62 @@ describe("parseSubpageMarkdown", () => {
     });
   });
 
+  describe("members list parsing", () => {
+    it("extracts fully qualified names from members list", () => {
+      const content = loadFixture("with-members.md");
+      const result = parseSubpageMarkdown(content);
+      expect(result).toMatchSnapshot();
+      // Should extract individual member names, not the module
+      expect(result.symbolRefs).toEqual([
+        "langchain.messages.AIMessage",
+        "langchain.messages.AIMessageChunk",
+        "langchain.messages.HumanMessage",
+        "langchain.messages.SystemMessage",
+        "langchain.messages.AnyMessage",
+        "langchain.messages.ToolMessage",
+        "langchain.messages.ToolCall",
+      ]);
+      // The module itself should NOT be in the refs
+      expect(result.symbolRefs).not.toContain("langchain.messages");
+    });
+
+    it("handles inline members list with module without members", () => {
+      const content = `::: package.module
+    options:
+      summary: true
+
+::: package.other.Symbol`;
+      const result = parseSubpageMarkdown(content);
+      // Module without members: uses module name
+      // Direct symbol: uses the symbol name
+      expect(result.symbolRefs).toEqual([
+        "package.module",
+        "package.other.Symbol",
+      ]);
+    });
+
+    it("handles mixed directives with and without members", () => {
+      const content = `::: package.messages
+    options:
+      members:
+        - Message1
+        - Message2
+
+::: package.tools.ToolClass
+    options:
+      show_source: true
+
+::: package.utils.helper_func`;
+      const result = parseSubpageMarkdown(content);
+      expect(result.symbolRefs).toEqual([
+        "package.messages.Message1",
+        "package.messages.Message2",
+        "package.tools.ToolClass",
+        "package.utils.helper_func",
+      ]);
+    });
+  });
+
   describe("qualified name extraction", () => {
     it("extracts simple qualified names", () => {
       const content = `::: package.module.Symbol`;

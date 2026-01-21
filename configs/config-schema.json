@@ -30,6 +30,11 @@
             "type": "string",
             "description": "Package name (e.g., 'langchain-core' or '@langchain/core')"
           },
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Display order index (like z-index). Packages with explicit index are sorted first by index value, then packages without index follow in array order."
+          },
           "path": {
             "type": "string",
             "description": "Path to the package within the repository"

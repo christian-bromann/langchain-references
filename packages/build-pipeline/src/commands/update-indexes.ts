@@ -36,23 +36,63 @@ const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 interface ConfigFile {
   project?: string;
   language: SymbolLanguage;
-  packages: Array<{ name: string }>;
+  packages: Array<{ name: string; index?: number }>;
 }
 
 /**
- * Load package names from a config file.
+ * Package with ordering info extracted from config
  */
-async function loadPackageNamesFromConfig(project: string, language: string): Promise<string[]> {
+interface PackageOrderInfo {
+  name: string;
+  index?: number;
+  configPosition: number;
+}
+
+/**
+ * Compute ordered package names from config.
+ * Packages with explicit `index` are sorted first by index value,
+ * then packages without index follow in their config array order.
+ */
+function computePackageOrder(packages: Array<{ name: string; index?: number }>): string[] {
+  const packagesWithOrder: PackageOrderInfo[] = packages.map((pkg, i) => ({
+    name: pkg.name,
+    index: pkg.index,
+    configPosition: i,
+  }));
+
+  // Separate packages with and without explicit index
+  const withIndex = packagesWithOrder.filter((p) => p.index !== undefined);
+  const withoutIndex = packagesWithOrder.filter((p) => p.index === undefined);
+
+  // Sort packages with index by their index value
+  withIndex.sort((a, b) => (a.index as number) - (b.index as number));
+
+  // Packages without index keep their config array order
+  withoutIndex.sort((a, b) => a.configPosition - b.configPosition);
+
+  // Combine: indexed packages first, then non-indexed
+  return [...withIndex, ...withoutIndex].map((p) => p.name);
+}
+
+/**
+ * Load package names and order from a config file.
+ */
+async function loadPackageInfoFromConfig(
+  project: string,
+  language: string,
+): Promise<{ packageNames: string[]; packageOrder: string[] }> {
   const configDir = path.resolve(__dirname, "../../../../configs");
   const configFile = path.join(configDir, `${project}-${language}.json`);
 
   try {
     const content = await fs.readFile(configFile, "utf-8");
     const config: ConfigFile = JSON.parse(content);
-    return config.packages.map((p) => p.name);
+    const packageNames = config.packages.map((p) => p.name);
+    const packageOrder = computePackageOrder(config.packages);
+    return { packageNames, packageOrder };
   } catch {
     console.warn(`   ⚠️  Could not load config: ${configFile}`);
-    return [];
+    return { packageNames: [], packageOrder: [] };
   }
 }
 
@@ -122,8 +162,8 @@ async function main(): Promise<void> {
 
           console.log(`\n📋 ${project}-${language}:`);
 
-          // Load package names from config
-          const packageNames = await loadPackageNamesFromConfig(project, configLanguage);
+          // Load package names and order from config
+          const { packageNames, packageOrder } = await loadPackageInfoFromConfig(project, configLanguage);
 
           if (packageNames.length === 0) {
             console.log(`   ⚠️  No packages found, skipping`);
@@ -138,6 +178,7 @@ async function main(): Promise<void> {
               language,
               packageNames,
               options.dryRun ?? false,
+              packageOrder,
             );
             successCount++;
           } catch (error) {

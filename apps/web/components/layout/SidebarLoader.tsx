@@ -162,7 +162,20 @@ async function loadSidebarPackagesForProject(
           } as Package;
 
           const slug = getPackageSlug(pkg, language);
-          const items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
+          
+          // For JavaScript, use exportPaths from package info instead of routing map modules
+          // For Python, use routing map modules
+          let items: SidebarPackage["items"] = [];
+          if (language !== "javascript") {
+            items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
+          } else if (packageInfoV2?.exportPaths && Array.isArray(packageInfoV2.exportPaths)) {
+            // Use export paths for JavaScript packages
+            items = packageInfoV2.exportPaths.map((ep: { slug: string; title: string }) => ({
+              name: ep.title,
+              path: `/${language}/${slug}/${ep.slug}`,
+              kind: "module" as const,
+            }));
+          }
 
           let subpages: SidebarSubpage[] | undefined;
           if (packageInfoV2?.subpages && Array.isArray(packageInfoV2.subpages)) {
@@ -180,15 +193,34 @@ async function loadSidebarPackagesForProject(
             items,
             project: projectId,
             subpages,
+            _pkgKey: pkgKey, // Store for sorting
           };
         } catch (err) {
           console.error(`[SidebarLoader] Error loading package ${pkgKey}:`, err);
           return null;
         }
       }),
-    )).filter((pkg) => pkg !== null) as SidebarPackage[];
+    )).filter((pkg) => pkg !== null) as (SidebarPackage & { _pkgKey: string })[];
 
-    return sidebarPackages;
+    // Sort packages based on packageOrder from index
+    if (packageIndex.packageOrder && packageIndex.packageOrder.length > 0) {
+      const orderMap = new Map(packageIndex.packageOrder.map((name, idx) => [name, idx]));
+      sidebarPackages.sort((a, b) => {
+        const aOrder = orderMap.get(a._pkgKey);
+        const bOrder = orderMap.get(b._pkgKey);
+        // Packages in packageOrder come first, sorted by their order
+        // Packages not in packageOrder come after, maintaining their original order
+        if (aOrder !== undefined && bOrder !== undefined) {
+          return aOrder - bOrder;
+        }
+        if (aOrder !== undefined) return -1;
+        if (bOrder !== undefined) return 1;
+        return 0;
+      });
+    }
+
+    // Remove internal _pkgKey before returning
+    return sidebarPackages.map(({ _pkgKey, ...pkg }) => pkg);
   }
 
   // Fallback to manifest-based architecture (Python/JavaScript)
@@ -231,7 +263,19 @@ async function loadSidebarPackagesForProject(
           getPackageInfoV2(pkg.packageId, pkgBuildId),
         ]);
 
-        const items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
+        // For JavaScript, use exportPaths from package info instead of routing map modules
+        // For Python, use routing map modules
+        let items: SidebarPackage["items"] = [];
+        if (language !== "javascript") {
+          items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
+        } else if (packageInfoV2?.exportPaths && Array.isArray(packageInfoV2.exportPaths)) {
+          // Use export paths for JavaScript packages
+          items = packageInfoV2.exportPaths.map((ep: { slug: string; title: string }) => ({
+            name: ep.title,
+            path: `/${language}/${slug}/${ep.slug}`,
+            kind: "module" as const,
+          }));
+        }
 
         let subpages: SidebarSubpage[] | undefined;
         if (packageInfoV2?.subpages && Array.isArray(packageInfoV2.subpages)) {

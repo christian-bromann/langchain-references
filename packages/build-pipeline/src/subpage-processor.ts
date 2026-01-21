@@ -49,12 +49,88 @@ export interface ParsedSubpage {
 const fetchCache = new Map<string, string | null>();
 
 /**
+ * Parse the `members` list from a YAML-like options block.
+ *
+ * Handles the MkDocs mkdocstrings format where members are listed as:
+ *   options:
+ *     members:
+ *       - MemberA
+ *       - MemberB
+ *
+ * This function distinguishes between:
+ * - Symbol/class names (e.g., "AIMessage", "HumanMessage") - start with uppercase
+ * - Method/filter names (e.g., "__init__", "run") - start with lowercase or underscore
+ *
+ * Only returns members that look like symbol names (start with uppercase letter).
+ * Method names are ignored as they're typically used as filters, not as symbols to expand.
+ *
+ * @param lines - All lines of the content
+ * @param startIndex - Index of the line after the ::: directive
+ * @returns Array of member names that are symbol references, or empty array if none found
+ */
+function parseMembersFromOptions(lines: string[], startIndex: number): string[] {
+  const allMembers: string[] = [];
+  let inMembersList = false;
+  let membersIndent = 0;
+
+  for (let i = startIndex; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Stop if we hit another ::: directive or non-indented content
+    if (trimmed.startsWith(":::") || (trimmed && !line.startsWith(" ") && !line.startsWith("\t"))) {
+      break;
+    }
+
+    // Skip empty lines
+    if (!trimmed) {
+      continue;
+    }
+
+    // Check for start of members: list
+    if (trimmed === "members:" || trimmed.startsWith("members:")) {
+      inMembersList = true;
+      // Calculate the indentation of the members: line to track the list
+      membersIndent = line.length - line.trimStart().length;
+      continue;
+    }
+
+    // If we're in the members list, parse list items
+    if (inMembersList) {
+      const currentIndent = line.length - line.trimStart().length;
+
+      // Check if this is a list item (starts with -)
+      if (trimmed.startsWith("- ")) {
+        const memberName = trimmed.slice(2).trim();
+        if (memberName && !memberName.startsWith("#")) {
+          allMembers.push(memberName);
+        }
+      }
+      // If we hit something at the same or lower indent level that's not a list item, we're done with members
+      else if (currentIndent <= membersIndent && !trimmed.startsWith("-")) {
+        inMembersList = false;
+      }
+    }
+  }
+
+  // Filter to only include symbol-like members (start with uppercase letter)
+  // Method names like __init__, run, stop are filters, not symbols to expand
+  const symbolMembers = allMembers.filter(m => /^[A-Z]/.test(m));
+
+  // Only return if we found symbol-like members
+  // If all members are method names (lowercase), return empty to use the directive's qualified name
+  return symbolMembers;
+}
+
+/**
  * Parse a subpage markdown file into markdown content and symbol references.
  *
  * The file is split at the first ::: directive:
  * - Everything before the first ::: line becomes `markdownContent`
  * - Lines starting with ::: have their qualified names extracted into `symbolRefs`
- * - Indented option blocks following ::: are ignored
+ * - If a ::: directive has an options block with `members:`, those members are
+ *   resolved to fully qualified names (module.member) instead of the module itself
+ * - Indented option blocks following ::: are otherwise ignored
  *
  * @param content - Raw markdown content
  * @returns Object with markdownContent and symbolRefs
@@ -82,7 +158,18 @@ export function parseSubpageMarkdown(content: string): {
         // Take only the first token (the qualified name)
         const qualifiedName = afterDirective.split(/\s+/)[0];
         if (qualifiedName && !qualifiedName.startsWith("#")) {
-          symbolRefs.push(qualifiedName);
+          // Check if this directive has a members list in its options
+          const members = parseMembersFromOptions(lines, i + 1);
+
+          if (members.length > 0) {
+            // If members are specified, add fully qualified member names instead of the module
+            for (const member of members) {
+              symbolRefs.push(`${qualifiedName}.${member}`);
+            }
+          } else {
+            // No members specified, use the qualified name as-is (original behavior)
+            symbolRefs.push(qualifiedName);
+          }
         }
       }
       continue;
