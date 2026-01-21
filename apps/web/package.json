@@ -11,7 +11,10 @@
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
-    "test": "tsx --test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:perf": "vitest run --mode perf",
+    "test:perf:watch": "vitest --mode perf",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -41,6 +44,7 @@
   },
   "devDependencies": {
     "@langchain/ir-schema": "workspace:*",
+    "vitest": "^4.0.17",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/typography": "next",
     "@types/node": "^25.0.3",

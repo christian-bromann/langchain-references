@@ -5,6 +5,8 @@
  * - Markdown content (before first ::: directive)
  * - Symbol references (qualified names from ::: directives)
  */
+import fs from "node:fs/promises";
+import path from "node:path";
 
 /**
  * Configuration for a subpage as defined in package config.
@@ -136,8 +138,6 @@ export async function fetchSubpageContent(
       content = await response.text();
     } else if (repoDir) {
       // Read from local file (relative to repo directory)
-      const { default: fs } = await import("node:fs/promises");
-      const { default: path } = await import("node:path");
       const filePath = path.resolve(repoDir, source);
       content = await fs.readFile(filePath, "utf-8");
     } else {

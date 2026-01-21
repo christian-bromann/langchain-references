@@ -1,0 +1,52 @@
+name: Performance Tests
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/lib/**"
+      - "apps/web/components/reference/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/web/lib/**"
+      - "apps/web/components/reference/**"
+
+jobs:
+  perf-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify test fixtures
+        run: |
+          # Performance tests use static fixture files committed to the repo
+          # at apps/web/lib/__tests__/performance/fixtures/
+          ls -la apps/web/lib/__tests__/performance/fixtures/
+
+      - name: Run Performance Tests
+        run: pnpm --filter @langchain/reference-web test:perf
+        env:
+          # Disable Next.js telemetry in CI
+          NEXT_TELEMETRY_DISABLED: 1
+
+      - name: Upload Performance Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: perf-results
+          path: apps/web/lib/__tests__/performance/perf-results.json
+          if-no-files-found: ignore

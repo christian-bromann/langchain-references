@@ -5,12 +5,14 @@
  * Handles caching, dependency installation, and type building.
  */
 
-import fs from "fs/promises";
-import path from "path";
-import os from "os";
-import { pipeline } from "stream/promises";
-import { createWriteStream } from "fs";
-import { Readable } from "stream";
+import fs from "node:fs/promises";
+import path from "node:path";
+import os from "node:os";
+import { execSync } from "node:child_process";
+import { pipeline } from "node:stream/promises";
+import { createWriteStream } from "node:fs";
+import { Readable } from "node:stream";
+
 import * as tar from "tar";
 
 /**
@@ -208,7 +210,6 @@ async function installDependencies(
   extractedPath: string,
   targetPackages?: string[],
 ): Promise<void> {
-  const { execSync } = await import("child_process");
 
   // Check if package.json exists
   const packageJsonPath = path.join(extractedPath, "package.json");
@@ -276,7 +277,6 @@ async function buildTypeDeclarations(
   pmInfo: { name: string; buildCmd: string },
   targetPackages?: string[],
 ): Promise<void> {
-  const { execSync } = await import("child_process");
 
   // Check if this is a TypeScript project with a build script
   const packageJsonPath = path.join(extractedPath, "package.json");

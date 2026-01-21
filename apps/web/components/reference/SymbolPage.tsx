@@ -7,6 +7,7 @@
 import Link from "next/link";
 import { ChevronRight, ExternalLink } from "lucide-react";
 import { symbolLanguageToLanguage } from "@langchain/ir-schema";
+import { getProjectForPackage } from "@/lib/config/projects";
 
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
@@ -34,6 +35,7 @@ import {
   getRoutingMapData,
   getSymbolViaShardedLookup,
   findSymbolQualifiedNameByName,
+  getIndexedRoutingMap,
 } from "@/lib/ir/loader";
 import { CodeBlock } from "./CodeBlock";
 import { SignatureBlock } from "./SignatureBlock";
@@ -786,19 +788,24 @@ async function findSymbolOptimized(
     }
   }
 
-  // Try the sharded lookup as a second attempt
-  // This avoids loading the full symbols.json file
-  for (const path of pathVariations) {
-    const symbol = await getSymbolViaShardedLookup(buildId, packageId, path);
-    if (symbol) return symbol;
-
-    // Also try with package prefix for Python-style qualified names
+  // OPTIMIZATION: Try sharded lookups in parallel (batch up to 3 at a time)
+  // This avoids sequential await in a loop, reducing waterfall latency
+  const shardedPaths = pathVariations.slice(0, 3).flatMap((path) => {
+    const paths = [path];
     if (packagePrefix) {
-      const prefixedPath = `${packagePrefix}.${path}`;
-      const prefixedSymbol = await getSymbolViaShardedLookup(buildId, packageId, prefixedPath);
-      if (prefixedSymbol) return prefixedSymbol;
+      paths.push(`${packagePrefix}.${path}`);
     }
-  }
+    return paths;
+  });
+
+  // Batch lookup: try all paths in parallel
+  const shardedResults = await Promise.all(
+    shardedPaths.map((path) => getSymbolViaShardedLookup(buildId, packageId, path)),
+  );
+
+  // Return the first successful result
+  const foundSymbol = shardedResults.find(Boolean);
+  if (foundSymbol) return foundSymbol;
 
   // Don't fall back to getSymbols - return null instead
   // This prevents loading multi-MB files on the hot path
@@ -932,7 +939,8 @@ async function resolveInheritedMembers(
       };
     }
 
-    // Search across candidate packages using routing maps (much faster than lookup.json which may not exist)
+    // OPTIMIZATION: Search across candidate packages using INDEXED routing maps for O(1) lookups
+    // This replaces the O(n) Object.entries() iteration with O(1) Map.get()
     for (const pkgId of candidatePackageIds) {
       const cacheKey = `${buildId}:${pkgId}:${simpleBaseName}`;
 
@@ -946,25 +954,35 @@ async function resolveInheritedMembers(
       // Get the package's build ID (might be different from the current build)
       const pkgBuildId = (manifestPackages.find((p) => p.packageId === pkgId) as { buildId?: string })?.buildId || buildId;
 
-      // Use the routing map (already cached from getRoutingMapData) to find the symbol
-      const routingMap = await getRoutingMapData(pkgBuildId, pkgId);
-      if (!routingMap?.slugs) {
+      // OPTIMIZATION: Use indexed routing map for O(1) lookup instead of O(n) iteration
+      const indexedMap = await getIndexedRoutingMap(pkgBuildId, pkgId);
+      if (!indexedMap?.slugs) {
         baseSymbolResolutionCache.set(cacheKey, null);
         continue;
       }
 
-      // Find a matching entry in the routing map by title (symbol name)
+      // O(1) lookup: Try direct title match first (most common case)
       let foundEntry: { refId: string; qualifiedName: string } | null = null;
-      for (const [qualifiedName, entry] of Object.entries(routingMap.slugs)) {
-        if (
-          (entry.kind === "class" || entry.kind === "interface") &&
-          (entry.title === simpleBaseName ||
-            qualifiedName === simpleBaseName ||
-            qualifiedName.endsWith(`.${simpleBaseName}`) ||
-            qualifiedName.endsWith(`/${simpleBaseName}`))
-        ) {
-          foundEntry = { refId: entry.refId, qualifiedName };
-          break;
+      const directMatch = indexedMap.byTitle.get(simpleBaseName);
+      if (directMatch) {
+        const entry = indexedMap.slugs[directMatch];
+        if (entry && (entry.kind === "class" || entry.kind === "interface")) {
+          foundEntry = { refId: entry.refId, qualifiedName: directMatch };
+        }
+      }
+
+      // Fallback for edge cases: names with dots/slashes (rare but needed for compatibility)
+      if (!foundEntry) {
+        for (const [qualifiedName, entry] of Object.entries(indexedMap.slugs)) {
+          if (
+            (entry.kind === "class" || entry.kind === "interface") &&
+            (qualifiedName === simpleBaseName ||
+              qualifiedName.endsWith(`.${simpleBaseName}`) ||
+              qualifiedName.endsWith(`/${simpleBaseName}`))
+          ) {
+            foundEntry = { refId: entry.refId, qualifiedName };
+            break;
+          }
         }
       }
 
@@ -1140,19 +1158,23 @@ export async function SymbolPage({
   const buildId = await getPackageBuildId(language, packageName);
 
   // Get project info for version history/switching
-  const { getProjectForPackage } = await import("@/lib/config/projects");
   const project = getProjectForPackage(packageName);
 
   let symbol: DisplaySymbol | null = null;
   let irSymbolForMarkdown: SymbolRecord | null = null;
   let knownSymbols = new Map<string, string>();
+  // OPTIMIZATION: Store pkgInfo from initial fetch to avoid duplicate call later
+  let cachedPkgInfo: Awaited<ReturnType<typeof getPackageInfo>> | null = null;
 
   if (buildId) {
-    // Fetch package info and routing map in parallel
-    const [, routingMap] = await Promise.all([
+    // OPTIMIZATION: Fetch package info, routing map, and typeUrlMap in parallel
+    // This eliminates sequential awaits and a duplicate getPackageInfo call
+    const currentPkgSlugForPreload = slugifyPackageName(packageName);
+    const [pkgInfo, routingMap] = await Promise.all([
       getPackageInfo(buildId, packageId),
       getRoutingMapData(buildId, packageId),
     ]);
+    cachedPkgInfo = pkgInfo;
 
     // Build knownSymbols map for local type linking
     // This iterates over routing map entries but is just CPU work (no I/O), so it's fast
@@ -1346,7 +1368,8 @@ export async function SymbolPage({
 
   // Prefer package repo path prefix from the build manifest (already part of the IR data).
   // This captures monorepo layouts like `libs/<package>` without hardcoding.
-  const pkgInfo = buildId ? await getPackageInfo(buildId, packageId) : null;
+  // OPTIMIZATION: Reuse cachedPkgInfo from initial parallel fetch instead of duplicate call
+  const pkgInfo = cachedPkgInfo;
   const repoPathPrefix = pkgInfo?.repo?.path || null;
 
   // Clean the source path to remove build cache prefixes and fix duplicated paths

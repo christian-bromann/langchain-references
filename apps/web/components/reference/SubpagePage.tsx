@@ -6,6 +6,7 @@
  */
 
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Box, Code, Folder, ChevronRight, FileType, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { buildSymbolUrl, getKindColor, getKindLabel, slugifyPackageName, type UrlLanguage } from "@/lib/utils/url";
@@ -110,9 +111,7 @@ export async function SubpagePage({
   const buildId = await getBuildIdForPackageId(packageId);
 
   if (!buildId) {
-    const { notFound } = await import("next/navigation");
     notFound();
-    return
   }
 
   // Fetch subpage data and catalog entries in parallel
@@ -122,9 +121,7 @@ export async function SubpagePage({
   ]);
 
   if (!subpageData) {
-    const { notFound } = await import("next/navigation");
     notFound();
-    return
   }
 
   // Resolve symbol references to catalog entries

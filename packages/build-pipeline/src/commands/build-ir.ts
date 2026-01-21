@@ -63,7 +63,7 @@ import {
 import pLimit from "p-limit";
 
 import { fetchTarball, getLatestSha, getCacheBaseDir, type FetchResult } from "../tarball.js";
-import { uploadIR } from "../upload.js";
+import { uploadIR, generateShardedCatalog, generateRoutingMap, generateShardedLookupIndex } from "../upload.js";
 import { updatePointers } from "../pointers.js";
 import { checkForUpdates } from "./check-updates.js";
 import { fetchDeployedChangelog, type DeployedChangelog } from "../changelog-fetcher.js";
@@ -1898,7 +1898,6 @@ async function buildConfig(
       const symbolsContent = await fs.readFile(symbolsPath, "utf-8");
       const symbolsData = JSON.parse(symbolsContent);
       if (symbolsData.symbols) {
-        const { generateShardedCatalog, generateRoutingMap, generateShardedLookupIndex } = await import("../upload.js");
         const ecosystemMap: Record<string, Language> = {
           python: "python",
           typescript: "javascript",

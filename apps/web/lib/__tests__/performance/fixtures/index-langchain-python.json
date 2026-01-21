@@ -1,0 +1,32 @@
+{
+  "project": "langchain",
+  "language": "python",
+  "updatedAt": "2026-01-21T04:38:47.987Z",
+  "packages": {
+    "langchain": {
+      "buildId": "3c0eb288d02ee792",
+      "version": "1.2.6",
+      "sha": "a6e8c8387882005081716821e0b55e53ed390cbf"
+    },
+    "langchain_classic": {
+      "buildId": "d927d52159929b0d",
+      "version": "metadata.version(__package__)",
+      "sha": "a6e8c8387882005081716821e0b55e53ed390cbf"
+    },
+    "langchain_core": {
+      "buildId": "f55f41c86b6ad2d3",
+      "version": "VERSION",
+      "sha": "a6e8c8387882005081716821e0b55e53ed390cbf"
+    },
+    "langchain_text_splitters": {
+      "buildId": "4ecb736c0719e436",
+      "version": "unknown",
+      "sha": "a6e8c8387882005081716821e0b55e53ed390cbf"
+    },
+    "langchain_tests": {
+      "buildId": "91572daa41ba0c78",
+      "version": "unknown",
+      "sha": "a6e8c8387882005081716821e0b55e53ed390cbf"
+    }
+  }
+}

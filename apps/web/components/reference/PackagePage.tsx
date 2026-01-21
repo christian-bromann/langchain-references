@@ -8,6 +8,7 @@
  */
 
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Box, Code, Folder, ChevronRight, FileType, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
@@ -16,6 +17,7 @@ import {
   getPackageBuildId,
   getCatalogEntries,
   getPackageDescription,
+  getPackageSymbols,
   type CatalogEntry,
 } from "@/lib/ir/loader";
 import { PackageTableOfContents, type PackageTOCSection } from "./PackageTableOfContents";
@@ -79,7 +81,6 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
 
   if (!isLikelyPackage) {
     // This is likely a project name or invalid URL, not a package
-    const { notFound } = await import("next/navigation");
     notFound();
   }
 
@@ -99,7 +100,6 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
     symbols = catalogEntries.map(toDisplaySymbol);
   } else if (buildId) {
     // Fallback: load from symbols.json directly
-    const { getPackageSymbols } = await import("@/lib/ir/loader");
     const symbolsData = await getPackageSymbols(buildId, packageId);
     if (symbolsData?.symbols) {
       symbols = symbolsData.symbols
@@ -117,7 +117,6 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
 
   // If no symbols found, the package doesn't exist
   if (symbols.length === 0) {
-    const { notFound } = await import("next/navigation");
     notFound();
   }
 

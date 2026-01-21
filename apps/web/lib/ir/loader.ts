@@ -15,6 +15,7 @@ import { unstable_cache } from "next/cache";
 import { languageToSymbolLanguage, type Language, LANGUAGE } from "@langchain/ir-schema";
 
 import type { Manifest, Package, SymbolRecord, RoutingMap } from "./types";
+import { PROJECTS, getEnabledProjects } from "@/lib/config/projects";
 
 const IR_BASE_PATH = "ir";
 const POINTERS_PATH = "pointers";
@@ -119,6 +120,172 @@ const lookupShardCache = new Map<string, LookupShard>();
 const shardedCatalogIndexCache = new Map<string, ShardedCatalogIndex>();
 const catalogShardCache = new Map<string, CatalogEntry[]>();
 const changelogShardCache = new Map<string, ChangelogShard>();
+
+// =============================================================================
+// REQUEST-LEVEL DEDUPLICATION
+// =============================================================================
+
+/**
+ * Request-scoped cache for deduplication.
+ * Prevents duplicate fetches within a single request/render cycle.
+ *
+ * In React Server Components, this naturally scopes to the request because
+ * module-level state is reset per request in serverless functions.
+ */
+let requestCache: Map<string, Promise<unknown>> | null = null;
+
+/**
+ * Wrap a fetch operation with request-level deduplication.
+ * If the same key is requested multiple times within a single request,
+ * only one fetch is made and the result is shared.
+ *
+ * @example
+ * // Instead of:
+ * const data1 = await fetchData(key);
+ * const data2 = await fetchData(key); // Duplicate fetch!
+ *
+ * // Use:
+ * const data1 = await withRequestCache(key, () => fetchData(key));
+ * const data2 = await withRequestCache(key, () => fetchData(key)); // Returns cached promise
+ */
+export function withRequestCache<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+): Promise<T> {
+  // Initialize cache if needed
+  if (!requestCache) {
+    requestCache = new Map();
+    // Reset after microtask (end of request)
+    queueMicrotask(() => {
+      requestCache = null;
+    });
+  }
+
+  // Return existing promise if already in flight
+  if (requestCache.has(key)) {
+    return requestCache.get(key) as Promise<T>;
+  }
+
+  // Start the fetch and cache the promise
+  const promise = fetcher();
+  requestCache.set(key, promise);
+  return promise;
+}
+
+// =============================================================================
+// MEMOIZED STRING OPERATIONS
+// =============================================================================
+
+/**
+ * Bounded LRU cache for slugifySymbolPath operations.
+ * Prevents redundant string operations when the same paths are processed repeatedly.
+ */
+const slugifyCache = new Map<string, string>();
+const SLUGIFY_CACHE_SIZE = 1000;
+
+/**
+ * Convert a symbol path to a URL-friendly slug.
+ * Memoized version with bounded cache to prevent memory leaks.
+ *
+ * @example
+ * slugifySymbolPathMemoized("langchain_core.messages.BaseMessage", true)
+ * // Returns: "messages/BaseMessage"
+ */
+export function slugifySymbolPathMemoized(
+  symbolPath: string,
+  hasPackagePrefix = true,
+): string {
+  const cacheKey = `${symbolPath}:${hasPackagePrefix}`;
+
+  if (slugifyCache.has(cacheKey)) {
+    return slugifyCache.get(cacheKey)!;
+  }
+
+  // Evict oldest if at capacity (simple FIFO eviction)
+  if (slugifyCache.size >= SLUGIFY_CACHE_SIZE) {
+    const firstKey = slugifyCache.keys().next().value;
+    if (firstKey) slugifyCache.delete(firstKey);
+  }
+
+  // Perform the actual slugify operation
+  const parts = symbolPath.split(".");
+  let result: string;
+  if (parts.length === 1) {
+    result = parts[0];
+  } else if (hasPackagePrefix) {
+    result = parts.slice(1).join("/");
+  } else {
+    result = parts.join("/");
+  }
+
+  slugifyCache.set(cacheKey, result);
+  return result;
+}
+
+// =============================================================================
+// INDEXED ROUTING MAP
+// =============================================================================
+
+/**
+ * Extended routing map with pre-computed indexes for O(1) lookups.
+ * Built once during cache population, used many times during renders.
+ */
+export interface IndexedRoutingMap extends RoutingMap {
+  /** Symbol title → qualified name (for findBaseSymbol) */
+  byTitle: Map<string, string>;
+  /** Symbol kind → list of qualified names (for kind-based filtering) */
+  byKind: Map<string, string[]>;
+}
+
+/**
+ * Build indexes from a routing map for O(1) lookups.
+ * This converts O(n) Object.entries() iterations to O(1) Map.get() operations.
+ *
+ * @example
+ * const indexed = buildRoutingIndexes(routingMap);
+ * const qualifiedName = indexed.byTitle.get("BaseMessage"); // O(1) instead of O(n)
+ */
+export function buildRoutingIndexes(routingMap: RoutingMap): IndexedRoutingMap {
+  const byTitle = new Map<string, string>();
+  const byKind = new Map<string, string[]>();
+
+  for (const [qualifiedName, entry] of Object.entries(routingMap.slugs)) {
+    // Index by title for O(1) name lookup
+    byTitle.set(entry.title, qualifiedName);
+
+    // Index by kind for filtered queries
+    const kindList = byKind.get(entry.kind) || [];
+    kindList.push(qualifiedName);
+    byKind.set(entry.kind, kindList);
+  }
+
+  return { ...routingMap, byTitle, byKind };
+}
+
+// Cache for indexed routing maps
+const indexedRoutingCache = new Map<string, IndexedRoutingMap>();
+
+/**
+ * Get an indexed routing map with O(1) lookups.
+ * Builds the index on first access and caches it.
+ */
+export async function getIndexedRoutingMap(
+  buildId: string,
+  packageId: string,
+): Promise<IndexedRoutingMap | null> {
+  const cacheKey = `indexed:${buildId}:${packageId}`;
+
+  if (indexedRoutingCache.has(cacheKey)) {
+    return indexedRoutingCache.get(cacheKey)!;
+  }
+
+  const routingMap = await getRoutingMap(buildId, packageId);
+  if (!routingMap) return null;
+
+  const indexed = buildRoutingIndexes(routingMap);
+  indexedRoutingCache.set(cacheKey, indexed);
+  return indexed;
+}
 
 /**
  * Compute a shard key from a qualified name using MD5 hash.
@@ -814,11 +981,15 @@ export async function getManifest(_buildId: string): Promise<Manifest | null> {
 /**
  * Cached synthetic manifest built from all project package indexes.
  * This is intentionally cached across invocations to avoid cold-start fan-out.
+ *
+ * OPTIMIZATION: TTL increased to 24 hours (from 1 hour) because manifests
+ * rarely change mid-day. This reduces cold-start rebuilds significantly.
+ * Manual cache busting can be triggered via the "synthetic-manifest" tag.
  */
 const getCachedSyntheticManifest = unstable_cache(
   async (): Promise<Manifest | null> => buildManifestFromPackageIndexes(),
   ["synthetic-manifest:all-packages"],
-  { revalidate: 3600, tags: ["synthetic-manifest"] },
+  { revalidate: 86400, tags: ["synthetic-manifest"] }, // 24 hours
 );
 
 /**
@@ -1489,6 +1660,42 @@ export async function getIndividualSymbolData(
   return symbols.symbols.find((s) => s.id === symbolId) || null;
 }
 
+/**
+ * Batch fetch multiple symbols by their IDs.
+ * Uses Promise.allSettled to handle partial failures gracefully.
+ *
+ * OPTIMIZATION: This function allows fetching multiple symbols in parallel,
+ * reducing waterfall latency when loading many members at once.
+ *
+ * @example
+ * const symbols = await batchGetSymbols(buildId, packageId, ["id1", "id2", "id3"]);
+ * // Returns Map { "id1" => SymbolRecord, "id2" => SymbolRecord }
+ */
+export async function batchGetSymbols(
+  buildId: string,
+  packageId: string,
+  symbolIds: string[],
+): Promise<Map<string, SymbolRecord>> {
+  if (symbolIds.length === 0) {
+    return new Map();
+  }
+
+  // Fetch all symbols in parallel
+  const results = await Promise.allSettled(
+    symbolIds.map((id) => getIndividualSymbolData(buildId, id, packageId)),
+  );
+
+  // Collect successful results into a Map
+  const successful = new Map<string, SymbolRecord>();
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled" && result.value) {
+      successful.set(symbolIds[index], result.value);
+    }
+  });
+
+  return successful;
+}
+
 // =============================================================================
 // SHARDED INDEX FETCHERS
 // =============================================================================
@@ -1881,8 +2088,6 @@ async function fetchCrossProjectPackagesData(
   // Use an object first to handle "first package wins" deduplication
   const typeUrlMapObj: Record<string, string> = {};
 
-  // Import projects dynamically to avoid circular dependencies
-  const { getEnabledProjects } = await import("@/lib/config/projects");
   const enabledProjects = getEnabledProjects();
 
   // Load packages from all enabled projects
@@ -1979,6 +2184,69 @@ const getCachedCrossProjectPackagesData = unstable_cache(
     tags: ["cross-project-packages"],
   },
 );
+
+// =============================================================================
+// CORE PACKAGE PREWARMING
+// =============================================================================
+
+/**
+ * Pre-warm routing maps for packages that are most commonly referenced.
+ * This is called during getCrossProjectPackages cache population so that
+ * when SymbolPage needs to resolve inherited members, the routing maps
+ * are already cached.
+ *
+ * Instead of hardcoding package names, this dynamically identifies "core"
+ * packages by looking at the project package indexes and prewarming packages
+ * with "core" in their name (e.g., langchain_core, langchain-core).
+ *
+ * @param language - The language to prewarm packages for
+ */
+export async function prewarmCorePackages(language: Language): Promise<void> {
+  // Get all enabled projects for this language
+  const languageProjects = PROJECTS.filter(
+    (p) => p.enabled && p.variants.some((v) => v.language === language && v.enabled),
+  );
+
+  // Collect core packages dynamically from project indexes
+  const corePackages: Array<{ packageId: string; buildId: string }> = [];
+
+  for (const project of languageProjects) {
+    const index = await getProjectPackageIndex(project.id, language);
+    if (!index?.packages) continue;
+
+    for (const [pkgName, pkgInfo] of Object.entries(index.packages)) {
+      // Identify "core" packages dynamically:
+      // - Names containing "core" (langchain_core, @langchain/core)
+      // - The base framework packages (langgraph, langchain without suffix)
+      const isCore =
+        pkgName.toLowerCase().includes("core") ||
+        pkgName === "langgraph" ||
+        pkgName === "langchain";
+
+      if (isCore && pkgInfo.buildId) {
+        corePackages.push({
+          packageId: pkgInfo.packageId || `pkg_${language === "python" ? "py" : "js"}_${pkgName.replace(/-/g, "_")}`,
+          buildId: pkgInfo.buildId,
+        });
+      }
+    }
+  }
+
+  // Fetch routing maps for core packages in parallel (non-blocking)
+  await Promise.all(
+    corePackages.map(async ({ packageId, buildId }) => {
+      try {
+        // Fetch both routing map and indexed version in parallel
+        await Promise.all([
+          getRoutingMapData(buildId, packageId),
+          getIndexedRoutingMap(buildId, packageId),
+        ]);
+      } catch {
+        // Silent fail - package might not be available
+      }
+    }),
+  );
+}
 
 /**
  * Get all packages across all projects for cross-referencing.
