@@ -154,12 +154,8 @@ async function loadSidebarPackagesForProject(
             ]);
 
             const derivedName = pkgKey.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
-            const displayName =
-              packageInfoV2?.displayName ||
-              pkgPointer.displayName ||
-              pkgPointer.publishedName ||
-              derivedName;
-            const publishedName = pkgPointer.publishedName || derivedName;
+            const displayName = packageInfoV2?.displayName || derivedName;
+            const publishedName = derivedName;
 
             const pkg = {
               packageId,

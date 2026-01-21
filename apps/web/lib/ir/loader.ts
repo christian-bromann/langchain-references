@@ -332,11 +332,7 @@ interface ProjectPackageIndex {
   packages: Record<
     string,
     {
-      packageId: string;
       buildId: string;
-      displayName: string;
-      publishedName: string;
-      ecosystem: string;
       version: string;
       sha?: string;
     }
@@ -831,8 +827,8 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
         // Log detailed failure info
         console.error(
           `[blob] ✗ ${path} FAILED after ${attempt + 1} attempts, phase=${phase}, elapsed=${elapsed}ms, ` +
-            `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
-            `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`,
+          `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
+          `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`,
         );
         break;
       }
@@ -844,7 +840,7 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
 
       console.warn(
         `[blob] ⟳ ${path} retry ${attempt + 1}/${maxRetries} in ${Math.round(delay)}ms, ` +
-          `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`,
+        `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`,
       );
 
       await sleep(delay);
@@ -854,7 +850,7 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
   failedBlobFetches++;
   console.error(
     `[blob] ✗ ${path} EXHAUSTED after ${maxRetries} attempts ` +
-      `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
+    `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
     lastError,
   );
   return null;
@@ -2084,7 +2080,9 @@ async function fetchCrossProjectPackagesData(language: Language): Promise<CrossP
     // OPTIMIZATION: Collect ALL packages across ALL projects first, then fetch in parallel
     // This avoids sequential project-by-project fetching
     type PackageInfo = {
-      pkg: { buildId: string; packageId: string; publishedName: string; ecosystem: string };
+      buildId: string;
+      packageId: string;
+      packageName: string;
       modulePrefix: string;
     };
     const allPackages: PackageInfo[] = [];
@@ -2101,24 +2099,29 @@ async function fetchCrossProjectPackagesData(language: Language): Promise<CrossP
         // NOTE: We already filtered by language when fetching the index, so all packages
         // in this index are for the correct language. No need to filter by ecosystem again
         // (which could fail for javascript where ecosystem might be "typescript").
-        const projectPkgs = Object.values(packageIndex.packages);
+        for (const [packageName, pkg] of Object.entries(packageIndex.packages)) {
+          // Skip packages without buildId (malformed data)
+          if (!pkg.buildId) continue;
 
-        for (const pkg of projectPkgs) {
-          // Skip packages without publishedName (malformed data)
-          if (!pkg.publishedName) continue;
+          // Derive packageId from language and package name
+          // e.g., langchain_core + python -> pkg_py_langchain_core
+          const langPrefix = language === "python" ? "py" : "js";
+          const normalizedName = packageName.replace(/[.@/-]/g, "_");
+          const packageId = `pkg_${langPrefix}_${normalizedName}`;
 
-          const modulePrefix = pkg.publishedName
+          // Module prefix for import resolution
+          const modulePrefix = packageName
             .replace(/-/g, "_")
             .replace(/^@/, "")
             .replace(/\//g, "_");
-          allPackages.push({ pkg, modulePrefix });
+          allPackages.push({ buildId: pkg.buildId, packageId, packageName, modulePrefix });
         }
       }),
     );
 
     // Step 2: Fetch ALL routing maps in parallel (bounded by fetchBlobJson's concurrency limiter)
     const perPkgResults = await Promise.all(
-      allPackages.map(async ({ pkg, modulePrefix }) => {
+      allPackages.map(async ({ buildId, packageId, packageName, modulePrefix }) => {
         try {
           // Load known symbols for this package.
           //
@@ -2127,7 +2130,7 @@ async function fetchCrossProjectPackagesData(language: Language): Promise<CrossP
           // exceed Next.js' 2MB data cache limit (leading to cache failures and
           // slow navigations). The routing map is significantly smaller and still
           // contains enough info for type-linking (public, routable symbols).
-          const routingMap = await getRoutingMapData(pkg.buildId, pkg.packageId);
+          const routingMap = await getRoutingMapData(buildId, packageId);
           const knownSymbols: [string, string][] = [];
 
           // Pre-compute URL slug for this package
@@ -2160,14 +2163,14 @@ async function fetchCrossProjectPackagesData(language: Language): Promise<CrossP
           entries.push([modulePrefix, serializedPackage]);
 
           // Also add the original published name as a key for lookups
-          if (pkg.publishedName && pkg.publishedName !== modulePrefix) {
-            entries.push([pkg.publishedName, serializedPackage]);
+          if (packageName && packageName !== modulePrefix) {
+            entries.push([packageName, serializedPackage]);
           }
 
           return entries;
         } catch (err) {
           console.error(
-            `[fetchCrossProjectPackagesData] Error processing package ${pkg.packageId}:`,
+            `[fetchCrossProjectPackagesData] Error processing package ${packageId}:`,
             err,
           );
           return []; // Skip this package on error
@@ -2243,10 +2246,11 @@ export async function prewarmCorePackages(language: Language): Promise<void> {
         pkgName === "langchain";
 
       if (isCore && pkgInfo.buildId) {
+        // Derive packageId from language and package name
+        const langPrefix = language === "python" ? "py" : "js";
+        const normalizedName = pkgName.replace(/[.@/-]/g, "_");
         corePackages.push({
-          packageId:
-            pkgInfo.packageId ||
-            `pkg_${language === "python" ? "py" : "js"}_${pkgName.replace(/-/g, "_")}`,
+          packageId: `pkg_${langPrefix}_${normalizedName}`,
           buildId: pkgInfo.buildId,
         });
       }
