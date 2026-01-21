@@ -126,66 +126,59 @@ async function loadSidebarPackagesForProject(
   // First try package-level architecture (Java/Go use this)
   const packageIndex = await getProjectPackageIndex(projectId, language);
   if (packageIndex && Object.keys(packageIndex.packages).length > 0) {
-    // Package-level architecture: build sidebar from package index
-    const sidebarPackages: SidebarPackage[] = [];
+    // OPTIMIZATION: Fetch all package data in parallel instead of sequential for-loop
+    const packageEntries = Object.entries(packageIndex.packages);
+    const langPrefix = language === "python" ? "py" : language === "javascript" ? "js" : language;
+    const symbolLanguage = languageToSymbolLanguage(language);
 
-    for (const [pkgKey, pkgPointer] of Object.entries(packageIndex.packages)) {
-      const pkgBuildId = pkgPointer.buildId;
+    const sidebarPackages = await Promise.all(
+      packageEntries.map(async ([pkgKey, pkgPointer]) => {
+        const pkgBuildId = pkgPointer.buildId;
+        const packageId = pkgKey.startsWith("pkg_")
+          ? pkgKey
+          : `pkg_${langPrefix}_${pkgKey}`;
 
-      // Normalize packageId: Some indexes use short names (langchain) while others
-      // use full packageId format (pkg_java_langsmith). Ensure we have the full format.
-      // Use the correct prefix: py for python, js for javascript
-      const langPrefix = language === "python" ? "py" : language === "javascript" ? "js" : language;
-      const packageId = pkgKey.startsWith("pkg_")
-        ? pkgKey
-        : `pkg_${langPrefix}_${pkgKey}`;
+        // Fetch package info and routing map in parallel
+        const [packageInfoV2, routingMap] = await Promise.all([
+          getPackageInfoV2(packageId, pkgBuildId),
+          language === "javascript" ? getRoutingMapData(pkgBuildId, packageId) : Promise.resolve(null),
+        ]);
 
-      // Load package info to get display name and subpages
-      const packageInfoV2 = await getPackageInfoV2(packageId, pkgBuildId);
-      // Fallback chain: packageInfo -> pointer fields -> derive from packageId/pkgKey
-      const derivedName = pkgKey.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
-      const displayName = packageInfoV2?.displayName || pkgPointer.displayName || pkgPointer.publishedName || derivedName;
+        const derivedName = pkgKey.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
+        const displayName = packageInfoV2?.displayName || pkgPointer.displayName || pkgPointer.publishedName || derivedName;
+        const publishedName = pkgPointer.publishedName || derivedName;
 
-      // Create a minimal Package-like object for getPackageSlug
-      const publishedName = pkgPointer.publishedName || derivedName;
-      const symbolLanguage = languageToSymbolLanguage(language);
-      const pkg = {
-        packageId,
-        displayName,
-        publishedName,
-        language: symbolLanguage,
-        ecosystem: language,
-        version: pkgPointer.version || "0.0.0",
-      } as Package;
+        const pkg = {
+          packageId,
+          displayName,
+          publishedName,
+          language: symbolLanguage,
+          ecosystem: language,
+          version: pkgPointer.version || "0.0.0",
+        } as Package;
 
-      const slug = getPackageSlug(pkg, language);
+        const slug = getPackageSlug(pkg, language);
+        const items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
 
-      // For Java/Go, only show package names in sidebar (no sub-module listing)
-      let items: SidebarPackage["items"] = [];
-      if (language === "javascript") {
-        const routingMap = await getRoutingMapData(pkgBuildId, packageId);
-        items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
-      }
+        let subpages: SidebarSubpage[] | undefined;
+        if (packageInfoV2?.subpages && Array.isArray(packageInfoV2.subpages)) {
+          subpages = packageInfoV2.subpages.map((sp: { slug: string; title: string }) => ({
+            slug: sp.slug,
+            title: sp.title,
+            path: `/${language}/${slug}/${sp.slug}`,
+          }));
+        }
 
-      // Load subpages from package info if available
-      let subpages: SidebarSubpage[] | undefined;
-      if (packageInfoV2?.subpages && Array.isArray(packageInfoV2.subpages)) {
-        subpages = packageInfoV2.subpages.map((sp: { slug: string; title: string }) => ({
-          slug: sp.slug,
-          title: sp.title,
-          path: `/${language}/${slug}/${sp.slug}`,
-        }));
-      }
-
-      sidebarPackages.push({
-        id: packageId,
-        name: displayName,
-        path: `/${language}/${slug}`,
-        items,
-        project: projectId,
-        subpages,
-      });
-    }
+        return {
+          id: packageId,
+          name: displayName,
+          path: `/${language}/${slug}`,
+          items,
+          project: projectId,
+          subpages,
+        };
+      }),
+    );
 
     return sidebarPackages;
   }
@@ -217,48 +210,42 @@ async function loadSidebarPackagesForProject(
     return matchesLanguage && matchesProject;
   });
 
-  const sidebarPackages: SidebarPackage[] = [];
+  // OPTIMIZATION: Fetch all package data in parallel instead of sequential for-loop
+  const sidebarPackages = await Promise.all(
+    packages.map(async (pkg) => {
+      const slug = getPackageSlug(pkg, language);
+      const pkgBuildId = (pkg as { buildId?: string }).buildId || buildId;
 
-  for (const pkg of packages) {
-    const slug = getPackageSlug(pkg, language);
+      // Fetch routing map and package info in parallel
+      const [routingMap, packageInfoV2] = await Promise.all([
+        language === "javascript" ? getRoutingMapData(pkgBuildId, pkg.packageId) : Promise.resolve(null),
+        getPackageInfoV2(pkg.packageId, pkgBuildId),
+      ]);
 
-    // Use each package's own buildId (package-level architecture)
-    const pkgBuildId = (pkg as { buildId?: string }).buildId || buildId;
+      const items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
 
-    // For Python/Java/Go, only show package names in sidebar (no sub-module listing)
-    // since these packages have a different export structure with many modules
-    // JavaScript/TypeScript packages show submodule navigation
-    let items: SidebarPackage["items"] = [];
-    if (language === "javascript") {
-      // Use routing map instead of full symbols (~100KB vs ~14MB)
-      const routingMap = await getRoutingMapData(pkgBuildId, pkg.packageId);
-      items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
-    }
+      let subpages: SidebarSubpage[] | undefined;
+      if (packageInfoV2?.subpages && Array.isArray(packageInfoV2.subpages)) {
+        subpages = packageInfoV2.subpages.map((sp: { slug: string; title: string }) => ({
+          slug: sp.slug,
+          title: sp.title,
+          path: `/${language}/${slug}/${sp.slug}`,
+        }));
+      }
 
-    // Load subpages from package info if available
-    let subpages: SidebarSubpage[] | undefined;
-    const packageInfoV2 = await getPackageInfoV2(pkg.packageId, pkgBuildId);
-    if (packageInfoV2?.subpages && Array.isArray(packageInfoV2.subpages)) {
-      subpages = packageInfoV2.subpages.map((sp: { slug: string; title: string }) => ({
-        slug: sp.slug,
-        title: sp.title,
-        path: `/${language}/${slug}/${sp.slug}`,
-      }));
-    }
+      const derivedName = pkg.packageId.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
+      const pkgDisplayName = pkg.displayName || pkg.publishedName || derivedName;
 
-    // Fallback chain: displayName -> publishedName -> derive from packageId
-    const derivedName = pkg.packageId.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
-    const pkgDisplayName = pkg.displayName || pkg.publishedName || derivedName;
-
-    sidebarPackages.push({
-      id: pkg.packageId,
-      name: pkgDisplayName,
-      path: `/${language}/${slug}`,
-      items,
-      project: projectId,
-      subpages,
-    });
-  }
+      return {
+        id: pkg.packageId,
+        name: pkgDisplayName,
+        path: `/${language}/${slug}`,
+        items,
+        project: projectId,
+        subpages,
+      };
+    }),
+  );
 
   return sidebarPackages;
 }
@@ -291,7 +278,15 @@ async function loadSidebarPackages(language: Language): Promise<SidebarPackage[]
   return allPackages;
 }
 
+/**
+ * SidebarLoader - Server component that loads and renders the Sidebar.
+ *
+ * OPTIMIZATION: If you've already called loadNavigationData() at the layout level,
+ * use SidebarWithData instead to avoid duplicate fetching.
+ */
 export async function SidebarLoader() {
+  const startTime = performance.now();
+
   const [pythonPackages, javascriptPackages, javaPackages, goPackages] = await Promise.all([
     loadSidebarPackages("python"),
     loadSidebarPackages("javascript"),
@@ -299,6 +294,37 @@ export async function SidebarLoader() {
     loadSidebarPackages("go"),
   ]);
 
+  const duration = performance.now() - startTime;
+  console.log(
+    `[PERF:SidebarLoader] Total: ${duration.toFixed(0)}ms - ` +
+    `py:${pythonPackages.length}, js:${javascriptPackages.length}, java:${javaPackages.length}, go:${goPackages.length}`
+  );
+
+  return (
+    <Sidebar
+      pythonPackages={pythonPackages}
+      javascriptPackages={javascriptPackages}
+      javaPackages={javaPackages}
+      goPackages={goPackages}
+    />
+  );
+}
+
+/**
+ * SidebarWithData - Renders sidebar with pre-loaded data.
+ * Use this when navigation data is already loaded at the layout level.
+ */
+export function SidebarWithData({
+  pythonPackages,
+  javascriptPackages,
+  javaPackages,
+  goPackages,
+}: {
+  pythonPackages: SidebarPackage[];
+  javascriptPackages: SidebarPackage[];
+  javaPackages: SidebarPackage[];
+  goPackages: SidebarPackage[];
+}) {
   return (
     <Sidebar
       pythonPackages={pythonPackages}
@@ -312,14 +338,25 @@ export async function SidebarLoader() {
 /**
  * Load navigation data for use by NavigationProvider.
  * This is exported so it can be called at the layout level.
+ *
+ * NOTE: This data should be loaded ONCE at the layout level and passed down.
+ * Avoid calling both loadNavigationData() and SidebarLoader() - they fetch the same data.
  */
 export async function loadNavigationData() {
+  const startTime = performance.now();
+
   const [pythonPackages, javascriptPackages, javaPackages, goPackages] = await Promise.all([
     loadSidebarPackages("python"),
     loadSidebarPackages("javascript"),
     loadSidebarPackages("java"),
     loadSidebarPackages("go"),
   ]);
+
+  const duration = performance.now() - startTime;
+  console.log(
+    `[PERF:loadNavigationData] Total: ${duration.toFixed(0)}ms - ` +
+    `py:${pythonPackages.length}, js:${javascriptPackages.length}, java:${javaPackages.length}, go:${goPackages.length}`
+  );
 
   return { pythonPackages, javascriptPackages, javaPackages, goPackages };
 }

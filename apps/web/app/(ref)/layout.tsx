@@ -5,13 +5,12 @@
  * Includes header, sidebar navigation, and main content area.
  */
 
-import { Suspense } from "react";
-import { SidebarLoader, loadNavigationData } from "@/components/layout/SidebarLoader";
+import { loadNavigationData, SidebarWithData } from "@/components/layout/SidebarLoader";
 import { LayoutClient } from "@/components/layout/LayoutClient";
 
 export default async function ReferenceLayout({ children }: { children: React.ReactNode }) {
-  // Load navigation data at the layout level so it can be shared
-  // between Header (MobileProjectMenu) and Sidebar
+  // Load navigation data ONCE at the layout level
+  // This data is shared between Header (MobileProjectMenu) and Sidebar
   const { pythonPackages, javascriptPackages, javaPackages, goPackages } = await loadNavigationData();
 
   return (
@@ -25,10 +24,13 @@ export default async function ReferenceLayout({ children }: { children: React.Re
         {/* Main layout with sidebar */}
         <div className="max-w-8xl mx-auto px-0 lg:px-5">
           <div className="flex pt-header">
-            {/* Sidebar */}
-            <Suspense fallback={<SidebarSkeleton />}>
-              <SidebarLoader />
-            </Suspense>
+            {/* Sidebar - uses pre-loaded data to avoid duplicate fetching */}
+            <SidebarWithData
+              pythonPackages={pythonPackages}
+              javascriptPackages={javascriptPackages}
+              javaPackages={javaPackages}
+              goPackages={goPackages}
+            />
 
             {/* Main content - full width on mobile */}
             <main className="flex-1 min-w-0">
