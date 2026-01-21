@@ -1171,6 +1171,8 @@ export async function SymbolPage({
   let knownSymbols = new Map<string, string>();
   // OPTIMIZATION: Store pkgInfo from initial fetch to avoid duplicate call later
   let cachedPkgInfo: Awaited<ReturnType<typeof getPackageInfo>> | null = null;
+  // OPTIMIZATION: Start typeUrlMap fetch early, await later
+  let typeUrlMapPromise: Promise<Map<string, string>> | null = null;
 
   if (buildId) {
     // OPTIMIZATION: Fetch package info, routing map, and typeUrlMap in parallel
@@ -1194,6 +1196,12 @@ export async function SymbolPage({
         }
       }
     }
+
+    // OPTIMIZATION: Start typeUrlMap fetch early (runs in parallel with symbol loading)
+    // This is independent of symbol data and can run concurrently
+    const currentPkgSlugForTypeUrl = slugifyPackageName(packageName);
+    const localSymbolSetForTypeUrl = new Set(knownSymbols.keys());
+    typeUrlMapPromise = getTypeUrlMap(language, currentPkgSlugForTypeUrl, localSymbolSetForTypeUrl);
 
     // Main symbol lookup (routing map + individual symbol files; falls back as needed)
     trace.mark("beforeFindSymbol");
@@ -1374,11 +1382,17 @@ export async function SymbolPage({
   // Get pre-computed typeUrlMap for cross-project type linking
   // OPTIMIZATION: This map is pre-computed and cached (via unstable_cache) so we
   // don't iterate over 20k+ symbols on every render. See getTypeUrlMap() in loader.ts.
-  const currentPkgSlug = slugifyPackageName(packageName);
-  const localSymbolSet = new Set(knownSymbols.keys());
-  const typeUrlMap = await timed(trace, "getTypeUrlMap", () =>
-    getTypeUrlMap(language, currentPkgSlug, localSymbolSet),
-  );
+  // OPTIMIZATION #2: The promise was started early (after routingMap loaded) and has been
+  // running in parallel with symbol loading. Now we just await the result.
+  const typeUrlMap = await timed(trace, "getTypeUrlMap", async () => {
+    // If buildId existed, we started the fetch early; otherwise fetch now
+    if (buildId) {
+      return typeUrlMapPromise!;
+    }
+    const currentPkgSlug = slugifyPackageName(packageName);
+    const localSymbolSet = new Set(knownSymbols.keys());
+    return getTypeUrlMap(language, currentPkgSlug, localSymbolSet);
+  });
 
   trace.mark("beforeRender");
   trace.summary();

@@ -2090,79 +2090,86 @@ async function fetchCrossProjectPackagesData(
 
   const enabledProjects = getEnabledProjects();
 
-  // Load packages from all enabled projects
-  for (const project of enabledProjects) {
-    const variant = project.variants.find((v) => v.language === language && v.enabled);
-    if (!variant) continue;
+  // OPTIMIZATION: Collect ALL packages across ALL projects first, then fetch in parallel
+  // This avoids sequential project-by-project fetching
+  type PackageInfo = { pkg: { buildId: string; packageId: string; publishedName: string; ecosystem: string }; modulePrefix: string };
+  const allPackages: PackageInfo[] = [];
 
-    // Use the lightweight project package index rather than the synthetic manifest.
-    // This avoids cold-start fan-out fetching per-package package.json files.
-    const packageIndex = await getProjectPackageIndex(project.id, language);
-    if (!packageIndex?.packages) continue;
+  // Step 1: Gather package info (lightweight - just reads from project indexes)
+  await Promise.all(
+    enabledProjects.map(async (project) => {
+      const variant = project.variants.find((v) => v.language === language && v.enabled);
+      if (!variant) return;
 
-    const ecosystem = language;
-    const projectPkgs = Object.values(packageIndex.packages).filter((p) => p.ecosystem === ecosystem);
+      const packageIndex = await getProjectPackageIndex(project.id, language);
+      if (!packageIndex?.packages) return;
 
-    // Fetch routing maps in parallel (bounded by fetchBlobJson's concurrency limiter)
-    const perPkgResults = await Promise.all(
-      projectPkgs.map(async (pkg) => {
-        // Get the module prefix (e.g., "langchain_core" from package name)
+      const ecosystem = language;
+      const projectPkgs = Object.values(packageIndex.packages).filter((p) => p.ecosystem === ecosystem);
+
+      for (const pkg of projectPkgs) {
         const modulePrefix = pkg.publishedName
           .replace(/-/g, "_")
           .replace(/^@/, "")
           .replace(/\//g, "_");
+        allPackages.push({ pkg, modulePrefix });
+      }
+    })
+  );
 
-        // Load known symbols for this package.
-        //
-        // IMPORTANT:
-        // We intentionally avoid `lookup.json` here because some packages can
-        // exceed Next.js' 2MB data cache limit (leading to cache failures and
-        // slow navigations). The routing map is significantly smaller and still
-        // contains enough info for type-linking (public, routable symbols).
-        const routingMap = await getRoutingMapData(pkg.buildId, pkg.packageId);
-        const knownSymbols: [string, string][] = [];
+  // Step 2: Fetch ALL routing maps in parallel (bounded by fetchBlobJson's concurrency limiter)
+  const perPkgResults = await Promise.all(
+    allPackages.map(async ({ pkg, modulePrefix }) => {
+      // Load known symbols for this package.
+      //
+      // IMPORTANT:
+      // We intentionally avoid `lookup.json` here because some packages can
+      // exceed Next.js' 2MB data cache limit (leading to cache failures and
+      // slow navigations). The routing map is significantly smaller and still
+      // contains enough info for type-linking (public, routable symbols).
+      const routingMap = await getRoutingMapData(pkg.buildId, pkg.packageId);
+      const knownSymbols: [string, string][] = [];
 
-        // Pre-compute URL slug for this package
-        const pkgUrlSlug = modulePrefix.replace(/_/g, "-").toLowerCase();
-        const isPython = language === "python";
+      // Pre-compute URL slug for this package
+      const pkgUrlSlug = modulePrefix.replace(/_/g, "-").toLowerCase();
+      const isPython = language === "python";
 
-        if (routingMap?.slugs) {
-          for (const [slug, entry] of Object.entries(routingMap.slugs)) {
-            if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
-              // Map symbol name to its URL path (slug)
-              knownSymbols.push([entry.title, slug]);
+      if (routingMap?.slugs) {
+        for (const [slug, entry] of Object.entries(routingMap.slugs)) {
+          if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
+            // Map symbol name to its URL path (slug)
+            knownSymbols.push([entry.title, slug]);
 
-              // Pre-compute full URL for typeUrlMap (first package wins)
-              if (!(entry.title in typeUrlMapObj)) {
-                const hasPackagePrefix = isPython && slug.includes("_");
-                const urlPath = slugifySymbolPathLocal(slug, hasPackagePrefix);
-                typeUrlMapObj[entry.title] = `/${language}/${pkgUrlSlug}/${urlPath}`;
-              }
+            // Pre-compute full URL for typeUrlMap (first package wins)
+            if (!(entry.title in typeUrlMapObj)) {
+              const hasPackagePrefix = isPython && slug.includes("_");
+              const urlPath = slugifySymbolPathLocal(slug, hasPackagePrefix);
+              typeUrlMapObj[entry.title] = `/${language}/${pkgUrlSlug}/${urlPath}`;
             }
           }
         }
+      }
 
-        const serializedPackage: SerializableCrossProjectPackage = {
-          slug: modulePrefix,
-          language,
-          knownSymbols,
-        };
+      const serializedPackage: SerializableCrossProjectPackage = {
+        slug: modulePrefix,
+        language,
+        knownSymbols,
+      };
 
-        const entries: [string, SerializableCrossProjectPackage][] = [];
-        entries.push([modulePrefix, serializedPackage]);
+      const entries: [string, SerializableCrossProjectPackage][] = [];
+      entries.push([modulePrefix, serializedPackage]);
 
-        // Also add the original published name as a key for lookups
-        if (pkg.publishedName !== modulePrefix) {
-          entries.push([pkg.publishedName, serializedPackage]);
-        }
+      // Also add the original published name as a key for lookups
+      if (pkg.publishedName !== modulePrefix) {
+        entries.push([pkg.publishedName, serializedPackage]);
+      }
 
-        return entries;
-      }),
-    );
+      return entries;
+    }),
+  );
 
-    for (const entries of perPkgResults) {
-      packages.push(...entries);
-    }
+  for (const entries of perPkgResults) {
+    packages.push(...entries);
   }
 
   const duration = performance.now() - startTime;
