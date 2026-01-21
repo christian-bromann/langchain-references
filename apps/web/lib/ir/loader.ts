@@ -2104,8 +2104,10 @@ async function fetchCrossProjectPackagesData(
       const packageIndex = await getProjectPackageIndex(project.id, language);
       if (!packageIndex?.packages) return;
 
-      const ecosystem = language;
-      const projectPkgs = Object.values(packageIndex.packages).filter((p) => p.ecosystem === ecosystem);
+      // NOTE: We already filtered by language when fetching the index, so all packages
+      // in this index are for the correct language. No need to filter by ecosystem again
+      // (which could fail for javascript where ecosystem might be "typescript").
+      const projectPkgs = Object.values(packageIndex.packages);
 
       for (const pkg of projectPkgs) {
         const modulePrefix = pkg.publishedName
