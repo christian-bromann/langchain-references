@@ -14,16 +14,14 @@ import type {
 } from "./extractor.js";
 import type { JavaExtractorConfig } from "./config.js";
 import type {
-  ExtractorSymbol,
-  ExtractorMember,
+  SymbolRecord,
   SymbolKind,
   SymbolSource,
   SymbolParam,
+  SymbolDocs,
+  MemberReference,
+  TypeParam,
 } from "@langchain/ir-schema";
-
-// Use ExtractorSymbol and ExtractorMember from ir-schema
-export type SymbolRecord = ExtractorSymbol;
-export type MemberRecord = ExtractorMember;
 
 /**
  * Transforms Java extraction result to IR symbols.
@@ -84,7 +82,7 @@ export class JavaTransformer {
   private transformType(type: JavaType): SymbolRecord {
     const qualifiedName = type.packageName ? `${type.packageName}.${type.name}` : type.name;
 
-    const members: MemberRecord[] = [];
+    const members: MemberReference[] = [];
 
     // Add constructors
     for (const ctor of type.constructors) {
@@ -110,24 +108,30 @@ export class JavaTransformer {
 
     const symbol: SymbolRecord = {
       id: `${this.packageId}:${symbolId}`,
+      packageId: this.packageId,
       name: type.name,
       qualifiedName,
       kind: this.mapKind(type.kind),
       language: "java",
-      visibility,
-      summary: this.extractSummary(type.javadoc),
-      description: this.javadocToMarkdown(type.javadoc),
+      display: {
+        name: type.name,
+        qualified: qualifiedName,
+      },
       signature: this.buildTypeSignature(type),
-      typeParameters: type.typeParameters.map((tp) => ({
+      docs: this.buildDocs(type.javadoc),
+      typeParams: type.typeParameters.map((tp): TypeParam => ({
         name: tp.name,
         constraint: tp.bounds,
       })),
       members,
+      source: this.buildSourceLocation(type.sourceFile, type.startLine),
+      urls: {
+        canonical: `/${qualifiedName.replace(/\./g, "/")}`,
+      },
       tags: {
         stability: "stable",
         visibility,
       },
-      source: this.buildSourceLocation(type.sourceFile, type.startLine),
     };
 
     return symbol;
@@ -146,53 +150,48 @@ export class JavaTransformer {
   }
 
   /**
-   * Transform a constructor to a member record.
+   * Transform a constructor to a member reference.
    */
-  private transformConstructor(ctor: JavaConstructor, type: JavaType): MemberRecord {
+  private transformConstructor(ctor: JavaConstructor, type: JavaType): MemberReference {
+    const isPublic = ctor.modifiers.includes("public");
+    const visibility = isPublic ? "public" : "private";
+
     return {
-      id: this.buildMemberSymbolId(type, type.name),
       name: type.name,
+      refId: this.buildMemberSymbolId(type, type.name),
       kind: "constructor",
-      signature: this.buildConstructorSignature(ctor, type),
-      summary: this.extractSummary(ctor.javadoc),
-      description: this.javadocToMarkdown(ctor.javadoc),
-      parameters: ctor.parameters.map((p) => this.transformParameter(p, ctor.javadoc)),
-      source: this.buildSourceLocation(type.sourceFile, ctor.startLine),
+      visibility,
     };
   }
 
   /**
-   * Transform a method to a member record.
+   * Transform a method to a member reference.
    */
-  private transformMethod(method: JavaMethod, type: JavaType): MemberRecord {
+  private transformMethod(method: JavaMethod, type: JavaType): MemberReference {
+    const isPublic = method.modifiers.includes("public");
+    const visibility = isPublic ? "public" : "private";
+
     return {
-      id: this.buildMemberSymbolId(type, method.name),
       name: method.name,
+      refId: this.buildMemberSymbolId(type, method.name),
       kind: "method",
-      signature: this.buildMethodSignature(method),
-      summary: this.extractSummary(method.javadoc),
-      description: this.javadocToMarkdown(method.javadoc),
-      parameters: method.parameters.map((p) => this.transformParameter(p, method.javadoc)),
-      returns: {
-        type: method.returnType,
-        description: this.extractReturnDescription(method.javadoc),
-      },
-      source: this.buildSourceLocation(type.sourceFile, method.startLine),
+      visibility,
     };
   }
 
   /**
-   * Transform a field to a member record.
+   * Transform a field to a member reference.
    */
-  private transformField(field: JavaField, type: JavaType): MemberRecord {
+  private transformField(field: JavaField, type: JavaType): MemberReference {
+    const isPublic = field.modifiers.includes("public");
+    const visibility = isPublic ? "public" : "private";
+
     return {
-      id: this.buildMemberSymbolId(type, field.name),
       name: field.name,
+      refId: this.buildMemberSymbolId(type, field.name),
       kind: "property",
-      signature: this.buildFieldSignature(field),
-      summary: this.extractSummary(field.javadoc),
-      description: this.javadocToMarkdown(field.javadoc),
-      source: this.buildSourceLocation(type.sourceFile, field.startLine),
+      visibility,
+      type: field.type,
     };
   }
 
@@ -209,24 +208,30 @@ export class JavaTransformer {
 
     return {
       id: `${this.packageId}:${symbolId}`,
+      packageId: this.packageId,
       name: method.name,
       qualifiedName,
       kind: "method",
       language: "java",
-      visibility,
-      summary: this.extractSummary(method.javadoc),
-      description: this.javadocToMarkdown(method.javadoc),
+      display: {
+        name: method.name,
+        qualified: qualifiedName,
+      },
       signature: this.buildMethodSignature(method),
-      parameters: method.parameters.map((p) => this.transformParameter(p, method.javadoc)),
+      docs: this.buildDocs(method.javadoc),
+      params: method.parameters.map((p) => this.transformParameter(p, method.javadoc)),
       returns: {
         type: method.returnType,
         description: this.extractReturnDescription(method.javadoc),
+      },
+      source: this.buildSourceLocation(type.sourceFile, method.startLine),
+      urls: {
+        canonical: `/${qualifiedName.replace(/\./g, "/")}`,
       },
       tags: {
         stability: "stable",
         visibility,
       },
-      source: this.buildSourceLocation(type.sourceFile, method.startLine),
     };
   }
 
@@ -243,20 +248,26 @@ export class JavaTransformer {
 
     return {
       id: `${this.packageId}:${symbolId}`,
+      packageId: this.packageId,
       name: type.name,
       qualifiedName,
       kind: "constructor",
       language: "java",
-      visibility,
-      summary: this.extractSummary(ctor.javadoc),
-      description: this.javadocToMarkdown(ctor.javadoc),
+      display: {
+        name: type.name,
+        qualified: qualifiedName,
+      },
       signature: this.buildConstructorSignature(ctor, type),
-      parameters: ctor.parameters.map((p) => this.transformParameter(p, ctor.javadoc)),
+      docs: this.buildDocs(ctor.javadoc),
+      params: ctor.parameters.map((p) => this.transformParameter(p, ctor.javadoc)),
+      source: this.buildSourceLocation(type.sourceFile, ctor.startLine),
+      urls: {
+        canonical: `/${qualifiedName.replace(/\./g, "/")}`,
+      },
       tags: {
         stability: "stable",
         visibility,
       },
-      source: this.buildSourceLocation(type.sourceFile, ctor.startLine),
     };
   }
 
@@ -391,6 +402,29 @@ export class JavaTransformer {
     parts.push(field.name);
 
     return parts.join(" ");
+  }
+
+  /**
+   * Build the docs object for a symbol.
+   */
+  private buildDocs(javadoc?: string): SymbolDocs {
+    if (!javadoc) {
+      return { summary: "" };
+    }
+
+    const summary = this.extractSummary(javadoc) || "";
+    const description = this.javadocToMarkdown(javadoc);
+
+    const docs: SymbolDocs = {
+      summary,
+    };
+
+    // Add description if it's different from summary
+    if (description && description !== summary) {
+      docs.description = description;
+    }
+
+    return docs;
   }
 
   /**

@@ -7,8 +7,9 @@ import url from "node:url";
 
 import { describe, it, expect, beforeAll } from "vitest";
 import { GoExtractor, type ExtractionResult } from "../extractor.js";
-import { GoTransformer, type SymbolRecord, type MemberRecord } from "../transformer.js";
+import { GoTransformer } from "../transformer.js";
 import { createConfig, type GoExtractorConfig } from "../config.js";
+import type { SymbolRecord, MemberReference } from "@langchain/ir-schema";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -80,12 +81,12 @@ describe("GoTransformer", () => {
     });
 
     it("should extract summary from doc", () => {
-      expect(clientSymbol!.summary).toBeDefined();
-      expect(clientSymbol!.summary).toContain("Client represents");
+      expect(clientSymbol!.docs.summary).toBeDefined();
+      expect(clientSymbol!.docs.summary).toContain("Client represents");
     });
 
     it("should convert doc to markdown description", () => {
-      expect(clientSymbol!.description).toBeDefined();
+      expect(clientSymbol!.docs.description).toBeDefined();
     });
 
     it("should include signature", () => {
@@ -128,55 +129,38 @@ describe("GoTransformer", () => {
 
     it("should set member IDs correctly", () => {
       for (const member of clientSymbol!.members!) {
-        expect(member.id).toContain("Client.");
+        expect(member.refId).toContain("Client.");
       }
     });
   });
 
   describe("method member transformation", () => {
-    let getMethod: MemberRecord | undefined;
+    let getMember: MemberReference | undefined;
 
     beforeAll(() => {
       const clientSymbol = symbols.find((s) => s.name === "Client");
-      getMethod = clientSymbol?.members?.find((m) => m.name === "Get");
+      getMember = clientSymbol?.members?.find((m) => m.name === "Get");
     });
 
     it("should find Get method", () => {
-      expect(getMethod).toBeDefined();
+      expect(getMember).toBeDefined();
     });
 
     it("should set method kind", () => {
-      expect(getMethod!.kind).toBe("method");
+      expect(getMember!.kind).toBe("method");
     });
 
-    it("should include method signature", () => {
-      expect(getMethod!.signature).toContain("func");
-      expect(getMethod!.signature).toContain("Get");
+    it("should have refId for the method symbol", () => {
+      expect(getMember!.refId).toContain("Client_Get");
     });
 
-    it("should extract method summary", () => {
-      expect(getMethod!.summary).toBeDefined();
-      expect(getMethod!.summary).toContain("performs an HTTP GET");
-    });
-
-    it("should include parameters", () => {
-      expect(getMethod!.parameters).toBeDefined();
-      expect(getMethod!.parameters!.length).toBe(2);
-    });
-
-    it("should include return type", () => {
-      expect(getMethod!.returns).toBeDefined();
-      expect(getMethod!.returns!.type).toContain("[]byte");
-    });
-
-    it("should include source location", () => {
-      expect(getMethod!.source).toBeDefined();
-      expect(getMethod!.source!.line).toBeGreaterThan(0);
+    it("should set visibility", () => {
+      expect(getMember!.visibility).toBe("public");
     });
   });
 
   describe("field member transformation", () => {
-    let baseURLField: MemberRecord | undefined;
+    let baseURLField: MemberReference | undefined;
 
     beforeAll(() => {
       const clientSymbol = symbols.find((s) => s.name === "Client");
@@ -191,26 +175,25 @@ describe("GoTransformer", () => {
       expect(baseURLField!.kind).toBe("property");
     });
 
-    it("should include field signature", () => {
-      expect(baseURLField!.signature).toContain("BaseURL");
-      expect(baseURLField!.signature).toContain("string");
+    it("should have refId for the field", () => {
+      expect(baseURLField!.refId).toContain("Client_BaseURL");
     });
 
-    it("should include field doc", () => {
-      expect(baseURLField!.summary).toContain("base URL");
+    it("should include field type", () => {
+      expect(baseURLField!.type).toBe("string");
     });
   });
 
   describe("field with tag transformation", () => {
-    let apiKeyField: MemberRecord | undefined;
+    let apiKeyField: MemberReference | undefined;
 
     beforeAll(() => {
       const clientSymbol = symbols.find((s) => s.name === "Client");
       apiKeyField = clientSymbol?.members?.find((m) => m.name === "APIKey");
     });
 
-    it("should include tag in signature", () => {
-      expect(apiKeyField!.signature).toContain("`json:");
+    it("should have type information", () => {
+      expect(apiKeyField!.type).toBe("string");
     });
   });
 
@@ -274,13 +257,13 @@ describe("GoTransformer", () => {
     });
 
     it("should extract summary from doc", () => {
-      expect(connectSymbol!.summary).toBeDefined();
-      expect(connectSymbol!.summary).toContain("establishes a connection");
+      expect(connectSymbol!.docs.summary).toBeDefined();
+      expect(connectSymbol!.docs.summary).toContain("establishes a connection");
     });
 
     it("should include parameters", () => {
-      expect(connectSymbol!.parameters).toBeDefined();
-      expect(connectSymbol!.parameters!.length).toBe(2);
+      expect(connectSymbol!.params).toBeDefined();
+      expect(connectSymbol!.params!.length).toBe(2);
     });
 
     it("should include return type", () => {
@@ -332,13 +315,13 @@ describe("GoTransformer", () => {
   describe("Go doc to Markdown conversion", () => {
     it("should have description defined for types with doc", () => {
       const clientSymbol = symbols.find((s) => s.name === "Client");
-      expect(clientSymbol!.description).toBeDefined();
+      expect(clientSymbol!.docs.description).toBeDefined();
     });
 
     it("should convert DEPRECATED to markdown", () => {
       const parseConfig = symbols.find((s) => s.name === "ParseConfig");
-      if (parseConfig?.description) {
-        expect(parseConfig.description).toContain("**Deprecated:**");
+      if (parseConfig?.docs?.description) {
+        expect(parseConfig.docs.description).toContain("**Deprecated:**");
       }
     });
   });
@@ -453,11 +436,18 @@ describe("GoTransformer - method symbol emission", () => {
     expect(methodSymbol!.signature).toContain("Get");
   });
 
+  it("should capture the method docstring in docs.summary", () => {
+    const methodSymbol = symbols.find((s) => s.kind === "method" && s.name === "Get");
+    expect(methodSymbol).toBeDefined();
+    expect(methodSymbol!.docs.summary).toBeDefined();
+    expect(methodSymbol!.docs.summary).toContain("performs an HTTP GET request");
+  });
+
   it("should include method parameters", () => {
     const methodSymbol = symbols.find((s) => s.kind === "method" && s.name === "Get");
     expect(methodSymbol).toBeDefined();
-    expect(methodSymbol!.parameters).toBeDefined();
-    expect(methodSymbol!.parameters!.length).toBeGreaterThan(0);
+    expect(methodSymbol!.params).toBeDefined();
+    expect(methodSymbol!.params!.length).toBeGreaterThan(0);
   });
 
   it("should include return type for methods", () => {
@@ -476,7 +466,7 @@ describe("GoTransformer - method symbol emission", () => {
   it("should set visibility based on method name case", () => {
     const methodSymbol = symbols.find((s) => s.kind === "method" && s.name === "Get");
     expect(methodSymbol).toBeDefined();
-    expect(methodSymbol!.visibility).toBe("public");
+    expect(methodSymbol!.tags.visibility).toBe("public");
   });
 
   it("should count types plus their methods", () => {

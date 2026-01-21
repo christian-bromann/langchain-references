@@ -7,8 +7,9 @@ import url from "node:url";
 
 import { describe, it, expect, beforeAll } from "vitest";
 import { JavaExtractor, type ExtractionResult } from "../extractor.js";
-import { JavaTransformer, type SymbolRecord, type MemberRecord } from "../transformer.js";
+import { JavaTransformer } from "../transformer.js";
 import { createConfig, type JavaExtractorConfig } from "../config.js";
+import type { SymbolRecord, MemberReference } from "@langchain/ir-schema";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,10 +95,10 @@ describe("JavaTransformer", () => {
     it("should include method parameters for parameterized methods", () => {
       // Find a method with parameters
       const methodSymbol = symbols.find(
-        (s) => s.kind === "method" && s.parameters && s.parameters.length > 0,
+        (s) => s.kind === "method" && s.params && s.params.length > 0,
       );
       expect(methodSymbol).toBeDefined();
-      expect(methodSymbol!.parameters!.length).toBeGreaterThan(0);
+      expect(methodSymbol!.params!.length).toBeGreaterThan(0);
     });
 
     it("should include return type for methods", () => {
@@ -130,7 +131,7 @@ describe("JavaTransformer", () => {
     it("should include constructor parameters or empty array", () => {
       const ctorSymbol = symbols.find((s) => s.kind === "constructor");
       expect(ctorSymbol).toBeDefined();
-      expect(ctorSymbol!.parameters).toBeDefined();
+      expect(ctorSymbol!.params).toBeDefined();
     });
   });
 
@@ -154,12 +155,12 @@ describe("JavaTransformer", () => {
     });
 
     it("should extract summary from Javadoc", () => {
-      expect(simpleClassSymbol!.summary).toBeDefined();
-      expect(simpleClassSymbol!.summary).toContain("simple class");
+      expect(simpleClassSymbol!.docs.summary).toBeDefined();
+      expect(simpleClassSymbol!.docs.summary).toContain("simple class");
     });
 
     it("should convert Javadoc to markdown description", () => {
-      expect(simpleClassSymbol!.description).toBeDefined();
+      expect(simpleClassSymbol!.docs.description).toBeDefined();
     });
 
     it("should build signature with extends", () => {
@@ -210,115 +211,103 @@ describe("JavaTransformer", () => {
 
     it("should set member IDs correctly", () => {
       for (const member of simpleClassSymbol!.members!) {
-        expect(member.id).toContain("SimpleClass.");
+        expect(member.refId).toContain("SimpleClass.");
       }
     });
   });
 
-  describe("method member transformation", () => {
-    let getCountMethod: MemberRecord | undefined;
+  describe("method member reference", () => {
+    let getCountMember: MemberReference | undefined;
 
     beforeAll(() => {
       const simpleClassSymbol = symbols.find((s) => s.name === "SimpleClass");
-      getCountMethod = simpleClassSymbol?.members?.find((m) => m.name === "getCount");
+      getCountMember = simpleClassSymbol?.members?.find((m) => m.name === "getCount");
     });
 
-    it("should find getCount method", () => {
-      expect(getCountMethod).toBeDefined();
+    it("should find getCount method reference", () => {
+      expect(getCountMember).toBeDefined();
     });
 
     it("should set method kind", () => {
-      expect(getCountMethod!.kind).toBe("method");
+      expect(getCountMember!.kind).toBe("method");
     });
 
-    it("should build method signature", () => {
-      expect(getCountMethod!.signature).toContain("int");
-      expect(getCountMethod!.signature).toContain("getCount");
+    it("should have refId for the method symbol", () => {
+      expect(getCountMember!.refId).toContain("SimpleClass.getCount");
     });
 
-    it("should extract method summary", () => {
-      expect(getCountMethod!.summary).toBeDefined();
-      expect(getCountMethod!.summary).toContain("Gets the count");
-    });
-
-    it("should include return type", () => {
-      expect(getCountMethod!.returns).toBeDefined();
-      expect(getCountMethod!.returns!.type).toBe("int");
-    });
-
-    it("should include source location", () => {
-      expect(getCountMethod!.source).toBeDefined();
-      expect(getCountMethod!.source!.line).toBeGreaterThan(0);
+    it("should set visibility", () => {
+      expect(getCountMember!.visibility).toBe("public");
     });
   });
 
-  describe("method with parameters transformation", () => {
-    let combineMethod: MemberRecord | undefined;
+  describe("method with parameters - as top-level symbol", () => {
+    let combineSymbol: SymbolRecord | undefined;
 
     beforeAll(() => {
-      const simpleClassSymbol = symbols.find((s) => s.name === "SimpleClass");
-      combineMethod = simpleClassSymbol?.members?.find((m) => m.name === "combine");
+      combineSymbol = symbols.find(
+        (s) => s.kind === "method" && s.name === "combine",
+      );
+    });
+
+    it("should capture the method docstring in docs.summary", () => {
+      expect(combineSymbol!.docs.summary).toBeDefined();
+      expect(combineSymbol!.docs.summary).toContain("A method with multiple parameters");
     });
 
     it("should extract parameters", () => {
-      expect(combineMethod!.parameters).toBeDefined();
-      expect(combineMethod!.parameters!.length).toBe(2);
+      expect(combineSymbol!.params).toBeDefined();
+      expect(combineSymbol!.params!.length).toBe(2);
     });
 
     it("should include parameter names", () => {
-      const paramNames = combineMethod!.parameters!.map((p) => p.name);
+      const paramNames = combineSymbol!.params!.map((p) => p.name);
       expect(paramNames).toContain("first");
       expect(paramNames).toContain("second");
     });
 
     it("should include parameter types", () => {
-      const firstParam = combineMethod!.parameters!.find((p) => p.name === "first");
+      const firstParam = combineSymbol!.params!.find((p) => p.name === "first");
       expect(firstParam!.type).toBe("String");
     });
 
     it("should extract parameter descriptions from Javadoc", () => {
-      const firstParam = combineMethod!.parameters!.find((p) => p.name === "first");
+      const firstParam = combineSymbol!.params!.find((p) => p.name === "first");
       expect(firstParam!.description).toBeDefined();
       expect(firstParam!.description).toContain("first parameter");
     });
 
     it("should include throws in signature", () => {
-      expect(combineMethod!.signature).toContain("throws");
-      expect(combineMethod!.signature).toContain("IllegalArgumentException");
+      expect(combineSymbol!.signature).toContain("throws");
+      expect(combineSymbol!.signature).toContain("IllegalArgumentException");
     });
   });
 
-  describe("constructor transformation", () => {
-    let constructor: MemberRecord | undefined;
+  describe("constructor member reference", () => {
+    let constructorMember: MemberReference | undefined;
 
     beforeAll(() => {
       const simpleClassSymbol = symbols.find((s) => s.name === "SimpleClass");
-      constructor = simpleClassSymbol?.members?.find(
-        (m) => m.kind === "constructor" && m.parameters && m.parameters.length === 2,
+      constructorMember = simpleClassSymbol?.members?.find(
+        (m) => m.kind === "constructor",
       );
     });
 
-    it("should transform constructor", () => {
-      expect(constructor).toBeDefined();
+    it("should transform constructor reference", () => {
+      expect(constructorMember).toBeDefined();
     });
 
     it("should use class name as constructor name", () => {
-      expect(constructor!.name).toBe("SimpleClass");
+      expect(constructorMember!.name).toBe("SimpleClass");
     });
 
-    it("should include constructor parameters", () => {
-      expect(constructor!.parameters!.length).toBe(2);
-    });
-
-    it("should build constructor signature", () => {
-      expect(constructor!.signature).toContain("SimpleClass(");
-      expect(constructor!.signature).toContain("int count");
-      expect(constructor!.signature).toContain("String name");
+    it("should have visibility", () => {
+      expect(constructorMember!.visibility).toBeDefined();
     });
   });
 
-  describe("field transformation", () => {
-    let constantField: MemberRecord | undefined;
+  describe("field member reference", () => {
+    let constantField: MemberReference | undefined;
 
     beforeAll(() => {
       const simpleClassSymbol = symbols.find((s) => s.name === "SimpleClass");
@@ -333,12 +322,8 @@ describe("JavaTransformer", () => {
       expect(constantField!.kind).toBe("property");
     });
 
-    it("should build field signature with all modifiers", () => {
-      expect(constantField!.signature).toContain("public");
-      expect(constantField!.signature).toContain("static");
-      expect(constantField!.signature).toContain("final");
-      expect(constantField!.signature).toContain("String");
-      expect(constantField!.signature).toContain("CONSTANT");
+    it("should include field type", () => {
+      expect(constantField!.type).toBe("String");
     });
   });
 
@@ -358,9 +343,9 @@ describe("JavaTransformer", () => {
     });
 
     it("should include type parameters", () => {
-      expect(interfaceSymbol!.typeParameters).toBeDefined();
-      expect(interfaceSymbol!.typeParameters!.length).toBe(1);
-      expect(interfaceSymbol!.typeParameters![0].name).toBe("T");
+      expect(interfaceSymbol!.typeParams).toBeDefined();
+      expect(interfaceSymbol!.typeParams!.length).toBe(1);
+      expect(interfaceSymbol!.typeParams![0].name).toBe("T");
     });
   });
 
@@ -429,12 +414,12 @@ describe("JavaTransformer", () => {
   describe("Javadoc to Markdown conversion", () => {
     it("should have description defined for classes with Javadoc", () => {
       const simpleClassSymbol = symbols.find((s) => s.name === "SimpleClass");
-      expect(simpleClassSymbol!.description).toBeDefined();
+      expect(simpleClassSymbol!.docs.description).toBeDefined();
     });
 
     it("should strip @since, @author, @version tags", () => {
       const simpleClassSymbol = symbols.find((s) => s.name === "SimpleClass");
-      expect(simpleClassSymbol!.description).not.toContain("@since");
+      expect(simpleClassSymbol!.docs.description).not.toContain("@since");
     });
   });
 
@@ -450,12 +435,12 @@ describe("JavaTransformer", () => {
     });
 
     it("should include all type parameters", () => {
-      expect(genericSymbol!.typeParameters).toBeDefined();
-      expect(genericSymbol!.typeParameters!.length).toBe(2);
+      expect(genericSymbol!.typeParams).toBeDefined();
+      expect(genericSymbol!.typeParams!.length).toBe(2);
     });
 
     it("should include type parameter bounds as constraints", () => {
-      const tParam = genericSymbol!.typeParameters!.find((tp) => tp.name === "T");
+      const tParam = genericSymbol!.typeParams!.find((tp) => tp.name === "T");
       expect(tParam).toBeDefined();
       expect(tParam!.constraint).toBeDefined();
       expect(tParam!.constraint).toContain("Comparable");

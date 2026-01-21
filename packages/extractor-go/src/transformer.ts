@@ -14,16 +14,13 @@ import type {
 } from "./extractor.js";
 import type { GoExtractorConfig } from "./config.js";
 import type {
-  ExtractorSymbol,
-  ExtractorMember,
+  SymbolRecord,
   SymbolKind,
   SymbolSource,
   SymbolParam,
+  SymbolDocs,
+  MemberReference,
 } from "@langchain/ir-schema";
-
-// Use ExtractorSymbol and ExtractorMember from ir-schema
-export type SymbolRecord = ExtractorSymbol;
-export type MemberRecord = ExtractorMember;
 
 /**
  * Transforms Go extraction result to IR symbols.
@@ -89,7 +86,7 @@ export class GoTransformer {
     // The module path is implicit from the package context
     const qualifiedName = type.name;
 
-    const members: MemberRecord[] = [];
+    const members: MemberReference[] = [];
 
     // Add methods
     for (const method of type.methods) {
@@ -110,20 +107,26 @@ export class GoTransformer {
 
     const symbol: SymbolRecord = {
       id: `${this.packageId}:${symbolId}`,
+      packageId: this.packageId,
       name: type.name,
       qualifiedName,
       kind: this.mapKind(type.kind),
       language: "go",
-      visibility,
-      summary: this.extractSummary(type.doc),
-      description: this.goDocToMarkdown(type.doc),
+      display: {
+        name: type.name,
+        qualified: qualifiedName,
+      },
       signature: type.signature,
+      docs: this.buildDocs(type.doc),
       members,
+      source: this.buildSourceLocation(type.sourceFile, type.startLine),
+      urls: {
+        canonical: `/${qualifiedName}`,
+      },
       tags: {
         stability: "stable",
         visibility,
       },
-      source: this.buildSourceLocation(type.sourceFile, type.startLine),
     };
 
     return symbol;
@@ -146,21 +149,27 @@ export class GoTransformer {
 
     const symbol: SymbolRecord = {
       id: `${this.packageId}:${symbolId}`,
+      packageId: this.packageId,
       name: func.name,
       qualifiedName,
       kind: "function",
       language: "go",
-      visibility,
-      summary: this.extractSummary(func.doc),
-      description: this.goDocToMarkdown(func.doc),
+      display: {
+        name: func.name,
+        qualified: qualifiedName,
+      },
       signature: func.signature,
-      parameters: func.parameters.map((p) => this.transformParameter(p)),
+      docs: this.buildDocs(func.doc),
+      params: func.parameters.map((p) => this.transformParameter(p)),
       returns: func.returns ? { type: func.returns } : undefined,
+      source: this.buildSourceLocation("", func.startLine),
+      urls: {
+        canonical: `/${qualifiedName}`,
+      },
       tags: {
         stability: "stable",
         visibility,
       },
-      source: this.buildSourceLocation("", func.startLine),
     };
 
     return symbol;
@@ -187,19 +196,25 @@ export class GoTransformer {
 
     const symbol: SymbolRecord = {
       id: `${this.packageId}:${symbolId}`,
+      packageId: this.packageId,
       name: constant.name,
       qualifiedName,
       kind: "variable",
       language: "go",
-      visibility,
-      summary: this.extractSummary(constant.doc),
-      description: this.goDocToMarkdown(constant.doc),
+      display: {
+        name: constant.name,
+        qualified: qualifiedName,
+      },
       signature,
+      docs: this.buildDocs(constant.doc),
+      source: this.buildSourceLocation(constant.sourceFile, constant.startLine),
+      urls: {
+        canonical: `/${qualifiedName}`,
+      },
       tags: {
         stability: "stable",
         visibility,
       },
-      source: this.buildSourceLocation(constant.sourceFile, constant.startLine),
     };
 
     return symbol;
@@ -217,19 +232,18 @@ export class GoTransformer {
   }
 
   /**
-   * Transform a method to a member record.
+   * Transform a method to a member reference.
    */
-  private transformMethod(method: GoMethod, type: GoType): MemberRecord {
+  private transformMethod(method: GoMethod, type: GoType): MemberReference {
+    // In Go, exported symbols start with uppercase letter
+    const isExported = /^[A-Z]/.test(method.name);
+    const visibility = isExported ? "public" : "private";
+
     return {
-      id: this.buildMemberSymbolId(type.name, method.name),
       name: method.name,
+      refId: this.buildMemberSymbolId(type.name, method.name),
       kind: "method",
-      signature: method.signature,
-      summary: this.extractSummary(method.doc),
-      description: this.goDocToMarkdown(method.doc),
-      parameters: method.parameters.map((p) => this.transformParameter(p)),
-      returns: method.returns ? { type: method.returns } : undefined,
-      source: this.buildSourceLocation(type.sourceFile, method.startLine),
+      visibility,
     };
   }
 
@@ -246,40 +260,44 @@ export class GoTransformer {
 
     return {
       id: `${this.packageId}:${symbolId}`,
+      packageId: this.packageId,
       name: method.name,
       qualifiedName,
       kind: "method",
       language: "go",
-      visibility,
-      summary: this.extractSummary(method.doc),
-      description: this.goDocToMarkdown(method.doc),
+      display: {
+        name: method.name,
+        qualified: qualifiedName,
+      },
       signature: method.signature,
-      parameters: method.parameters.map((p) => this.transformParameter(p)),
+      docs: this.buildDocs(method.doc),
+      params: method.parameters.map((p) => this.transformParameter(p)),
       returns: method.returns ? { type: method.returns } : undefined,
+      source: this.buildSourceLocation(type.sourceFile, method.startLine),
+      urls: {
+        canonical: `/${qualifiedName}`,
+      },
       tags: {
         stability: "stable",
         visibility,
       },
-      source: this.buildSourceLocation(type.sourceFile, method.startLine),
     };
   }
 
   /**
-   * Transform a field to a member record.
+   * Transform a field to a member reference.
    */
-  private transformField(field: GoField, type: GoType): MemberRecord {
-    const signature = field.tag
-      ? `${field.name} ${field.type} \`${field.tag}\``
-      : `${field.name} ${field.type}`;
+  private transformField(field: GoField, type: GoType): MemberReference {
+    // In Go, exported symbols start with uppercase letter
+    const isExported = /^[A-Z]/.test(field.name);
+    const visibility = isExported ? "public" : "private";
 
     return {
-      id: this.buildMemberSymbolId(type.name, field.name),
       name: field.name,
+      refId: this.buildMemberSymbolId(type.name, field.name),
       kind: "property",
-      signature,
-      summary: field.doc,
-      description: field.doc,
-      source: this.buildSourceLocation(type.sourceFile, field.startLine),
+      visibility,
+      type: field.type,
     };
   }
 
@@ -310,6 +328,29 @@ export class GoTransformer {
       default:
         return "class";
     }
+  }
+
+  /**
+   * Build the docs object for a symbol.
+   */
+  private buildDocs(doc?: string): SymbolDocs {
+    if (!doc) {
+      return { summary: "" };
+    }
+
+    const summary = this.extractSummary(doc) || "";
+    const description = this.goDocToMarkdown(doc);
+
+    const docs: SymbolDocs = {
+      summary,
+    };
+
+    // Add description if it's different from summary
+    if (description && description !== summary) {
+      docs.description = description;
+    }
+
+    return docs;
   }
 
   /**
