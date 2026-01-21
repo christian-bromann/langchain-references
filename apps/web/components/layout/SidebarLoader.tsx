@@ -10,7 +10,7 @@
 
 import { Sidebar, type SidebarPackage, type SidebarSubpage } from "./Sidebar";
 import { getBuildIdForLanguage, getManifestData, getRoutingMapData, getPackageInfoV2, getProjectPackageIndex } from "@/lib/ir/loader";
-import { getEnabledProjects } from "@/lib/config/projects";
+import { getEnabledProjects, getProjectById } from "@/lib/config/projects";
 import type { Package, RoutingMap, SymbolKind } from "@/lib/ir/types";
 import { languageToSymbolLanguage, type Language } from "@langchain/ir-schema";
 
@@ -113,6 +113,16 @@ async function loadSidebarPackagesForProject(
   language: Language,
   projectId: string,
 ): Promise<SidebarPackage[]> {
+  // OPTIMIZATION: Early return if the project doesn't support this language.
+  // This avoids ~20 unnecessary getBuildIdForLanguage calls per request.
+  const project = getProjectById(projectId);
+  if (!project) return [];
+
+  const hasLanguageVariant = project.variants.some(
+    (v) => v.language === language && v.enabled,
+  );
+  if (!hasLanguageVariant) return [];
+
   // First try package-level architecture (Java/Go use this)
   const packageIndex = await getProjectPackageIndex(projectId, language);
   if (packageIndex && Object.keys(packageIndex.packages).length > 0) {

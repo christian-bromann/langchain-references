@@ -1427,9 +1427,6 @@ export async function getBuildIdForLanguage(
 
   // Fallback to old-style project pointer
   const buildId = await getLatestBuildIdForLanguage(language, project);
-  if (!buildId) {
-    console.log(`[loader] getBuildIdForLanguage: No build ID found for ${project}/${language}`);
-  }
   return buildId;
 }
 
