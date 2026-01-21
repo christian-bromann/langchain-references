@@ -128,6 +128,28 @@
   text-decoration: underline;
 }
 
+/* Links inside inline code - make them visually distinct as clickable */
+.markdown-content code:not(pre code) a,
+.markdown-content a code:not(pre code) {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--color-primary);
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+
+.markdown-content code:not(pre code) a:hover,
+.markdown-content a code:not(pre code):hover,
+.markdown-content a:hover code:not(pre code) {
+  text-decoration-thickness: 2px;
+}
+
+.dark .markdown-content code:not(pre code) a,
+.dark .markdown-content a code:not(pre code) {
+  color: var(--color-light);
+  text-decoration-color: var(--color-light);
+}
+
 /* Lists */
 .markdown-content ul,
 .markdown-content ol {
@@ -191,6 +213,34 @@
 
 .markdown-content td {
   color: var(--text-secondary);
+}
+
+/* Links in table cells - ensure they're clearly clickable */
+.markdown-content td a {
+  text-decoration: underline;
+  text-decoration-color: var(--color-primary);
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+
+.markdown-content td a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Links inside code in table cells - make them very distinct */
+.markdown-content td code:not(pre code) a,
+.markdown-content td a code:not(pre code) {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--color-primary);
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+
+.dark .markdown-content td code:not(pre code) a,
+.dark .markdown-content td a code:not(pre code) {
+  color: var(--color-light);
+  text-decoration-color: var(--color-light);
 }
 
 /* Strong and emphasis */
