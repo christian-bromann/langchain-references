@@ -2,15 +2,26 @@
  * Symbol Page Component
  *
  * Displays detailed documentation for a single symbol (class, function, etc.)
+ *
+ * STREAMING OPTIMIZATION:
+ * This component uses React Suspense for progressive rendering:
+ * 1. Shell (breadcrumbs + header) renders immediately
+ * 2. Main content streams when symbol data loads
+ * 3. Inherited members stream last (slowest due to cross-package lookups)
  */
 
 import Link from "next/link";
+import { Suspense } from "react";
 import { ChevronRight, ExternalLink } from "lucide-react";
 import { symbolLanguageToLanguage } from "@langchain/ir-schema";
 import { getProjectForPackage } from "@/lib/config/projects";
+import {
+  SymbolContentSkeleton,
+  MembersSkeleton,
+  InheritedMembersSkeleton,
+} from "./skeletons";
 
 import { cn } from "@/lib/utils/cn";
-import { createTrace, timed } from "@/lib/utils/perf-trace";
 import type { UrlLanguage } from "@/lib/utils/url";
 import {
   buildPackageUrl,
@@ -1155,13 +1166,8 @@ export async function SymbolPage({
   symbolPath,
   version,
 }: SymbolPageProps) {
-  const trace = createTrace(`SymbolPage:${packageName}/${symbolPath}`);
-  trace.mark("start");
-
   // Get the package-specific buildId
-  const buildId = await timed(trace, "getPackageBuildId", () =>
-    getPackageBuildId(language, packageName),
-  );
+  const buildId = await getPackageBuildId(language, packageName);
 
   // Get project info for version history/switching
   const project = getProjectForPackage(packageName);
@@ -1178,12 +1184,10 @@ export async function SymbolPage({
     // OPTIMIZATION: Fetch package info, routing map, and typeUrlMap in parallel
     // This eliminates sequential awaits and a duplicate getPackageInfo call
     const currentPkgSlugForPreload = slugifyPackageName(packageName);
-    const [pkgInfo, routingMap] = await timed(trace, "getPackageInfo+RoutingMap", () =>
-      Promise.all([
-        getPackageInfo(buildId, packageId),
-        getRoutingMapData(buildId, packageId),
-      ]),
-    );
+    const [pkgInfo, routingMap] = await Promise.all([
+      getPackageInfo(buildId, packageId),
+      getRoutingMapData(buildId, packageId),
+    ]);
     cachedPkgInfo = pkgInfo;
 
     // Build knownSymbols map for local type linking
@@ -1204,10 +1208,7 @@ export async function SymbolPage({
     typeUrlMapPromise = getTypeUrlMap(language, currentPkgSlugForTypeUrl, localSymbolSetForTypeUrl);
 
     // Main symbol lookup (routing map + individual symbol files; falls back as needed)
-    trace.mark("beforeFindSymbol");
-    const irSymbol = await timed(trace, "findSymbolOptimized", () =>
-      findSymbolOptimized(buildId, packageId, symbolPath),
-    );
+    const irSymbol = await findSymbolOptimized(buildId, packageId, symbolPath);
 
     // If the symbol isn't found, it may be an "alias" member that was included in a parent
     // module/class's member list but wasn't emitted as a full SymbolRecord in the IR.
@@ -1314,36 +1315,34 @@ export async function SymbolPage({
           return null;
         });
 
-        trace.start("memberPromises");
         const memberResults = await Promise.all(memberPromises);
         for (const result of memberResults) {
           if (result && result.memberId) {
             memberSymbols.set(result.memberId, result.symbol);
           }
         }
-        trace.end("memberPromises");
       }
 
-      // For inherited members, we still need the full symbols (but only if class has extends)
-      // This is a rare case and the data is cached, so it's acceptable
-      let inheritedMembers: InheritedMemberGroup[] | undefined;
-      const extendsRelations = irSymbol.relations?.extends;
-      if (
-        (irSymbol.kind === "class" || irSymbol.kind === "interface") &&
-        extendsRelations &&
-        extendsRelations.length > 0
-      ) {
-        // For inherited members, avoid fetching full symbols.json during prerender.
-        // We resolve base classes via lightweight lookup indexes + individual symbol files.
-        const memberNames = irSymbol.members?.map((m) => m.name) || [];
-        inheritedMembers = await timed(trace, "resolveInheritedMembers", () =>
-          resolveInheritedMembers(buildId, packageId, extendsRelations, memberNames),
-        );
-      }
-
-      symbol = toDisplaySymbol(irSymbol, memberSymbols, inheritedMembers);
+      // STREAMING OPTIMIZATION: Don't await inherited members here.
+      // They will be loaded and streamed via Suspense in the render phase.
+      // This allows the main symbol content to render immediately.
+      symbol = toDisplaySymbol(irSymbol, memberSymbols, undefined);
     }
   }
+
+  // STREAMING: Prepare data for async inherited members resolution
+  // This will be passed to a Suspense-wrapped component
+  const inheritedMembersData = buildId && irSymbolForMarkdown &&
+    (irSymbolForMarkdown.kind === "class" || irSymbolForMarkdown.kind === "interface") &&
+    irSymbolForMarkdown.relations?.extends &&
+    irSymbolForMarkdown.relations.extends.length > 0
+    ? {
+        buildId,
+        packageId,
+        baseClassNames: irSymbolForMarkdown.relations.extends,
+        ownMemberNames: irSymbolForMarkdown.members?.map((m) => m.name) || [],
+      }
+    : null;
 
   // Show not found state if symbol wasn't loaded
   if (!symbol) {
@@ -1384,18 +1383,10 @@ export async function SymbolPage({
   // don't iterate over 20k+ symbols on every render. See getTypeUrlMap() in loader.ts.
   // OPTIMIZATION #2: The promise was started early (after routingMap loaded) and has been
   // running in parallel with symbol loading. Now we just await the result.
-  const typeUrlMap = await timed(trace, "getTypeUrlMap", async () => {
-    // If buildId existed, we started the fetch early; otherwise fetch now
-    if (buildId) {
-      return typeUrlMapPromise!;
-    }
-    const currentPkgSlug = slugifyPackageName(packageName);
-    const localSymbolSet = new Set(knownSymbols.keys());
-    return getTypeUrlMap(language, currentPkgSlug, localSymbolSet);
-  });
-
-  trace.mark("beforeRender");
-  trace.summary();
+  // If buildId existed, we started the fetch early; otherwise fetch now
+  const typeUrlMap = buildId
+    ? await typeUrlMapPromise!
+    : await getTypeUrlMap(language, slugifyPackageName(packageName), new Set(knownSymbols.keys()));
 
   // Prefer package repo path prefix from the build manifest (already part of the IR data).
   // This captures monorepo layouts like `libs/<package>` without hardcoding.
@@ -1606,13 +1597,18 @@ export async function SymbolPage({
             />
           )}
 
-          {/* Inherited members from base classes */}
-          {symbol.inheritedMembers && symbol.inheritedMembers.length > 0 && (
-            <InheritedMembersSection
-              inheritedGroups={symbol.inheritedMembers}
-              language={language}
-              packageName={packageName}
-            />
+          {/* Inherited members from base classes - streamed via Suspense */}
+          {inheritedMembersData && (
+            <Suspense fallback={<InheritedMembersSkeleton />}>
+              <AsyncInheritedMembers
+                buildId={inheritedMembersData.buildId}
+                packageId={inheritedMembersData.packageId}
+                baseClassNames={inheritedMembersData.baseClassNames}
+                ownMemberNames={inheritedMembersData.ownMemberNames}
+                language={language}
+                packageName={packageName}
+              />
+            </Suspense>
           )}
 
           {/* Source link */}
@@ -2221,6 +2217,47 @@ function InheritedMembersSection({
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Async component for streaming inherited members via Suspense.
+ * This loads inherited member data asynchronously and renders when ready.
+ */
+async function AsyncInheritedMembers({
+  buildId,
+  packageId,
+  baseClassNames,
+  ownMemberNames,
+  language,
+  packageName,
+}: {
+  buildId: string;
+  packageId: string;
+  baseClassNames: string[];
+  ownMemberNames: string[];
+  language: UrlLanguage;
+  packageName: string;
+}) {
+  // Resolve inherited members (this is the slow operation)
+  const inheritedGroups = await resolveInheritedMembers(
+    buildId,
+    packageId,
+    baseClassNames,
+    ownMemberNames,
+  );
+
+  // If no inherited members found, render nothing
+  if (!inheritedGroups || inheritedGroups.length === 0) {
+    return null;
+  }
+
+  return (
+    <InheritedMembersSection
+      inheritedGroups={inheritedGroups}
+      language={language}
+      packageName={packageName}
+    />
   );
 }
 

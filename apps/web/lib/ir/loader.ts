@@ -2080,9 +2080,6 @@ function slugifySymbolPathLocal(symbolPath: string, hasPackagePrefix = true): st
 async function fetchCrossProjectPackagesData(
   language: Language,
 ): Promise<CrossProjectCacheData> {
-  const startTime = performance.now();
-  console.log(`[PERF:fetchCrossProjectPackagesData] Starting for ${language}`);
-
   const packages: [string, SerializableCrossProjectPackage][] = [];
   // Pre-compute typeUrlMap: symbolName -> full URL
   // Use an object first to handle "first package wins" deduplication
@@ -2183,19 +2180,12 @@ async function fetchCrossProjectPackagesData(
       packages.push(...entries);
     }
 
-    const duration = performance.now() - startTime;
-    console.log(
-      `[PERF:fetchCrossProjectPackagesData] Completed in ${duration.toFixed(0)}ms: ` +
-      `${packages.length} packages, ${Object.keys(typeUrlMapObj).length} typeUrls`,
-    );
-
     return {
       packages,
       typeUrlMap: Object.entries(typeUrlMapObj),
     };
   } catch (err) {
-    const duration = performance.now() - startTime;
-    console.error(`[PERF:fetchCrossProjectPackagesData] FAILED after ${duration.toFixed(0)}ms:`, err);
+    console.error(`[fetchCrossProjectPackagesData] Failed:`, err);
     // Return empty data on error to prevent caching of error state
     return { packages: [], typeUrlMap: [] };
   }

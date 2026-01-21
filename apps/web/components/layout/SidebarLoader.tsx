@@ -298,20 +298,12 @@ async function loadSidebarPackages(language: Language): Promise<SidebarPackage[]
  * use SidebarWithData instead to avoid duplicate fetching.
  */
 export async function SidebarLoader() {
-  const startTime = performance.now();
-
   const [pythonPackages, javascriptPackages, javaPackages, goPackages] = await Promise.all([
     loadSidebarPackages("python"),
     loadSidebarPackages("javascript"),
     loadSidebarPackages("java"),
     loadSidebarPackages("go"),
   ]);
-
-  const duration = performance.now() - startTime;
-  console.log(
-    `[PERF:SidebarLoader] Total: ${duration.toFixed(0)}ms - ` +
-    `py:${pythonPackages.length}, js:${javascriptPackages.length}, java:${javaPackages.length}, go:${goPackages.length}`
-  );
 
   return (
     <Sidebar
@@ -356,20 +348,12 @@ export function SidebarWithData({
  * Avoid calling both loadNavigationData() and SidebarLoader() - they fetch the same data.
  */
 export async function loadNavigationData() {
-  const startTime = performance.now();
-
   const [pythonPackages, javascriptPackages, javaPackages, goPackages] = await Promise.all([
     loadSidebarPackages("python"),
     loadSidebarPackages("javascript"),
     loadSidebarPackages("java"),
     loadSidebarPackages("go"),
   ]);
-
-  const duration = performance.now() - startTime;
-  console.log(
-    `[PERF:loadNavigationData] Total: ${duration.toFixed(0)}ms - ` +
-    `py:${pythonPackages.length}, js:${javascriptPackages.length}, java:${javaPackages.length}, go:${goPackages.length}`
-  );
 
   return { pythonPackages, javascriptPackages, javaPackages, goPackages };
 }
