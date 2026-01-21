@@ -216,7 +216,7 @@ export class JavaExtractor {
       // Parse modifiers from all matches
       const allModifiersMatch = content.substring(
         Math.max(0, match.index - 50),
-        match.index + (match[1]?.length || 0)
+        match.index + (match[1]?.length || 0),
       );
       const modifiers = this.parseModifiers(allModifiersMatch);
 
@@ -240,9 +240,7 @@ export class JavaExtractor {
       const javadoc = this.extractJavadocBefore(content, match.index);
 
       // Parse implements list
-      const implementsList = implementsClause
-        ? this.splitTypeList(implementsClause.trim())
-        : [];
+      const implementsList = implementsClause ? this.splitTypeList(implementsClause.trim()) : [];
 
       // Extract methods and fields for this type
       const typeEndIndex = this.findTypeEndIndex(content, match.index + match[0].length - 1);
@@ -393,7 +391,11 @@ export class JavaExtractor {
       // Check if there's only whitespace, annotations, and modifiers between this Javadoc and the end
       const afterJavadoc = before.substring(match.index + match[0].length);
       // Allow: whitespace, annotations (@Name(...)), and access modifiers
-      if (/^[\s]*(?:@\w+(?:\([^)]*\))?\s*)*(?:(?:public|private|protected|abstract|final|static|synchronized|native|default|volatile|transient)\s+)*$/.test(afterJavadoc)) {
+      if (
+        /^[\s]*(?:@\w+(?:\([^)]*\))?\s*)*(?:(?:public|private|protected|abstract|final|static|synchronized|native|default|volatile|transient)\s+)*$/.test(
+          afterJavadoc,
+        )
+      ) {
         lastMatch = match;
       }
     }
@@ -527,7 +529,7 @@ export class JavaExtractor {
       }
 
       // Skip package-private methods if configured
-      const hasVisibility = modifiers.some(m => ["public", "private", "protected"].includes(m));
+      const hasVisibility = modifiers.some((m) => ["public", "private", "protected"].includes(m));
       if (this.config.excludePackagePrivate && !hasVisibility && !isInterface) {
         continue;
       }
@@ -608,11 +610,7 @@ export class JavaExtractor {
   /**
    * Extract fields from type body.
    */
-  private extractFields(
-    body: string,
-    allLines: string[],
-    typeStartLine: number,
-  ): JavaField[] {
+  private extractFields(body: string, allLines: string[], typeStartLine: number): JavaField[] {
     const fields: JavaField[] = [];
 
     // Match field declarations - capture all modifiers properly
@@ -633,7 +631,7 @@ export class JavaExtractor {
       }
 
       // Skip package-private fields if configured
-      const hasVisibility = modifiers.some(m => ["public", "private", "protected"].includes(m));
+      const hasVisibility = modifiers.some((m) => ["public", "private", "protected"].includes(m));
       if (this.config.excludePackagePrivate && !hasVisibility) {
         continue;
       }
@@ -669,9 +667,7 @@ export class JavaExtractor {
       if (!trimmed) continue;
 
       // Match: annotations? type name
-      const paramMatch = trimmed.match(
-        /(?:(@\w+(?:\([^)]*\))?\s+)*)?([\w.<>,\s[\]]+)\s+(\w+)$/,
-      );
+      const paramMatch = trimmed.match(/(?:(@\w+(?:\([^)]*\))?\s+)*)?([\w.<>,\s[\]]+)\s+(\w+)$/);
 
       if (paramMatch) {
         const annotationsStr = paramMatch[1] || "";

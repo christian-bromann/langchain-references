@@ -3,7 +3,12 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { createConfig, validateConfig, defaultConfig, type JavaExtractorConfig } from "../config.js";
+import {
+  createConfig,
+  validateConfig,
+  defaultConfig,
+  type JavaExtractorConfig,
+} from "../config.js";
 
 describe("createConfig", () => {
   it("should create a config with required fields", () => {

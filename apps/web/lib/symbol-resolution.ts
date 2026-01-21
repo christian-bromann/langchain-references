@@ -348,9 +348,15 @@ export async function resolveSymbol(
 ): Promise<ResolveSymbolResponse> {
   // Cross-language resolution is only supported between Python and JavaScript for now
   // For Java and Go, fall back to the target language landing page
-  if (targetLanguage === "java" || targetLanguage === "go" ||
-      sourceLanguage === "java" || sourceLanguage === "go") {
-    console.log(`[symbol-resolution] Cross-language resolution not yet available for ${sourceLanguage} -> ${targetLanguage}, falling back to language root`);
+  if (
+    targetLanguage === "java" ||
+    targetLanguage === "go" ||
+    sourceLanguage === "java" ||
+    sourceLanguage === "go"
+  ) {
+    console.log(
+      `[symbol-resolution] Cross-language resolution not yet available for ${sourceLanguage} -> ${targetLanguage}, falling back to language root`,
+    );
     return {
       found: false,
       targetUrl: `/${targetLanguage}`,
@@ -438,8 +444,7 @@ export async function resolveSymbol(
         targetUrl: bestMatch.result.url,
         matchType,
         score: bestMatch.score,
-        matchedSymbol:
-          bestMatch.result.title !== symbolName ? bestMatch.result.title : undefined,
+        matchedSymbol: bestMatch.result.title !== symbolName ? bestMatch.result.title : undefined,
         context: {
           package: bestMatch.result.url.split("/")[2] || "",
         },

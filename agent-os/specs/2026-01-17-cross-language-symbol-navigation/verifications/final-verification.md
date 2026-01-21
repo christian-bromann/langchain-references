@@ -16,19 +16,19 @@ The cross-language symbol navigation feature has been successfully implemented. 
 
 ### Files Created
 
-| File | Status | Description |
-| --- | --- | --- |
-| `apps/web/lib/symbol-mappings.ts` | ✅ | Hardcoded bidirectional symbol mappings and aliases |
-| `apps/web/lib/symbol-resolution.ts` | ✅ | Core resolution logic with normalization and scoring |
-| `apps/web/lib/symbol-resolution.test.ts` | ✅ | 34 unit tests covering all resolution functions |
-| `apps/web/app/api/resolve-symbol/route.ts` | ✅ | API endpoint for cross-language resolution |
+| File                                       | Status | Description                                          |
+| ------------------------------------------ | ------ | ---------------------------------------------------- |
+| `apps/web/lib/symbol-mappings.ts`          | ✅     | Hardcoded bidirectional symbol mappings and aliases  |
+| `apps/web/lib/symbol-resolution.ts`        | ✅     | Core resolution logic with normalization and scoring |
+| `apps/web/lib/symbol-resolution.test.ts`   | ✅     | 34 unit tests covering all resolution functions      |
+| `apps/web/app/api/resolve-symbol/route.ts` | ✅     | API endpoint for cross-language resolution           |
 
 ### Files Modified
 
-| File | Status | Changes |
-| --- | --- | --- |
-| `apps/web/components/layout/LanguageDropdown.tsx` | ✅ | Async resolution, loading state, error handling |
-| `apps/web/components/layout/MobileProjectMenu.tsx` | ✅ | Resolution on language click, loading state |
+| File                                               | Status | Changes                                         |
+| -------------------------------------------------- | ------ | ----------------------------------------------- |
+| `apps/web/components/layout/LanguageDropdown.tsx`  | ✅     | Async resolution, loading state, error handling |
+| `apps/web/components/layout/MobileProjectMenu.tsx` | ✅     | Resolution on language click, loading state     |
 
 ---
 
@@ -41,6 +41,7 @@ The cross-language symbol navigation feature has been successfully implemented. 
 ```
 
 **Test Coverage:**
+
 - ✅ `normalizeSymbolName` - 5 tests
 - ✅ `calculateMatchScore` - 5 tests
 - ✅ `parseSymbolUrl` - 4 tests
@@ -54,6 +55,7 @@ The cross-language symbol navigation feature has been successfully implemented. 
 ### Linting
 
 All new/modified files pass linting with zero errors:
+
 - `apps/web/lib/symbol-mappings.ts` ✅
 - `apps/web/lib/symbol-resolution.ts` ✅
 - `apps/web/lib/symbol-resolution.test.ts` ✅
@@ -67,19 +69,20 @@ All new/modified files pass linting with zero errors:
 
 ### Acceptance Criteria
 
-| Criteria | Status | Notes |
-| --- | --- | --- |
-| JS `BaseMessage` → Python navigates correctly | ✅ | Explicit mapping: `langchain/index/BaseMessage` → `langchain-core/messages/base/BaseMessage` |
-| Python `embed_documents` → JS navigates correctly | ✅ | Alias: `embed_documents` → `embedDocuments` |
-| All explicit mappings included | ✅ | 60+ mappings in jsToPython, 60+ in pythonToJs |
-| Graceful fallback on no match | ✅ | Falls back to package → language landing |
-| Mobile menu same behavior as desktop | ✅ | Same resolution logic implemented |
-| No perceptible lag | ✅ | Async resolution with loading state |
-| Loading state shown | ✅ | Spinner icon displayed during resolution |
+| Criteria                                          | Status | Notes                                                                                        |
+| ------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------- |
+| JS `BaseMessage` → Python navigates correctly     | ✅     | Explicit mapping: `langchain/index/BaseMessage` → `langchain-core/messages/base/BaseMessage` |
+| Python `embed_documents` → JS navigates correctly | ✅     | Alias: `embed_documents` → `embedDocuments`                                                  |
+| All explicit mappings included                    | ✅     | 60+ mappings in jsToPython, 60+ in pythonToJs                                                |
+| Graceful fallback on no match                     | ✅     | Falls back to package → language landing                                                     |
+| Mobile menu same behavior as desktop              | ✅     | Same resolution logic implemented                                                            |
+| No perceptible lag                                | ✅     | Async resolution with loading state                                                          |
+| Loading state shown                               | ✅     | Spinner icon displayed during resolution                                                     |
 
 ### Symbol Mappings Coverage
 
 **Core Categories Covered:**
+
 - ✅ Core Message Types (7 types)
 - ✅ Language Models (5 types)
 - ✅ Embeddings (4 types)
@@ -101,11 +104,11 @@ All new/modified files pass linting with zero errors:
 
 Per user request, the following items were intentionally skipped:
 
-| Item | Reason |
-| --- | --- |
-| 6.2 E2E tests | User requested exclusion |
-| 6.4 Performance tests | User requested exclusion |
-| 6.6 Analytics tracking | Optional feature |
+| Item                   | Reason                   |
+| ---------------------- | ------------------------ |
+| 6.2 E2E tests          | User requested exclusion |
+| 6.4 Performance tests  | User requested exclusion |
+| 6.6 Analytics tracking | Optional feature         |
 
 ---
 
@@ -114,6 +117,7 @@ Per user request, the following items were intentionally skipped:
 **Endpoint**: `GET /api/resolve-symbol`
 
 **Parameters**:
+
 - `symbolName` (required) - Symbol name to resolve
 - `targetLanguage` (required) - `python` or `javascript`
 - `sourceLanguage` (optional) - Source language for context
@@ -121,6 +125,7 @@ Per user request, the following items were intentionally skipped:
 - `symbolPath` (optional) - Full symbol path for explicit mapping lookup
 
 **Response Format**:
+
 ```typescript
 {
   found: boolean;
@@ -138,12 +143,12 @@ Per user request, the following items were intentionally skipped:
 
 ## Accessibility
 
-| Check | Status |
-| --- | --- |
-| Keyboard navigation | ✅ Buttons are focusable |
-| Disabled state during loading | ✅ Implemented |
-| Loading indicator | ✅ Spinner icon shown |
-| ARIA attributes | ✅ Radix UI handles accessibility |
+| Check                         | Status                            |
+| ----------------------------- | --------------------------------- |
+| Keyboard navigation           | ✅ Buttons are focusable          |
+| Disabled state during loading | ✅ Implemented                    |
+| Loading indicator             | ✅ Spinner icon shown             |
+| ARIA attributes               | ✅ Radix UI handles accessibility |
 
 ---
 

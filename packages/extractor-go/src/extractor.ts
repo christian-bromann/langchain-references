@@ -177,8 +177,7 @@ export class GoExtractor {
     // type Name struct { ... }
     // type Name interface { ... }
     // type Name = OtherType
-    const typePattern =
-      /\btype\s+([A-Z]\w*)\s+(struct|interface)\s*\{/g;
+    const typePattern = /\btype\s+([A-Z]\w*)\s+(struct|interface)\s*\{/g;
 
     let match;
     while ((match = typePattern.exec(content)) !== null) {
@@ -260,8 +259,7 @@ export class GoExtractor {
     // Match function declarations - don't consume doc comments in pattern
     // func Name(params) returns
     // func (r *Receiver) Name(params) returns
-    const funcPattern =
-      /\bfunc\s+(?:\((\w+)\s+(\*?\w+)\)\s+)?([A-Z]\w*)\s*\(([^)]*)\)\s*([^{]*)/g;
+    const funcPattern = /\bfunc\s+(?:\((\w+)\s+(\*?\w+)\)\s+)?([A-Z]\w*)\s*\(([^)]*)\)\s*([^{]*)/g;
 
     let match;
     while ((match = funcPattern.exec(content)) !== null) {
@@ -314,8 +312,7 @@ export class GoExtractor {
     const constants: GoConst[] = [];
 
     // Match const declarations - use \w+ to match both exported and unexported
-    const constPattern =
-      /\b(const|var)\s+(\w+)\s*(?:(\w+)\s*)?=/g;
+    const constPattern = /\b(const|var)\s+(\w+)\s*(?:(\w+)\s*)?=/g;
 
     let match;
     while ((match = constPattern.exec(content)) !== null) {

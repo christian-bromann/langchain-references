@@ -193,47 +193,37 @@ export const SYMBOL_MAPPINGS: {
     // CORE MESSAGE TYPES
     // =========================================================================
     "langchain/index/BaseMessage": "langchain-core/messages/base/BaseMessage",
-    "langchain/index/HumanMessage":
-      "langchain-core/messages/human/HumanMessage",
+    "langchain/index/HumanMessage": "langchain-core/messages/human/HumanMessage",
     "langchain/index/AIMessage": "langchain-core/messages/ai/AIMessage",
-    "langchain/index/SystemMessage":
-      "langchain-core/messages/system/SystemMessage",
-    "langchain/index/FunctionMessage":
-      "langchain-core/messages/function/FunctionMessage",
+    "langchain/index/SystemMessage": "langchain-core/messages/system/SystemMessage",
+    "langchain/index/FunctionMessage": "langchain-core/messages/function/FunctionMessage",
     "langchain/index/ToolMessage": "langchain-core/messages/tool/ToolMessage",
     "langchain/index/ChatMessage": "langchain-core/messages/chat/ChatMessage",
-    "langchain-core/messages/BaseMessage":
-      "langchain-core/messages/base/BaseMessage",
-    "langchain-core/messages/HumanMessage":
-      "langchain-core/messages/human/HumanMessage",
+    "langchain-core/messages/BaseMessage": "langchain-core/messages/base/BaseMessage",
+    "langchain-core/messages/HumanMessage": "langchain-core/messages/human/HumanMessage",
     "langchain-core/messages/AIMessage": "langchain-core/messages/ai/AIMessage",
-    "langchain-core/messages/SystemMessage":
-      "langchain-core/messages/system/SystemMessage",
+    "langchain-core/messages/SystemMessage": "langchain-core/messages/system/SystemMessage",
 
     // =========================================================================
     // LANGUAGE MODELS
     // =========================================================================
     "langchain-core/language_models/BaseChatModel":
       "langchain-core/language_models/chat_models/BaseChatModel",
-    "langchain-core/language_models/BaseLLM":
-      "langchain-core/language_models/llms/BaseLLM",
+    "langchain-core/language_models/BaseLLM": "langchain-core/language_models/llms/BaseLLM",
     "langchain-openai/ChatOpenAI": "langchain-openai/chat_models/ChatOpenAI",
-    "langchain-anthropic/ChatAnthropic":
-      "langchain-anthropic/chat_models/ChatAnthropic",
+    "langchain-anthropic/ChatAnthropic": "langchain-anthropic/chat_models/ChatAnthropic",
     "langchain-google-genai/ChatGoogleGenerativeAI":
       "langchain-google-genai/chat_models/ChatGoogleGenerativeAI",
 
     // =========================================================================
     // EMBEDDINGS
     // =========================================================================
-    "langchain-core/embeddings/Embeddings":
-      "langchain-core/embeddings/embeddings/Embeddings",
+    "langchain-core/embeddings/Embeddings": "langchain-core/embeddings/embeddings/Embeddings",
     "langchain-core/embeddings/Embeddings/embedDocuments":
       "langchain-core/embeddings/embeddings/Embeddings/embed_documents",
     "langchain-core/embeddings/Embeddings/embedQuery":
       "langchain-core/embeddings/embeddings/Embeddings/embed_query",
-    "langchain-openai/OpenAIEmbeddings":
-      "langchain-openai/embeddings/OpenAIEmbeddings",
+    "langchain-openai/OpenAIEmbeddings": "langchain-openai/embeddings/OpenAIEmbeddings",
 
     // =========================================================================
     // AGENTS
@@ -241,8 +231,7 @@ export const SYMBOL_MAPPINGS: {
     "langchain/index/createAgent": "langchain/agents/factory/create_agent",
     "langchain/agents/createOpenAIFunctionsAgent":
       "langchain/agents/openai_functions_agent/base/create_openai_functions_agent",
-    "langchain/agents/createReactAgent":
-      "langchain/agents/react/agent/create_react_agent",
+    "langchain/agents/createReactAgent": "langchain/agents/react/agent/create_react_agent",
     "langchain/agents/createToolCallingAgent":
       "langchain/agents/tool_calling_agent/base/create_tool_calling_agent",
     "langchain/agents/AgentExecutor": "langchain/agents/agent/AgentExecutor",
@@ -250,30 +239,21 @@ export const SYMBOL_MAPPINGS: {
     // =========================================================================
     // RUNNABLES
     // =========================================================================
-    "langchain-core/runnables/Runnable":
-      "langchain-core/runnables/base/Runnable",
-    "langchain-core/runnables/RunnableSequence":
-      "langchain-core/runnables/base/RunnableSequence",
-    "langchain-core/runnables/RunnableParallel":
-      "langchain-core/runnables/base/RunnableParallel",
-    "langchain-core/runnables/RunnableLambda":
-      "langchain-core/runnables/base/RunnableLambda",
+    "langchain-core/runnables/Runnable": "langchain-core/runnables/base/Runnable",
+    "langchain-core/runnables/RunnableSequence": "langchain-core/runnables/base/RunnableSequence",
+    "langchain-core/runnables/RunnableParallel": "langchain-core/runnables/base/RunnableParallel",
+    "langchain-core/runnables/RunnableLambda": "langchain-core/runnables/base/RunnableLambda",
     "langchain-core/runnables/RunnablePassthrough":
       "langchain-core/runnables/passthrough/RunnablePassthrough",
-    "langchain-core/runnables/RunnableBranch":
-      "langchain-core/runnables/branch/RunnableBranch",
-    "langchain-core/runnables/RunnableConfig":
-      "langchain-core/runnables/config/RunnableConfig",
+    "langchain-core/runnables/RunnableBranch": "langchain-core/runnables/branch/RunnableBranch",
+    "langchain-core/runnables/RunnableConfig": "langchain-core/runnables/config/RunnableConfig",
 
     // =========================================================================
     // PROMPTS
     // =========================================================================
-    "langchain-core/prompts/ChatPromptTemplate":
-      "langchain-core/prompts/chat/ChatPromptTemplate",
-    "langchain-core/prompts/PromptTemplate":
-      "langchain-core/prompts/prompt/PromptTemplate",
-    "langchain-core/prompts/MessagesPlaceholder":
-      "langchain-core/prompts/chat/MessagesPlaceholder",
+    "langchain-core/prompts/ChatPromptTemplate": "langchain-core/prompts/chat/ChatPromptTemplate",
+    "langchain-core/prompts/PromptTemplate": "langchain-core/prompts/prompt/PromptTemplate",
+    "langchain-core/prompts/MessagesPlaceholder": "langchain-core/prompts/chat/MessagesPlaceholder",
     "langchain-core/prompts/SystemMessagePromptTemplate":
       "langchain-core/prompts/chat/SystemMessagePromptTemplate",
     "langchain-core/prompts/HumanMessagePromptTemplate":
@@ -294,16 +274,13 @@ export const SYMBOL_MAPPINGS: {
     // =========================================================================
     // DOCUMENT LOADERS
     // =========================================================================
-    "langchain-core/documents/Document":
-      "langchain-core/documents/base/Document",
-    "langchain-core/document_loaders/BaseLoader":
-      "langchain-core/document_loaders/base/BaseLoader",
+    "langchain-core/documents/Document": "langchain-core/documents/base/Document",
+    "langchain-core/document_loaders/BaseLoader": "langchain-core/document_loaders/base/BaseLoader",
 
     // =========================================================================
     // VECTOR STORES
     // =========================================================================
-    "langchain-core/vectorstores/VectorStore":
-      "langchain-core/vectorstores/base/VectorStore",
+    "langchain-core/vectorstores/VectorStore": "langchain-core/vectorstores/base/VectorStore",
     "langchain-core/vectorstores/VectorStoreRetriever":
       "langchain-core/vectorstores/base/VectorStoreRetriever",
 
@@ -314,21 +291,18 @@ export const SYMBOL_MAPPINGS: {
       "langchain-text-splitters/character/RecursiveCharacterTextSplitter",
     "langchain-textsplitters/CharacterTextSplitter":
       "langchain-text-splitters/character/CharacterTextSplitter",
-    "langchain-textsplitters/TokenTextSplitter":
-      "langchain-text-splitters/base/TokenTextSplitter",
+    "langchain-textsplitters/TokenTextSplitter": "langchain-text-splitters/base/TokenTextSplitter",
 
     // =========================================================================
     // RETRIEVERS
     // =========================================================================
-    "langchain-core/retrievers/BaseRetriever":
-      "langchain-core/retrievers/BaseRetriever",
+    "langchain-core/retrievers/BaseRetriever": "langchain-core/retrievers/BaseRetriever",
 
     // =========================================================================
     // TOOLS
     // =========================================================================
     "langchain-core/tools/tool": "langchain-core/tools/tool",
-    "langchain-core/tools/StructuredTool":
-      "langchain-core/tools/base/StructuredTool",
+    "langchain-core/tools/StructuredTool": "langchain-core/tools/base/StructuredTool",
     "langchain-core/tools/BaseTool": "langchain-core/tools/base/BaseTool",
 
     // =========================================================================
@@ -342,10 +316,8 @@ export const SYMBOL_MAPPINGS: {
     "langgraph/prebuilt/createReactAgent":
       "langgraph/prebuilt/react_agent_executor/create_react_agent",
     "langgraph/prebuilt/ToolNode": "langgraph/prebuilt/tool_node/ToolNode",
-    "langgraph/checkpoint/MemorySaver":
-      "langgraph/checkpoint/memory/MemorySaver",
-    "langgraph/checkpoint/BaseCheckpointSaver":
-      "langgraph/checkpoint/base/BaseCheckpointSaver",
+    "langgraph/checkpoint/MemorySaver": "langgraph/checkpoint/memory/MemorySaver",
+    "langgraph/checkpoint/BaseCheckpointSaver": "langgraph/checkpoint/base/BaseCheckpointSaver",
 
     // =========================================================================
     // LANGSMITH
@@ -359,44 +331,34 @@ export const SYMBOL_MAPPINGS: {
     // =========================================================================
     // CORE MESSAGE TYPES
     // =========================================================================
-    "langchain-core/messages/base/BaseMessage":
-      "langchain-core/messages/BaseMessage",
-    "langchain-core/messages/human/HumanMessage":
-      "langchain-core/messages/HumanMessage",
+    "langchain-core/messages/base/BaseMessage": "langchain-core/messages/BaseMessage",
+    "langchain-core/messages/human/HumanMessage": "langchain-core/messages/HumanMessage",
     "langchain-core/messages/ai/AIMessage": "langchain-core/messages/AIMessage",
-    "langchain-core/messages/system/SystemMessage":
-      "langchain-core/messages/SystemMessage",
-    "langchain-core/messages/function/FunctionMessage":
-      "langchain-core/messages/FunctionMessage",
-    "langchain-core/messages/tool/ToolMessage":
-      "langchain-core/messages/ToolMessage",
-    "langchain-core/messages/chat/ChatMessage":
-      "langchain-core/messages/ChatMessage",
+    "langchain-core/messages/system/SystemMessage": "langchain-core/messages/SystemMessage",
+    "langchain-core/messages/function/FunctionMessage": "langchain-core/messages/FunctionMessage",
+    "langchain-core/messages/tool/ToolMessage": "langchain-core/messages/ToolMessage",
+    "langchain-core/messages/chat/ChatMessage": "langchain-core/messages/ChatMessage",
 
     // =========================================================================
     // LANGUAGE MODELS
     // =========================================================================
     "langchain-core/language_models/chat_models/BaseChatModel":
       "langchain-core/language_models/BaseChatModel",
-    "langchain-core/language_models/llms/BaseLLM":
-      "langchain-core/language_models/BaseLLM",
+    "langchain-core/language_models/llms/BaseLLM": "langchain-core/language_models/BaseLLM",
     "langchain-openai/chat_models/ChatOpenAI": "langchain-openai/ChatOpenAI",
-    "langchain-anthropic/chat_models/ChatAnthropic":
-      "langchain-anthropic/ChatAnthropic",
+    "langchain-anthropic/chat_models/ChatAnthropic": "langchain-anthropic/ChatAnthropic",
     "langchain-google-genai/chat_models/ChatGoogleGenerativeAI":
       "langchain-google-genai/ChatGoogleGenerativeAI",
 
     // =========================================================================
     // EMBEDDINGS
     // =========================================================================
-    "langchain-core/embeddings/embeddings/Embeddings":
-      "langchain-core/embeddings/Embeddings",
+    "langchain-core/embeddings/embeddings/Embeddings": "langchain-core/embeddings/Embeddings",
     "langchain-core/embeddings/embeddings/Embeddings/embed_documents":
       "langchain-core/embeddings/Embeddings/embedDocuments",
     "langchain-core/embeddings/embeddings/Embeddings/embed_query":
       "langchain-core/embeddings/Embeddings/embedQuery",
-    "langchain-openai/embeddings/OpenAIEmbeddings":
-      "langchain-openai/OpenAIEmbeddings",
+    "langchain-openai/embeddings/OpenAIEmbeddings": "langchain-openai/OpenAIEmbeddings",
 
     // =========================================================================
     // AGENTS
@@ -404,8 +366,7 @@ export const SYMBOL_MAPPINGS: {
     "langchain/agents/factory/create_agent": "langchain/agents/createAgent",
     "langchain/agents/openai_functions_agent/base/create_openai_functions_agent":
       "langchain/agents/createOpenAIFunctionsAgent",
-    "langchain/agents/react/agent/create_react_agent":
-      "langchain/agents/createReactAgent",
+    "langchain/agents/react/agent/create_react_agent": "langchain/agents/createReactAgent",
     "langchain/agents/tool_calling_agent/base/create_tool_calling_agent":
       "langchain/agents/createToolCallingAgent",
     "langchain/agents/agent/AgentExecutor": "langchain/agents/AgentExecutor",
@@ -413,30 +374,21 @@ export const SYMBOL_MAPPINGS: {
     // =========================================================================
     // RUNNABLES
     // =========================================================================
-    "langchain-core/runnables/base/Runnable":
-      "langchain-core/runnables/Runnable",
-    "langchain-core/runnables/base/RunnableSequence":
-      "langchain-core/runnables/RunnableSequence",
-    "langchain-core/runnables/base/RunnableParallel":
-      "langchain-core/runnables/RunnableParallel",
-    "langchain-core/runnables/base/RunnableLambda":
-      "langchain-core/runnables/RunnableLambda",
+    "langchain-core/runnables/base/Runnable": "langchain-core/runnables/Runnable",
+    "langchain-core/runnables/base/RunnableSequence": "langchain-core/runnables/RunnableSequence",
+    "langchain-core/runnables/base/RunnableParallel": "langchain-core/runnables/RunnableParallel",
+    "langchain-core/runnables/base/RunnableLambda": "langchain-core/runnables/RunnableLambda",
     "langchain-core/runnables/passthrough/RunnablePassthrough":
       "langchain-core/runnables/RunnablePassthrough",
-    "langchain-core/runnables/branch/RunnableBranch":
-      "langchain-core/runnables/RunnableBranch",
-    "langchain-core/runnables/config/RunnableConfig":
-      "langchain-core/runnables/RunnableConfig",
+    "langchain-core/runnables/branch/RunnableBranch": "langchain-core/runnables/RunnableBranch",
+    "langchain-core/runnables/config/RunnableConfig": "langchain-core/runnables/RunnableConfig",
 
     // =========================================================================
     // PROMPTS
     // =========================================================================
-    "langchain-core/prompts/chat/ChatPromptTemplate":
-      "langchain-core/prompts/ChatPromptTemplate",
-    "langchain-core/prompts/prompt/PromptTemplate":
-      "langchain-core/prompts/PromptTemplate",
-    "langchain-core/prompts/chat/MessagesPlaceholder":
-      "langchain-core/prompts/MessagesPlaceholder",
+    "langchain-core/prompts/chat/ChatPromptTemplate": "langchain-core/prompts/ChatPromptTemplate",
+    "langchain-core/prompts/prompt/PromptTemplate": "langchain-core/prompts/PromptTemplate",
+    "langchain-core/prompts/chat/MessagesPlaceholder": "langchain-core/prompts/MessagesPlaceholder",
     "langchain-core/prompts/chat/SystemMessagePromptTemplate":
       "langchain-core/prompts/SystemMessagePromptTemplate",
     "langchain-core/prompts/chat/HumanMessagePromptTemplate":
@@ -457,16 +409,13 @@ export const SYMBOL_MAPPINGS: {
     // =========================================================================
     // DOCUMENT LOADERS
     // =========================================================================
-    "langchain-core/documents/base/Document":
-      "langchain-core/documents/Document",
-    "langchain-core/document_loaders/base/BaseLoader":
-      "langchain-core/document_loaders/BaseLoader",
+    "langchain-core/documents/base/Document": "langchain-core/documents/Document",
+    "langchain-core/document_loaders/base/BaseLoader": "langchain-core/document_loaders/BaseLoader",
 
     // =========================================================================
     // VECTOR STORES
     // =========================================================================
-    "langchain-core/vectorstores/base/VectorStore":
-      "langchain-core/vectorstores/VectorStore",
+    "langchain-core/vectorstores/base/VectorStore": "langchain-core/vectorstores/VectorStore",
     "langchain-core/vectorstores/base/VectorStoreRetriever":
       "langchain-core/vectorstores/VectorStoreRetriever",
 
@@ -477,21 +426,18 @@ export const SYMBOL_MAPPINGS: {
       "langchain-textsplitters/RecursiveCharacterTextSplitter",
     "langchain-text-splitters/character/CharacterTextSplitter":
       "langchain-textsplitters/CharacterTextSplitter",
-    "langchain-text-splitters/base/TokenTextSplitter":
-      "langchain-textsplitters/TokenTextSplitter",
+    "langchain-text-splitters/base/TokenTextSplitter": "langchain-textsplitters/TokenTextSplitter",
 
     // =========================================================================
     // RETRIEVERS
     // =========================================================================
-    "langchain-core/retrievers/BaseRetriever":
-      "langchain-core/retrievers/BaseRetriever",
+    "langchain-core/retrievers/BaseRetriever": "langchain-core/retrievers/BaseRetriever",
 
     // =========================================================================
     // TOOLS
     // =========================================================================
     "langchain-core/tools/tool": "langchain-core/tools/tool",
-    "langchain-core/tools/base/StructuredTool":
-      "langchain-core/tools/StructuredTool",
+    "langchain-core/tools/base/StructuredTool": "langchain-core/tools/StructuredTool",
     "langchain-core/tools/base/BaseTool": "langchain-core/tools/BaseTool",
 
     // =========================================================================
@@ -505,10 +451,8 @@ export const SYMBOL_MAPPINGS: {
     "langgraph/prebuilt/react_agent_executor/create_react_agent":
       "langgraph/prebuilt/createReactAgent",
     "langgraph/prebuilt/tool_node/ToolNode": "langgraph/prebuilt/ToolNode",
-    "langgraph/checkpoint/memory/MemorySaver":
-      "langgraph/checkpoint/MemorySaver",
-    "langgraph/checkpoint/base/BaseCheckpointSaver":
-      "langgraph/checkpoint/BaseCheckpointSaver",
+    "langgraph/checkpoint/memory/MemorySaver": "langgraph/checkpoint/MemorySaver",
+    "langgraph/checkpoint/base/BaseCheckpointSaver": "langgraph/checkpoint/BaseCheckpointSaver",
 
     // =========================================================================
     // LANGSMITH
@@ -582,13 +526,11 @@ The resolution algorithm now follows this priority:
 async function resolveSymbol(
   symbolPath: string,
   sourceLanguage: "python" | "javascript",
-  targetLanguage: "python" | "javascript"
+  targetLanguage: "python" | "javascript",
 ): Promise<MatchResult> {
   // 1. Check explicit path mappings first (highest priority)
   const mappings =
-    sourceLanguage === "javascript"
-      ? SYMBOL_MAPPINGS.jsToPython
-      : SYMBOL_MAPPINGS.pythonToJs;
+    sourceLanguage === "javascript" ? SYMBOL_MAPPINGS.jsToPython : SYMBOL_MAPPINGS.pythonToJs;
 
   if (mappings[symbolPath]) {
     return {
@@ -601,9 +543,7 @@ async function resolveSymbol(
   // 2. Check symbol name aliases
   const symbolName = extractSymbolName(symbolPath);
   const aliases =
-    sourceLanguage === "javascript"
-      ? SYMBOL_ALIASES.jsToPython
-      : SYMBOL_ALIASES.pythonToJs;
+    sourceLanguage === "javascript" ? SYMBOL_ALIASES.jsToPython : SYMBOL_ALIASES.pythonToJs;
 
   const aliasedName = aliases[symbolName];
   if (aliasedName) {
@@ -702,7 +642,7 @@ interface MatchResult {
 
 async function findCrossLanguageMatch(
   sourceUrl: string,
-  targetLanguage: "python" | "javascript"
+  targetLanguage: "python" | "javascript",
 ): Promise<MatchResult> {
   // 1. Parse source URL to extract symbol info
   const { symbolName, packageSlug, symbolPath } = parseSymbolUrl(sourceUrl);
@@ -711,10 +651,7 @@ async function findCrossLanguageMatch(
   const normalized = normalizeSymbolName(symbolName);
 
   // 3. Search in target language
-  const searchResults = await searchSymbols(
-    normalized.normalized,
-    targetLanguage
-  );
+  const searchResults = await searchSymbols(normalized.normalized, targetLanguage);
 
   // 4. Score and rank results
   const rankedResults = searchResults
@@ -741,10 +678,7 @@ async function findCrossLanguageMatch(
 ### 4.3 Match Scoring
 
 ```typescript
-function calculateMatchScore(
-  source: NormalizedSymbol,
-  target: SearchResult
-): number {
+function calculateMatchScore(source: NormalizedSymbol, target: SearchResult): number {
   const targetNormalized = normalizeSymbolName(target.title);
 
   // Exact name match
@@ -851,11 +785,7 @@ GET /api/resolve-symbol?symbolName=embedDocuments&targetLanguage=python&sourcePa
 
 ```typescript
 import { NextRequest, NextResponse } from "next/server";
-import {
-  searchSymbols,
-  normalizeSymbolName,
-  calculateMatchScore,
-} from "@/lib/symbol-resolution";
+import { searchSymbols, normalizeSymbolName, calculateMatchScore } from "@/lib/symbol-resolution";
 
 export async function GET(request: NextRequest) {
   const symbolName = request.nextUrl.searchParams.get("symbolName");
@@ -865,21 +795,21 @@ export async function GET(request: NextRequest) {
   if (!symbolName || !targetLanguage) {
     return NextResponse.json(
       { error: "Missing required parameters: symbolName, targetLanguage" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   if (!["python", "javascript"].includes(targetLanguage)) {
     return NextResponse.json(
       { error: "Invalid targetLanguage. Must be 'python' or 'javascript'" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   const result = await resolveSymbol(
     symbolName,
     targetLanguage as "python" | "javascript",
-    sourcePackage || undefined
+    sourcePackage || undefined,
   );
 
   return NextResponse.json(result);
@@ -910,7 +840,7 @@ const handleLanguageChange = async (langId: string) => {
           targetLanguage: langId,
           sourcePackage: sourcePackage || "",
           sourceLanguage: currentLang || "",
-        })}`
+        })}`,
       );
 
       const result = await response.json();

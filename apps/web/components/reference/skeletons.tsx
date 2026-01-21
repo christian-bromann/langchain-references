@@ -13,10 +13,7 @@ import { cn } from "@/lib/utils/cn";
 function SkeletonBar({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <div
-      className={cn(
-        "bg-gray-200 dark:bg-gray-700 rounded animate-pulse",
-        className,
-      )}
+      className={cn("bg-gray-200 dark:bg-gray-700 rounded animate-pulse", className)}
       style={style}
     />
   );
@@ -71,10 +68,7 @@ export function MembersSkeleton() {
       {/* Member cards */}
       <div className="space-y-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="border border-border rounded-lg p-4 space-y-2"
-          >
+          <div key={i} className="border border-border rounded-lg p-4 space-y-2">
             <div className="flex items-center gap-3">
               <SkeletonBar className="h-5 w-16" />
               <SkeletonBar className="h-5 w-32" />
@@ -128,10 +122,7 @@ export function PackageSymbolsSkeleton() {
         </div>
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-4 p-4 rounded-lg border border-border"
-            >
+            <div key={i} className="flex items-start gap-4 p-4 rounded-lg border border-border">
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-2">
                   <SkeletonBar className="h-5 w-14" />
@@ -153,10 +144,7 @@ export function PackageSymbolsSkeleton() {
         </div>
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-4 p-4 rounded-lg border border-border"
-            >
+            <div key={i} className="flex items-start gap-4 p-4 rounded-lg border border-border">
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-2">
                   <SkeletonBar className="h-5 w-16" />
@@ -193,10 +181,7 @@ export function SubpageContentSkeleton() {
         <SkeletonBar className="h-6 w-32" />
         <div className="grid gap-4 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="p-4 rounded-lg border border-border space-y-2"
-            >
+            <div key={i} className="p-4 rounded-lg border border-border space-y-2">
               <div className="flex items-center gap-2">
                 <SkeletonBar className="h-5 w-14" />
                 <SkeletonBar className="h-5 w-24" />
@@ -220,11 +205,7 @@ export function TOCSkeleton() {
         <SkeletonBar className="h-4 w-24" />
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonBar
-              key={i}
-              className="h-4"
-              style={{ width: `${60 + (i % 3) * 15}%` }}
-            />
+            <SkeletonBar key={i} className="h-4" style={{ width: `${60 + (i % 3) * 15}%` }} />
           ))}
         </div>
       </div>

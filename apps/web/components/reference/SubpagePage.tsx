@@ -9,7 +9,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Box, Code, Folder, ChevronRight, FileType, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { buildSymbolUrl, getKindColor, getKindLabel, slugifyPackageName, type UrlLanguage } from "@/lib/utils/url";
+import {
+  buildSymbolUrl,
+  getKindColor,
+  getKindLabel,
+  slugifyPackageName,
+  type UrlLanguage,
+} from "@/lib/utils/url";
 import {
   getBuildIdForPackageId,
   getSubpageData,
@@ -68,10 +74,7 @@ function toDisplaySymbol(entry: CatalogEntry): DisplaySymbol {
  * Resolve symbol references to catalog entries.
  * Tries exact match, suffix match, and name-only match.
  */
-function resolveSymbolRefs(
-  symbolRefs: string[],
-  catalogEntries: CatalogEntry[],
-): CatalogEntry[] {
+function resolveSymbolRefs(symbolRefs: string[], catalogEntries: CatalogEntry[]): CatalogEntry[] {
   const resolved: CatalogEntry[] = [];
   const seenIds = new Set<string>();
 
@@ -81,7 +84,9 @@ function resolveSymbolRefs(
 
     // Try suffix match (e.g., "agents.SummarizationMiddleware" matches "langchain.agents.middleware.SummarizationMiddleware")
     if (!match) {
-      match = catalogEntries.find((e) => e.qualifiedName.endsWith(`.${ref}`) || e.qualifiedName.endsWith(ref));
+      match = catalogEntries.find(
+        (e) => e.qualifiedName.endsWith(`.${ref}`) || e.qualifiedName.endsWith(ref),
+      );
     }
 
     // Try name-only match (last segment)
@@ -185,7 +190,9 @@ export async function SubpagePage({
     });
   }
 
-  const symbolLanguage = symbolLanguageToLanguage(language === "javascript" ? "typescript" : language);
+  const symbolLanguage = symbolLanguageToLanguage(
+    language === "javascript" ? "typescript" : language,
+  );
   const languageLabel = LANGUAGE_CONFIG[symbolLanguage].name;
   const languagePath = language === "python" ? "python" : "javascript";
   const packageSlug = packageName.replace(/_/g, "-").toLowerCase();
@@ -196,10 +203,7 @@ export async function SubpagePage({
       <div className="flex-1 min-w-0 space-y-8">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-2 text-sm text-foreground-secondary">
-          <Link
-            href={`/${languagePath}`}
-            className="hover:text-foreground transition-colors"
-          >
+          <Link href={`/${languagePath}`} className="hover:text-foreground transition-colors">
             {languageLabel}
           </Link>
           <ChevronRight className="h-4 w-4" />
@@ -219,9 +223,7 @@ export async function SubpagePage({
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               <BookOpen className="h-6 w-6" />
             </div>
-            <h1 className="text-3xl font-heading font-bold text-foreground">
-              {subpageData.title}
-            </h1>
+            <h1 className="text-3xl font-heading font-bold text-foreground">{subpageData.title}</h1>
           </div>
           <p className="mt-3 text-foreground-secondary text-lg">
             {packageName} &rarr; {subpageData.title}
@@ -313,7 +315,9 @@ export async function SubpagePage({
           packageName,
           subpageData.markdownContent || "",
           resolvedEntries,
-          symbolLanguageToLanguage(languageToSymbolLanguage(language === "typescript" ? "javascript" : language)),
+          symbolLanguageToLanguage(
+            languageToSymbolLanguage(language === "typescript" ? "javascript" : language),
+          ),
         )}
         pageUrl={`${getBaseUrl()}/${languagePath}/${slugifyPackageName(packageName)}/${subpageSlug}`}
       />

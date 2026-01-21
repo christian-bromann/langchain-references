@@ -18,11 +18,7 @@ import path from "path";
 import fs from "fs/promises";
 import { program } from "commander";
 import { putWithRetry } from "../upload.js";
-import {
-  PROJECTS,
-  OUTPUT_LANGUAGES,
-  type OutputLanguage,
-} from "../constants.js";
+import { PROJECTS, OUTPUT_LANGUAGES, type OutputLanguage } from "../constants.js";
 
 const POINTERS_PATH = "pointers";
 
@@ -62,11 +58,7 @@ interface ProjectPackageIndex {
 // UPLOAD HELPERS
 // =============================================================================
 
-async function uploadPointer(
-  blobPath: string,
-  data: object,
-  dryRun: boolean,
-): Promise<void> {
+async function uploadPointer(blobPath: string, data: object, dryRun: boolean): Promise<void> {
   const content = JSON.stringify(data, null, 2);
 
   if (dryRun) {
@@ -179,7 +171,9 @@ async function main() {
     }
 
     const ecosystem = language;
-    const packageName = packageJson.publishedName || packageId.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
+    const packageName =
+      packageJson.publishedName ||
+      packageId.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
 
     console.log(`\n   Processing: ${packageName} (${project}/${language})`);
     console.log(`     Build: ${buildId.slice(0, 8)}... v${packageJson.version}`);

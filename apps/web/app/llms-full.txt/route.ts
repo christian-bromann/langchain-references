@@ -51,9 +51,7 @@ function formatSymbol(
 ): string {
   const pkgSlug = slugifyPackageName(packageName);
   // Clean up any :: or # separators first
-  const cleanedQualifiedName = symbol.qualifiedName
-    .replace(/::/g, ".")
-    .replace(/#/g, ".");
+  const cleanedQualifiedName = symbol.qualifiedName.replace(/::/g, ".").replace(/#/g, ".");
   // Use slugifySymbolPath to properly strip package prefix for Python
   const isPython = langPath === "python";
   const hasPackagePrefix = isPython && cleanedQualifiedName.includes("_");

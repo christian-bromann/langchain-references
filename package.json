@@ -6,11 +6,11 @@
   "homepage": "https://reference.langchain.com",
   "license": "MIT",
   "author": "LangChain",
-  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/langchain-ai/langchain-reference-docs.git"
   },
+  "type": "module",
   "scripts": {
     "dev": "dotenv -e .env.local -- concurrently --names ir,web --prefix-colors cyan,magenta \"pnpm serve-ir\" \"pnpm --filter @langchain/reference-web dev\"",
     "dev:web": "turbo dev",

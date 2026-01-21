@@ -82,9 +82,7 @@ export class JavaTransformer {
    * Transform a Java type to an IR symbol.
    */
   private transformType(type: JavaType): SymbolRecord {
-    const qualifiedName = type.packageName
-      ? `${type.packageName}.${type.name}`
-      : type.name;
+    const qualifiedName = type.packageName ? `${type.packageName}.${type.name}` : type.name;
 
     const members: MemberRecord[] = [];
 
@@ -141,9 +139,7 @@ export class JavaTransformer {
    * so that member lookups work correctly.
    */
   private buildMemberSymbolId(type: JavaType, memberName: string): string {
-    const parentQualifiedName = type.packageName
-      ? `${type.packageName}.${type.name}`
-      : type.name;
+    const parentQualifiedName = type.packageName ? `${type.packageName}.${type.name}` : type.name;
     const qualifiedName = `${parentQualifiedName}.${memberName}`;
     const symbolId = qualifiedName.replace(/\./g, "_");
     return `${this.packageId}:${symbolId}`;
@@ -204,9 +200,7 @@ export class JavaTransformer {
    * Transform a method to a top-level symbol (for dedicated page).
    */
   private transformMethodAsSymbol(method: JavaMethod, type: JavaType): SymbolRecord {
-    const parentQualifiedName = type.packageName
-      ? `${type.packageName}.${type.name}`
-      : type.name;
+    const parentQualifiedName = type.packageName ? `${type.packageName}.${type.name}` : type.name;
     const qualifiedName = `${parentQualifiedName}.${method.name}`;
     const symbolId = qualifiedName.replace(/\./g, "_");
 
@@ -240,9 +234,7 @@ export class JavaTransformer {
    * Transform a constructor to a top-level symbol (for dedicated page).
    */
   private transformConstructorAsSymbol(ctor: JavaConstructor, type: JavaType): SymbolRecord {
-    const parentQualifiedName = type.packageName
-      ? `${type.packageName}.${type.name}`
-      : type.name;
+    const parentQualifiedName = type.packageName ? `${type.packageName}.${type.name}` : type.name;
     const qualifiedName = `${parentQualifiedName}.${type.name}`;
     const symbolId = qualifiedName.replace(/\./g, "_");
 

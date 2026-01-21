@@ -430,8 +430,8 @@ function MobileTOC({
     };
 
     checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-    return () => window.removeEventListener('resize', checkScreenSize);
+    window.addEventListener("resize", checkScreenSize);
+    return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
   // During SSR or before hydration, don't render anything
@@ -451,18 +451,18 @@ function MobileTOC({
         <button
           onClick={onOpen}
           style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
+            position: "fixed",
+            bottom: "24px",
+            right: "24px",
             zIndex: 9999,
-            width: '48px',
-            height: '48px',
-            borderRadius: '50%',
-            backgroundColor: '#2F6868',
-            color: 'white',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-            border: 'none',
-            cursor: 'pointer',
+            width: "48px",
+            height: "48px",
+            borderRadius: "50%",
+            backgroundColor: "#2F6868",
+            color: "white",
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+            border: "none",
+            cursor: "pointer",
           }}
           className="flex items-center justify-center hover:opacity-90 transition-opacity"
           aria-label="Open table of contents"
@@ -474,14 +474,14 @@ function MobileTOC({
       {/* Mobile TOC overlay - backdrop */}
       <div
         style={{
-          position: 'fixed',
+          position: "fixed",
           inset: 0,
           zIndex: 9998,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          backdropFilter: 'blur(4px)',
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          backdropFilter: "blur(4px)",
           opacity: isOpen ? 1 : 0,
-          pointerEvents: isOpen ? 'auto' : 'none',
-          transition: 'opacity 200ms',
+          pointerEvents: isOpen ? "auto" : "none",
+          transition: "opacity 200ms",
         }}
         onClick={onClose}
         aria-hidden="true"
@@ -490,18 +490,18 @@ function MobileTOC({
       {/* Mobile TOC slide-in panel */}
       <nav
         style={{
-          position: 'fixed',
+          position: "fixed",
           top: 0,
           right: 0,
           zIndex: 9999,
-          height: '100%',
-          width: '320px',
-          maxWidth: '85vw',
-          backgroundColor: 'var(--bg-primary)',
-          borderLeft: '1px solid var(--border-light)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 300ms ease-out',
+          height: "100%",
+          width: "320px",
+          maxWidth: "85vw",
+          backgroundColor: "var(--bg-primary)",
+          borderLeft: "1px solid var(--border-light)",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          transform: isOpen ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 300ms ease-out",
         }}
         aria-label="On this page"
         aria-hidden={!isOpen}

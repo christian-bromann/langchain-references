@@ -565,12 +565,7 @@ export class TypeDocTransformer {
   private repo: string;
   private sha: string;
 
-  constructor(
-    project: TypeDocProject,
-    packageName: string,
-    repo: string,
-    sha: string
-  ) {
+  constructor(project: TypeDocProject, packageName: string, repo: string, sha: string) {
     this.project = project;
     this.packageName = packageName;
     this.repo = repo;
@@ -589,10 +584,7 @@ export class TypeDocTransformer {
     return symbols;
   }
 
-  private transformReflection(
-    reflection: TypeDocReflection,
-    parentPath: string[]
-  ): SymbolRecord[] {
+  private transformReflection(reflection: TypeDocReflection, parentPath: string[]): SymbolRecord[] {
     const symbols: SymbolRecord[] = [];
     const currentPath = [...parentPath, reflection.name];
 
@@ -612,10 +604,7 @@ export class TypeDocTransformer {
     return symbols;
   }
 
-  private createSymbolRecord(
-    reflection: TypeDocReflection,
-    path: string[]
-  ): SymbolRecord | null {
+  private createSymbolRecord(reflection: TypeDocReflection, path: string[]): SymbolRecord | null {
     const kind = this.mapKind(reflection.kind);
     if (!kind) return null;
 
@@ -705,9 +694,7 @@ export class TypeDocTransformer {
         return (
           type.name +
           (type.typeArguments
-            ? `<${type.typeArguments
-                .map((t: any) => this.formatType(t))
-                .join(", ")}>`
+            ? `<${type.typeArguments.map((t: any) => this.formatType(t)).join(", ")}>`
             : "")
         );
       case "array":
@@ -758,15 +745,12 @@ export class TypeDocTransformer {
     return sig.parameters.map((p: any) => ({
       name: p.name,
       type: this.formatType(p.type),
-      description:
-        p.comment?.summary?.map((s: any) => s.text).join("") || undefined,
+      description: p.comment?.summary?.map((s: any) => s.text).join("") || undefined,
       default: p.defaultValue || undefined,
     }));
   }
 
-  private extractReturns(
-    reflection: TypeDocReflection
-  ): SymbolRecord["returns"] {
+  private extractReturns(reflection: TypeDocReflection): SymbolRecord["returns"] {
     if (!("signatures" in reflection) || !reflection.signatures?.[0]) {
       return undefined;
     }
@@ -774,14 +758,11 @@ export class TypeDocTransformer {
     const sig = reflection.signatures[0];
     if (!sig.type) return undefined;
 
-    const returnComment = sig.comment?.blockTags?.find(
-      (t: any) => t.tag === "@returns"
-    );
+    const returnComment = sig.comment?.blockTags?.find((t: any) => t.tag === "@returns");
 
     return {
       type: this.formatType(sig.type),
-      description:
-        returnComment?.content?.map((p: any) => p.text).join("") || undefined,
+      description: returnComment?.content?.map((p: any) => p.text).join("") || undefined,
     };
   }
 
@@ -1306,7 +1287,7 @@ export async function getManifest(): Promise<Manifest> {
 
 export async function getRoutingMap(
   language: "python" | "javascript",
-  packageSlug: string
+  packageSlug: string,
 ): Promise<RoutingMap | null> {
   const buildId = await getLatestBuildId();
   const url = `${IR_BASE_URL}/ir/${buildId}/routing/${language}/${packageSlug}.json`;
@@ -1346,9 +1327,7 @@ export async function getSymbol(refId: string): Promise<SymbolRecord | null> {
   return response.json();
 }
 
-export async function getSearchIndex(
-  language: "python" | "javascript"
-): Promise<SearchIndex> {
+export async function getSearchIndex(language: "python" | "javascript"): Promise<SearchIndex> {
   const buildId = await getLatestBuildId();
   const url = `${IR_BASE_URL}/ir/${buildId}/search/${language}.json`;
 
@@ -1566,16 +1545,11 @@ export function ClassPage({ symbol }: ClassPageProps) {
           )}
         </div>
 
-        <h1 className="text-3xl font-bold font-heading text-text-primary">
-          {symbol.name}
-        </h1>
+        <h1 className="text-3xl font-bold font-heading text-text-primary">{symbol.name}</h1>
 
         {symbol.relations?.extends && (
           <p className="mt-2 text-text-secondary">
-            extends{" "}
-            <code className="text-primary">
-              {symbol.relations.extends.join(", ")}
-            </code>
+            extends <code className="text-primary">{symbol.relations.extends.join(", ")}</code>
           </p>
         )}
       </header>
@@ -1591,9 +1565,7 @@ export function ClassPage({ symbol }: ClassPageProps) {
       {/* Description */}
       {symbol.docs.summary && (
         <section>
-          <p className="text-lg text-text-primary leading-relaxed">
-            {symbol.docs.summary}
-          </p>
+          <p className="text-lg text-text-primary leading-relaxed">{symbol.docs.summary}</p>
 
           {symbol.docs.description && (
             <div
@@ -1607,9 +1579,7 @@ export function ClassPage({ symbol }: ClassPageProps) {
       {/* Deprecation Warning */}
       {symbol.docs.deprecated && (
         <div className="p-4 rounded-lg border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
-          <p className="font-medium text-yellow-800 dark:text-yellow-200">
-            ⚠️ Deprecated
-          </p>
+          <p className="font-medium text-yellow-800 dark:text-yellow-200">⚠️ Deprecated</p>
           {symbol.docs.deprecated.message && (
             <p className="mt-1 text-yellow-700 dark:text-yellow-300">
               {symbol.docs.deprecated.message}
@@ -1621,9 +1591,7 @@ export function ClassPage({ symbol }: ClassPageProps) {
       {/* Constructor / Init */}
       {symbol.params && symbol.params.length > 0 && (
         <section id="constructor">
-          <h2 className="text-xl font-semibold font-heading mb-4">
-            Constructor
-          </h2>
+          <h2 className="text-xl font-semibold font-heading mb-4">Constructor</h2>
           <ParameterTable params={symbol.params} />
         </section>
       )}
@@ -1631,9 +1599,7 @@ export function ClassPage({ symbol }: ClassPageProps) {
       {/* Properties */}
       {properties.length > 0 && (
         <section id="properties">
-          <h2 className="text-xl font-semibold font-heading mb-4">
-            Properties
-          </h2>
+          <h2 className="text-xl font-semibold font-heading mb-4">Properties</h2>
           <div className="space-y-4">
             {properties.map((prop) => (
               <PropertyCard key={prop.refId} property={prop} />
@@ -1662,14 +1628,9 @@ export function ClassPage({ symbol }: ClassPageProps) {
             {symbol.docs.examples.map((example, i) => (
               <div key={i}>
                 {example.title && (
-                  <h3 className="text-sm font-medium text-text-secondary mb-2">
-                    {example.title}
-                  </h3>
+                  <h3 className="text-sm font-medium text-text-secondary mb-2">{example.title}</h3>
                 )}
-                <CodeBlock
-                  code={example.code}
-                  language={example.language || symbol.language}
-                />
+                <CodeBlock code={example.code} language={example.language || symbol.language} />
               </div>
             ))}
           </div>
@@ -1703,15 +1664,9 @@ export function ParameterTable({ params }: ParameterTableProps) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border-light">
-            <th className="text-left py-3 px-4 font-medium text-text-secondary">
-              Parameter
-            </th>
-            <th className="text-left py-3 px-4 font-medium text-text-secondary">
-              Type
-            </th>
-            <th className="text-left py-3 px-4 font-medium text-text-secondary">
-              Description
-            </th>
+            <th className="text-left py-3 px-4 font-medium text-text-secondary">Parameter</th>
+            <th className="text-left py-3 px-4 font-medium text-text-secondary">Type</th>
+            <th className="text-left py-3 px-4 font-medium text-text-secondary">Description</th>
           </tr>
         </thead>
         <tbody>
@@ -1722,9 +1677,7 @@ export function ParameterTable({ params }: ParameterTableProps) {
                 {param.required && <span className="ml-1 text-red-500">*</span>}
               </td>
               <td className="py-3 px-4">
-                <code className="text-text-secondary font-mono text-xs">
-                  {param.type}
-                </code>
+                <code className="text-text-secondary font-mono text-xs">{param.type}</code>
               </td>
               <td className="py-3 px-4 text-text-secondary">
                 {param.description || "—"}
@@ -1758,23 +1711,13 @@ import type { SearchRecord, SearchIndex } from "@langchain/ir-schema";
 let pythonIndex: MiniSearch<SearchRecord> | null = null;
 let typescriptIndex: MiniSearch<SearchRecord> | null = null;
 
-async function loadIndex(
-  language: "python" | "typescript"
-): Promise<MiniSearch<SearchRecord>> {
+async function loadIndex(language: "python" | "typescript"): Promise<MiniSearch<SearchRecord>> {
   const response = await fetch(`/api/search/index?language=${language}`);
   const data: SearchIndex = await response.json();
 
   const index = new MiniSearch<SearchRecord>({
     fields: ["title", "excerpt", "keywords"],
-    storeFields: [
-      "id",
-      "url",
-      "title",
-      "breadcrumbs",
-      "excerpt",
-      "kind",
-      "packageId",
-    ],
+    storeFields: ["id", "url", "title", "breadcrumbs", "excerpt", "kind", "packageId"],
     searchOptions: {
       boost: { title: 3, keywords: 2 },
       fuzzy: 0.2,
@@ -1790,7 +1733,7 @@ async function loadIndex(
 export async function search(
   query: string,
   language: "python" | "typescript",
-  options: { limit?: number; kind?: string } = {}
+  options: { limit?: number; kind?: string } = {},
 ): Promise<SearchRecord[]> {
   const { limit = 20, kind } = options;
 
@@ -1904,7 +1847,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
           break;
       }
     },
-    [results, selectedIndex, router, onClose]
+    [results, selectedIndex, router, onClose],
   );
 
   return (
@@ -1955,24 +1898,16 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
           {/* Results */}
           <div className="max-h-96 overflow-y-auto">
             {loading ? (
-              <div className="p-8 text-center text-text-muted">
-                Searching...
-              </div>
+              <div className="p-8 text-center text-text-muted">Searching...</div>
             ) : results.length === 0 && query ? (
-              <div className="p-8 text-center text-text-muted">
-                No results found for "{query}"
-              </div>
+              <div className="p-8 text-center text-text-muted">No results found for "{query}"</div>
             ) : (
               <ul>
                 {results.map((result, index) => (
                   <li
                     key={result.id}
                     className={`px-4 py-3 cursor-pointer border-b border-border-light
-                              ${
-                                index === selectedIndex
-                                  ? "bg-primary/10"
-                                  : "hover:bg-bg-primary"
-                              }`}
+                              ${index === selectedIndex ? "bg-primary/10" : "hover:bg-bg-primary"}`}
                     onClick={() => {
                       router.push(result.url);
                       onClose();
@@ -1980,9 +1915,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
                   >
                     <div className="flex items-center gap-2">
                       <KindBadge kind={result.kind} />
-                      <span className="font-medium text-text-primary">
-                        {result.title}
-                      </span>
+                      <span className="font-medium text-text-primary">{result.title}</span>
                     </div>
                     <div className="mt-1 text-sm text-text-muted">
                       {result.breadcrumbs.join(" › ")}
@@ -2076,7 +2009,7 @@ async function main() {
       const sha = config.sha || (await getLatestSha(repo));
       await fetchTarball(repo, sha);
       return { repo, sha };
-    })
+    }),
   );
 
   // 2. Generate build ID
@@ -2086,7 +2019,7 @@ async function main() {
       JSON.stringify({
         sources: sources.sort(),
         packages: config.packages.map((p) => p.name).sort(),
-      })
+      }),
     )
     .digest("hex")
     .slice(0, 16);
@@ -2102,7 +2035,7 @@ async function main() {
       } else {
         return extractTypeScript(pkg);
       }
-    })
+    }),
   );
 
   // 4. Transform to IR
@@ -2251,14 +2184,11 @@ export async function POST(request: NextRequest) {
           sha: sha || "",
         },
       }),
-    }
+    },
   );
 
   if (!response.ok) {
-    return NextResponse.json(
-      { error: "Failed to trigger build" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to trigger build" }, { status: 500 });
   }
 
   return NextResponse.json({ status: "triggered" });
@@ -2274,15 +2204,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSearchIndex } from "@/lib/ir/loader";
 
 export async function GET(request: NextRequest) {
-  const language = request.nextUrl.searchParams.get("language") as
-    | "python"
-    | "typescript";
+  const language = request.nextUrl.searchParams.get("language") as "python" | "typescript";
 
   if (!language || !["python", "typescript"].includes(language)) {
-    return NextResponse.json(
-      { error: "Invalid language parameter" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid language parameter" }, { status: 400 });
   }
 
   try {
@@ -2294,10 +2219,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to load search index" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to load search index" }, { status: 500 });
   }
 }
 ```
@@ -2336,7 +2258,7 @@ describe("TypeDocTransformer", () => {
       mockProject as any,
       "@test/pkg",
       "owner/repo",
-      "abc123"
+      "abc123",
     );
 
     const symbols = transformer.transform();

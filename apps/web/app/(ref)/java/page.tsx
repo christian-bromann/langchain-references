@@ -23,8 +23,7 @@ export const metadata: Metadata = {
     "Java API reference documentation for LangSmith SDK. Browse classes, interfaces, and methods.",
   openGraph: {
     title: "Java API Reference",
-    description:
-      "Java API reference documentation for LangSmith SDK.",
+    description: "Java API reference documentation for LangSmith SDK.",
     type: "website",
     url: "/java",
     images: [
@@ -39,8 +38,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Java API Reference",
-    description:
-      "Java API reference documentation for LangSmith SDK.",
+    description: "Java API reference documentation for LangSmith SDK.",
     images: ["/og/java"],
   },
   alternates: {

@@ -74,7 +74,10 @@ function symbolToSearchRecord(
   // Include: original name, word parts, normalized form, and alternative convention form
   const camelParts = symbol.name.split(/(?=[A-Z])/).map((s) => s.toLowerCase());
   const snakeParts = symbol.name.split("_").filter(Boolean);
-  const normalized = symbol.name.replace(/_/g, "").replace(/([a-z])([A-Z])/g, "$1$2").toLowerCase();
+  const normalized = symbol.name
+    .replace(/_/g, "")
+    .replace(/([a-z])([A-Z])/g, "$1$2")
+    .toLowerCase();
 
   // Generate alternative naming convention form
   const alternativeForm =
@@ -84,13 +87,9 @@ function symbolToSearchRecord(
       : // For JS symbols (camelCase), add snake_case version
         symbol.name.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
 
-  const keywords = [
-    symbol.name,
-    ...camelParts,
-    ...snakeParts,
-    normalized,
-    alternativeForm,
-  ].filter((k, i, arr) => k && arr.indexOf(k) === i); // Dedupe
+  const keywords = [symbol.name, ...camelParts, ...snakeParts, normalized, alternativeForm].filter(
+    (k, i, arr) => k && arr.indexOf(k) === i,
+  ); // Dedupe
 
   return {
     id: `${packageId}:${symbol.id}`,
@@ -183,9 +182,7 @@ async function getSearchIndex(language: Language): Promise<MiniSearch<SearchReco
  * @example "createFileData" → "create_file_data"
  */
 function camelToSnake(name: string): string {
-  return name
-    .replace(/([a-z])([A-Z])/g, "$1_$2")
-    .toLowerCase();
+  return name.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
 }
 
 /**
@@ -352,7 +349,11 @@ export async function GET(request: NextRequest): Promise<Response> {
 
     // 1. Check explicit path mappings (highest priority)
     if (symbolPath) {
-      const explicitMapping = getExplicitMapping(symbolPath, effectiveSourceLanguage, targetLanguage);
+      const explicitMapping = getExplicitMapping(
+        symbolPath,
+        effectiveSourceLanguage,
+        targetLanguage,
+      );
       if (explicitMapping) {
         const response: ResolveSymbolResponse = {
           found: true,
@@ -452,8 +453,7 @@ export async function GET(request: NextRequest): Promise<Response> {
           targetUrl: bestMatch.result.url,
           matchType,
           score: bestMatch.score,
-          matchedSymbol:
-            bestMatch.result.title !== symbolName ? bestMatch.result.title : undefined,
+          matchedSymbol: bestMatch.result.title !== symbolName ? bestMatch.result.title : undefined,
           context: {
             package: bestMatch.result.url.split("/")[2] || "",
           },
@@ -505,9 +505,6 @@ export async function GET(request: NextRequest): Promise<Response> {
     });
   } catch (error) {
     console.error("[resolve-symbol] Resolution failed:", error);
-    return NextResponse.json(
-      { error: "Symbol resolution failed" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Symbol resolution failed" }, { status: 500 });
   }
 }

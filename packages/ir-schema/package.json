@@ -1,8 +1,8 @@
 {
   "name": "@langchain/ir-schema",
   "version": "0.1.0",
-  "description": "Intermediate Representation schema for LangChain reference docs",
   "private": true,
+  "description": "Intermediate Representation schema for LangChain reference docs",
   "files": [
     "src"
   ],

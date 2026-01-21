@@ -106,29 +106,29 @@ apps/web/
 
 ### Page Components
 
-| Component | File | Purpose |
-|-----------|------|---------|
+| Component     | File                                   | Purpose                           |
+| ------------- | -------------------------------------- | --------------------------------- |
 | `PackagePage` | `components/reference/PackagePage.tsx` | Package overview with symbol list |
-| `SymbolPage` | `components/reference/SymbolPage.tsx` | Individual symbol documentation |
-| `SubpagePage` | `components/reference/SubpagePage.tsx` | Curated markdown content |
+| `SymbolPage`  | `components/reference/SymbolPage.tsx`  | Individual symbol documentation   |
+| `SubpagePage` | `components/reference/SubpagePage.tsx` | Curated markdown content          |
 
 ### Data Loading
 
-| Function | File | Purpose |
-|----------|------|---------|
-| `loadNavigationData` | `SidebarLoader.tsx` | Loads sidebar packages for all languages |
-| `getPackageBuildId` | `loader.ts` | Gets build ID for a package |
-| `getRoutingMapData` | `loader.ts` | Gets URL routing map |
-| `getIndividualSymbolData` | `loader.ts` | Gets single symbol data |
-| `getCrossProjectPackages` | `loader.ts` | Gets type linking data |
+| Function                  | File                | Purpose                                  |
+| ------------------------- | ------------------- | ---------------------------------------- |
+| `loadNavigationData`      | `SidebarLoader.tsx` | Loads sidebar packages for all languages |
+| `getPackageBuildId`       | `loader.ts`         | Gets build ID for a package              |
+| `getRoutingMapData`       | `loader.ts`         | Gets URL routing map                     |
+| `getIndividualSymbolData` | `loader.ts`         | Gets single symbol data                  |
+| `getCrossProjectPackages` | `loader.ts`         | Gets type linking data                   |
 
 ### Caching
 
-| Cache | Scope | TTL | Purpose |
-|-------|-------|-----|---------|
-| `unstable_cache` | Cross-invocation | 1-24 hours | Persists data between serverless calls |
-| `crossProjectPackageCache` | Per-invocation | Request lifetime | Deduplicates within request |
-| `routingMapCache` | Per-invocation | Request lifetime | Avoids re-fetching routing maps |
+| Cache                      | Scope            | TTL              | Purpose                                |
+| -------------------------- | ---------------- | ---------------- | -------------------------------------- |
+| `unstable_cache`           | Cross-invocation | 1-24 hours       | Persists data between serverless calls |
+| `crossProjectPackageCache` | Per-invocation   | Request lifetime | Deduplicates within request            |
+| `routingMapCache`          | Per-invocation   | Request lifetime | Avoids re-fetching routing maps        |
 
 ## Data Flow
 
@@ -170,20 +170,20 @@ return <SymbolPage />;          // /javascript/langchain-core/runnables/Runnable
 
 ### Supported Projects
 
-| Project | Description | Languages |
-|---------|-------------|-----------|
+| Project     | Description         | Languages          |
+| ----------- | ------------------- | ------------------ |
 | `langchain` | LangChain framework | Python, JavaScript |
-| `langgraph` | Graph-based agents | Python, JavaScript |
-| `deepagent` | DeepAgent framework | Python |
+| `langgraph` | Graph-based agents  | Python, JavaScript |
+| `deepagent` | DeepAgent framework | Python             |
 
 ### Supported Languages
 
-| Language | URL Prefix | Package Format |
-|----------|------------|----------------|
-| Python | `/python/` | `langchain_core` |
-| JavaScript | `/javascript/` | `@langchain/core` |
-| Java | `/java/` | `io.langchain.langsmith` |
-| Go | `/go/` | `github.com/langchain-ai/langsmith-go` |
+| Language   | URL Prefix     | Package Format                         |
+| ---------- | -------------- | -------------------------------------- |
+| Python     | `/python/`     | `langchain_core`                       |
+| JavaScript | `/javascript/` | `@langchain/core`                      |
+| Java       | `/java/`       | `io.langchain.langsmith`               |
+| Go         | `/go/`         | `github.com/langchain-ai/langsmith-go` |
 
 ## Configuration
 
@@ -206,10 +206,10 @@ export const PROJECTS = [
 
 ### Environment Variables
 
-| Variable | Purpose |
-|----------|---------|
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob access token |
-| `USE_LOCAL_IR` | Use local `ir-output/` directory (development) |
+| Variable                | Purpose                                        |
+| ----------------------- | ---------------------------------------------- |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob access token                       |
+| `USE_LOCAL_IR`          | Use local `ir-output/` directory (development) |
 
 ## Build Pipeline
 

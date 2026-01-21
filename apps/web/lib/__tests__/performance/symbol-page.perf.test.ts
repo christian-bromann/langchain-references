@@ -25,9 +25,7 @@ describe("SymbolPage Performance", () => {
       const start = performance.now();
 
       for (const [slug, entry] of Object.entries(routingMap.slugs)) {
-        if (
-          ["class", "interface", "typeAlias", "enum"].includes(entry.kind)
-        ) {
+        if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
           knownSymbols.set(entry.title, slug);
         }
       }
@@ -35,7 +33,7 @@ describe("SymbolPage Performance", () => {
       const duration = performance.now() - start;
 
       console.log(
-        `knownSymbols build (${Object.keys(routingMap.slugs).length} entries): ${duration.toFixed(2)}ms`
+        `knownSymbols build (${Object.keys(routingMap.slugs).length} entries): ${duration.toFixed(2)}ms`,
       );
       expect(duration).toBeLessThan(10);
       expect(knownSymbols.size).toBeGreaterThan(0);
@@ -49,7 +47,7 @@ describe("SymbolPage Performance", () => {
       const duration = performance.now() - start;
 
       console.log(
-        `Pre-computed knownSymbols access: ${duration.toFixed(3)}ms (${knownSymbols.size} symbols)`
+        `Pre-computed knownSymbols access: ${duration.toFixed(3)}ms (${knownSymbols.size} symbols)`,
       );
       expect(duration).toBeLessThan(1);
       expect(knownSymbols.size).toBeGreaterThan(0);
@@ -68,7 +66,7 @@ describe("SymbolPage Performance", () => {
     it("should find base symbol with O(1) index lookup in <1ms", () => {
       // Find a real class symbol from the routing map
       const classEntry = Object.entries(routingMap.slugs).find(
-        ([, entry]) => entry.kind === "class"
+        ([, entry]) => entry.kind === "class",
       );
       const targetName = classEntry ? classEntry[1].title : "BaseMessage";
 
@@ -76,9 +74,7 @@ describe("SymbolPage Performance", () => {
       const qualifiedName = indexedMap.byTitle.get(targetName);
       const duration = performance.now() - start;
 
-      console.log(
-        `O(1) lookup for "${targetName}": ${duration.toFixed(3)}ms`
-      );
+      console.log(`O(1) lookup for "${targetName}": ${duration.toFixed(3)}ms`);
       expect(duration).toBeLessThan(1);
       expect(qualifiedName).toBeDefined();
     });
@@ -86,7 +82,7 @@ describe("SymbolPage Performance", () => {
     it("documents O(n) linear search baseline (regression risk)", () => {
       // Find a real class symbol
       const classEntry = Object.entries(routingMap.slugs).find(
-        ([, entry]) => entry.kind === "class"
+        ([, entry]) => entry.kind === "class",
       );
       const targetName = classEntry ? classEntry[1].title : "BaseMessage";
 
@@ -102,16 +98,16 @@ describe("SymbolPage Performance", () => {
       const duration = performance.now() - start;
 
       console.log(
-        `Linear search for "${targetName}": ${duration.toFixed(2)}ms (baseline, ${Object.keys(routingMap.slugs).length} entries scanned)`
+        `Linear search for "${targetName}": ${duration.toFixed(2)}ms (baseline, ${Object.keys(routingMap.slugs).length} entries scanned)`,
       );
       // This is just documentation - no threshold check
       expect(found).toBeDefined();
     });
 
     it("should be at least 10x faster with indexed lookup vs linear search", () => {
-      const targetName = Object.entries(routingMap.slugs).find(
-        ([, entry]) => entry.kind === "class"
-      )?.[1].title || "BaseMessage";
+      const targetName =
+        Object.entries(routingMap.slugs).find(([, entry]) => entry.kind === "class")?.[1].title ||
+        "BaseMessage";
 
       // Linear search
       const linearStart = performance.now();
@@ -127,7 +123,7 @@ describe("SymbolPage Performance", () => {
 
       const speedup = linearDuration / Math.max(indexedDuration, 0.001);
       console.log(
-        `Indexed lookup speedup: ${speedup.toFixed(1)}x (${linearDuration.toFixed(3)}ms vs ${indexedDuration.toFixed(3)}ms)`
+        `Indexed lookup speedup: ${speedup.toFixed(1)}x (${linearDuration.toFixed(3)}ms vs ${indexedDuration.toFixed(3)}ms)`,
       );
 
       // Indexed should be significantly faster
@@ -153,14 +149,12 @@ describe("SymbolPage Performance", () => {
           acc[kind].push(member);
           return acc;
         },
-        {} as Record<string, typeof members>
+        {} as Record<string, typeof members>,
       );
 
       const duration = performance.now() - start;
 
-      console.log(
-        `Member grouping (${members.length} members): ${duration.toFixed(2)}ms`
-      );
+      console.log(`Member grouping (${members.length} members): ${duration.toFixed(2)}ms`);
       expect(duration).toBeLessThan(5);
       expect(Object.keys(grouped).length).toBe(3);
     });
@@ -189,9 +183,7 @@ describe("SymbolPage Performance", () => {
 
       const duration = performance.now() - start;
 
-      console.log(
-        `Member grouping (${members.length} members): ${duration.toFixed(2)}ms`
-      );
+      console.log(`Member grouping (${members.length} members): ${duration.toFixed(2)}ms`);
       expect(duration).toBeLessThan(10);
       expect(Object.keys(grouped).length).toBe(5);
     });
@@ -216,9 +208,7 @@ describe("SymbolPage Performance", () => {
 
       const duration = performance.now() - start;
 
-      console.log(
-        `Non-memoized slugify (${paths.length} paths): ${duration.toFixed(2)}ms`
-      );
+      console.log(`Non-memoized slugify (${paths.length} paths): ${duration.toFixed(2)}ms`);
       // Baseline documentation - no strict threshold
     });
 
@@ -231,9 +221,7 @@ describe("SymbolPage Performance", () => {
 
       const duration = performance.now() - start;
 
-      console.log(
-        `Memoized slugify first run (${paths.length} paths): ${duration.toFixed(2)}ms`
-      );
+      console.log(`Memoized slugify first run (${paths.length} paths): ${duration.toFixed(2)}ms`);
       expect(duration).toBeLessThan(20); // First run populates cache
     });
 
@@ -251,9 +239,7 @@ describe("SymbolPage Performance", () => {
 
       const duration = performance.now() - start;
 
-      console.log(
-        `Memoized slugify cache hits (${paths.length} paths): ${duration.toFixed(2)}ms`
-      );
+      console.log(`Memoized slugify cache hits (${paths.length} paths): ${duration.toFixed(2)}ms`);
       expect(duration).toBeLessThan(5);
     });
 
@@ -274,7 +260,7 @@ describe("SymbolPage Performance", () => {
 
       const speedup = coldDuration / Math.max(warmDuration, 0.001);
       console.log(
-        `Memoization speedup: ${speedup.toFixed(1)}x (${coldDuration.toFixed(2)}ms cold vs ${warmDuration.toFixed(2)}ms warm)`
+        `Memoization speedup: ${speedup.toFixed(1)}x (${coldDuration.toFixed(2)}ms cold vs ${warmDuration.toFixed(2)}ms warm)`,
       );
 
       expect(warmDuration).toBeLessThan(coldDuration);
@@ -291,9 +277,7 @@ describe("SymbolPage Performance", () => {
       // 2. Build knownSymbols
       const knownSymbols = new Map<string, string>();
       for (const [slug, entry] of Object.entries(routingMap.slugs)) {
-        if (
-          ["class", "interface", "typeAlias", "enum"].includes(entry.kind)
-        ) {
+        if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
           knownSymbols.set(entry.title, slug);
         }
       }
@@ -314,11 +298,9 @@ describe("SymbolPage Performance", () => {
       const duration = performance.now() - start;
 
       console.log(
-        `Combined operations (${Object.keys(routingMap.slugs).length} entries): ${duration.toFixed(2)}ms`
+        `Combined operations (${Object.keys(routingMap.slugs).length} entries): ${duration.toFixed(2)}ms`,
       );
-      console.log(
-        `  - knownSymbols: ${knownSymbols.size}, kinds: ${Object.keys(byKind).length}`
-      );
+      console.log(`  - knownSymbols: ${knownSymbols.size}, kinds: ${Object.keys(byKind).length}`);
       expect(duration).toBeLessThan(50);
     });
   });

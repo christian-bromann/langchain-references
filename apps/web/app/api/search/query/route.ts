@@ -9,7 +9,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import MiniSearch from "minisearch";
 import type { SearchRecord, SearchResult, Language } from "@langchain/ir-schema";
-import { symbolLanguageToLanguage, isLanguage, languageToSymbolLanguage } from "@langchain/ir-schema";
+import {
+  symbolLanguageToLanguage,
+  isLanguage,
+  languageToSymbolLanguage,
+} from "@langchain/ir-schema";
 import { getBuildIdForLanguage, getManifestData, getSymbols } from "@/lib/ir/loader";
 import { getEnabledProjects } from "@/lib/config/projects";
 import { slugifyPackageName, slugifySymbolPath } from "@/lib/utils/url";
@@ -69,7 +73,10 @@ function symbolToSearchRecord(
   // Include: original name, word parts, normalized form, and alternative convention form
   const camelParts = symbol.name.split(/(?=[A-Z])/).map((s) => s.toLowerCase());
   const snakeParts = symbol.name.split("_").filter(Boolean);
-  const normalized = symbol.name.replace(/_/g, "").replace(/([a-z])([A-Z])/g, "$1$2").toLowerCase();
+  const normalized = symbol.name
+    .replace(/_/g, "")
+    .replace(/([a-z])([A-Z])/g, "$1$2")
+    .toLowerCase();
 
   // Generate alternative naming convention form
   const alternativeForm =
@@ -79,13 +86,9 @@ function symbolToSearchRecord(
       : // For JS symbols (camelCase), add snake_case version
         symbol.name.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
 
-  const keywords = [
-    symbol.name,
-    ...camelParts,
-    ...snakeParts,
-    normalized,
-    alternativeForm,
-  ].filter((k, i, arr) => k && arr.indexOf(k) === i); // Dedupe
+  const keywords = [symbol.name, ...camelParts, ...snakeParts, normalized, alternativeForm].filter(
+    (k, i, arr) => k && arr.indexOf(k) === i,
+  ); // Dedupe
 
   return {
     // Make ID unique across packages by prefixing with packageId

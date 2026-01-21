@@ -290,9 +290,7 @@ async function pullProjectLanguage(
       }
 
       // Download symbols.json
-      const symbolsContent = await fetchBlobRaw(
-        `ir/packages/${packageId}/${buildId}/symbols.json`,
-      );
+      const symbolsContent = await fetchBlobRaw(`ir/packages/${packageId}/${buildId}/symbols.json`);
 
       if (symbolsContent) {
         await fs.writeFile(symbolsPath, symbolsContent, "utf-8");
@@ -311,9 +309,7 @@ async function pullProjectLanguage(
       }
 
       // Download routing.json
-      const routingContent = await fetchBlobRaw(
-        `ir/packages/${packageId}/${buildId}/routing.json`,
-      );
+      const routingContent = await fetchBlobRaw(`ir/packages/${packageId}/${buildId}/routing.json`);
       if (routingContent) {
         await fs.writeFile(path.join(pkgDir, "routing.json"), routingContent, "utf-8");
         result.filesDownloaded++;
@@ -431,7 +427,9 @@ async function pullProjectLanguage(
 
     result.success = result.packagesDownloaded > 0;
     if (result.packagesDownloaded > 0) {
-      console.log(`   ✓ Downloaded ${result.packagesDownloaded} packages (${result.filesDownloaded} files)`);
+      console.log(
+        `   ✓ Downloaded ${result.packagesDownloaded} packages (${result.filesDownloaded} files)`,
+      );
 
       // Build the project-level index only from packages that have actual data downloaded
       // This ensures the index only includes packages with symbols.json (not just pointers)
@@ -534,7 +532,9 @@ async function main() {
 
   // Determine what to pull
   const projectsToPull: Project[] = opts.project ? [opts.project as Project] : [...PROJECTS];
-  const languagesToPull: Language[] = opts.language ? [opts.language as Language] : [...OUTPUT_LANGUAGES];
+  const languagesToPull: Language[] = opts.language
+    ? [opts.language as Language]
+    : [...OUTPUT_LANGUAGES];
 
   const results: PullResult[] = [];
 
@@ -569,7 +569,9 @@ async function main() {
 
   for (const result of results) {
     if (result.success) {
-      console.log(`   ✅ ${result.project}/${result.language}: ${result.packagesDownloaded} packages`);
+      console.log(
+        `   ✅ ${result.project}/${result.language}: ${result.packagesDownloaded} packages`,
+      );
       totalSuccess++;
       totalPackages += result.packagesDownloaded;
       totalFiles += result.filesDownloaded;
@@ -580,7 +582,9 @@ async function main() {
   }
 
   console.log("─".repeat(40));
-  console.log(`   Success: ${totalSuccess} | Failed: ${totalFailed} | Packages: ${totalPackages} | Files: ${totalFiles}`);
+  console.log(
+    `   Success: ${totalSuccess} | Failed: ${totalFailed} | Packages: ${totalPackages} | Files: ${totalFiles}`,
+  );
 
   if (totalPackages > 0) {
     console.log(`\n✅ IR data downloaded to ${outputDir}`);

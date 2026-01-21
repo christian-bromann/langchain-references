@@ -228,7 +228,7 @@ async function checkConfig(configPath: string, verbose: boolean): Promise<Update
   const project = config.project || "langchain";
   const language = config.language;
   // Map config language (typescript) to output language (javascript), others pass through
-  const ecosystem: Language = language === "typescript" ? "javascript" : language as Language;
+  const ecosystem: Language = language === "typescript" ? "javascript" : (language as Language);
 
   const result: UpdateCheckResult = {
     configPath,

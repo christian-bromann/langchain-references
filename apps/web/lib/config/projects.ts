@@ -178,10 +178,7 @@ const DEFAULT_PACKAGE_SLUGS: Record<string, Record<string, string>> = {
  * Get the default package slug for a project.
  * This is the package that should be shown when navigating to a project.
  */
-export function getDefaultPackageSlug(
-  projectId: string,
-  language: Language,
-): string {
+export function getDefaultPackageSlug(projectId: string, language: Language): string {
   return DEFAULT_PACKAGE_SLUGS[projectId]?.[language] || projectId;
 }
 
@@ -213,10 +210,7 @@ export function getDefaultProject(): ProjectConfig {
 /**
  * Check if a project has a specific language variant enabled.
  */
-export function hasLanguageVariant(
-  project: ProjectConfig,
-  language: Language,
-): boolean {
+export function hasLanguageVariant(project: ProjectConfig, language: Language): boolean {
   return project.variants.some((v) => v.language === language && v.enabled);
 }
 

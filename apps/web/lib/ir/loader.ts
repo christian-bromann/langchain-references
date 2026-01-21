@@ -148,10 +148,7 @@ let requestCache: Map<string, Promise<unknown>> | null = null;
  * const data1 = await withRequestCache(key, () => fetchData(key));
  * const data2 = await withRequestCache(key, () => fetchData(key)); // Returns cached promise
  */
-export function withRequestCache<T>(
-  key: string,
-  fetcher: () => Promise<T>,
-): Promise<T> {
+export function withRequestCache<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
   // Initialize cache if needed
   if (!requestCache) {
     requestCache = new Map();
@@ -191,10 +188,7 @@ const SLUGIFY_CACHE_SIZE = 1000;
  * slugifySymbolPathMemoized("langchain_core.messages.BaseMessage", true)
  * // Returns: "messages/BaseMessage"
  */
-export function slugifySymbolPathMemoized(
-  symbolPath: string,
-  hasPackagePrefix = true,
-): string {
+export function slugifySymbolPathMemoized(symbolPath: string, hasPackagePrefix = true): string {
   const cacheKey = `${symbolPath}:${hasPackagePrefix}`;
 
   if (slugifyCache.has(cacheKey)) {
@@ -485,9 +479,7 @@ export async function getPackagePointer(
   try {
     // For Python packages, pointer files use underscores (the original package name format)
     // e.g., "langchain-anthropic" -> "langchain_anthropic" for the pointer lookup
-    const pointerFileName = ecosystem === "python"
-      ? packageName.replace(/-/g, "_")
-      : packageName;
+    const pointerFileName = ecosystem === "python" ? packageName.replace(/-/g, "_") : packageName;
     const pointerName = `packages/${ecosystem}/${pointerFileName}`;
     const pointer = await fetchPointer<PackagePointer>(pointerName);
     if (pointer) {
@@ -839,8 +831,8 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
         // Log detailed failure info
         console.error(
           `[blob] ✗ ${path} FAILED after ${attempt + 1} attempts, phase=${phase}, elapsed=${elapsed}ms, ` +
-          `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
-          `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`,
+            `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
+            `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`,
         );
         break;
       }
@@ -852,7 +844,7 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
 
       console.warn(
         `[blob] ⟳ ${path} retry ${attempt + 1}/${maxRetries} in ${Math.round(delay)}ms, ` +
-        `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`,
+          `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`,
       );
 
       await sleep(delay);
@@ -862,7 +854,7 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
   failedBlobFetches++;
   console.error(
     `[blob] ✗ ${path} EXHAUSTED after ${maxRetries} attempts ` +
-    `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
+      `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
     lastError,
   );
   return null;
@@ -909,7 +901,8 @@ async function buildManifestFromPackageIndexes(): Promise<Manifest | null> {
             buildId: (pkgDetails as ExtendedPackageInfo).buildId ?? pkgInfo.buildId,
             project: (pkgDetails as ExtendedPackageInfo).project ?? project,
             // Normalize language/ecosystem defaults for safety
-            language: (pkgDetails as ExtendedPackageInfo).language ?? languageToSymbolLanguage(language),
+            language:
+              (pkgDetails as ExtendedPackageInfo).language ?? languageToSymbolLanguage(language),
             ecosystem: (pkgDetails as ExtendedPackageInfo).ecosystem ?? language,
           } as unknown as Package;
         })(),
@@ -923,7 +916,7 @@ async function buildManifestFromPackageIndexes(): Promise<Manifest | null> {
   }
 
   const resolvedPackages = await Promise.all(packageInfoPromises);
-  packages.push(...resolvedPackages.filter(Boolean) as Package[]);
+  packages.push(...(resolvedPackages.filter(Boolean) as Package[]));
 
   if (packages.length === 0) {
     return null;
@@ -953,10 +946,7 @@ function normalizePackageId(pkgName: string, language: Language): string {
     go: "pkg_go_",
   };
   const prefix = prefixMap[language];
-  const normalized = pkgName
-    .replace(/^@/, "")
-    .replace(/\//g, "_")
-    .replace(/-/g, "_");
+  const normalized = pkgName.replace(/^@/, "").replace(/\//g, "_").replace(/-/g, "_");
   return `${prefix}${normalized}`;
 }
 
@@ -1004,10 +994,7 @@ const getCachedSyntheticManifest = unstable_cache(
  * Internal function to fetch routing map.
  * Wrapped with unstable_cache for persistence across invocations.
  */
-async function fetchRoutingMap(
-  buildId: string,
-  packageId: string,
-): Promise<RoutingMap | null> {
+async function fetchRoutingMap(buildId: string, packageId: string): Promise<RoutingMap | null> {
   // Routing maps are stored at ir/packages/{packageId}/{buildId}/routing.json
   const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/routing.json`;
   return fetchBlobJson<RoutingMap>(path);
@@ -2085,9 +2072,7 @@ function slugifySymbolPathLocal(symbolPath: string, hasPackagePrefix = true): st
  * OPTIMIZATION: Pre-computes the typeUrlMap (symbol name → full URL) so that
  * SymbolPage doesn't need to iterate over 20k+ symbols on every render.
  */
-async function fetchCrossProjectPackagesData(
-  language: Language,
-): Promise<CrossProjectCacheData> {
+async function fetchCrossProjectPackagesData(language: Language): Promise<CrossProjectCacheData> {
   const packages: [string, SerializableCrossProjectPackage][] = [];
   // Pre-compute typeUrlMap: symbolName -> full URL
   // Use an object first to handle "first package wins" deduplication
@@ -2098,7 +2083,10 @@ async function fetchCrossProjectPackagesData(
 
     // OPTIMIZATION: Collect ALL packages across ALL projects first, then fetch in parallel
     // This avoids sequential project-by-project fetching
-    type PackageInfo = { pkg: { buildId: string; packageId: string; publishedName: string; ecosystem: string }; modulePrefix: string };
+    type PackageInfo = {
+      pkg: { buildId: string; packageId: string; publishedName: string; ecosystem: string };
+      modulePrefix: string;
+    };
     const allPackages: PackageInfo[] = [];
 
     // Step 1: Gather package info (lightweight - just reads from project indexes)
@@ -2125,7 +2113,7 @@ async function fetchCrossProjectPackagesData(
             .replace(/\//g, "_");
           allPackages.push({ pkg, modulePrefix });
         }
-      })
+      }),
     );
 
     // Step 2: Fetch ALL routing maps in parallel (bounded by fetchBlobJson's concurrency limiter)
@@ -2178,7 +2166,10 @@ async function fetchCrossProjectPackagesData(
 
           return entries;
         } catch (err) {
-          console.error(`[fetchCrossProjectPackagesData] Error processing package ${pkg.packageId}:`, err);
+          console.error(
+            `[fetchCrossProjectPackagesData] Error processing package ${pkg.packageId}:`,
+            err,
+          );
           return []; // Skip this package on error
         }
       }),
@@ -2253,7 +2244,9 @@ export async function prewarmCorePackages(language: Language): Promise<void> {
 
       if (isCore && pkgInfo.buildId) {
         corePackages.push({
-          packageId: pkgInfo.packageId || `pkg_${language === "python" ? "py" : "js"}_${pkgName.replace(/-/g, "_")}`,
+          packageId:
+            pkgInfo.packageId ||
+            `pkg_${language === "python" ? "py" : "js"}_${pkgName.replace(/-/g, "_")}`,
           buildId: pkgInfo.buildId,
         });
       }

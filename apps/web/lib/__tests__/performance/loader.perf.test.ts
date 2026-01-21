@@ -7,11 +7,7 @@
  * Uses static fixture data for consistent, reproducible results.
  */
 import { describe, it, expect } from "vitest";
-import {
-  loadRoutingMap,
-  loadIndexedRoutingMap,
-  loadPackageIndex,
-} from "./fixtures";
+import { loadRoutingMap, loadIndexedRoutingMap, loadPackageIndex } from "./fixtures";
 
 describe("Loader Performance", () => {
   describe("loadRoutingMap", () => {
@@ -34,9 +30,7 @@ describe("Loader Performance", () => {
       const routingMap2 = loadRoutingMap();
 
       // Fixture data should be consistent
-      expect(Object.keys(routingMap1.slugs).length).toBe(
-        Object.keys(routingMap2.slugs).length,
-      );
+      expect(Object.keys(routingMap1.slugs).length).toBe(Object.keys(routingMap2.slugs).length);
     });
   });
 
@@ -67,9 +61,7 @@ describe("Loader Performance", () => {
 
       // Should have at least some classes and functions
       expect(
-        indexedMap.byKind.get("class")?.length ||
-          indexedMap.byKind.get("function")?.length ||
-          0,
+        indexedMap.byKind.get("class")?.length || indexedMap.byKind.get("function")?.length || 0,
       ).toBeGreaterThan(0);
     });
   });

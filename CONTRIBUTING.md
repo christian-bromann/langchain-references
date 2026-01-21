@@ -184,11 +184,11 @@ Add `subpages` to a package in `configs/*-python.json` or `configs/*-typescript.
 
 #### Subpage Properties
 
-| Property | Description |
-| -------- | ----------- |
+| Property | Description                                               |
+| -------- | --------------------------------------------------------- |
 | `slug`   | URL-safe identifier (lowercase, alphanumeric with dashes) |
-| `title`  | Display title in navigation and page header |
-| `source` | GitHub raw URL or relative path to markdown file |
+| `title`  | Display title in navigation and page header               |
+| `source` | GitHub raw URL or relative path to markdown file          |
 
 #### Markdown File Format
 
@@ -202,13 +202,13 @@ Subpage markdown files have two sections:
 
 Reference documentation for middleware classes.
 
-| CLASS | DESCRIPTION |
-| ----- | ----------- |
+| CLASS                     | DESCRIPTION                         |
+| ------------------------- | ----------------------------------- |
 | `SummarizationMiddleware` | Auto-summarize conversation history |
 
 ::: langchain.agents.middleware.SummarizationMiddleware
-    options:
-        merge_init_into_class: true
+options:
+merge_init_into_class: true
 ::: langchain.agents.middleware.HumanInTheLoopMiddleware
 ```
 

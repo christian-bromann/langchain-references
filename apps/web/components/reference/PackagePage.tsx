@@ -172,17 +172,16 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
     tocSections.push({ id: "section-types", title: "Types", icon: "type", count: types.length });
   }
 
-  const symbolLanguage = symbolLanguageToLanguage(language === "javascript" ? "typescript" : language);
+  const symbolLanguage = symbolLanguageToLanguage(
+    language === "javascript" ? "typescript" : language,
+  );
   return (
     <div className="flex gap-8">
       {/* Main content */}
       <div className="flex-1 min-w-0 space-y-8">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-2 text-sm text-foreground-secondary">
-          <Link
-            href={`/${language}`}
-            className="hover:text-foreground transition-colors"
-          >
+          <Link href={`/${language}`} className="hover:text-foreground transition-colors">
             {LANGUAGE_CONFIG[symbolLanguage].name}
           </Link>
           <ChevronRight className="h-4 w-4" />
@@ -296,7 +295,9 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
         markdown={packageToMarkdownFromCatalog(
           packageName,
           catalogEntries,
-          symbolLanguageToLanguage(languageToSymbolLanguage(language === "typescript" ? "javascript" : language)),
+          symbolLanguageToLanguage(
+            languageToSymbolLanguage(language === "typescript" ? "javascript" : language),
+          ),
           { description },
         )}
         pageUrl={`${getBaseUrl()}/${language}/${slugifyPackageName(packageName)}`}

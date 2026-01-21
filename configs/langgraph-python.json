@@ -14,21 +14,81 @@
       },
       "descriptionSource": "readme",
       "subpages": [
-        { "slug": "graphs", "title": "Graphs", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/graphs.md" },
-        { "slug": "func", "title": "Functional API", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/func.md" },
-        { "slug": "pregel", "title": "Pregel", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/pregel.md" },
-        { "slug": "checkpoints", "title": "Checkpointing", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/checkpoints.md" },
-        { "slug": "store", "title": "Storage", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/store.md" },
-        { "slug": "cache", "title": "Caching", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/cache.md" },
-        { "slug": "types", "title": "Types", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/types.md" },
-        { "slug": "runtime", "title": "Runtime", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/runtime.md" },
-        { "slug": "config", "title": "Config", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/config.md" },
-        { "slug": "errors", "title": "Errors", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/errors.md" },
-        { "slug": "constants", "title": "Constants", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/constants.md" },
-        { "slug": "channels", "title": "Channels", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/channels.md" },
-        { "slug": "agents", "title": "Agents", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/agents.md" },
-        { "slug": "supervisor", "title": "Supervisor", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/supervisor.md" },
-        { "slug": "swarm", "title": "Swarm", "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/swarm.md" }
+        {
+          "slug": "graphs",
+          "title": "Graphs",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/graphs.md"
+        },
+        {
+          "slug": "func",
+          "title": "Functional API",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/func.md"
+        },
+        {
+          "slug": "pregel",
+          "title": "Pregel",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/pregel.md"
+        },
+        {
+          "slug": "checkpoints",
+          "title": "Checkpointing",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/checkpoints.md"
+        },
+        {
+          "slug": "store",
+          "title": "Storage",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/store.md"
+        },
+        {
+          "slug": "cache",
+          "title": "Caching",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/cache.md"
+        },
+        {
+          "slug": "types",
+          "title": "Types",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/types.md"
+        },
+        {
+          "slug": "runtime",
+          "title": "Runtime",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/runtime.md"
+        },
+        {
+          "slug": "config",
+          "title": "Config",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/config.md"
+        },
+        {
+          "slug": "errors",
+          "title": "Errors",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/errors.md"
+        },
+        {
+          "slug": "constants",
+          "title": "Constants",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/constants.md"
+        },
+        {
+          "slug": "channels",
+          "title": "Channels",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/channels.md"
+        },
+        {
+          "slug": "agents",
+          "title": "Agents",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/agents.md"
+        },
+        {
+          "slug": "supervisor",
+          "title": "Supervisor",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/supervisor.md"
+        },
+        {
+          "slug": "swarm",
+          "title": "Swarm",
+          "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langgraph/swarm.md"
+        }
       ]
     },
     {

@@ -90,9 +90,7 @@ All reference data is stored in Vercel Blob Storage under the `ir/` prefix.
     "summary": "Base class for all message types.",
     "description": "..."
   },
-  "members": [
-    { "name": "content", "kind": "property", "refId": "sym_xyz789" }
-  ],
+  "members": [{ "name": "content", "kind": "property", "refId": "sym_xyz789" }],
   "relations": {
     "extends": [{ "name": "Serializable", "qualifiedName": "..." }]
   }
@@ -233,12 +231,12 @@ Request
 
 ### Cache Keys
 
-| Function | Cache Key Pattern |
-| -------- | ----------------- |
-| `getCachedRoutingMap` | `routing-map:{buildId}:{packageId}` |
-| `getCachedCrossProjectPackages` | `cross-project-packages:{language}` |
-| `getCachedIndividualSymbol` | `individual-symbol:{buildId}:{symbolId}` |
-| `getCachedSyntheticManifest` | `synthetic-manifest:all-packages` |
+| Function                        | Cache Key Pattern                        |
+| ------------------------------- | ---------------------------------------- |
+| `getCachedRoutingMap`           | `routing-map:{buildId}:{packageId}`      |
+| `getCachedCrossProjectPackages` | `cross-project-packages:{language}`      |
+| `getCachedIndividualSymbol`     | `individual-symbol:{buildId}:{symbolId}` |
+| `getCachedSyntheticManifest`    | `synthetic-manifest:all-packages`        |
 
 ### Cache Invalidation
 
@@ -334,9 +332,9 @@ Try common path transformations:
 ```typescript
 const candidates = [
   symbolPath,
-  symbolPath.replace(/\//g, "."),           // runnables/Config → runnables.Config
-  `${packageName}.${symbolPath}`,           // Add package prefix
-  symbolPath.split("/").slice(-1)[0],       // Just the symbol name
+  symbolPath.replace(/\//g, "."), // runnables/Config → runnables.Config
+  `${packageName}.${symbolPath}`, // Add package prefix
+  symbolPath.split("/").slice(-1)[0], // Just the symbol name
 ];
 ```
 
@@ -411,14 +409,14 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
 ```typescript
 export async function GET(request: Request) {
   const languages = ["python", "javascript"];
-  
+
   await Promise.all(
     languages.map(async (language) => {
-      await getCrossProjectPackages(language);  // Populates cache
-      await prewarmCorePackages(language);      // Pre-fetches routing maps
-    })
+      await getCrossProjectPackages(language); // Populates cache
+      await prewarmCorePackages(language); // Pre-fetches routing maps
+    }),
   );
-  
+
   return NextResponse.json({ success: true });
 }
 ```

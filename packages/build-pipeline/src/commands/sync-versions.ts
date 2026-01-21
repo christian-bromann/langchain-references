@@ -486,7 +486,9 @@ async function syncProject(
   // Count packages by repo for logging
   const mainRepoPackages = versionedPackages.filter((p) => !p.repo);
   const externalPackages = versionedPackages.filter((p) => p.repo);
-  console.log(`   Packages: ${mainRepoPackages.length} from main repo, ${externalPackages.length} from external repos`);
+  console.log(
+    `   Packages: ${mainRepoPackages.length} from main repo, ${externalPackages.length} from external repos`,
+  );
 
   // Build headers for API calls
   const headers: Record<string, string> = {

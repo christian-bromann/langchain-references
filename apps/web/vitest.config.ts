@@ -19,9 +19,7 @@ export default defineConfig(({ mode }) => {
     test: {
       globals: true,
       environment: "node",
-      include: isPerf
-        ? ["lib/__tests__/performance/**/*.perf.test.ts"]
-        : ["lib/**/*.test.ts"],
+      include: isPerf ? ["lib/__tests__/performance/**/*.perf.test.ts"] : ["lib/**/*.test.ts"],
       testTimeout: isPerf ? 30000 : 10000,
       // Performance tests use forks for isolated timing
       pool: isPerf ? "forks" : "threads",

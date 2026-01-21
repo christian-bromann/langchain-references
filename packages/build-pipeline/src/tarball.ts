@@ -210,7 +210,6 @@ async function installDependencies(
   extractedPath: string,
   targetPackages?: string[],
 ): Promise<void> {
-
   // Check if package.json exists
   const packageJsonPath = path.join(extractedPath, "package.json");
   try {
@@ -277,7 +276,6 @@ async function buildTypeDeclarations(
   pmInfo: { name: string; buildCmd: string },
   targetPackages?: string[],
 ): Promise<void> {
-
   // Check if this is a TypeScript project with a build script
   const packageJsonPath = path.join(extractedPath, "package.json");
   try {

@@ -145,9 +145,7 @@ describe("JavaExtractor", () => {
 
     it("should extract constructor parameters", () => {
       const simpleClass = result.types.find((t) => t.name === "SimpleClass");
-      const ctorWithParams = simpleClass!.constructors.find(
-        (c) => c.parameters.length === 2
-      );
+      const ctorWithParams = simpleClass!.constructors.find((c) => c.parameters.length === 2);
       expect(ctorWithParams).toBeDefined();
       expect(ctorWithParams!.parameters[0].name).toBe("count");
       expect(ctorWithParams!.parameters[1].name).toBe("name");
@@ -155,9 +153,7 @@ describe("JavaExtractor", () => {
 
     it("should extract constructor Javadoc", () => {
       const simpleClass = result.types.find((t) => t.name === "SimpleClass");
-      const ctorWithParams = simpleClass!.constructors.find(
-        (c) => c.parameters.length === 2
-      );
+      const ctorWithParams = simpleClass!.constructors.find((c) => c.parameters.length === 2);
       expect(ctorWithParams!.javadoc).toBeDefined();
       expect(ctorWithParams!.javadoc).toContain("Constructor with parameters");
     });

@@ -1,8 +1,8 @@
 {
   "name": "@langchain/extractor-go",
   "version": "0.1.0",
-  "description": "Go API extractor for LangChain reference docs",
   "private": true,
+  "description": "Go API extractor for LangChain reference docs",
   "bin": {
     "extract-go": "./src/cli.ts"
   },

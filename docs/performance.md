@@ -92,13 +92,13 @@ ir/
 
 ### Key Data Structures
 
-| File | Size | Purpose |
-| ---- | ---- | ------- |
-| `index-{project}-{language}.json` | ~5KB | Maps package names to build IDs |
-| `routing.json` | ~100KB | Maps symbol paths to URL slugs |
-| `catalog/*.json` | ~50KB each | Sharded list of public symbols |
-| `symbols/{id}.json` | ~1-10KB | Individual symbol with full details |
-| `symbols.json` | 5-15MB | **Legacy** - all symbols in one file |
+| File                              | Size       | Purpose                              |
+| --------------------------------- | ---------- | ------------------------------------ |
+| `index-{project}-{language}.json` | ~5KB       | Maps package names to build IDs      |
+| `routing.json`                    | ~100KB     | Maps symbol paths to URL slugs       |
+| `catalog/*.json`                  | ~50KB each | Sharded list of public symbols       |
+| `symbols/{id}.json`               | ~1-10KB    | Individual symbol with full details  |
+| `symbols.json`                    | 5-15MB     | **Legacy** - all symbols in one file |
 
 ### Caching Layers
 
@@ -301,14 +301,14 @@ The slowest part of SymbolPage is resolving inherited members (cross-package loo
 export async function SymbolPage({ ... }) {
   // Fast: Main symbol content renders immediately
   const symbol = toDisplaySymbol(irSymbol, memberSymbols, undefined);
-  
+
   return (
     <div>
       {/* Fast content renders immediately */}
       <SymbolHeader symbol={symbol} />
       <SignatureBlock ... />
       <MembersSection ... />
-      
+
       {/* Inherited members stream in when ready */}
       <Suspense fallback={<InheritedMembersSkeleton />}>
         <AsyncInheritedMembers
@@ -348,19 +348,19 @@ Move `loadNavigationData` to Edge Runtime for faster cold starts.
 
 Edge Runtime runs JavaScript at Vercel's edge locations (CDN nodes worldwide) instead of in a full Node.js serverless function.
 
-| Aspect | Node.js Runtime | Edge Runtime |
-| ------ | --------------- | ------------ |
-| Cold start | **5-8 seconds** | **~50ms** |
-| Memory | 4GB max | 128MB max |
-| Execution time | 60s max | 30s max |
-| Node.js APIs | Full access | Limited (no `fs`, `child_process`) |
-| Bundle size | No limit | 4MB max |
+| Aspect         | Node.js Runtime | Edge Runtime                       |
+| -------------- | --------------- | ---------------------------------- |
+| Cold start     | **5-8 seconds** | **~50ms**                          |
+| Memory         | 4GB max         | 128MB max                          |
+| Execution time | 60s max         | 30s max                            |
+| Node.js APIs   | Full access     | Limited (no `fs`, `child_process`) |
+| Bundle size    | No limit        | 4MB max                            |
 
 **Implementation:**
 
 ```typescript
 // app/(ref)/layout.tsx
-export const runtime = 'edge'; // Add this line
+export const runtime = "edge"; // Add this line
 
 export default async function ReferenceLayout({ children }) {
   const navData = await loadNavigationData();
@@ -370,12 +370,12 @@ export default async function ReferenceLayout({ children }) {
 
 **Compatibility Check:**
 
-| API Used | Edge Compatible? |
-| -------- | ---------------- |
-| `fetch()` | ✅ Yes |
-| `@vercel/blob` | ✅ Yes |
-| `unstable_cache` | ⚠️ Needs testing |
-| Node.js-specific APIs | ❌ Not used |
+| API Used              | Edge Compatible? |
+| --------------------- | ---------------- |
+| `fetch()`             | ✅ Yes           |
+| `@vercel/blob`        | ✅ Yes           |
+| `unstable_cache`      | ⚠️ Needs testing |
+| Node.js-specific APIs | ❌ Not used      |
 
 **Potential Issues:**
 
@@ -446,13 +446,13 @@ Cache frequently-accessed data in Vercel KV:
 
 ### Current Metrics (from logs analysis)
 
-| Metric | Target | Actual |
-| ------ | ------ | ------ |
-| P50 Latency | <50ms | **7ms** ✅ |
-| P90 Latency | <200ms | **13ms** ✅ |
-| P99 Latency | <1s | **429ms** ✅ |
-| Cold Start | <10s | 5-8s ⚠️ |
-| Error Rate | 0% | **0%** ✅ |
+| Metric      | Target | Actual       |
+| ----------- | ------ | ------------ |
+| P50 Latency | <50ms  | **7ms** ✅   |
+| P90 Latency | <200ms | **13ms** ✅  |
+| P99 Latency | <1s    | **429ms** ✅ |
+| Cold Start  | <10s   | 5-8s ⚠️      |
+| Error Rate  | 0%     | **0%** ✅    |
 
 ### How to Analyze Logs
 

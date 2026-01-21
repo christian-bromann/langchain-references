@@ -7,9 +7,7 @@
     {
       "name": "langchain",
       "path": "libs/langchain",
-      "entryPoints": [
-        "auto"
-      ],
+      "entryPoints": ["auto"],
       "displayName": "LangChain",
       "index": 0,
       "versioning": {
@@ -24,9 +22,7 @@
     {
       "name": "@langchain/core",
       "path": "libs/langchain-core",
-      "entryPoints": [
-        "auto"
-      ],
+      "entryPoints": ["auto"],
       "displayName": "LangChain Core",
       "index": 1,
       "versioning": {
@@ -41,9 +37,7 @@
     {
       "name": "@langchain/textsplitters",
       "path": "libs/langchain-textsplitters",
-      "entryPoints": [
-        "auto"
-      ],
+      "entryPoints": ["auto"],
       "displayName": "Text Splitters",
       "index": 2,
       "versioning": {
@@ -58,9 +52,7 @@
     {
       "name": "@langchain/mcp-adapters",
       "path": "libs/langchain-mcp-adapters",
-      "entryPoints": [
-        "auto"
-      ],
+      "entryPoints": ["auto"],
       "displayName": "MCP Adapters",
       "index": 3,
       "versioning": {

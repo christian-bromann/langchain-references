@@ -81,12 +81,12 @@ export function Sidebar({
   const languagePackages = isPython
     ? pythonPackages
     : isJavaScript
-    ? javascriptPackages
-    : isJava
-    ? javaPackages
-    : isGo
-    ? goPackages
-    : [];
+      ? javascriptPackages
+      : isJava
+        ? javaPackages
+        : isGo
+          ? goPackages
+          : [];
 
   // Then filter by project using the project field passed from SidebarLoader
   const packages = useMemo(() => {
@@ -205,11 +205,7 @@ function PackageSection({
       {hasSubpages && (
         <ul id="sidebar-group" className="sidebar-group list-none space-y-px">
           {/* Overview link */}
-          <SubpageLink
-            title="Overview"
-            path={pkg.path}
-            currentPath={currentPath}
-          />
+          <SubpageLink title="Overview" path={pkg.path} currentPath={currentPath} />
           {/* Subpage links */}
           {pkg.subpages!.map((subpage) => (
             <SubpageLink

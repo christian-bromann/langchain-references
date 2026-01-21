@@ -220,28 +220,28 @@ All Phases ──► Validation (final acceptance)
 
 ## Estimated Effort
 
-| Phase | Tasks | Estimated Time |
-|-------|-------|----------------|
-| Phase 1 | 15 tasks | 4-6 hours |
-| Phase 2 | 13 tasks | 4-6 hours |
-| Phase 3 | 10 tasks | 3-4 hours |
-| Phase 4 | 7 tasks | 2-3 hours |
-| Phase 5 | 6 tasks | 2-3 hours |
-| Phase 6 | 6 tasks | 2-3 hours |
-| Validation | 15 tasks | 2-3 hours |
-| **Total** | **72 tasks** | **~3-4 days** |
+| Phase      | Tasks        | Estimated Time |
+| ---------- | ------------ | -------------- |
+| Phase 1    | 15 tasks     | 4-6 hours      |
+| Phase 2    | 13 tasks     | 4-6 hours      |
+| Phase 3    | 10 tasks     | 3-4 hours      |
+| Phase 4    | 7 tasks      | 2-3 hours      |
+| Phase 5    | 6 tasks      | 2-3 hours      |
+| Phase 6    | 6 tasks      | 2-3 hours      |
+| Validation | 15 tasks     | 2-3 hours      |
+| **Total**  | **72 tasks** | **~3-4 days**  |
 
 ---
 
 ## Risk Mitigation
 
-| Risk | Mitigation | Owner |
-|------|------------|-------|
-| Cache invalidation breaks pages | Use build ID in cache keys | Phase 1 |
-| Batch fetch failures | Use `Promise.allSettled` | Phase 3 |
-| Deferred content flash | Skeleton matches final layout | Phase 4 |
-| Memory leaks from request cache | Bound cache size + microtask cleanup | Phase 1.5 |
-| Fallback removal breaks edge cases | Log patterns before removing | Phase 3.3 |
+| Risk                               | Mitigation                           | Owner     |
+| ---------------------------------- | ------------------------------------ | --------- |
+| Cache invalidation breaks pages    | Use build ID in cache keys           | Phase 1   |
+| Batch fetch failures               | Use `Promise.allSettled`             | Phase 3   |
+| Deferred content flash             | Skeleton matches final layout        | Phase 4   |
+| Memory leaks from request cache    | Bound cache size + microtask cleanup | Phase 1.5 |
+| Fallback removal breaks edge cases | Log patterns before removing         | Phase 3.3 |
 
 ---
 

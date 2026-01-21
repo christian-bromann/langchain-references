@@ -213,9 +213,13 @@ export function LanguageDropdown({ availableLanguages }: LanguageDropdownProps =
 
       // Log for debugging (could add toast notifications here)
       if (!result.found) {
-        console.log(`[LanguageDropdown] No equivalent found for "${symbolName}", navigated to ${result.matchType}`);
+        console.log(
+          `[LanguageDropdown] No equivalent found for "${symbolName}", navigated to ${result.matchType}`,
+        );
       } else if (result.matchType !== "exact" && result.matchType !== "explicit") {
-        console.log(`[LanguageDropdown] Resolved "${symbolName}" → "${result.matchedSymbol || symbolName}" (${result.matchType})`);
+        console.log(
+          `[LanguageDropdown] Resolved "${symbolName}" → "${result.matchedSymbol || symbolName}" (${result.matchType})`,
+        );
       }
     } catch (error) {
       console.error("[LanguageDropdown] Resolution failed:", error);
@@ -253,11 +257,7 @@ export function LanguageDropdown({ availableLanguages }: LanguageDropdownProps =
               "text-primary dark:text-primary-light",
             )}
           >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              currentLanguage.icon
-            )}
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : currentLanguage.icon}
           </div>
 
           {/* Text */}

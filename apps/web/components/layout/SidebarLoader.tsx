@@ -9,7 +9,13 @@
  */
 
 import { Sidebar, type SidebarPackage, type SidebarSubpage } from "./Sidebar";
-import { getBuildIdForLanguage, getManifestData, getRoutingMapData, getPackageInfoV2, getProjectPackageIndex } from "@/lib/ir/loader";
+import {
+  getBuildIdForLanguage,
+  getManifestData,
+  getRoutingMapData,
+  getPackageInfoV2,
+  getProjectPackageIndex,
+} from "@/lib/ir/loader";
 import { getEnabledProjects, getProjectById } from "@/lib/config/projects";
 import type { Package, RoutingMap, SymbolKind } from "@/lib/ir/types";
 import { languageToSymbolLanguage, type Language } from "@langchain/ir-schema";
@@ -118,9 +124,7 @@ async function loadSidebarPackagesForProject(
   const project = getProjectById(projectId);
   if (!project) return [];
 
-  const hasLanguageVariant = project.variants.some(
-    (v) => v.language === language && v.enabled,
-  );
+  const hasLanguageVariant = project.variants.some((v) => v.language === language && v.enabled);
   if (!hasLanguageVariant) return [];
 
   // First try package-level architecture (Java/Go use this)
@@ -131,76 +135,82 @@ async function loadSidebarPackagesForProject(
     const langPrefix = language === "python" ? "py" : language === "javascript" ? "js" : language;
     const symbolLanguage = languageToSymbolLanguage(language);
 
-    const sidebarPackages = (await Promise.all(
-      packageEntries.map(async ([pkgKey, pkgPointer]) => {
-        try {
-          // Skip packages without buildId
-          if (!pkgPointer?.buildId) return null;
+    const sidebarPackages = (
+      await Promise.all(
+        packageEntries.map(async ([pkgKey, pkgPointer]) => {
+          try {
+            // Skip packages without buildId
+            if (!pkgPointer?.buildId) return null;
 
-          const pkgBuildId = pkgPointer.buildId;
-          const packageId = pkgKey.startsWith("pkg_")
-            ? pkgKey
-            : `pkg_${langPrefix}_${pkgKey}`;
+            const pkgBuildId = pkgPointer.buildId;
+            const packageId = pkgKey.startsWith("pkg_") ? pkgKey : `pkg_${langPrefix}_${pkgKey}`;
 
-          // Fetch package info and routing map in parallel
-          const [packageInfoV2, routingMap] = await Promise.all([
-            getPackageInfoV2(packageId, pkgBuildId),
-            language === "javascript" ? getRoutingMapData(pkgBuildId, packageId) : Promise.resolve(null),
-          ]);
+            // Fetch package info and routing map in parallel
+            const [packageInfoV2, routingMap] = await Promise.all([
+              getPackageInfoV2(packageId, pkgBuildId),
+              language === "javascript"
+                ? getRoutingMapData(pkgBuildId, packageId)
+                : Promise.resolve(null),
+            ]);
 
-          const derivedName = pkgKey.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
-          const displayName = packageInfoV2?.displayName || pkgPointer.displayName || pkgPointer.publishedName || derivedName;
-          const publishedName = pkgPointer.publishedName || derivedName;
+            const derivedName = pkgKey.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
+            const displayName =
+              packageInfoV2?.displayName ||
+              pkgPointer.displayName ||
+              pkgPointer.publishedName ||
+              derivedName;
+            const publishedName = pkgPointer.publishedName || derivedName;
 
-          const pkg = {
-            packageId,
-            displayName,
-            publishedName,
-            language: symbolLanguage,
-            ecosystem: language,
-            version: pkgPointer.version || "0.0.0",
-          } as Package;
+            const pkg = {
+              packageId,
+              displayName,
+              publishedName,
+              language: symbolLanguage,
+              ecosystem: language,
+              version: pkgPointer.version || "0.0.0",
+            } as Package;
 
-          const slug = getPackageSlug(pkg, language);
-          
-          // For JavaScript, use exportPaths from package info instead of routing map modules
-          // For Python, use routing map modules
-          let items: SidebarPackage["items"] = [];
-          if (language !== "javascript") {
-            items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
-          } else if (packageInfoV2?.exportPaths && Array.isArray(packageInfoV2.exportPaths)) {
-            // Use export paths for JavaScript packages
-            items = packageInfoV2.exportPaths.map((ep: { slug: string; title: string }) => ({
-              name: ep.title,
-              path: `/${language}/${slug}/${ep.slug}`,
-              kind: "module" as const,
-            }));
+            const slug = getPackageSlug(pkg, language);
+
+            // For JavaScript, use exportPaths from package info instead of routing map modules
+            // For Python, use routing map modules
+            let items: SidebarPackage["items"] = [];
+            if (language !== "javascript") {
+              items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
+            } else if (packageInfoV2?.exportPaths && Array.isArray(packageInfoV2.exportPaths)) {
+              // Use export paths for JavaScript packages
+              items = packageInfoV2.exportPaths.map((ep: { slug: string; title: string }) => ({
+                name: ep.title,
+                path: `/${language}/${slug}/${ep.slug}`,
+                kind: "module" as const,
+              }));
+            }
+
+            let subpages: SidebarSubpage[] | undefined;
+            if (packageInfoV2?.subpages && Array.isArray(packageInfoV2.subpages)) {
+              subpages = packageInfoV2.subpages.map((sp: { slug: string; title: string }) => ({
+                slug: sp.slug,
+                title: sp.title,
+                path: `/${language}/${slug}/${sp.slug}`,
+              }));
+            }
+
+            return {
+              id: packageId,
+              name: displayName,
+              path: `/${language}/${slug}`,
+              items,
+              project: projectId,
+              subpages,
+              _pkgKey: pkgKey, // Store for sorting
+            };
+          } catch (err) {
+            console.error(`[SidebarLoader] Error loading package ${pkgKey}:`, err);
+            return null;
           }
-
-          let subpages: SidebarSubpage[] | undefined;
-          if (packageInfoV2?.subpages && Array.isArray(packageInfoV2.subpages)) {
-            subpages = packageInfoV2.subpages.map((sp: { slug: string; title: string }) => ({
-              slug: sp.slug,
-              title: sp.title,
-              path: `/${language}/${slug}/${sp.slug}`,
-            }));
-          }
-
-          return {
-            id: packageId,
-            name: displayName,
-            path: `/${language}/${slug}`,
-            items,
-            project: projectId,
-            subpages,
-            _pkgKey: pkgKey, // Store for sorting
-          };
-        } catch (err) {
-          console.error(`[SidebarLoader] Error loading package ${pkgKey}:`, err);
-          return null;
-        }
-      }),
-    )).filter((pkg) => pkg !== null) as (SidebarPackage & { _pkgKey: string })[];
+        }),
+      )
+    ).filter((pkg) => pkg !== null) as (SidebarPackage & { _pkgKey: string })[];
 
     // Sort packages based on packageOrder from index
     if (packageIndex.packageOrder && packageIndex.packageOrder.length > 0) {
@@ -251,58 +261,62 @@ async function loadSidebarPackagesForProject(
   });
 
   // OPTIMIZATION: Fetch all package data in parallel instead of sequential for-loop
-  const sidebarPackages = (await Promise.all(
-    packages.map(async (pkg) => {
-      try {
-        const slug = getPackageSlug(pkg, language);
-        const pkgBuildId = (pkg as { buildId?: string }).buildId || buildId;
+  const sidebarPackages = (
+    await Promise.all(
+      packages.map(async (pkg) => {
+        try {
+          const slug = getPackageSlug(pkg, language);
+          const pkgBuildId = (pkg as { buildId?: string }).buildId || buildId;
 
-        // Fetch routing map and package info in parallel
-        const [routingMap, packageInfoV2] = await Promise.all([
-          language === "javascript" ? getRoutingMapData(pkgBuildId, pkg.packageId) : Promise.resolve(null),
-          getPackageInfoV2(pkg.packageId, pkgBuildId),
-        ]);
+          // Fetch routing map and package info in parallel
+          const [routingMap, packageInfoV2] = await Promise.all([
+            language === "javascript"
+              ? getRoutingMapData(pkgBuildId, pkg.packageId)
+              : Promise.resolve(null),
+            getPackageInfoV2(pkg.packageId, pkgBuildId),
+          ]);
 
-        // For JavaScript, use exportPaths from package info instead of routing map modules
-        // For Python, use routing map modules
-        let items: SidebarPackage["items"] = [];
-        if (language !== "javascript") {
-          items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
-        } else if (packageInfoV2?.exportPaths && Array.isArray(packageInfoV2.exportPaths)) {
-          // Use export paths for JavaScript packages
-          items = packageInfoV2.exportPaths.map((ep: { slug: string; title: string }) => ({
-            name: ep.title,
-            path: `/${language}/${slug}/${ep.slug}`,
-            kind: "module" as const,
-          }));
+          // For JavaScript, use exportPaths from package info instead of routing map modules
+          // For Python, use routing map modules
+          let items: SidebarPackage["items"] = [];
+          if (language !== "javascript") {
+            items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
+          } else if (packageInfoV2?.exportPaths && Array.isArray(packageInfoV2.exportPaths)) {
+            // Use export paths for JavaScript packages
+            items = packageInfoV2.exportPaths.map((ep: { slug: string; title: string }) => ({
+              name: ep.title,
+              path: `/${language}/${slug}/${ep.slug}`,
+              kind: "module" as const,
+            }));
+          }
+
+          let subpages: SidebarSubpage[] | undefined;
+          if (packageInfoV2?.subpages && Array.isArray(packageInfoV2.subpages)) {
+            subpages = packageInfoV2.subpages.map((sp: { slug: string; title: string }) => ({
+              slug: sp.slug,
+              title: sp.title,
+              path: `/${language}/${slug}/${sp.slug}`,
+            }));
+          }
+
+          const derivedName = pkg.packageId.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
+          const pkgDisplayName = pkg.displayName || pkg.publishedName || derivedName;
+
+          return {
+            id: pkg.packageId,
+            name: pkgDisplayName,
+            path: `/${language}/${slug}`,
+            items,
+            project: projectId,
+            subpages,
+          };
+        } catch (err) {
+          console.error(`[SidebarLoader] Error loading manifest package ${pkg.packageId}:`, err);
+          return null;
         }
-
-        let subpages: SidebarSubpage[] | undefined;
-        if (packageInfoV2?.subpages && Array.isArray(packageInfoV2.subpages)) {
-          subpages = packageInfoV2.subpages.map((sp: { slug: string; title: string }) => ({
-            slug: sp.slug,
-            title: sp.title,
-            path: `/${language}/${slug}/${sp.slug}`,
-          }));
-        }
-
-        const derivedName = pkg.packageId.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
-        const pkgDisplayName = pkg.displayName || pkg.publishedName || derivedName;
-
-        return {
-          id: pkg.packageId,
-          name: pkgDisplayName,
-          path: `/${language}/${slug}`,
-          items,
-          project: projectId,
-          subpages,
-        };
-      } catch (err) {
-        console.error(`[SidebarLoader] Error loading manifest package ${pkg.packageId}:`, err);
-        return null;
-      }
-    }),
-  )).filter((pkg) => pkg !== null) as SidebarPackage[];
+      }),
+    )
+  ).filter((pkg) => pkg !== null) as SidebarPackage[];
 
   return sidebarPackages;
 }

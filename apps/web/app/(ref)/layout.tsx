@@ -11,7 +11,8 @@ import { LayoutClient } from "@/components/layout/LayoutClient";
 export default async function ReferenceLayout({ children }: { children: React.ReactNode }) {
   // Load navigation data ONCE at the layout level
   // This data is shared between Header (MobileProjectMenu) and Sidebar
-  const { pythonPackages, javascriptPackages, javaPackages, goPackages } = await loadNavigationData();
+  const { pythonPackages, javascriptPackages, javaPackages, goPackages } =
+    await loadNavigationData();
 
   return (
     <div className="min-h-screen bg-background">

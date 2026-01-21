@@ -45,9 +45,7 @@ export function getAvailableLanguages(projectId: string): Language[] {
   const project = PROJECTS.find((p) => p.id === projectId);
   if (!project) return ["python", "javascript"];
 
-  return project.variants
-    .filter((v) => v.enabled)
-    .map((v) => v.language as Language);
+  return project.variants.filter((v) => v.enabled).map((v) => v.language as Language);
 }
 
 /**

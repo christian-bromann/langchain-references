@@ -58,10 +58,10 @@ Users of these SDKs cannot access reference documentation on the platform, and t
 
 ### 1.4 Repositories
 
-| Language | Repository | SDK Type |
-| --- | --- | --- |
-| Java | `langchain-ai/langsmith-java` | LangSmith Java SDK |
-| Go | `langchain-ai/langsmith-go` | LangSmith Go SDK |
+| Language | Repository                    | SDK Type           |
+| -------- | ----------------------------- | ------------------ |
+| Java     | `langchain-ai/langsmith-java` | LangSmith Java SDK |
+| Go       | `langchain-ai/langsmith-go`   | LangSmith Go SDK   |
 
 ---
 
@@ -82,7 +82,7 @@ export const OUTPUT_LANGUAGES = ["python", "javascript"] as const;
 
 ```typescript
 export interface ProjectVariant {
-  language: "python" | "javascript";  // Hardcoded type
+  language: "python" | "javascript"; // Hardcoded type
   repo: string;
   configPath: string;
   enabled: boolean;
@@ -113,20 +113,22 @@ const LANGUAGES = [
 
 Currently, two extractors exist:
 
-| Extractor | Package | Technology |
-| --- | --- | --- |
-| Python | `packages/extractor-python` | griffe library |
-| TypeScript | `packages/extractor-typescript` | TypeDoc |
+| Extractor  | Package                         | Technology     |
+| ---------- | ------------------------------- | -------------- |
+| Python     | `packages/extractor-python`     | griffe library |
+| TypeScript | `packages/extractor-typescript` | TypeDoc        |
 
 Both extractors output the same IR format defined in `@langchain/ir-schema`.
 
 ### 2.3 Current LangSmith Configuration
 
 **Python** (`configs/langsmith-python.json`):
+
 - Repository: `langchain-ai/langsmith-sdk`
 - Path: `python`
 
 **TypeScript** (`configs/langsmith-typescript.json`):
+
 - Repository: `langchain-ai/langsmith-sdk`
 - Path: `js`
 
@@ -138,12 +140,12 @@ Both extractors output the same IR format defined in `@langchain/ir-schema`.
 
 Support four languages in the platform:
 
-| Config Language | Output Language | Display Name | Ecosystem |
-| --- | --- | --- | --- |
-| `python` | `python` | Python | Python |
-| `typescript` | `javascript` | JavaScript | JavaScript/TypeScript |
-| `java` | `java` | Java | JVM |
-| `go` | `go` | Go | Go |
+| Config Language | Output Language | Display Name | Ecosystem             |
+| --------------- | --------------- | ------------ | --------------------- |
+| `python`        | `python`        | Python       | Python                |
+| `typescript`    | `javascript`    | JavaScript   | JavaScript/TypeScript |
+| `java`          | `java`          | Java         | JVM                   |
+| `go`            | `go`            | Go           | Go                    |
 
 ### 3.2 Dynamic Language Availability
 
@@ -166,10 +168,10 @@ LangChain project:
 
 Two new extractor packages:
 
-| Package | Language | Technology |
-| --- | --- | --- |
-| `packages/extractor-java` | Java | Javadoc API / JavaParser |
-| `packages/extractor-go` | Go | go/doc + go/ast |
+| Package                   | Language | Technology               |
+| ------------------------- | -------- | ------------------------ |
+| `packages/extractor-java` | Java     | Javadoc API / JavaParser |
+| `packages/extractor-go`   | Go       | go/doc + go/ast          |
 
 ### 3.4 URL Structure
 
@@ -181,6 +183,7 @@ New language routes:
 ```
 
 Examples:
+
 - `/java/langsmith/Client`
 - `/go/langsmith/Client`
 
@@ -196,24 +199,14 @@ Examples:
 /**
  * Languages as specified in config file names.
  */
-export const CONFIG_LANGUAGES = [
-  "python",
-  "typescript",
-  "java",
-  "go",
-] as const;
+export const CONFIG_LANGUAGES = ["python", "typescript", "java", "go"] as const;
 
 export type ConfigLanguage = (typeof CONFIG_LANGUAGES)[number];
 
 /**
  * Languages as used in output paths and pointer files.
  */
-export const OUTPUT_LANGUAGES = [
-  "python",
-  "javascript",
-  "java",
-  "go",
-] as const;
+export const OUTPUT_LANGUAGES = ["python", "javascript", "java", "go"] as const;
 
 export type OutputLanguage = (typeof OUTPUT_LANGUAGES)[number];
 
@@ -346,18 +339,23 @@ async function extractJava(
   sha: string,
 ): Promise<void> {
   console.log(`   ☕ Extracting: ${packageName}`);
-  
+
   const extractorPath = path.resolve(__dirname, "../../../../packages/extractor-java");
-  
+
   // Use gradle or maven to generate Javadoc JSON
   // Then transform to IR format
   await runCommand("node", [
     path.join(extractorPath, "dist/cli.js"),
-    "--package", packageName,
-    "--path", packagePath,
-    "--output", outputPath,
-    "--repo", repo,
-    "--sha", sha,
+    "--package",
+    packageName,
+    "--path",
+    packagePath,
+    "--output",
+    outputPath,
+    "--repo",
+    repo,
+    "--sha",
+    sha,
   ]);
 }
 
@@ -372,17 +370,22 @@ async function extractGo(
   sha: string,
 ): Promise<void> {
   console.log(`   🐹 Extracting: ${packageName}`);
-  
+
   const extractorPath = path.resolve(__dirname, "../../../../packages/extractor-go");
-  
+
   // Use go doc to generate documentation JSON
   await runCommand("node", [
     path.join(extractorPath, "dist/cli.js"),
-    "--package", packageName,
-    "--path", packagePath,
-    "--output", outputPath,
-    "--repo", repo,
-    "--sha", sha,
+    "--package",
+    packageName,
+    "--path",
+    packagePath,
+    "--output",
+    outputPath,
+    "--repo",
+    repo,
+    "--sha",
+    sha,
   ]);
 }
 ```
@@ -392,9 +395,23 @@ Update the main extraction logic:
 ```typescript
 // In the extraction loop
 if (config.language === "python") {
-  await extractPython(packagePath, pkgConfig.name, outputPath, config.repo, sha, pkgConfig.excludePatterns);
+  await extractPython(
+    packagePath,
+    pkgConfig.name,
+    outputPath,
+    config.repo,
+    sha,
+    pkgConfig.excludePatterns,
+  );
 } else if (config.language === "typescript") {
-  await extractTypeScript(packagePath, pkgConfig.name, outputPath, config.repo, sha, pkgConfig.entryPoints);
+  await extractTypeScript(
+    packagePath,
+    pkgConfig.name,
+    outputPath,
+    config.repo,
+    sha,
+    pkgConfig.entryPoints,
+  );
 } else if (config.language === "java") {
   await extractJava(packagePath, pkgConfig.name, outputPath, config.repo, sha);
 } else if (config.language === "go") {
@@ -414,12 +431,9 @@ function normalizePackageId(packageName: string, language: ConfigLanguage): stri
     java: "pkg_java",
     go: "pkg_go",
   }[language];
-  
-  const normalizedName = packageName
-    .replace(/^@/, "")
-    .replace(/\//g, "_")
-    .replace(/-/g, "_");
-    
+
+  const normalizedName = packageName.replace(/^@/, "").replace(/\//g, "_").replace(/-/g, "_");
+
   return `${prefix}_${normalizedName}`;
 }
 ```
@@ -504,7 +518,7 @@ function javaClassToSymbol(cls: JavaClass, pkgInfo: PackageInfo): SymbolRecord {
     summary: extractFirstSentence(cls.javadoc),
     description: cls.javadoc,
     signature: generateClassSignature(cls),
-    members: cls.methods.map(m => methodToMember(m)),
+    members: cls.methods.map((m) => methodToMember(m)),
     source: {
       file: cls.sourceFile,
       line: cls.startLine,
@@ -516,16 +530,16 @@ function javaClassToSymbol(cls: JavaClass, pkgInfo: PackageInfo): SymbolRecord {
 
 ### 6.3 Symbol Kind Mapping
 
-| Java Construct | IR Kind |
-| --- | --- |
-| `class` | `class` |
-| `interface` | `interface` |
-| `enum` | `enum` |
-| `record` | `class` |
-| `annotation` | `type` |
-| method | `method` (member) |
-| field | `property` (member) |
-| constructor | `constructor` (member) |
+| Java Construct | IR Kind                |
+| -------------- | ---------------------- |
+| `class`        | `class`                |
+| `interface`    | `interface`            |
+| `enum`         | `enum`                 |
+| `record`       | `class`                |
+| `annotation`   | `type`                 |
+| method         | `method` (member)      |
+| field          | `property` (member)    |
+| constructor    | `constructor` (member) |
 
 ### 6.4 Javadoc to Markdown
 
@@ -533,19 +547,21 @@ Convert Javadoc tags to markdown:
 
 ```typescript
 function javadocToMarkdown(javadoc: string): string {
-  return javadoc
-    // Convert @param tags to markdown list
-    .replace(/@param\s+(\w+)\s+(.+)/g, "- **$1**: $2")
-    // Convert @return to Returns section
-    .replace(/@return\s+(.+)/g, "**Returns:** $1")
-    // Convert @throws to markdown
-    .replace(/@throws\s+(\w+)\s+(.+)/g, "- Throws `$1`: $2")
-    // Convert {@code ...} to backticks
-    .replace(/\{@code\s+([^}]+)\}/g, "`$1`")
-    // Convert {@link ...} to plain text (for now)
-    .replace(/\{@link\s+([^}]+)\}/g, "`$1`")
-    // Remove @since, @author, etc.
-    .replace(/@(since|author|version|see)\s+.+/g, "");
+  return (
+    javadoc
+      // Convert @param tags to markdown list
+      .replace(/@param\s+(\w+)\s+(.+)/g, "- **$1**: $2")
+      // Convert @return to Returns section
+      .replace(/@return\s+(.+)/g, "**Returns:** $1")
+      // Convert @throws to markdown
+      .replace(/@throws\s+(\w+)\s+(.+)/g, "- Throws `$1`: $2")
+      // Convert {@code ...} to backticks
+      .replace(/\{@code\s+([^}]+)\}/g, "`$1`")
+      // Convert {@link ...} to plain text (for now)
+      .replace(/\{@link\s+([^}]+)\}/g, "`$1`")
+      // Remove @since, @author, etc.
+      .replace(/@(since|author|version|see)\s+.+/g, "")
+  );
 }
 ```
 
@@ -588,10 +604,7 @@ interface GoDoc {
 
 async function extractGoDoc(packagePath: string): Promise<GoDoc[]> {
   // Use go doc -json to get structured documentation
-  const output = execSync(
-    `cd ${packagePath} && go doc -json -all ./...`,
-    { encoding: "utf-8" }
-  );
+  const output = execSync(`cd ${packagePath} && go doc -json -all ./...`, { encoding: "utf-8" });
   return JSON.parse(output);
 }
 ```
@@ -604,10 +617,7 @@ For detailed type information, parse Go source files:
 // Use a Go AST parser (e.g., via go/ast bindings or parsing output)
 async function parseGoSource(filePath: string): Promise<GoAST> {
   // Alternative: use a Go tool that outputs JSON AST
-  const output = execSync(
-    `go-parser --json ${filePath}`,
-    { encoding: "utf-8" }
-  );
+  const output = execSync(`go-parser --json ${filePath}`, { encoding: "utf-8" });
   return JSON.parse(output);
 }
 ```
@@ -625,7 +635,7 @@ function goTypeToSymbol(typ: GoType, pkgInfo: PackageInfo): SymbolRecord {
     summary: extractFirstSentence(typ.doc),
     description: typ.doc,
     signature: typ.decl,
-    members: typ.methods?.map(m => goMethodToMember(m)) || [],
+    members: typ.methods?.map((m) => goMethodToMember(m)) || [],
     source: {
       file: typ.sourceFile,
       line: typ.startLine,
@@ -637,29 +647,31 @@ function goTypeToSymbol(typ: GoType, pkgInfo: PackageInfo): SymbolRecord {
 
 ### 7.3 Symbol Kind Mapping
 
-| Go Construct | IR Kind |
-| --- | --- |
-| `struct` | `class` |
-| `interface` | `interface` |
-| `func` (top-level) | `function` |
-| method (receiver) | `method` (member) |
-| `type` alias | `type` |
-| `const` | `variable` |
-| `var` | `variable` |
+| Go Construct       | IR Kind           |
+| ------------------ | ----------------- |
+| `struct`           | `class`           |
+| `interface`        | `interface`       |
+| `func` (top-level) | `function`        |
+| method (receiver)  | `method` (member) |
+| `type` alias       | `type`            |
+| `const`            | `variable`        |
+| `var`              | `variable`        |
 
 ### 7.4 Go Doc to Markdown
 
 Go documentation is already plain text, minimal conversion needed:
 
-```typescript
+````typescript
 function goDocToMarkdown(doc: string): string {
-  return doc
-    // Indent code blocks (lines starting with tab or 4 spaces)
-    .replace(/^([\t ]{4,}.*)/gm, "```go\n$1\n```")
-    // Convert BUG(name) to warning
-    .replace(/^BUG\((\w+)\):/gm, "⚠️ **Bug ($1):**");
+  return (
+    doc
+      // Indent code blocks (lines starting with tab or 4 spaces)
+      .replace(/^([\t ]{4,}.*)/gm, "```go\n$1\n```")
+      // Convert BUG(name) to warning
+      .replace(/^BUG\((\w+)\):/gm, "⚠️ **Bug ($1):**")
+  );
 }
-```
+````
 
 ---
 
@@ -672,7 +684,7 @@ The existing IR schema supports Java and Go without changes. The `language` fiel
 ```typescript
 interface SymbolRecord {
   // ... existing fields
-  language: string;  // "python" | "javascript" | "java" | "go"
+  language: string; // "python" | "javascript" | "java" | "go"
 }
 ```
 
@@ -766,12 +778,12 @@ export function LanguageDropdown({ availableLanguages }: LanguageDropdownProps) 
   const languages = ALL_LANGUAGES.filter(
     lang => availableLanguages.includes(lang.id)
   );
-  
+
   // Don't show dropdown if only one language
   if (languages.length <= 1) {
     return null;
   }
-  
+
   // ... rest of component
 }
 ```
@@ -853,21 +865,16 @@ import { PROJECTS } from "./projects";
  * Get available languages for a project.
  */
 export function getAvailableLanguages(projectId: string): string[] {
-  const project = PROJECTS.find(p => p.id === projectId);
+  const project = PROJECTS.find((p) => p.id === projectId);
   if (!project) return ["python", "javascript"];
-  
-  return project.variants
-    .filter(v => v.enabled)
-    .map(v => v.language);
+
+  return project.variants.filter((v) => v.enabled).map((v) => v.language);
 }
 
 /**
  * Check if a language is available for a project.
  */
-export function isLanguageAvailable(
-  projectId: string, 
-  language: string
-): boolean {
+export function isLanguageAvailable(projectId: string, language: string): boolean {
   return getAvailableLanguages(projectId).includes(language);
 }
 ```
@@ -881,14 +888,16 @@ Update `MobileProjectMenu` to handle dynamic languages:
 const availableLanguages = getAvailableLanguages(currentProject.id);
 
 // Render language options
-{availableLanguages.map(lang => (
-  <LanguageOption
-    key={lang}
-    language={lang}
-    isSelected={lang === currentLanguage}
-    onSelect={() => handleLanguageChange(lang)}
-  />
-))}
+{
+  availableLanguages.map((lang) => (
+    <LanguageOption
+      key={lang}
+      language={lang}
+      isSelected={lang === currentLanguage}
+      onSelect={() => handleLanguageChange(lang)}
+    />
+  ));
+}
 ```
 
 ### 9.6 Routing Updates
@@ -902,7 +911,7 @@ Add new language routes in Next.js:
 const VALID_LANGUAGES = ["python", "javascript", "java", "go"];
 
 export function generateStaticParams() {
-  return VALID_LANGUAGES.map(lang => ({ lang }));
+  return VALID_LANGUAGES.map((lang) => ({ lang }));
 }
 ```
 
@@ -1069,43 +1078,43 @@ if (targetLanguage === "java" || targetLanguage === "go") {
 
 ### 12.1 Functional Requirements
 
-| ID | Requirement | Priority |
-| --- | --- | --- |
-| R1 | Java and Go added to config language enum | P0 |
-| R2 | Java extractor produces valid IR from langsmith-java | P0 |
-| R3 | Go extractor produces valid IR from langsmith-go | P0 |
-| R4 | Build pipeline handles java/go config files | P0 |
-| R5 | Language dropdown shows only available languages | P0 |
-| R6 | `/java/langsmith` route renders Java documentation | P0 |
-| R7 | `/go/langsmith` route renders Go documentation | P0 |
-| R8 | Mobile menu respects available languages | P0 |
-| R9 | LangSmith project shows 4 language options | P0 |
-| R10 | LangChain project shows only Python/JavaScript | P0 |
-| R11 | Search works for Java/Go symbols | P1 |
-| R12 | Sitemap includes Java/Go routes | P1 |
+| ID  | Requirement                                          | Priority |
+| --- | ---------------------------------------------------- | -------- |
+| R1  | Java and Go added to config language enum            | P0       |
+| R2  | Java extractor produces valid IR from langsmith-java | P0       |
+| R3  | Go extractor produces valid IR from langsmith-go     | P0       |
+| R4  | Build pipeline handles java/go config files          | P0       |
+| R5  | Language dropdown shows only available languages     | P0       |
+| R6  | `/java/langsmith` route renders Java documentation   | P0       |
+| R7  | `/go/langsmith` route renders Go documentation       | P0       |
+| R8  | Mobile menu respects available languages             | P0       |
+| R9  | LangSmith project shows 4 language options           | P0       |
+| R10 | LangChain project shows only Python/JavaScript       | P0       |
+| R11 | Search works for Java/Go symbols                     | P1       |
+| R12 | Sitemap includes Java/Go routes                      | P1       |
 
 ### 12.2 Quality Requirements
 
-| ID | Requirement | Target |
-| --- | --- | --- |
-| Q1 | Java extraction time per package | < 60s |
-| Q2 | Go extraction time per package | < 30s |
-| Q3 | Symbol coverage for Java | > 90% of public API |
-| Q4 | Symbol coverage for Go | > 90% of exported symbols |
-| Q5 | Page load time for Java/Go pages | < 500ms |
+| ID  | Requirement                      | Target                    |
+| --- | -------------------------------- | ------------------------- |
+| Q1  | Java extraction time per package | < 60s                     |
+| Q2  | Go extraction time per package   | < 30s                     |
+| Q3  | Symbol coverage for Java         | > 90% of public API       |
+| Q4  | Symbol coverage for Go           | > 90% of exported symbols |
+| Q5  | Page load time for Java/Go pages | < 500ms                   |
 
 ### 12.3 Test Cases
 
-| Test | Input | Expected Output |
-| --- | --- | --- |
-| Java extraction | langsmith-java repo | Valid symbols.json with Client class |
-| Go extraction | langsmith-go repo | Valid symbols.json with Client struct |
-| Java route | `/java/langsmith/Client` | Renders Client class page |
-| Go route | `/go/langsmith/Client` | Renders Client struct page |
-| LangSmith dropdown | View any LangSmith page | Shows Python, JavaScript, Java, Go |
-| LangChain dropdown | View any LangChain page | Shows only Python, JavaScript |
-| Language switch Java→Python | Click Python in Java page | Navigates to /python/langsmith |
-| Missing language URL | `/java/langchain` | 404 or redirect to /python/langchain |
+| Test                        | Input                     | Expected Output                       |
+| --------------------------- | ------------------------- | ------------------------------------- |
+| Java extraction             | langsmith-java repo       | Valid symbols.json with Client class  |
+| Go extraction               | langsmith-go repo         | Valid symbols.json with Client struct |
+| Java route                  | `/java/langsmith/Client`  | Renders Client class page             |
+| Go route                    | `/go/langsmith/Client`    | Renders Client struct page            |
+| LangSmith dropdown          | View any LangSmith page   | Shows Python, JavaScript, Java, Go    |
+| LangChain dropdown          | View any LangChain page   | Shows only Python, JavaScript         |
+| Language switch Java→Python | Click Python in Java page | Navigates to /python/langsmith        |
+| Missing language URL        | `/java/langchain`         | 404 or redirect to /python/langchain  |
 
 ---
 

@@ -67,11 +67,7 @@ export default async function GoSymbolPage({ params, searchParams }: Props) {
   // If only package name, show package overview
   if (parsed.symbolPath.length === 0) {
     return (
-      <PackagePage
-        language="go"
-        packageId={parsed.packageId}
-        packageName={parsed.packageName}
-      />
+      <PackagePage language="go" packageId={parsed.packageId} packageName={parsed.packageName} />
     );
   }
 

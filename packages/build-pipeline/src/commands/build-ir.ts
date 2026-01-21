@@ -63,11 +63,21 @@ import {
 import pLimit from "p-limit";
 
 import { fetchTarball, getLatestSha, getCacheBaseDir, type FetchResult } from "../tarball.js";
-import { uploadIR, generateShardedCatalog, generateRoutingMap, generateShardedLookupIndex } from "../upload.js";
+import {
+  uploadIR,
+  generateShardedCatalog,
+  generateRoutingMap,
+  generateShardedLookupIndex,
+} from "../upload.js";
 import { updatePointers } from "../pointers.js";
 import { checkForUpdates } from "./check-updates.js";
 import { fetchDeployedChangelog, type DeployedChangelog } from "../changelog-fetcher.js";
-import { processSubpages, clearFetchCache, type SubpageConfig, type ParsedSubpage } from "../subpage-processor.js";
+import {
+  processSubpages,
+  clearFetchCache,
+  type SubpageConfig,
+  type ParsedSubpage,
+} from "../subpage-processor.js";
 import { PROJECTS, CONFIG_LANGUAGES } from "../constants.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -267,13 +277,13 @@ interface ExportPathInfo {
 
 /**
  * Extract export paths from a TypeScript/JavaScript package.json.
- * 
+ *
  * Rules:
  * - Only includes exports with valid import/require fields (not just package.json)
  * - Ignores the root export "."
  * - Ignores "./package.json"
  * - Returns the export paths for navigation
- * 
+ *
  * @param packagePath - Path to the package directory containing package.json
  * @returns Array of export path info, or empty if only root export exists
  */
@@ -301,7 +311,7 @@ async function extractExportPaths(packagePath: string): Promise<ExportPathInfo[]
 
       // Convert export path to slug (remove leading ./)
       const slug = exportPath.replace(/^\.\//, "");
-      
+
       // Generate title from the path (last segment, formatted nicely)
       const title = generateTitleFromPath(slug);
 
@@ -330,7 +340,7 @@ function isValidModuleExport(exportConfig: unknown): boolean {
 
   if (typeof exportConfig === "object" && exportConfig !== null) {
     const config = exportConfig as Record<string, unknown>;
-    
+
     // Check for common module export patterns
     if (config.import || config.require || config.input) {
       return true;
@@ -359,11 +369,9 @@ function generateTitleFromPath(slug: string): string {
   // Take the last segment of the path
   const segments = slug.split("/");
   const lastSegment = segments[segments.length - 1] || slug;
-  
+
   // Convert underscores/hyphens to spaces and capitalize
-  return lastSegment
-    .replace(/[_-]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return lastSegment.replace(/[_-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /**
@@ -390,10 +398,7 @@ async function removeExcludedDirectories(
 /**
  * Recursively find and remove directories/files matching patterns.
  */
-async function removeMatchingDirectories(
-  dirPath: string,
-  patterns: string[],
-): Promise<void> {
+async function removeMatchingDirectories(dirPath: string, patterns: string[]): Promise<void> {
   let entries;
   try {
     entries = await fs.readdir(dirPath, { withFileTypes: true });
@@ -406,10 +411,9 @@ async function removeMatchingDirectories(
     const nameWithoutExt = entry.name.replace(/\.py$/, "");
 
     // Check if this entry matches any exclude pattern
-    const matches = patterns.some(pattern =>
-      entry.name === pattern ||
-      entry.name.startsWith(pattern) ||
-      nameWithoutExt === pattern
+    const matches = patterns.some(
+      (pattern) =>
+        entry.name === pattern || entry.name.startsWith(pattern) || nameWithoutExt === pattern,
     );
 
     if (matches) {
@@ -871,7 +875,14 @@ async function extractHistoricalVersion(
 
   try {
     if (config.language === "python") {
-      await extractPython(packagePath, pkgConfig.name, symbolsPath, config.repo, sha, pkgConfig.excludePatterns);
+      await extractPython(
+        packagePath,
+        pkgConfig.name,
+        symbolsPath,
+        config.repo,
+        sha,
+        pkgConfig.excludePatterns,
+      );
     } else if (config.language === "typescript") {
       await extractTypeScript(
         packagePath,
@@ -1331,10 +1342,7 @@ async function buildVersionHistoryForPackage(
     return;
   }
 
-  const cachedVersions = await loadCachedVersions(
-    config.project || "langchain",
-    config.language,
-  );
+  const cachedVersions = await loadCachedVersions(config.project || "langchain", config.language);
 
   if (!cachedVersions || !cachedVersions.lastSynced) {
     console.log(`   ⚠️  No cached versions found. Run 'pnpm sync-versions' first.`);
@@ -1362,14 +1370,14 @@ async function buildVersionHistoryForPackage(
 
   const cacheDir = getCacheBaseDir();
   const project = config.project || "langchain";
-const languageMap: Record<SymbolLanguage, Language> = {
-      python: "python",
-      typescript: "javascript",
-      java: "java",
-      go: "go",
-    };
-    const language = languageMap[config.language] || config.language;
-    const packageId = normalizePackageId(pkgConfig.name, config.language);
+  const languageMap: Record<SymbolLanguage, Language> = {
+    python: "python",
+    typescript: "javascript",
+    java: "java",
+    go: "go",
+  };
+  const language = languageMap[config.language] || config.language;
+  const packageId = normalizePackageId(pkgConfig.name, config.language);
 
   // For package-level builds, symbols.json is directly in irOutputPath
   const latestSymbolsPath = path.join(irOutputPath, "symbols.json");
@@ -1739,8 +1747,7 @@ async function buildConfig(
 
   // Check if update is needed (unless --force is specified)
   // We can check updates even in local mode - we just need read access to blob storage
-  const hasBlobAccess =
-    process.env.BLOB_URL || process.env.BLOB_READ_WRITE_TOKEN;
+  const hasBlobAccess = process.env.BLOB_URL || process.env.BLOB_READ_WRITE_TOKEN;
 
   if (!opts.force && hasBlobAccess) {
     console.log(`\n🔍 Checking for updates...`);
@@ -1903,7 +1910,14 @@ async function buildConfig(
 
     try {
       if (config.language === "python") {
-        await extractPython(packagePath, pkgConfig.name, outputPath, config.repo, sha, pkgConfig.excludePatterns);
+        await extractPython(
+          packagePath,
+          pkgConfig.name,
+          outputPath,
+          config.repo,
+          sha,
+          pkgConfig.excludePatterns,
+        );
       } else if (config.language === "typescript") {
         await extractTypeScript(
           packagePath,
@@ -1962,7 +1976,9 @@ async function buildConfig(
       displayName: pkgConfig.displayName || pkgConfig.name,
       publishedName: pkgConfig.name,
       language: config.language,
-      ecosystem: { python: "python", typescript: "javascript", java: "java", go: "go" }[config.language] || config.language,
+      ecosystem:
+        { python: "python", typescript: "javascript", java: "java", go: "go" }[config.language] ||
+        config.language,
       version,
       buildId: pkgInfo.buildId,
       project: config.project || "langchain",
@@ -2193,7 +2209,10 @@ async function main() {
     .description("Build IR artifacts from source repositories")
     .option("--config <path>", "Build a specific configuration file")
     .option("--project <name>", `Build all configs for a project (${PROJECTS.join(", ")})`)
-    .option("--language <lang>", `Build all configs for a language (${CONFIG_LANGUAGES.join(", ")})`)
+    .option(
+      "--language <lang>",
+      `Build all configs for a language (${CONFIG_LANGUAGES.join(", ")})`,
+    )
     .option("--package <name>", "Build only a specific package within a config (for parallel CI)")
     .option("--all", "Build all project/language combinations")
     .option("--sha <sha>", "Git SHA to use (defaults to latest main)")

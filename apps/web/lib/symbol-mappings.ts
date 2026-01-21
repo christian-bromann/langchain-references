@@ -116,8 +116,7 @@ export const SYMBOL_MAPPINGS: SymbolMappings = {
     // =========================================================================
     "langchain-core/prompts/ChatPromptTemplate": "langchain-core/prompts/chat/ChatPromptTemplate",
     "langchain-core/prompts/PromptTemplate": "langchain-core/prompts/prompt/PromptTemplate",
-    "langchain-core/prompts/MessagesPlaceholder":
-      "langchain-core/prompts/chat/MessagesPlaceholder",
+    "langchain-core/prompts/MessagesPlaceholder": "langchain-core/prompts/chat/MessagesPlaceholder",
     "langchain-core/prompts/SystemMessagePromptTemplate":
       "langchain-core/prompts/chat/SystemMessagePromptTemplate",
     "langchain-core/prompts/HumanMessagePromptTemplate":
@@ -139,8 +138,7 @@ export const SYMBOL_MAPPINGS: SymbolMappings = {
     // DOCUMENT LOADERS
     // =========================================================================
     "langchain-core/documents/Document": "langchain-core/documents/base/Document",
-    "langchain-core/document_loaders/BaseLoader":
-      "langchain-core/document_loaders/base/BaseLoader",
+    "langchain-core/document_loaders/BaseLoader": "langchain-core/document_loaders/base/BaseLoader",
 
     // =========================================================================
     // VECTOR STORES
@@ -156,8 +154,7 @@ export const SYMBOL_MAPPINGS: SymbolMappings = {
       "langchain-text-splitters/character/RecursiveCharacterTextSplitter",
     "langchain-textsplitters/CharacterTextSplitter":
       "langchain-text-splitters/character/CharacterTextSplitter",
-    "langchain-textsplitters/TokenTextSplitter":
-      "langchain-text-splitters/base/TokenTextSplitter",
+    "langchain-textsplitters/TokenTextSplitter": "langchain-text-splitters/base/TokenTextSplitter",
 
     // =========================================================================
     // RETRIEVERS
@@ -254,8 +251,7 @@ export const SYMBOL_MAPPINGS: SymbolMappings = {
     // =========================================================================
     "langchain-core/prompts/chat/ChatPromptTemplate": "langchain-core/prompts/ChatPromptTemplate",
     "langchain-core/prompts/prompt/PromptTemplate": "langchain-core/prompts/PromptTemplate",
-    "langchain-core/prompts/chat/MessagesPlaceholder":
-      "langchain-core/prompts/MessagesPlaceholder",
+    "langchain-core/prompts/chat/MessagesPlaceholder": "langchain-core/prompts/MessagesPlaceholder",
     "langchain-core/prompts/chat/SystemMessagePromptTemplate":
       "langchain-core/prompts/SystemMessagePromptTemplate",
     "langchain-core/prompts/chat/HumanMessagePromptTemplate":
@@ -432,7 +428,8 @@ export function getExplicitMapping(
 ): string | null {
   if (sourceLanguage === targetLanguage) return null;
 
-  const mappings = sourceLanguage === "javascript" ? SYMBOL_MAPPINGS.jsToPython : SYMBOL_MAPPINGS.pythonToJs;
+  const mappings =
+    sourceLanguage === "javascript" ? SYMBOL_MAPPINGS.jsToPython : SYMBOL_MAPPINGS.pythonToJs;
 
   return mappings[symbolPath] ?? null;
 }
@@ -452,7 +449,8 @@ export function getSymbolAlias(
 ): string | null {
   if (sourceLanguage === targetLanguage) return null;
 
-  const aliases = sourceLanguage === "javascript" ? SYMBOL_ALIASES.jsToPython : SYMBOL_ALIASES.pythonToJs;
+  const aliases =
+    sourceLanguage === "javascript" ? SYMBOL_ALIASES.jsToPython : SYMBOL_ALIASES.pythonToJs;
 
   return aliases[symbolName] ?? null;
 }
@@ -473,7 +471,9 @@ export function getEquivalentPackage(
   if (sourceLanguage === targetLanguage) return packageSlug;
 
   const equivalence =
-    sourceLanguage === "javascript" ? PACKAGE_EQUIVALENCE.jsToPython : PACKAGE_EQUIVALENCE.pythonToJs;
+    sourceLanguage === "javascript"
+      ? PACKAGE_EQUIVALENCE.jsToPython
+      : PACKAGE_EQUIVALENCE.pythonToJs;
 
   return equivalence[packageSlug] ?? null;
 }

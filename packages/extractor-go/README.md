@@ -106,12 +106,12 @@ The extractor produces a `symbols.json` file containing:
 
 ## Symbol Kind Mapping
 
-| Go Construct | IR Kind |
-| ------------ | ------- |
-| struct | class |
-| interface | interface |
-| func (top-level) | function |
+| Go Construct           | IR Kind         |
+| ---------------------- | --------------- |
+| struct                 | class           |
+| interface              | interface       |
+| func (top-level)       | function        |
 | method (with receiver) | method (member) |
-| type alias | type |
-| const | variable |
-| var | variable |
+| type alias             | type            |
+| const                  | variable        |
+| var                    | variable        |

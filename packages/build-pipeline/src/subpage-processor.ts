@@ -115,7 +115,7 @@ function parseMembersFromOptions(lines: string[], startIndex: number): string[] 
 
   // Filter to only include symbol-like members (start with uppercase letter)
   // Method names like __init__, run, stop are filters, not symbols to expand
-  const symbolMembers = allMembers.filter(m => /^[A-Z]/.test(m));
+  const symbolMembers = allMembers.filter((m) => /^[A-Z]/.test(m));
 
   // Only return if we found symbol-like members
   // If all members are method names (lowercase), return empty to use the directive's qualified name
@@ -201,7 +201,7 @@ export function parseSubpageMarkdown(content: string): {
  */
 export async function fetchSubpageContent(
   source: string,
-  repoDir?: string
+  repoDir?: string,
 ): Promise<string | null> {
   // Check cache first
   const cacheKey = `${source}:${repoDir ?? ""}`;
@@ -217,7 +217,7 @@ export async function fetchSubpageContent(
       const response = await fetch(source);
       if (!response.ok) {
         console.warn(
-          `[subpage-processor] Failed to fetch ${source}: ${response.status} ${response.statusText}`
+          `[subpage-processor] Failed to fetch ${source}: ${response.status} ${response.statusText}`,
         );
         fetchCache.set(cacheKey, null);
         return null;
@@ -228,9 +228,7 @@ export async function fetchSubpageContent(
       const filePath = path.resolve(repoDir, source);
       content = await fs.readFile(filePath, "utf-8");
     } else {
-      console.warn(
-        `[subpage-processor] Cannot read relative path ${source} without repoDir`
-      );
+      console.warn(`[subpage-processor] Cannot read relative path ${source} without repoDir`);
       fetchCache.set(cacheKey, null);
       return null;
     }
@@ -254,7 +252,7 @@ export async function fetchSubpageContent(
  */
 export async function processSubpage(
   config: SubpageConfig,
-  repoDir?: string
+  repoDir?: string,
 ): Promise<ParsedSubpage | null> {
   const content = await fetchSubpageContent(config.source, repoDir);
   if (content === null) {
@@ -280,7 +278,7 @@ export async function processSubpage(
  */
 export async function processSubpages(
   subpages: SubpageConfig[],
-  repoDir?: string
+  repoDir?: string,
 ): Promise<ParsedSubpage[]> {
   const results: ParsedSubpage[] = [];
 

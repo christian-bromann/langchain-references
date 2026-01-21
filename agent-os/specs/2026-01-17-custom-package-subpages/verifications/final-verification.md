@@ -16,107 +16,107 @@ The Custom Package Subpages feature has been fully implemented. This feature all
 
 ### Phase 1: Configuration Schema ✅
 
-| Task | Status | Verification |
-|------|--------|--------------|
-| Update JSON Schema | ✅ | `configs/config-schema.json` includes `subpages` property with slug validation pattern |
-| LangChain Python Config | ✅ | `langchain`, `langchain_core`, `langchain_classic` packages have subpages |
-| LangGraph Python Config | ✅ | `langgraph` package has 15 subpages |
-| LangSmith Python Config | ✅ | `langsmith` package has 15 subpages |
-| Integrations Python Config | ✅ | `langchain_openai`, `langchain_anthropic`, `langchain_google_genai`, `langchain_ibm` have subpages |
+| Task                       | Status | Verification                                                                                       |
+| -------------------------- | ------ | -------------------------------------------------------------------------------------------------- |
+| Update JSON Schema         | ✅     | `configs/config-schema.json` includes `subpages` property with slug validation pattern             |
+| LangChain Python Config    | ✅     | `langchain`, `langchain_core`, `langchain_classic` packages have subpages                          |
+| LangGraph Python Config    | ✅     | `langgraph` package has 15 subpages                                                                |
+| LangSmith Python Config    | ✅     | `langsmith` package has 15 subpages                                                                |
+| Integrations Python Config | ✅     | `langchain_openai`, `langchain_anthropic`, `langchain_google_genai`, `langchain_ibm` have subpages |
 
 ### Phase 2: Build Pipeline ✅
 
-| Task | Status | Verification |
-|------|--------|--------------|
-| Subpage Processor Module | ✅ | `packages/build-pipeline/src/subpage-processor.ts` created with `parseSubpageMarkdown()` function |
-| Markdown Fetching | ✅ | `fetchSubpageContent()` supports URLs and local paths with caching |
-| Build Pipeline Integration | ✅ | `build-ir.ts` imports and uses subpage processor |
-| IR Schema Update | ✅ | `PackageSubpage` interface added to `packages/ir-schema/src/manifest.ts` |
-| Subpage Output Files | ✅ | Build creates `subpages/{slug}.json` files in package output |
+| Task                       | Status | Verification                                                                                      |
+| -------------------------- | ------ | ------------------------------------------------------------------------------------------------- |
+| Subpage Processor Module   | ✅     | `packages/build-pipeline/src/subpage-processor.ts` created with `parseSubpageMarkdown()` function |
+| Markdown Fetching          | ✅     | `fetchSubpageContent()` supports URLs and local paths with caching                                |
+| Build Pipeline Integration | ✅     | `build-ir.ts` imports and uses subpage processor                                                  |
+| IR Schema Update           | ✅     | `PackageSubpage` interface added to `packages/ir-schema/src/manifest.ts`                          |
+| Subpage Output Files       | ✅     | Build creates `subpages/{slug}.json` files in package output                                      |
 
 ### Phase 3: Sidebar Navigation ✅
 
-| Task | Status | Verification |
-|------|--------|--------------|
-| Sidebar Types | ✅ | `SidebarSubpage` interface added to `Sidebar.tsx` |
-| Load Subpages | ✅ | `SidebarLoader.tsx` loads subpages from `getPackageInfoV2()` |
-| Render Subpages | ✅ | `PackageSection` renders Overview + subpage links with active state |
+| Task            | Status | Verification                                                        |
+| --------------- | ------ | ------------------------------------------------------------------- |
+| Sidebar Types   | ✅     | `SidebarSubpage` interface added to `Sidebar.tsx`                   |
+| Load Subpages   | ✅     | `SidebarLoader.tsx` loads subpages from `getPackageInfoV2()`        |
+| Render Subpages | ✅     | `PackageSection` renders Overview + subpage links with active state |
 
 ### Phase 4: Subpage Routes ✅
 
-| Task | Status | Verification |
-|------|--------|--------------|
-| Subpage Data Loader | ✅ | `getSubpageData()` and `isSubpage()` functions added to `loader.ts` |
-| Python Route Handler | ✅ | `python/[...slug]/page.tsx` detects and routes to `SubpagePage` |
-| JavaScript Route Handler | ✅ | `javascript/[...slug]/page.tsx` applies same logic |
+| Task                     | Status | Verification                                                        |
+| ------------------------ | ------ | ------------------------------------------------------------------- |
+| Subpage Data Loader      | ✅     | `getSubpageData()` and `isSubpage()` functions added to `loader.ts` |
+| Python Route Handler     | ✅     | `python/[...slug]/page.tsx` detects and routes to `SubpagePage`     |
+| JavaScript Route Handler | ✅     | `javascript/[...slug]/page.tsx` applies same logic                  |
 
 ### Phase 5: Subpage Component ✅
 
-| Task | Status | Verification |
-|------|--------|--------------|
-| SubpagePage Component | ✅ | `apps/web/components/reference/SubpagePage.tsx` created |
-| Markdown Rendering | ✅ | Uses `MarkdownContent` component for markdown section |
-| Symbol Resolution | ✅ | `resolveSymbolRefs()` tries exact, suffix, and name matches |
-| Symbol Cards | ✅ | Symbols grouped by kind with `SymbolSection` and `SymbolCard` components |
-| Table of Contents | ✅ | Reuses `PackageTableOfContents` component |
-| Breadcrumb Navigation | ✅ | Shows Language > Package > Subpage Title |
+| Task                  | Status | Verification                                                             |
+| --------------------- | ------ | ------------------------------------------------------------------------ |
+| SubpagePage Component | ✅     | `apps/web/components/reference/SubpagePage.tsx` created                  |
+| Markdown Rendering    | ✅     | Uses `MarkdownContent` component for markdown section                    |
+| Symbol Resolution     | ✅     | `resolveSymbolRefs()` tries exact, suffix, and name matches              |
+| Symbol Cards          | ✅     | Symbols grouped by kind with `SymbolSection` and `SymbolCard` components |
+| Table of Contents     | ✅     | Reuses `PackageTableOfContents` component                                |
+| Breadcrumb Navigation | ✅     | Shows Language > Package > Subpage Title                                 |
 
 ### Phase 6: Testing ✅
 
-| Task | Status | Verification |
-|------|--------|--------------|
-| Test Fixtures | ✅ | 9 fixture files created in `fixtures/subpages/` |
-| Vitest Configuration | ✅ | `vitest.config.ts` created for build-pipeline package |
-| Snapshot Tests | ✅ | `subpage-processor.test.ts` with comprehensive test coverage |
-| Package Scripts | ✅ | `test`, `test:watch`, `test:update` scripts added |
+| Task                 | Status | Verification                                                 |
+| -------------------- | ------ | ------------------------------------------------------------ |
+| Test Fixtures        | ✅     | 9 fixture files created in `fixtures/subpages/`              |
+| Vitest Configuration | ✅     | `vitest.config.ts` created for build-pipeline package        |
+| Snapshot Tests       | ✅     | `subpage-processor.test.ts` with comprehensive test coverage |
+| Package Scripts      | ✅     | `test`, `test:watch`, `test:update` scripts added            |
 
 ### Phase 7: Documentation ✅
 
-| Task | Status | Verification |
-|------|--------|--------------|
-| Contributing Guide | ✅ | Added "Package Subpages" section with configuration examples |
-| Code Cleanup | ✅ | JSDoc comments on all exported functions |
+| Task               | Status | Verification                                                 |
+| ------------------ | ------ | ------------------------------------------------------------ |
+| Contributing Guide | ✅     | Added "Package Subpages" section with configuration examples |
+| Code Cleanup       | ✅     | JSDoc comments on all exported functions                     |
 
 ---
 
 ## Files Created
 
-| File | Purpose |
-|------|---------|
-| `packages/build-pipeline/src/subpage-processor.ts` | Core markdown parsing logic |
-| `apps/web/components/reference/SubpagePage.tsx` | Subpage display component |
-| `packages/build-pipeline/src/__tests__/subpage-processor.test.ts` | Snapshot tests |
-| `packages/build-pipeline/vitest.config.ts` | Vitest configuration |
-| `packages/build-pipeline/src/__tests__/fixtures/subpages/simple.md` | Test fixture |
-| `packages/build-pipeline/src/__tests__/fixtures/subpages/with-tables.md` | Test fixture |
-| `packages/build-pipeline/src/__tests__/fixtures/subpages/with-admonitions.md` | Test fixture |
-| `packages/build-pipeline/src/__tests__/fixtures/subpages/options-ignored.md` | Test fixture |
-| `packages/build-pipeline/src/__tests__/fixtures/subpages/no-directives.md` | Test fixture |
-| `packages/build-pipeline/src/__tests__/fixtures/subpages/only-directives.md` | Test fixture |
-| `packages/build-pipeline/src/__tests__/fixtures/subpages/empty.md` | Test fixture |
-| `packages/build-pipeline/src/__tests__/fixtures/subpages/nested-options.md` | Test fixture |
-| `packages/build-pipeline/src/__tests__/fixtures/subpages/complex.md` | Test fixture |
+| File                                                                          | Purpose                     |
+| ----------------------------------------------------------------------------- | --------------------------- |
+| `packages/build-pipeline/src/subpage-processor.ts`                            | Core markdown parsing logic |
+| `apps/web/components/reference/SubpagePage.tsx`                               | Subpage display component   |
+| `packages/build-pipeline/src/__tests__/subpage-processor.test.ts`             | Snapshot tests              |
+| `packages/build-pipeline/vitest.config.ts`                                    | Vitest configuration        |
+| `packages/build-pipeline/src/__tests__/fixtures/subpages/simple.md`           | Test fixture                |
+| `packages/build-pipeline/src/__tests__/fixtures/subpages/with-tables.md`      | Test fixture                |
+| `packages/build-pipeline/src/__tests__/fixtures/subpages/with-admonitions.md` | Test fixture                |
+| `packages/build-pipeline/src/__tests__/fixtures/subpages/options-ignored.md`  | Test fixture                |
+| `packages/build-pipeline/src/__tests__/fixtures/subpages/no-directives.md`    | Test fixture                |
+| `packages/build-pipeline/src/__tests__/fixtures/subpages/only-directives.md`  | Test fixture                |
+| `packages/build-pipeline/src/__tests__/fixtures/subpages/empty.md`            | Test fixture                |
+| `packages/build-pipeline/src/__tests__/fixtures/subpages/nested-options.md`   | Test fixture                |
+| `packages/build-pipeline/src/__tests__/fixtures/subpages/complex.md`          | Test fixture                |
 
 ---
 
 ## Files Modified
 
-| File | Changes |
-|------|---------|
-| `configs/config-schema.json` | Added `subpages` property to package schema |
-| `configs/langchain-python.json` | Added subpages to 3 packages |
-| `configs/langgraph-python.json` | Added subpages to langgraph package |
-| `configs/langsmith-python.json` | Added subpages to langsmith package |
-| `configs/integrations-python.json` | Added subpages to 4 packages, added langchain_google_genai package |
-| `packages/ir-schema/src/manifest.ts` | Added `PackageSubpage` interface and `subpages` field |
-| `packages/build-pipeline/src/commands/build-ir.ts` | Integrated subpage processing |
-| `packages/build-pipeline/package.json` | Added vitest dependency and test scripts |
-| `apps/web/lib/ir/loader.ts` | Added `getSubpageData()`, `isSubpage()`, `ParsedSubpage` interface, `ExtendedPackageInfo.subpages` |
-| `apps/web/components/layout/Sidebar.tsx` | Added `SidebarSubpage` interface, `SubpageLink` component, subpage rendering |
-| `apps/web/components/layout/SidebarLoader.tsx` | Added subpage loading from `getPackageInfoV2()` |
-| `apps/web/app/(ref)/python/[...slug]/page.tsx` | Added subpage detection and routing |
-| `apps/web/app/(ref)/javascript/[...slug]/page.tsx` | Added subpage detection and routing |
-| `CONTRIBUTING.md` | Added Package Subpages documentation section |
+| File                                               | Changes                                                                                            |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `configs/config-schema.json`                       | Added `subpages` property to package schema                                                        |
+| `configs/langchain-python.json`                    | Added subpages to 3 packages                                                                       |
+| `configs/langgraph-python.json`                    | Added subpages to langgraph package                                                                |
+| `configs/langsmith-python.json`                    | Added subpages to langsmith package                                                                |
+| `configs/integrations-python.json`                 | Added subpages to 4 packages, added langchain_google_genai package                                 |
+| `packages/ir-schema/src/manifest.ts`               | Added `PackageSubpage` interface and `subpages` field                                              |
+| `packages/build-pipeline/src/commands/build-ir.ts` | Integrated subpage processing                                                                      |
+| `packages/build-pipeline/package.json`             | Added vitest dependency and test scripts                                                           |
+| `apps/web/lib/ir/loader.ts`                        | Added `getSubpageData()`, `isSubpage()`, `ParsedSubpage` interface, `ExtendedPackageInfo.subpages` |
+| `apps/web/components/layout/Sidebar.tsx`           | Added `SidebarSubpage` interface, `SubpageLink` component, subpage rendering                       |
+| `apps/web/components/layout/SidebarLoader.tsx`     | Added subpage loading from `getPackageInfoV2()`                                                    |
+| `apps/web/app/(ref)/python/[...slug]/page.tsx`     | Added subpage detection and routing                                                                |
+| `apps/web/app/(ref)/javascript/[...slug]/page.tsx` | Added subpage detection and routing                                                                |
+| `CONTRIBUTING.md`                                  | Added Package Subpages documentation section                                                       |
 
 ---
 

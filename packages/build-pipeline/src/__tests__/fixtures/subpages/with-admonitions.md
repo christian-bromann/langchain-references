@@ -1,9 +1,9 @@
 !!! note "Reference docs"
-    This page contains **reference documentation** for Middleware.
-    See [the docs](https://docs.example.com) for tutorials.
+This page contains **reference documentation** for Middleware.
+See [the docs](https://docs.example.com) for tutorials.
 
 !!! warning
-    Some classes are deprecated.
+Some classes are deprecated.
 
 ## Middleware
 

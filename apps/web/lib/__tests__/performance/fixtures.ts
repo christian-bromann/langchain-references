@@ -61,10 +61,7 @@ export function loadPackageIndex(
 /**
  * Load individual symbol data (stub implementation for fixtures)
  */
-export function loadSymbolData(
-  _packageId: string,
-  refId: string,
-): Record<string, unknown> | null {
+export function loadSymbolData(_packageId: string, refId: string): Record<string, unknown> | null {
   // For fixture-based testing, return a mock symbol structure
   // Real symbol data would be too large to include in fixtures
   return {
@@ -99,10 +96,7 @@ export function loadIndexedRoutingMap(_packageId?: string): IndexedRoutingMap {
 /**
  * Simple slugify function for symbol paths (matches production code)
  */
-export function slugifySymbolPath(
-  symbolPath: string,
-  hasPackagePrefix = true,
-): string {
+export function slugifySymbolPath(symbolPath: string, hasPackagePrefix = true): string {
   const parts = symbolPath.split(".");
   if (parts.length === 1) return parts[0];
   if (hasPackagePrefix) return parts.slice(1).join("/");
@@ -116,10 +110,7 @@ const CACHE_SIZE = 1000;
 /**
  * Memoized version of slugifySymbolPath with bounded LRU cache
  */
-export function slugifySymbolPathMemoized(
-  symbolPath: string,
-  hasPackagePrefix = true,
-): string {
+export function slugifySymbolPathMemoized(symbolPath: string, hasPackagePrefix = true): string {
   const cacheKey = `${symbolPath}:${hasPackagePrefix}`;
 
   if (slugifyCache.has(cacheKey)) {

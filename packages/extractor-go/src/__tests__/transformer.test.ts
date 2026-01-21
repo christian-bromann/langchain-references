@@ -441,52 +441,40 @@ describe("GoTransformer - method symbol emission", () => {
   });
 
   it("should emit method symbol with qualified name including parent type", () => {
-    const methodSymbol = symbols.find(
-      (s) => s.kind === "method" && s.name === "Get"
-    );
+    const methodSymbol = symbols.find((s) => s.kind === "method" && s.name === "Get");
     expect(methodSymbol).toBeDefined();
     expect(methodSymbol!.qualifiedName).toBe("Client.Get");
   });
 
   it("should include method signature", () => {
-    const methodSymbol = symbols.find(
-      (s) => s.kind === "method" && s.name === "Get"
-    );
+    const methodSymbol = symbols.find((s) => s.kind === "method" && s.name === "Get");
     expect(methodSymbol).toBeDefined();
     expect(methodSymbol!.signature).toContain("func");
     expect(methodSymbol!.signature).toContain("Get");
   });
 
   it("should include method parameters", () => {
-    const methodSymbol = symbols.find(
-      (s) => s.kind === "method" && s.name === "Get"
-    );
+    const methodSymbol = symbols.find((s) => s.kind === "method" && s.name === "Get");
     expect(methodSymbol).toBeDefined();
     expect(methodSymbol!.parameters).toBeDefined();
     expect(methodSymbol!.parameters!.length).toBeGreaterThan(0);
   });
 
   it("should include return type for methods", () => {
-    const methodSymbol = symbols.find(
-      (s) => s.kind === "method" && s.name === "Get"
-    );
+    const methodSymbol = symbols.find((s) => s.kind === "method" && s.name === "Get");
     expect(methodSymbol).toBeDefined();
     expect(methodSymbol!.returns).toBeDefined();
   });
 
   it("should include source location for methods", () => {
-    const methodSymbol = symbols.find(
-      (s) => s.kind === "method" && s.name === "Get"
-    );
+    const methodSymbol = symbols.find((s) => s.kind === "method" && s.name === "Get");
     expect(methodSymbol).toBeDefined();
     expect(methodSymbol!.source).toBeDefined();
     expect(methodSymbol!.source!.path).toContain("types.go");
   });
 
   it("should set visibility based on method name case", () => {
-    const methodSymbol = symbols.find(
-      (s) => s.kind === "method" && s.name === "Get"
-    );
+    const methodSymbol = symbols.find((s) => s.kind === "method" && s.name === "Get");
     expect(methodSymbol).toBeDefined();
     expect(methodSymbol!.visibility).toBe("public");
   });

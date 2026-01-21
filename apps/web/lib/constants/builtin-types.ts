@@ -453,10 +453,7 @@ export const GO_BUILTIN_TYPES: Record<string, string> = {
  * accidentally returning prototype properties like "constructor" or "toString"
  * which would return functions instead of strings.
  */
-export function getBuiltinTypeDocUrl(
-  typeName: string,
-  language: UrlLanguage,
-): string | null {
+export function getBuiltinTypeDocUrl(typeName: string, language: UrlLanguage): string | null {
   if (language === "java") {
     return Object.hasOwn(JAVA_BUILTIN_TYPES, typeName) ? JAVA_BUILTIN_TYPES[typeName] : null;
   }

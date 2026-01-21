@@ -44,7 +44,7 @@ export function createServer(options: ServerOptions): Express {
     app.use(
       morgan("dev", {
         skip: (_req: Request, res: Response) => res.statusCode < 400,
-      })
+      }),
     );
   }
 
@@ -58,7 +58,9 @@ export function createServer(options: ServerOptions): Express {
   // need to be mapped to local files: /pointers/packages/javascript/langchain__core.json
   app.use((req: Request, _res: Response, next: NextFunction) => {
     // Match scoped package pointer requests: /pointers/packages/{lang}/@scope/name.json
-    const match = req.path.match(/^\/pointers\/packages\/(python|javascript)\/(@[^/]+)\/(.+\.json)$/);
+    const match = req.path.match(
+      /^\/pointers\/packages\/(python|javascript)\/(@[^/]+)\/(.+\.json)$/,
+    );
     if (match) {
       const [, lang, scope, file] = match;
       // Transform @langchain/core.json to langchain__core.json
@@ -80,7 +82,7 @@ export function createServer(options: ServerOptions): Express {
         // Cache for development - short TTL
         res.setHeader("Cache-Control", "public, max-age=60");
       },
-    })
+    }),
   );
 
   // 404 handler with helpful message

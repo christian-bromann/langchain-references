@@ -15,6 +15,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 ## Phase 1: Configuration Schema ✅
 
 ### Task 1.1: Update JSON Schema
+
 **File**: `configs/config-schema.json`
 
 - [x] Add `subpages` property to package schema
@@ -25,6 +26,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Schema validates subpages configuration correctly
 
 ### Task 1.2: Add Subpages to LangChain Python Config
+
 **File**: `configs/langchain-python.json`
 
 - [x] Add `subpages` array to `langchain` package (6 subpages: agents, middleware, models, messages, tools, embeddings)
@@ -35,6 +37,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Config passes schema validation
 
 ### Task 1.3: Add Subpages to LangGraph Python Config
+
 **File**: `configs/langgraph-python.json`
 
 - [x] Add `subpages` array to `langgraph` package (15 subpages including prebuilt agents)
@@ -42,6 +45,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Config passes schema validation
 
 ### Task 1.4: Add Subpages to LangSmith Python Config
+
 **File**: `configs/langsmith-python.json`
 
 - [x] Add `subpages` array to `langsmith` package (15 subpages for SDK and deployment)
@@ -49,6 +53,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Config passes schema validation
 
 ### Task 1.5: Add Subpages to Integrations Python Config
+
 **File**: `configs/integrations-python.json`
 
 - [x] Add `subpages` to `langchain_openai` package (8 subpages)
@@ -63,6 +68,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 ## Phase 2: Build Pipeline - Subpage Processor ✅
 
 ### Task 2.1: Create Subpage Processor Module
+
 **File**: `packages/build-pipeline/src/subpage-processor.ts`
 
 - [x] Create `SubpageConfig` interface matching schema
@@ -76,6 +82,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Unit tests pass for parsing various markdown formats
 
 ### Task 2.2: Add Markdown Fetching Logic
+
 **File**: `packages/build-pipeline/src/subpage-processor.ts`
 
 - [x] Implement `fetchSubpageContent(source: string)` function:
@@ -87,6 +94,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Can fetch from both URLs and local paths
 
 ### Task 2.3: Integrate Subpage Processing into Build Pipeline
+
 **File**: `packages/build-pipeline/src/commands/build-ir.ts`
 
 - [x] Import subpage processor functions
@@ -100,6 +108,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Build produces subpage data for configured packages
 
 ### Task 2.4: Update IR Schema for Subpages
+
 **File**: `packages/ir-schema/src/manifest.ts`
 
 - [x] Add `subpages` field to `PackageInfo` interface:
@@ -111,6 +120,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Types compile without errors
 
 ### Task 2.5: Create Subpage Output Files
+
 **File**: `packages/build-pipeline/src/commands/build-ir.ts`
 
 - [x] Create `subpages/` directory in package output folder
@@ -125,6 +135,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 ## Phase 3: Web Application - Sidebar Navigation ✅
 
 ### Task 3.1: Update Sidebar Types
+
 **File**: `apps/web/components/layout/SidebarLoader.tsx`
 
 - [x] Update `SidebarPackage` interface to include optional `subpages`:
@@ -135,6 +146,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Types compile without errors
 
 ### Task 3.2: Load Subpages from Manifest
+
 **File**: `apps/web/components/layout/SidebarLoader.tsx`
 
 - [x] In `loadSidebarPackagesForProject`, extract subpages from manifest
@@ -144,6 +156,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Sidebar data includes subpages for configured packages
 
 ### Task 3.3: Render Subpages in Sidebar
+
 **File**: `apps/web/components/layout/Sidebar.tsx`
 
 - [x] Update `PackageSection` component to render subpages
@@ -159,6 +172,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 ## Phase 4: Web Application - Subpage Routes ✅
 
 ### Task 4.1: Create Subpage Data Loader
+
 **File**: `apps/web/lib/ir/loader.ts`
 
 - [x] Add `getSubpageData(buildId: string, packageId: string, slug: string)` function
@@ -168,6 +182,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Can load subpage data for valid slugs
 
 ### Task 4.2: Update Route Handler for Subpages
+
 **File**: `apps/web/app/(ref)/python/[...slug]/page.tsx`
 
 - [x] Detect subpage URLs (2-segment slug like `langchain/middleware`)
@@ -178,6 +193,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: `/python/langchain/middleware` renders subpage, `/python/langchain/SummarizationMiddleware` renders symbol
 
 ### Task 4.3: Same for JavaScript Route
+
 **File**: `apps/web/app/(ref)/javascript/[...slug]/page.tsx`
 
 - [x] Apply same subpage detection logic as Python route
@@ -190,6 +206,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 ## Phase 5: Web Application - Subpage Component ✅
 
 ### Task 5.1: Create SubpagePage Component
+
 **File**: `apps/web/components/reference/SubpagePage.tsx`
 
 - [x] Create component accepting `language`, `packageName`, `subpageSlug` props
@@ -200,6 +217,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Component renders without errors
 
 ### Task 5.2: Render Markdown Content
+
 **File**: `apps/web/components/reference/SubpagePage.tsx`
 
 - [x] Use existing `MarkdownContent` component to render `markdownContent`
@@ -209,6 +227,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Markdown content displays correctly with styling
 
 ### Task 5.3: Resolve Symbol References
+
 **File**: `apps/web/components/reference/SubpagePage.tsx`
 
 - [x] Load package catalog entries
@@ -222,6 +241,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Symbols resolve correctly for test subpage
 
 ### Task 5.4: Group and Render Symbol Cards
+
 **File**: `apps/web/components/reference/SubpagePage.tsx`
 
 - [x] Group resolved symbols by kind (classes, functions, types, etc.)
@@ -232,6 +252,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Symbol cards display correctly grouped by kind
 
 ### Task 5.5: Add Subpage Table of Contents
+
 **File**: `apps/web/components/reference/SubpagePage.tsx`
 
 - [x] Reuse `PackageTableOfContents` component
@@ -241,6 +262,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: TOC shows Classes, Functions, Types sections
 
 ### Task 5.6: Add Breadcrumb Navigation
+
 **File**: `apps/web/components/reference/SubpagePage.tsx`
 
 - [x] Add breadcrumb: Language > Package > Subpage Title
@@ -253,6 +275,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 ## Phase 6: Testing - Snapshot Tests for Markdown Parsing ✅
 
 ### Task 6.1: Create Test Fixtures Directory
+
 **Directory**: `packages/build-pipeline/src/__tests__/fixtures/subpages/`
 
 - [x] Create `simple.md` - basic markdown with `:::` directives
@@ -268,6 +291,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: All fixture files created
 
 ### Task 6.2: Snapshot Tests for Markdown Splitting
+
 **File**: `packages/build-pipeline/src/__tests__/subpage-processor.test.ts`
 
 - [x] Test `simple.md` → snapshot of `markdownContent` and `symbolRefs`
@@ -279,6 +303,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Snapshots match expected output
 
 ### Task 6.3: Snapshot Tests for Edge Cases
+
 **File**: `packages/build-pipeline/src/__tests__/subpage-processor.test.ts`
 
 - [x] Test `no-directives.md` → `markdownContent` = full file, `symbolRefs` = []
@@ -289,6 +314,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Edge cases handled correctly
 
 ### Task 6.4: Snapshot Tests for Qualified Name Extraction
+
 **File**: `packages/build-pipeline/src/__tests__/subpage-processor.test.ts`
 
 - [x] Test extraction of simple qualified names: `::: package.module.Symbol`
@@ -300,6 +326,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: All qualified names correctly extracted
 
 ### Task 6.5: Vitest Configuration
+
 **File**: `packages/build-pipeline/vitest.config.ts`
 
 - [x] Configure vitest for the build-pipeline package
@@ -308,6 +335,7 @@ This task list implements curated subpages for packages, allowing domain-specifi
 **Acceptance**: Tests run with `pnpm test`
 
 ### Task 6.6: Update Package Scripts
+
 **File**: `packages/build-pipeline/package.json`
 
 - [x] Add script to run tests: `pnpm test`
@@ -320,11 +348,13 @@ This task list implements curated subpages for packages, allowing domain-specifi
 ## Phase 7: Documentation & Cleanup ✅
 
 ### Task 7.1: Update Contributing Guide
+
 - [x] Document subpages configuration format
 - [x] Document markdown file format requirements
 - [x] Provide example configuration
 
 ### Task 7.2: Code Cleanup
+
 - [x] Ensure consistent error handling
 - [x] Add JSDoc comments to new functions
 
@@ -359,6 +389,7 @@ Phase 6 ──> Phase 7 (Documentation)
 All tasks have been completed. The implementation includes:
 
 ### Files Created
+
 - `packages/build-pipeline/src/subpage-processor.ts` - Core parsing logic
 - `apps/web/components/reference/SubpagePage.tsx` - Subpage display component
 - `packages/build-pipeline/src/__tests__/subpage-processor.test.ts` - Snapshot tests
@@ -366,6 +397,7 @@ All tasks have been completed. The implementation includes:
 - 9 test fixture files in `packages/build-pipeline/src/__tests__/fixtures/subpages/`
 
 ### Files Modified
+
 - `configs/config-schema.json` - Added `subpages` schema
 - `configs/langchain-python.json` - Added subpages for langchain, langchain_core, langchain_classic
 - `configs/langgraph-python.json` - Added subpages for langgraph

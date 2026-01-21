@@ -64,12 +64,12 @@ The reference documentation pages experience significant latency primarily due t
 
 ### 1.4 Performance Targets
 
-| Metric | Current | Target |
-| --- | --- | --- |
-| Symbol page load (Hot) | 1-8s | <200ms |
-| Symbol page load (Cold) | 8-15s | <500ms |
-| Page transition time | 2-5s | <150ms |
-| Vercel function duration | 8s+ | <300ms |
+| Metric                   | Current | Target |
+| ------------------------ | ------- | ------ |
+| Symbol page load (Hot)   | 1-8s    | <200ms |
+| Symbol page load (Cold)  | 8-15s   | <500ms |
+| Page transition time     | 2-5s    | <150ms |
+| Vercel function duration | 8s+     | <300ms |
 
 ---
 
@@ -81,7 +81,7 @@ The `SymbolPage` component has the following critical path:
 
 ```
 1. getPackageBuildId()           → Fetch pointer file (I/O)
-2. getPackageInfo()              → Fetch package.json (I/O) 
+2. getPackageInfo()              → Fetch package.json (I/O)
 3. getRoutingMapData()           → Fetch routing.json (I/O)
 4. findSymbolOptimized()         → Multiple sequential lookups (I/O)
    └── For each candidate:
@@ -108,7 +108,7 @@ for (const key of candidates) {
   const entry = routingMap.slugs[key];
   if (!entry?.refId) continue;
   const symbol = await getIndividualSymbolData(buildId, entry.refId, packageId);
-  if (symbol) return symbol;  // Early exit, but still sequential
+  if (symbol) return symbol; // Early exit, but still sequential
 }
 ```
 
@@ -134,11 +134,11 @@ while (toProcess.length > 0) {
 ```typescript
 // In SymbolPage - called twice:
 const [, routingMap] = await Promise.all([
-  getPackageInfo(buildId, packageId),  // Call 1
+  getPackageInfo(buildId, packageId), // Call 1
   getRoutingMapData(buildId, packageId),
 ]);
 // ... later ...
-const pkgInfo = buildId ? await getPackageInfo(buildId, packageId) : null;  // Call 2
+const pkgInfo = buildId ? await getPackageInfo(buildId, packageId) : null; // Call 2
 ```
 
 **Impact**: Same data fetched twice, even with caching there's overhead.
@@ -150,7 +150,7 @@ const pkgInfo = buildId ? await getPackageInfo(buildId, packageId) : null;  // C
 for (const path of pathVariations) {
   const symbol = await getSymbolViaShardedLookup(buildId, packageId, path);
   if (symbol) return symbol;
-  
+
   if (packagePrefix) {
     const prefixedSymbol = await getSymbolViaShardedLookup(...);
     if (prefixedSymbol) return prefixedSymbol;
@@ -200,6 +200,7 @@ SET langchain-references 29ms
 ```
 
 **Observations:**
+
 - 80+ cache GET/SET operations per request
 - Individual operations are fast (4-86ms)
 - Cumulative time from operations: 500ms-2s
@@ -268,9 +269,9 @@ const groupedMembers = symbol.members.reduce(
 ```typescript
 // Called thousands of times during type linking
 function slugifySymbolPath(symbolPath: string, hasPackagePrefix = true): string {
-  const parts = symbolPath.split(".");  // String allocation
+  const parts = symbolPath.split("."); // String allocation
   if (parts.length === 1) return parts[0];
-  if (hasPackagePrefix) return parts.slice(1).join("/");  // More allocations
+  if (hasPackagePrefix) return parts.slice(1).join("/"); // More allocations
   return parts.join("/");
 }
 ```
@@ -331,14 +332,14 @@ render                        ████
 
 ### 3.3 Key Optimization Opportunities
 
-| Opportunity | Potential Savings | Complexity |
-| --- | --- | --- |
-| Parallelize initial fetches | 100-200ms | Low |
-| Batch symbol lookups | 200-400ms | Medium |
-| Pre-fetch core package data | 500-1000ms | Medium |
-| Eliminate duplicate fetches | 50-100ms | Low |
-| Request-level deduplication | 100-300ms | Medium |
-| Lazy load inherited members | 200-500ms | Medium |
+| Opportunity                 | Potential Savings | Complexity |
+| --------------------------- | ----------------- | ---------- |
+| Parallelize initial fetches | 100-200ms         | Low        |
+| Batch symbol lookups        | 200-400ms         | Medium     |
+| Pre-fetch core package data | 500-1000ms        | Medium     |
+| Eliminate duplicate fetches | 50-100ms          | Low        |
+| Request-level deduplication | 100-300ms         | Medium     |
+| Lazy load inherited members | 200-500ms         | Medium     |
 
 ---
 
@@ -361,7 +362,7 @@ interface RequestContext {
 function withRequestDedup<T>(
   ctx: RequestContext,
   key: string,
-  fetcher: () => Promise<T>
+  fetcher: () => Promise<T>,
 ): Promise<T> {
   if (ctx.resolvedData.has(key)) {
     return Promise.resolve(ctx.resolvedData.get(key) as T);
@@ -369,7 +370,7 @@ function withRequestDedup<T>(
   if (ctx.pendingFetches.has(key)) {
     return ctx.pendingFetches.get(key) as Promise<T>;
   }
-  const promise = fetcher().then(result => {
+  const promise = fetcher().then((result) => {
     ctx.resolvedData.set(key, result);
     ctx.pendingFetches.delete(key);
     return result;
@@ -389,21 +390,19 @@ interface BatchSymbolRequest {
   symbolIds: string[];
 }
 
-async function batchGetSymbols(
-  requests: BatchSymbolRequest[]
-): Promise<Map<string, SymbolRecord>> {
+async function batchGetSymbols(requests: BatchSymbolRequest[]): Promise<Map<string, SymbolRecord>> {
   // Group by buildId+packageId for efficient fetching
-  const grouped = groupBy(requests, r => `${r.buildId}:${r.packageId}`);
-  
+  const grouped = groupBy(requests, (r) => `${r.buildId}:${r.packageId}`);
+
   // Parallel fetch per package
   const results = await Promise.all(
     Object.entries(grouped).map(async ([key, reqs]) => {
-      const [buildId, packageId] = key.split(':');
-      const allIds = reqs.flatMap(r => r.symbolIds);
+      const [buildId, packageId] = key.split(":");
+      const allIds = reqs.flatMap((r) => r.symbolIds);
       return fetchSymbolsBatch(buildId, packageId, allIds);
-    })
+    }),
   );
-  
+
   return mergeMaps(results);
 }
 ```
@@ -413,25 +412,22 @@ async function batchGetSymbols(
 ```typescript
 // New: Pre-warm core package routing maps in getCrossProjectPackages
 const CORE_PACKAGES = [
-  'pkg_py_langchain_core',
-  'pkg_js_langchain_core',
-  'pkg_py_langgraph',
-  'pkg_js_langgraph',
+  "pkg_py_langchain_core",
+  "pkg_js_langchain_core",
+  "pkg_py_langgraph",
+  "pkg_js_langgraph",
 ];
 
 async function prewarmCorePackages(language: Language): Promise<void> {
-  const coreForLang = CORE_PACKAGES.filter(p => 
-    language === 'python' ? p.includes('_py_') : p.includes('_js_')
+  const coreForLang = CORE_PACKAGES.filter((p) =>
+    language === "python" ? p.includes("_py_") : p.includes("_js_"),
   );
-  
+
   await Promise.all(
-    coreForLang.map(pkgId => {
+    coreForLang.map((pkgId) => {
       const buildId = getBuildIdForPackageId(pkgId);
-      return Promise.all([
-        getRoutingMapData(buildId, pkgId),
-        getPackageInfo(buildId, pkgId),
-      ]);
-    })
+      return Promise.all([getRoutingMapData(buildId, pkgId), getPackageInfo(buildId, pkgId)]);
+    }),
   );
 }
 ```
@@ -460,6 +456,7 @@ async function prewarmCorePackages(language: Language): Promise<void> {
 ### 5.1 Strategy A: Parallelize Initial Data Loading
 
 **Current:**
+
 ```typescript
 const buildId = await getPackageBuildId(language, packageName);
 const [, routingMap] = await Promise.all([
@@ -470,6 +467,7 @@ const irSymbol = await findSymbolOptimized(buildId, packageId, symbolPath);
 ```
 
 **Optimized:**
+
 ```typescript
 const buildId = await getPackageBuildId(language, packageName);
 
@@ -502,30 +500,28 @@ async function findSymbolOptimized(
   ctx: RequestContext,
 ): Promise<SymbolRecord | null> {
   const routingMap = ctx.routingMap;
-  
+
   // Fast path: Direct lookup in routing map
   const directMatch = routingMap?.slugs?.[symbolPath];
   if (directMatch?.refId) {
     return getIndividualSymbolData(buildId, directMatch.refId, packageId);
   }
-  
+
   // Generate all candidate keys upfront
   const candidates = generateCandidateKeys(symbolPath, ctx.packagePrefix);
-  
+
   // Find first matching key (no fetches yet)
-  const matchingKey = candidates.find(key => routingMap?.slugs?.[key]?.refId);
+  const matchingKey = candidates.find((key) => routingMap?.slugs?.[key]?.refId);
   if (matchingKey) {
     const entry = routingMap.slugs[matchingKey];
     return getIndividualSymbolData(buildId, entry.refId, packageId);
   }
-  
+
   // Fallback: Batch try all variations at once
   const shardedLookups = await Promise.all(
-    candidates.slice(0, 3).map(path => 
-      getSymbolViaShardedLookup(buildId, packageId, path)
-    )
+    candidates.slice(0, 3).map((path) => getSymbolViaShardedLookup(buildId, packageId, path)),
   );
-  
+
   return shardedLookups.find(Boolean) || null;
 }
 ```
@@ -541,7 +537,7 @@ async function findSymbolOptimized(
 ```typescript
 // Collect all member IDs upfront
 const memberIds = irSymbol.members
-  ?.map(m => m.refId || (m as { id?: string }).id)
+  ?.map((m) => m.refId || (m as { id?: string }).id)
   .filter(Boolean) as string[];
 
 if (memberIds.length > 0) {
@@ -551,7 +547,7 @@ if (memberIds.length > 0) {
     packageId,
     symbolIds: memberIds,
   });
-  
+
   // For missing members, render with basic info (no summary)
   // Fallback fetch can happen client-side if needed
 }
@@ -563,7 +559,8 @@ if (memberIds.length > 0) {
 
 **Current:** Synchronously resolves all inherited members during SSR
 
-**Optimized:** 
+**Optimized:**
+
 1. Render page immediately with direct members
 2. Defer inherited member resolution to:
    - Client-side hydration (preferred for interactivity)
@@ -595,21 +592,20 @@ if (memberIds.length > 0) {
 // At module level - reset per request
 let requestCache: Map<string, Promise<unknown>> | null = null;
 
-export function withRequestCache<T>(
-  key: string,
-  fetcher: () => Promise<T>
-): Promise<T> {
+export function withRequestCache<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
   // In React Server Components, this naturally scopes to the request
   if (!requestCache) {
     requestCache = new Map();
     // Reset after microtask (end of request)
-    queueMicrotask(() => { requestCache = null; });
+    queueMicrotask(() => {
+      requestCache = null;
+    });
   }
-  
+
   if (requestCache.has(key)) {
     return requestCache.get(key) as Promise<T>;
   }
-  
+
   const promise = fetcher();
   requestCache.set(key, promise);
   return promise;
@@ -622,7 +618,8 @@ export function withRequestCache<T>(
 
 **Current:** Build synthetic manifest from scratch on cold start
 
-**Optimized:** 
+**Optimized:**
+
 1. Store pre-built manifest in blob storage
 2. Use `unstable_cache` with longer TTL
 3. Incremental updates when packages change
@@ -641,8 +638,8 @@ const getCachedManifest = unstable_cache(
     if (prebuilt) return prebuilt;
     return buildManifestFromPackageIndexes();
   },
-  ['manifest'],
-  { revalidate: 86400 } // 24 hours - manifests rarely change
+  ["manifest"],
+  { revalidate: 86400 }, // 24 hours - manifests rarely change
 );
 ```
 
@@ -660,23 +657,23 @@ interface IndexedRoutingMap extends RoutingMap {
   // Original slugs map
   slugs: Record<string, RoutingEntry>;
   // Pre-computed indexes for O(1) lookups
-  byTitle: Map<string, string>;  // symbol name → qualified name
-  byKind: Map<string, string[]>;  // kind → qualified names
+  byTitle: Map<string, string>; // symbol name → qualified name
+  byKind: Map<string, string[]>; // kind → qualified names
 }
 
 // Build once during fetchRoutingMap, store in cache
 function buildRoutingIndexes(routingMap: RoutingMap): IndexedRoutingMap {
   const byTitle = new Map<string, string>();
   const byKind = new Map<string, string[]>();
-  
+
   for (const [qualifiedName, entry] of Object.entries(routingMap.slugs)) {
     byTitle.set(entry.title, qualifiedName);
-    
+
     const kindList = byKind.get(entry.kind) || [];
     kindList.push(qualifiedName);
     byKind.set(entry.kind, kindList);
   }
-  
+
   return { ...routingMap, byTitle, byKind };
 }
 
@@ -697,22 +694,19 @@ const qualifiedName = indexedMap.byTitle.get(simpleBaseName);
 const slugifyCache = new Map<string, string>();
 const CACHE_SIZE = 1000;
 
-function slugifySymbolPathMemoized(
-  symbolPath: string, 
-  hasPackagePrefix = true
-): string {
+function slugifySymbolPathMemoized(symbolPath: string, hasPackagePrefix = true): string {
   const cacheKey = `${symbolPath}:${hasPackagePrefix}`;
-  
+
   if (slugifyCache.has(cacheKey)) {
     return slugifyCache.get(cacheKey)!;
   }
-  
+
   // Evict oldest if at capacity
   if (slugifyCache.size >= CACHE_SIZE) {
     const firstKey = slugifyCache.keys().next().value;
     slugifyCache.delete(firstKey);
   }
-  
+
   const result = slugifySymbolPathOriginal(symbolPath, hasPackagePrefix);
   slugifyCache.set(cacheKey, result);
   return result;
@@ -731,7 +725,7 @@ function slugifySymbolPathMemoized(
 // Store pre-grouped data in DisplaySymbol
 interface DisplaySymbol {
   // ... existing fields
-  
+
   // Pre-computed grouped members (lazy, computed once)
   _groupedMembers?: Map<string, DisplayMember[]>;
   _tocData?: { topItems: TOCItem[]; sections: TOCSection[] };
@@ -773,7 +767,7 @@ export default defineConfig({
     include: ["**/*.perf.test.ts"],
     testTimeout: 30000,
     // Performance-specific settings
-    pool: "forks",  // Isolated processes for accurate timing
+    pool: "forks", // Isolated processes for accurate timing
     reporters: ["verbose", "json"],
     outputFile: "./perf-results.json",
   },
@@ -798,56 +792,58 @@ import { loadRoutingMap, loadIndexedRoutingMap, loadSymbolData } from "./fixture
 describe("SymbolPage Performance", () => {
   const TIMING_THRESHOLD_MS = 50; // Individual function limit
   const TOTAL_RENDER_THRESHOLD_MS = 200; // Full page render limit
-  
+
   describe("knownSymbols building", () => {
     it("should build knownSymbols from langchain-core routing map in <10ms", async () => {
       // Uses real langchain-core data (~5000+ entries)
       const routingMap = loadRoutingMap("pkg_py_langchain_core");
       const knownSymbols = new Map<string, string>();
-      
+
       const start = performance.now();
-      
+
       for (const [slug, entry] of Object.entries(routingMap.slugs)) {
         if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
           knownSymbols.set(entry.title, slug);
         }
       }
-      
+
       const duration = performance.now() - start;
-      
+
       expect(duration).toBeLessThan(10);
-      console.log(`knownSymbols build (${Object.keys(routingMap.slugs).length} entries): ${duration.toFixed(2)}ms`);
+      console.log(
+        `knownSymbols build (${Object.keys(routingMap.slugs).length} entries): ${duration.toFixed(2)}ms`,
+      );
     });
-    
+
     it("should build knownSymbols with pre-computed index in <1ms", async () => {
       const indexedMap = loadIndexedRoutingMap("pkg_py_langchain_core");
-      
+
       const start = performance.now();
-      const knownSymbols = indexedMap.byTitle;  // Already computed
+      const knownSymbols = indexedMap.byTitle; // Already computed
       const duration = performance.now() - start;
-      
+
       expect(duration).toBeLessThan(1);
       expect(knownSymbols.size).toBeGreaterThan(0);
     });
   });
-  
+
   describe("findBaseSymbol performance", () => {
     it("should find base symbol with O(1) index lookup in <1ms", async () => {
       const indexedMap = loadIndexedRoutingMap("pkg_py_langchain_core");
-      const targetName = "BaseChatModel";  // Real symbol from langchain-core
-      
+      const targetName = "BaseChatModel"; // Real symbol from langchain-core
+
       const start = performance.now();
       const qualifiedName = indexedMap.byTitle.get(targetName);
       const duration = performance.now() - start;
-      
+
       expect(duration).toBeLessThan(1);
       expect(qualifiedName).toBeDefined();
     });
-    
+
     it("should NOT use linear search (regression test)", async () => {
       const routingMap = loadRoutingMap("pkg_py_langchain_core");
       const targetName = "BaseChatModel";
-      
+
       // Simulate old O(n) approach - this documents the baseline
       const start = performance.now();
       let found = null;
@@ -858,52 +854,59 @@ describe("SymbolPage Performance", () => {
         }
       }
       const duration = performance.now() - start;
-      
+
       // This should be slower than indexed - documents regression risk
-      console.log(`Linear search took: ${duration.toFixed(2)}ms (baseline for ${Object.keys(routingMap.slugs).length} entries)`);
+      console.log(
+        `Linear search took: ${duration.toFixed(2)}ms (baseline for ${Object.keys(routingMap.slugs).length} entries)`,
+      );
     });
   });
-  
+
   describe("member grouping performance", () => {
     it("should group members by kind in <5ms", async () => {
       // Load a real class symbol with many members (e.g., BaseMessage, ChatPromptTemplate)
       const routingMap = loadRoutingMap("pkg_py_langchain_core");
       const classEntry = Object.entries(routingMap.slugs).find(
-        ([, entry]) => entry.kind === "class" && entry.title === "BaseMessage"
+        ([, entry]) => entry.kind === "class" && entry.title === "BaseMessage",
       );
-      const symbol = classEntry ? loadSymbolData("pkg_py_langchain_core", classEntry[1].refId) : null;
+      const symbol = classEntry
+        ? loadSymbolData("pkg_py_langchain_core", classEntry[1].refId)
+        : null;
       const members = symbol?.members || [];
-      
+
       const start = performance.now();
-      
-      const grouped = members.reduce((acc: Record<string, unknown[]>, member: { kind: string }) => {
-        const kind = member.kind;
-        if (!acc[kind]) acc[kind] = [];
-        acc[kind].push(member);
-        return acc;
-      }, {} as Record<string, unknown[]>);
-      
+
+      const grouped = members.reduce(
+        (acc: Record<string, unknown[]>, member: { kind: string }) => {
+          const kind = member.kind;
+          if (!acc[kind]) acc[kind] = [];
+          acc[kind].push(member);
+          return acc;
+        },
+        {} as Record<string, unknown[]>,
+      );
+
       const duration = performance.now() - start;
-      
+
       expect(duration).toBeLessThan(5);
       console.log(`Member grouping (${members.length} members): ${duration.toFixed(2)}ms`);
     });
   });
-  
+
   describe("slugifySymbolPath performance", () => {
     it("should slugify 1000 paths in <10ms with memoization", async () => {
       // Use real symbol paths from langchain-core
       const routingMap = loadRoutingMap("pkg_py_langchain_core");
       const paths = Object.keys(routingMap.slugs).slice(0, 1000);
-      
+
       const start = performance.now();
-      
+
       for (const path of paths) {
         slugifySymbolPathMemoized(path, true);
       }
-      
+
       const duration = performance.now() - start;
-      
+
       expect(duration).toBeLessThan(10);
       console.log(`Memoized slugify (1000 paths): ${duration.toFixed(2)}ms`);
     });
@@ -923,26 +926,26 @@ describe("Loader Performance", () => {
     it("should return pre-computed map in <5ms", async () => {
       // First call populates cache
       await getTypeUrlMap("python", "langchain-core", new Set());
-      
+
       // Second call should be instant
       const start = performance.now();
       const map = await getTypeUrlMap("python", "langchain-core", new Set());
       const duration = performance.now() - start;
-      
+
       expect(duration).toBeLessThan(5);
       expect(map.size).toBeGreaterThan(0);
     });
   });
-  
+
   describe("getCrossProjectPackages", () => {
     it("should return cached packages in <10ms after warm-up", async () => {
       // Warm up cache
       await getCrossProjectPackages("python");
-      
+
       const start = performance.now();
       const packages = await getCrossProjectPackages("python");
       const duration = performance.now() - start;
-      
+
       expect(duration).toBeLessThan(10);
     });
   });
@@ -966,9 +969,7 @@ const IR_OUTPUT_PATH = join(process.cwd(), "../../ir-output");
  * Load actual routing.json from ir-output for a package
  * Uses langchain-core as the primary benchmark (largest package, ~5000+ entries)
  */
-export function loadRoutingMap(
-  packageId: string = "pkg_py_langchain_core"
-): RoutingMap {
+export function loadRoutingMap(packageId: string = "pkg_py_langchain_core"): RoutingMap {
   const buildId = getLatestBuildId(packageId);
   const path = join(IR_OUTPUT_PATH, "packages", packageId, buildId, "routing.json");
   return JSON.parse(readFileSync(path, "utf-8"));
@@ -979,7 +980,7 @@ export function loadRoutingMap(
  */
 export function loadPackageIndex(
   project: string = "langchain",
-  language: string = "python"
+  language: string = "python",
 ): Record<string, { buildId: string; publishedName: string }> {
   const path = join(IR_OUTPUT_PATH, "pointers", `index-${project}-${language}.json`);
   return JSON.parse(readFileSync(path, "utf-8")).packages;
@@ -988,10 +989,7 @@ export function loadPackageIndex(
 /**
  * Load individual symbol data
  */
-export function loadSymbolData(
-  packageId: string,
-  refId: string
-): Record<string, unknown> | null {
+export function loadSymbolData(packageId: string, refId: string): Record<string, unknown> | null {
   const buildId = getLatestBuildId(packageId);
   const path = join(IR_OUTPUT_PATH, "packages", packageId, buildId, "symbols", `${refId}.json`);
   try {
@@ -1008,15 +1006,15 @@ export function loadIndexedRoutingMap(packageId?: string) {
   const base = loadRoutingMap(packageId);
   const byTitle = new Map<string, string>();
   const byKind = new Map<string, string[]>();
-  
+
   for (const [qualifiedName, entry] of Object.entries(base.slugs)) {
     byTitle.set(entry.title, qualifiedName);
-    
+
     const list = byKind.get(entry.kind) || [];
     list.push(qualifiedName);
     byKind.set(entry.kind, list);
   }
-  
+
   return { ...base, byTitle, byKind };
 }
 
@@ -1038,29 +1036,29 @@ name: Performance Tests
 on:
   pull_request:
     paths:
-      - 'apps/web/lib/**'
-      - 'apps/web/components/reference/**'
+      - "apps/web/lib/**"
+      - "apps/web/components/reference/**"
 
 jobs:
   perf-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: pnpm/action-setup@v2
         with:
           version: 8
-          
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
-          
+          cache: "pnpm"
+
       - run: pnpm install
-      
+
       - name: Run Performance Tests
         run: pnpm --filter web test:perf
-        
+
       - name: Check Performance Thresholds
         run: |
           # Fail if any perf test exceeds thresholds
@@ -1144,6 +1142,7 @@ if (failed) {
 **Expected Impact**: 150-250ms reduction + measurable baselines
 
 **Deliverables**:
+
 - [ ] `apps/web/lib/__tests__/performance/vitest.config.ts`
 - [ ] `apps/web/lib/__tests__/performance/fixtures.ts`
 - [ ] `apps/web/lib/__tests__/performance/symbol-page.perf.test.ts`
@@ -1174,6 +1173,7 @@ if (failed) {
 **Expected Impact**: 500-1000ms reduction
 
 **Deliverables**:
+
 - [ ] `IndexedRoutingMap` type and builder function
 - [ ] `slugifySymbolPathMemoized` function
 - [ ] Updated `findBaseSymbol` using indexed lookups
@@ -1230,6 +1230,7 @@ if (failed) {
 **Risk:** Stale data after deployments
 
 **Mitigation:**
+
 - Use build ID in cache keys
 - Revalidate on deployment via tags
 - Short TTL for development
@@ -1239,16 +1240,17 @@ if (failed) {
 **Risk:** Single symbol failure affects entire batch
 
 **Mitigation:**
+
 ```typescript
 async function batchGetSymbols(ids: string[]): Promise<Map<string, SymbolRecord>> {
   const results = await Promise.allSettled(
-    ids.map(id => getIndividualSymbolData(buildId, id, packageId))
+    ids.map((id) => getIndividualSymbolData(buildId, id, packageId)),
   );
-  
+
   // Return successful results, log failures
   const successful = new Map();
   results.forEach((result, i) => {
-    if (result.status === 'fulfilled' && result.value) {
+    if (result.status === "fulfilled" && result.value) {
       successful.set(ids[i], result.value);
     }
   });
@@ -1261,6 +1263,7 @@ async function batchGetSymbols(ids: string[]): Promise<Map<string, SymbolRecord>
 **Risk:** Visible loading states for inherited members
 
 **Mitigation:**
+
 - Skeleton matches final layout
 - Preload during initial render when possible
 - Consider streaming with proper loading UI
@@ -1270,6 +1273,7 @@ async function batchGetSymbols(ids: string[]): Promise<Map<string, SymbolRecord>
 **Risk:** Memory leak if cache not cleared
 
 **Mitigation:**
+
 - Use WeakMap or microtask clearing
 - Bound cache size
 - Monitor memory in production
@@ -1279,6 +1283,7 @@ async function batchGetSymbols(ids: string[]): Promise<Map<string, SymbolRecord>
 **Risk:** Removing fallbacks breaks edge cases
 
 **Mitigation:**
+
 - Log fallback usage patterns before removing
 - Keep fallbacks as last resort
 - A/B test changes with metrics
@@ -1289,60 +1294,61 @@ async function batchGetSymbols(ids: string[]): Promise<Map<string, SymbolRecord>
 
 ### 9.1 Performance Requirements
 
-| ID | Requirement | Target | Measurement |
-| --- | --- | --- | --- |
-| P1 | Hot symbol page load | <200ms | Vercel function duration |
-| P2 | Cold symbol page load | <500ms | Vercel function duration |
-| P3 | Page transition time | <150ms | Client-side navigation |
-| P4 | Cache operations per request | <20 | Vercel dashboard logs |
-| P5 | 95th percentile load time | <300ms | Vercel analytics |
+| ID  | Requirement                  | Target | Measurement              |
+| --- | ---------------------------- | ------ | ------------------------ |
+| P1  | Hot symbol page load         | <200ms | Vercel function duration |
+| P2  | Cold symbol page load        | <500ms | Vercel function duration |
+| P3  | Page transition time         | <150ms | Client-side navigation   |
+| P4  | Cache operations per request | <20    | Vercel dashboard logs    |
+| P5  | 95th percentile load time    | <300ms | Vercel analytics         |
 
 ### 9.2 Functional Requirements
 
-| ID | Requirement | Priority |
-| --- | --- | --- |
-| F1 | All symbol pages render correctly | P0 |
-| F2 | Member information displays accurately | P0 |
-| F3 | Type links work for cross-project types | P0 |
-| F4 | Inherited members display (may be deferred) | P1 |
-| F5 | Source links work correctly | P1 |
-| F6 | Version history displays | P2 |
+| ID  | Requirement                                 | Priority |
+| --- | ------------------------------------------- | -------- |
+| F1  | All symbol pages render correctly           | P0       |
+| F2  | Member information displays accurately      | P0       |
+| F3  | Type links work for cross-project types     | P0       |
+| F4  | Inherited members display (may be deferred) | P1       |
+| F5  | Source links work correctly                 | P1       |
+| F6  | Version history displays                    | P2       |
 
 ### 9.3 Quality Requirements
 
-| ID | Requirement | Target |
-| --- | --- | --- |
-| Q1 | No increase in error rate | <0.1% |
-| Q2 | No visual regressions | 0 |
-| Q3 | Lighthouse performance score | >90 |
-| Q4 | Core Web Vitals LCP | <2.5s |
+| ID  | Requirement                  | Target |
+| --- | ---------------------------- | ------ |
+| Q1  | No increase in error rate    | <0.1%  |
+| Q2  | No visual regressions        | 0      |
+| Q3  | Lighthouse performance score | >90    |
+| Q4  | Core Web Vitals LCP          | <2.5s  |
 
 ### 9.4 Vitest Performance Test Requirements
 
-| ID | Test | Threshold | Description |
-| --- | --- | --- | --- |
-| VT1 | `knownSymbols` build (5000 entries) | <10ms | Object.entries iteration |
-| VT2 | `findBaseSymbol` indexed lookup | <1ms | O(1) Map.get() |
-| VT3 | Member grouping (50 members) | <5ms | reduce() operation |
-| VT4 | `slugifySymbolPath` (1000 calls) | <10ms | Memoized string ops |
-| VT5 | `getTypeUrlMap` (cached) | <5ms | Pre-computed map access |
-| VT6 | Full page data assembly | <50ms | All CPU ops combined |
+| ID  | Test                                | Threshold | Description              |
+| --- | ----------------------------------- | --------- | ------------------------ |
+| VT1 | `knownSymbols` build (5000 entries) | <10ms     | Object.entries iteration |
+| VT2 | `findBaseSymbol` indexed lookup     | <1ms      | O(1) Map.get()           |
+| VT3 | Member grouping (50 members)        | <5ms      | reduce() operation       |
+| VT4 | `slugifySymbolPath` (1000 calls)    | <10ms     | Memoized string ops      |
+| VT5 | `getTypeUrlMap` (cached)            | <5ms      | Pre-computed map access  |
+| VT6 | Full page data assembly             | <50ms     | All CPU ops combined     |
 
 **CI Requirements:**
+
 - All VT tests MUST pass on every PR
 - Performance regression = test failure
 - Tests run in isolated Node.js processes for accurate timing
 
 ### 9.5 Integration Test Cases
 
-| Test | Scenario | Expected |
-| --- | --- | --- |
-| TC1 | Load simple function page | <200ms |
-| TC2 | Load class with 20 members | <250ms |
-| TC3 | Load class with deep inheritance | <400ms |
-| TC4 | Cold start after deployment | <500ms |
-| TC5 | Rapid page transitions | No visible delay |
-| TC6 | Cross-project type links | Correct URLs |
+| Test | Scenario                         | Expected         |
+| ---- | -------------------------------- | ---------------- |
+| TC1  | Load simple function page        | <200ms           |
+| TC2  | Load class with 20 members       | <250ms           |
+| TC3  | Load class with deep inheritance | <400ms           |
+| TC4  | Cold start after deployment      | <500ms           |
+| TC5  | Rapid page transitions           | No visible delay |
+| TC6  | Cross-project type links         | Correct URLs     |
 
 ---
 
@@ -1377,7 +1383,7 @@ vercel logs --follow
 ```typescript
 // Add to loader.ts for debugging
 if (process.env.DEBUG_MEMORY) {
-  console.log('[memory]', {
+  console.log("[memory]", {
     manifestCache: manifestCache.size,
     routingCache: routingCache.size,
     symbolCache: packageSymbolsCache.size,
@@ -1408,9 +1414,9 @@ const metrics = {
 
 ```typescript
 // Track page performance
-import { track } from '@vercel/analytics';
+import { track } from "@vercel/analytics";
 
-track('symbol-page-load', {
+track("symbol-page-load", {
   language,
   packageName,
   symbolKind: symbol.kind,

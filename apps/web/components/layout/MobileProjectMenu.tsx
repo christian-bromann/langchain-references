@@ -103,7 +103,14 @@ export function MobileProjectMenu({
     const languagePackages = packagesByLanguage[currentLanguage] || [];
     if (!currentProject) return languagePackages;
     return languagePackages.filter((pkg) => pkg.project === currentProject.id);
-  }, [pythonPackages, javascriptPackages, javaPackages, goPackages, currentLanguage, currentProject]);
+  }, [
+    pythonPackages,
+    javascriptPackages,
+    javaPackages,
+    goPackages,
+    currentLanguage,
+    currentProject,
+  ]);
 
   // Lock body scroll when menu is open
   useEffect(() => {
@@ -199,9 +206,7 @@ export function MobileProjectMenu({
         <div className="flex h-full flex-col bg-background shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-              Menu
-            </h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Menu</h2>
             <button
               onClick={onClose}
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
@@ -257,11 +262,7 @@ export function MobileProjectMenu({
                 onClose={onClose}
               />
             ) : (
-              <NavigationList
-                packages={packages}
-                currentPath={pathname}
-                onClose={onClose}
-              />
+              <NavigationList packages={packages} currentPath={pathname} onClose={onClose} />
             )}
           </div>
 
@@ -345,9 +346,7 @@ function ProjectsList({
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
         <Layers className="h-12 w-12 text-gray-300 dark:text-gray-600 mb-3" />
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
-          No projects available.
-        </p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">No projects available.</p>
       </div>
     );
   }
@@ -366,9 +365,7 @@ function ProjectsList({
             onClick={onClose}
             className={cn(
               "flex items-center justify-between mx-2 px-3 py-3 rounded-lg transition-colors",
-              isActive
-                ? "bg-primary/10"
-                : "hover:bg-gray-50 dark:hover:bg-gray-800/50",
+              isActive ? "bg-primary/10" : "hover:bg-gray-50 dark:hover:bg-gray-800/50",
             )}
           >
             <div className="flex-1 min-w-0">
@@ -411,9 +408,7 @@ function NavigationList({
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
         <FolderTree className="h-12 w-12 text-gray-300 dark:text-gray-600 mb-3" />
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
-          No packages available.
-        </p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">No packages available.</p>
         <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
           Select a project to see packages.
         </p>
@@ -425,14 +420,8 @@ function NavigationList({
     <div className="py-2">
       {packages.map((pkg, index) => (
         <div key={pkg.id}>
-          {index > 0 && (
-            <div className="mx-4 my-2 h-px bg-gray-100 dark:bg-gray-800" />
-          )}
-          <MobilePackageSection
-            package={pkg}
-            currentPath={currentPath}
-            onClose={onClose}
-          />
+          {index > 0 && <div className="mx-4 my-2 h-px bg-gray-100 dark:bg-gray-800" />}
+          <MobilePackageSection package={pkg} currentPath={currentPath} onClose={onClose} />
         </div>
       ))}
     </div>
@@ -465,9 +454,7 @@ function MobilePackageSection({
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
           "w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors",
-          isPackageActive
-            ? "bg-primary/5"
-            : "hover:bg-gray-50 dark:hover:bg-gray-800/50",
+          isPackageActive ? "bg-primary/5" : "hover:bg-gray-50 dark:hover:bg-gray-800/50",
         )}
       >
         <span
@@ -481,10 +468,7 @@ function MobilePackageSection({
           {pkg.name}
         </span>
         <ChevronRight
-          className={cn(
-            "h-4 w-4 transition-transform text-gray-400",
-            isExpanded && "rotate-90",
-          )}
+          className={cn("h-4 w-4 transition-transform text-gray-400", isExpanded && "rotate-90")}
         />
       </button>
 
@@ -577,10 +561,7 @@ function MobileNavItem({
         >
           <span>{item.name}</span>
           <ChevronRight
-            className={cn(
-              "h-3.5 w-3.5 transition-transform text-gray-400",
-              isOpen && "rotate-90",
-            )}
+            className={cn("h-3.5 w-3.5 transition-transform text-gray-400", isOpen && "rotate-90")}
           />
         </button>
         {isOpen && (

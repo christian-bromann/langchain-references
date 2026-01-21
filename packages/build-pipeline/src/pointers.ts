@@ -211,7 +211,8 @@ export async function updatePointers(options: PointerUpdateOptions): Promise<voi
   // 2. Update per-package latest pointers
   for (const pkg of manifest.packages) {
     // Map config language (typescript) to output language (javascript), others pass through
-    const ecosystem: Language = pkg.language === "typescript" ? "javascript" : pkg.language as Language;
+    const ecosystem: Language =
+      pkg.language === "typescript" ? "javascript" : (pkg.language as Language);
     const pointer: LatestPointer = {
       buildId,
       version: pkg.version,
@@ -479,7 +480,9 @@ export async function regenerateProjectPackageIndex(
   // Log missing packages if any
   if (missingPackages.length > 0 && missingPackages.length === packageNames.length) {
     console.warn(`   ⚠️  No pointers found in blob storage for any packages`);
-    console.warn(`      Searched: ${missingPackages.slice(0, 3).join(", ")}${missingPackages.length > 3 ? `, ... (${missingPackages.length} total)` : ""}`);
+    console.warn(
+      `      Searched: ${missingPackages.slice(0, 3).join(", ")}${missingPackages.length > 3 ? `, ... (${missingPackages.length} total)` : ""}`,
+    );
     console.warn(`      URL base: ${baseUrl}`);
   } else if (missingPackages.length > 0) {
     console.warn(`   ⚠️  Missing pointers for: ${missingPackages.join(", ")}`);
@@ -496,7 +499,9 @@ export async function regenerateProjectPackageIndex(
     language,
     updatedAt: now,
     packages,
-    ...(filteredPackageOrder && filteredPackageOrder.length > 0 ? { packageOrder: filteredPackageOrder } : {}),
+    ...(filteredPackageOrder && filteredPackageOrder.length > 0
+      ? { packageOrder: filteredPackageOrder }
+      : {}),
   };
 
   const indexPath = `${POINTERS_PATH}/index-${project}-${language}.json`;

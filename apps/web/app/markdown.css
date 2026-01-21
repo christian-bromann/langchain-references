@@ -340,6 +340,19 @@
   border-color: rgba(255, 255, 255, 0.15);
 }
 
+/* Callout links - ensure visibility with underline and contrasting color */
+.markdown-content .callout a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-underline-offset: 2px;
+  font-weight: 600;
+}
+
+.markdown-content .callout a:hover {
+  text-decoration-thickness: 2px;
+}
+
 /* =========================================
    Callout Type Variants - Mintlify colors
    ========================================= */

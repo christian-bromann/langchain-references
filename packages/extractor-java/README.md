@@ -105,13 +105,13 @@ The extractor produces a `symbols.json` file containing:
 
 ## Symbol Kind Mapping
 
-| Java Construct | IR Kind |
-|----------------|---------|
-| class | class |
-| interface | interface |
-| enum | enum |
-| record | class |
-| annotation | type |
-| method | method (member) |
-| field | property (member) |
-| constructor | constructor (member) |
+| Java Construct | IR Kind              |
+| -------------- | -------------------- |
+| class          | class                |
+| interface      | interface            |
+| enum           | enum                 |
+| record         | class                |
+| annotation     | type                 |
+| method         | method (member)      |
+| field          | property (member)    |
+| constructor    | constructor (member) |

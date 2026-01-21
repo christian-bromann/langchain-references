@@ -79,7 +79,7 @@ describe("JavaTransformer", () => {
     it("should emit method symbol with qualified name including parent class", () => {
       // Find a method from SimpleClass specifically
       const methodSymbol = symbols.find(
-        (s) => s.kind === "method" && s.qualifiedName?.includes("SimpleClass")
+        (s) => s.kind === "method" && s.qualifiedName?.includes("SimpleClass"),
       );
       expect(methodSymbol).toBeDefined();
       expect(methodSymbol!.qualifiedName).toContain("com.example.SimpleClass.");
@@ -94,16 +94,14 @@ describe("JavaTransformer", () => {
     it("should include method parameters for parameterized methods", () => {
       // Find a method with parameters
       const methodSymbol = symbols.find(
-        (s) => s.kind === "method" && s.parameters && s.parameters.length > 0
+        (s) => s.kind === "method" && s.parameters && s.parameters.length > 0,
       );
       expect(methodSymbol).toBeDefined();
       expect(methodSymbol!.parameters!.length).toBeGreaterThan(0);
     });
 
     it("should include return type for methods", () => {
-      const methodSymbol = symbols.find(
-        (s) => s.kind === "method" && s.returns?.type
-      );
+      const methodSymbol = symbols.find((s) => s.kind === "method" && s.returns?.type);
       expect(methodSymbol).toBeDefined();
       expect(methodSymbol!.returns).toBeDefined();
     });
@@ -296,7 +294,7 @@ describe("JavaTransformer", () => {
     beforeAll(() => {
       const simpleClassSymbol = symbols.find((s) => s.name === "SimpleClass");
       constructor = simpleClassSymbol?.members?.find(
-        (m) => m.kind === "constructor" && m.parameters && m.parameters.length === 2
+        (m) => m.kind === "constructor" && m.parameters && m.parameters.length === 2,
       );
     });
 

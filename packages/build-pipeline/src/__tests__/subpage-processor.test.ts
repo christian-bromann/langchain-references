@@ -123,27 +123,13 @@ describe("parseSubpageMarkdown", () => {
       expect(result.markdownContent).toContain("| DECORATOR | DESCRIPTION |");
       expect(result.markdownContent).toContain("| TYPE | DESCRIPTION |");
       // Verify all symbols are extracted
-      expect(result.symbolRefs).toContain(
-        "langchain.agents.middleware.SummarizationMiddleware"
-      );
-      expect(result.symbolRefs).toContain(
-        "langchain.agents.middleware.HumanInTheLoopMiddleware"
-      );
-      expect(result.symbolRefs).toContain(
-        "langchain.agents.middleware.ModelCallLimitMiddleware"
-      );
-      expect(result.symbolRefs).toContain(
-        "langchain.agents.middleware.before_agent"
-      );
-      expect(result.symbolRefs).toContain(
-        "langchain.agents.middleware.before_model"
-      );
-      expect(result.symbolRefs).toContain(
-        "langchain.agents.middleware.AgentState"
-      );
-      expect(result.symbolRefs).toContain(
-        "langchain.agents.middleware.ModelRequest"
-      );
+      expect(result.symbolRefs).toContain("langchain.agents.middleware.SummarizationMiddleware");
+      expect(result.symbolRefs).toContain("langchain.agents.middleware.HumanInTheLoopMiddleware");
+      expect(result.symbolRefs).toContain("langchain.agents.middleware.ModelCallLimitMiddleware");
+      expect(result.symbolRefs).toContain("langchain.agents.middleware.before_agent");
+      expect(result.symbolRefs).toContain("langchain.agents.middleware.before_model");
+      expect(result.symbolRefs).toContain("langchain.agents.middleware.AgentState");
+      expect(result.symbolRefs).toContain("langchain.agents.middleware.ModelRequest");
     });
   });
 
@@ -175,10 +161,7 @@ describe("parseSubpageMarkdown", () => {
       const result = parseSubpageMarkdown(content);
       // Module without members: uses module name
       // Direct symbol: uses the symbol name
-      expect(result.symbolRefs).toEqual([
-        "package.module",
-        "package.other.Symbol",
-      ]);
+      expect(result.symbolRefs).toEqual(["package.module", "package.other.Symbol"]);
     });
 
     it("handles mixed directives with and without members", () => {

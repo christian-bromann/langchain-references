@@ -651,12 +651,7 @@ async function uploadPackageIR(options: UploadOptions): Promise<UploadResult> {
     // Use packageId as fallback
   }
 
-  const routingMap = generateRoutingMap(
-    packageId,
-    displayName,
-    language as Language,
-    symbols,
-  );
+  const routingMap = generateRoutingMap(packageId, displayName, language as Language, symbols);
   uploadTasks.push({
     blobPath: `${basePath}/routing.json`,
     content: JSON.stringify(routingMap, null, 2),

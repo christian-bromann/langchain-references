@@ -43,8 +43,10 @@ export async function GET(request: Request) {
         duration: Math.round(performance.now() - langStart),
       };
 
-      console.log(`[prewarm] ${language}: ${packages.size} packages in ${results[language].duration}ms`);
-    })
+      console.log(
+        `[prewarm] ${language}: ${packages.size} packages in ${results[language].duration}ms`,
+      );
+    }),
   );
 
   const totalDuration = Math.round(performance.now() - startTime);

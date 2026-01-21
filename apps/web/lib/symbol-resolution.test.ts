@@ -149,11 +149,7 @@ test("extractSymbolPathForMapping: returns full symbol path", () => {
 // =============================================================================
 
 test("getExplicitMapping: JS to Python message mapping", () => {
-  const result = getExplicitMapping(
-    "langchain/index/BaseMessage",
-    "javascript",
-    "python",
-  );
+  const result = getExplicitMapping("langchain/index/BaseMessage", "javascript", "python");
   assert.equal(result, "langchain-core/messages/base/BaseMessage");
 });
 
@@ -167,20 +163,12 @@ test("getExplicitMapping: Python to JS message mapping", () => {
 });
 
 test("getExplicitMapping: returns null for non-mapped symbol", () => {
-  const result = getExplicitMapping(
-    "some-package/UnknownSymbol",
-    "javascript",
-    "python",
-  );
+  const result = getExplicitMapping("some-package/UnknownSymbol", "javascript", "python");
   assert.equal(result, null);
 });
 
 test("getExplicitMapping: same language returns null", () => {
-  const result = getExplicitMapping(
-    "langchain/index/BaseMessage",
-    "javascript",
-    "javascript",
-  );
+  const result = getExplicitMapping("langchain/index/BaseMessage", "javascript", "javascript");
   assert.equal(result, null);
 });
 

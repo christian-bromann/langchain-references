@@ -153,7 +153,7 @@ This task list breaks down the implementation of cross-language symbol navigatio
   - Extract resolution logic from LanguageDropdown
   - Return `resolveAndNavigate(targetLanguage)` function
   - Share between desktop and mobile components
-  - *Note: Resolution logic implemented inline in both components for simplicity*
+  - _Note: Resolution logic implemented inline in both components for simplicity_
 
 - [x] **5.2** Update `MobileProjectMenu.tsx` language links
   - Replace static `<Link>` components with buttons
@@ -179,7 +179,7 @@ This task list breaks down the implementation of cross-language symbol navigatio
   - Test all symbols in `SYMBOL_MAPPINGS.pythonToJs` resolve correctly
   - Verify bidirectional consistency
 
-- [ ] **6.2** Create E2E tests for language switching *(SKIPPED - per user request)*
+- [ ] **6.2** Create E2E tests for language switching _(SKIPPED - per user request)_
   - Test switching from JS `BaseMessage` to Python
   - Test switching from Python `embed_documents` to JS
   - Test fallback to package when symbol not found
@@ -191,7 +191,7 @@ This task list breaks down the implementation of cross-language symbol navigatio
   - Invalid package slug
   - Member symbols (methods, properties)
 
-- [ ] **6.4** Performance testing *(SKIPPED - per user request)*
+- [ ] **6.4** Performance testing _(SKIPPED - per user request)_
   - Verify resolution API < 200ms
   - Test with cold cache vs warm cache
   - Ensure UI remains responsive
@@ -201,7 +201,7 @@ This task list breaks down the implementation of cross-language symbol navigatio
   - Screen reader announces loading state (disabled state on buttons)
   - Focus management after navigation (handled by Next.js router)
 
-- [ ] **6.6** Add analytics tracking (optional) *(SKIPPED - optional)*
+- [ ] **6.6** Add analytics tracking (optional) _(SKIPPED - optional)_
   - Track language switch events
   - Track match types (explicit, normalized, fuzzy, fallback)
   - Track symbols that frequently fail to match
@@ -223,19 +223,19 @@ Recommended order for implementation:
 
 ## Files Created
 
-| File | Description |
-| --- | --- |
-| `apps/web/lib/symbol-mappings.ts` | Hardcoded symbol mappings and aliases ✅ |
-| `apps/web/lib/symbol-resolution.ts` | Core resolution logic ✅ |
-| `apps/web/lib/symbol-resolution.test.ts` | Unit tests for resolution logic ✅ |
-| `apps/web/app/api/resolve-symbol/route.ts` | API endpoint ✅ |
+| File                                       | Description                              |
+| ------------------------------------------ | ---------------------------------------- |
+| `apps/web/lib/symbol-mappings.ts`          | Hardcoded symbol mappings and aliases ✅ |
+| `apps/web/lib/symbol-resolution.ts`        | Core resolution logic ✅                 |
+| `apps/web/lib/symbol-resolution.test.ts`   | Unit tests for resolution logic ✅       |
+| `apps/web/app/api/resolve-symbol/route.ts` | API endpoint ✅                          |
 
 ## Files Modified
 
-| File | Changes |
-| --- | --- |
-| `apps/web/components/layout/LanguageDropdown.tsx` | Async resolution, loading state ✅ |
-| `apps/web/components/layout/MobileProjectMenu.tsx` | Resolution on language click ✅ |
+| File                                               | Changes                            |
+| -------------------------------------------------- | ---------------------------------- |
+| `apps/web/components/layout/LanguageDropdown.tsx`  | Async resolution, loading state ✅ |
+| `apps/web/components/layout/MobileProjectMenu.tsx` | Resolution on language click ✅    |
 
 ---
 

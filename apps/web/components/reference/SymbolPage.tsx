@@ -15,11 +15,7 @@ import { Suspense } from "react";
 import { ChevronRight, ExternalLink } from "lucide-react";
 import { symbolLanguageToLanguage } from "@langchain/ir-schema";
 import { getProjectForPackage } from "@/lib/config/projects";
-import {
-  SymbolContentSkeleton,
-  MembersSkeleton,
-  InheritedMembersSkeleton,
-} from "./skeletons";
+import { SymbolContentSkeleton, MembersSkeleton, InheritedMembersSkeleton } from "./skeletons";
 
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
@@ -390,9 +386,9 @@ function toDisplaySymbol(
     const memberId = m.refId || (m as unknown as { id?: string }).id;
     const memberSymbol = memberId ? memberSymbols?.get(memberId) : undefined;
     // Use type from member reference (for attributes) or extract from signature
-    const type = m.type || (memberSymbol
-      ? extractTypeFromSignature(memberSymbol.signature, m.kind)
-      : undefined);
+    const type =
+      m.type ||
+      (memberSymbol ? extractTypeFromSignature(memberSymbol.signature, m.kind) : undefined);
 
     return {
       name: m.name,
@@ -964,7 +960,9 @@ async function resolveInheritedMembers(
       }
 
       // Get the package's build ID (might be different from the current build)
-      const pkgBuildId = (manifestPackages.find((p) => p.packageId === pkgId) as { buildId?: string })?.buildId || buildId;
+      const pkgBuildId =
+        (manifestPackages.find((p) => p.packageId === pkgId) as { buildId?: string })?.buildId ||
+        buildId;
 
       // OPTIMIZATION: Use indexed routing map for O(1) lookup instead of O(n) iteration
       const indexedMap = await getIndexedRoutingMap(pkgBuildId, pkgId);
@@ -1081,7 +1079,8 @@ async function resolveInheritedMembers(
           member.kind,
         );
         if (qualifiedName) {
-          memberSymbol = (await getSymbolViaShardedLookup(buildId, basePackageId, qualifiedName)) ?? undefined;
+          memberSymbol =
+            (await getSymbolViaShardedLookup(buildId, basePackageId, qualifiedName)) ?? undefined;
         }
       }
 
@@ -1332,28 +1331,29 @@ export async function SymbolPage({
 
   // STREAMING: Prepare data for async inherited members resolution
   // This will be passed to a Suspense-wrapped component
-  const inheritedMembersData = buildId && irSymbolForMarkdown &&
+  const inheritedMembersData =
+    buildId &&
+    irSymbolForMarkdown &&
     (irSymbolForMarkdown.kind === "class" || irSymbolForMarkdown.kind === "interface") &&
     irSymbolForMarkdown.relations?.extends &&
     irSymbolForMarkdown.relations.extends.length > 0
-    ? {
-        buildId,
-        packageId,
-        baseClassNames: irSymbolForMarkdown.relations.extends,
-        ownMemberNames: irSymbolForMarkdown.members?.map((m) => m.name) || [],
-      }
-    : null;
+      ? {
+          buildId,
+          packageId,
+          baseClassNames: irSymbolForMarkdown.relations.extends,
+          ownMemberNames: irSymbolForMarkdown.members?.map((m) => m.name) || [],
+        }
+      : null;
 
   // Show not found state if symbol wasn't loaded
   if (!symbol) {
-    const symbolLanguage = symbolLanguageToLanguage(language === "javascript" ? "typescript" : language);
+    const symbolLanguage = symbolLanguageToLanguage(
+      language === "javascript" ? "typescript" : language,
+    );
     return (
       <div className="space-y-8">
         <nav className="flex items-center gap-2 text-sm text-foreground-secondary">
-          <Link
-            href={`/${language}`}
-            className="hover:text-foreground transition-colors"
-          >
+          <Link href={`/${language}`} className="hover:text-foreground transition-colors">
             {LANGUAGE_CONFIG[symbolLanguage].name}
           </Link>
           <ChevronRight className="h-4 w-4" />
@@ -1452,10 +1452,7 @@ export async function SymbolPage({
         <div className="flex-1 min-w-0 space-y-8">
           {/* Breadcrumbs */}
           <nav className="flex items-center gap-2 text-sm text-foreground-secondary flex-wrap">
-            <Link
-              href={`/${language}`}
-              className="hover:text-foreground transition-colors"
-            >
+            <Link href={`/${language}`} className="hover:text-foreground transition-colors">
               {urlLangLabel}
             </Link>
             <ChevronRight className="h-4 w-4 shrink-0" />
@@ -1706,10 +1703,7 @@ function TypeReferenceDisplay({
 
       if (disableLinks) {
         parts.push(
-          <span
-            key={`link-${startIndex}`}
-            className="text-primary"
-          >
+          <span key={`link-${startIndex}`} className="text-primary">
             {typeName}
           </span>,
         );
@@ -1729,10 +1723,7 @@ function TypeReferenceDisplay({
     else if (typeUrlMap?.has(typeName)) {
       if (disableLinks) {
         parts.push(
-          <span
-            key={`link-${startIndex}`}
-            className="text-primary"
-          >
+          <span key={`link-${startIndex}`} className="text-primary">
             {typeName}
           </span>,
         );
@@ -1754,10 +1745,7 @@ function TypeReferenceDisplay({
       if (builtinUrl) {
         if (disableLinks) {
           parts.push(
-            <span
-              key={`builtin-${startIndex}`}
-              className="text-foreground-secondary"
-            >
+            <span key={`builtin-${startIndex}`} className="text-foreground-secondary">
               {typeName}
             </span>,
           );
@@ -2046,42 +2034,51 @@ function MemberCard({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className={cn("font-mono text-foreground", isLinkable && "group-hover:text-primary transition-colors")}>
+          <span
+            className={cn(
+              "font-mono text-foreground",
+              isLinkable && "group-hover:text-primary transition-colors",
+            )}
+          >
             {member.name}
           </span>
 
           {/* Show type for properties/attributes */}
           {!isMethodOrFunction && member.type && (
             <span className="text-foreground-secondary font-mono text-sm">
-              : <TypeReferenceDisplay
-                  typeStr={member.type}
-                  knownSymbols={knownSymbols}
-                  language={language}
-                  packageName={packageName}
-                  typeUrlMap={typeUrlMap}
-                  disableLinks={isLinkable}
-                />
+              :{" "}
+              <TypeReferenceDisplay
+                typeStr={member.type}
+                knownSymbols={knownSymbols}
+                language={language}
+                packageName={packageName}
+                typeUrlMap={typeUrlMap}
+                disableLinks={isLinkable}
+              />
             </span>
           )}
 
           {/* Show return type for methods */}
           {isMethodOrFunction && member.type && (
             <span className="text-foreground-muted font-mono text-xs">
-              → <TypeReferenceDisplay
-                  typeStr={member.type}
-                  knownSymbols={knownSymbols}
-                  language={language}
-                  packageName={packageName}
-                  typeUrlMap={typeUrlMap}
-                  disableLinks={isLinkable}
-                />
+              →{" "}
+              <TypeReferenceDisplay
+                typeStr={member.type}
+                knownSymbols={knownSymbols}
+                language={language}
+                packageName={packageName}
+                typeUrlMap={typeUrlMap}
+                disableLinks={isLinkable}
+              />
             </span>
           )}
         </div>
 
-        {/* Show summary for methods */}
+        {/* Show summary - truncate for linkable members, show full for non-linkable (attributes) */}
         {member.summary && (
-          <p className="text-sm text-foreground-secondary mt-1 line-clamp-2">{member.summary}</p>
+          <p className={cn("text-sm text-foreground-secondary mt-1", isLinkable && "line-clamp-2")}>
+            {member.summary}
+          </p>
         )}
       </div>
 

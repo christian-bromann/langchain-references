@@ -21,7 +21,6 @@
  *   pnpm update-indexes --all
  */
 
-
 import fs from "node:fs/promises";
 import path from "node:path";
 import url from "node:url";
@@ -163,7 +162,10 @@ async function main(): Promise<void> {
           console.log(`\n📋 ${project}-${language}:`);
 
           // Load package names and order from config
-          const { packageNames, packageOrder } = await loadPackageInfoFromConfig(project, configLanguage);
+          const { packageNames, packageOrder } = await loadPackageInfoFromConfig(
+            project,
+            configLanguage,
+          );
 
           if (packageNames.length === 0) {
             console.log(`   ⚠️  No packages found, skipping`);

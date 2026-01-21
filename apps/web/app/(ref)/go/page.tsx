@@ -23,8 +23,7 @@ export const metadata: Metadata = {
     "Go API reference documentation for LangSmith SDK. Browse types, functions, and methods.",
   openGraph: {
     title: "Go API Reference",
-    description:
-      "Go API reference documentation for LangSmith SDK.",
+    description: "Go API reference documentation for LangSmith SDK.",
     type: "website",
     url: "/go",
     images: [
@@ -39,8 +38,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Go API Reference",
-    description:
-      "Go API reference documentation for LangSmith SDK.",
+    description: "Go API reference documentation for LangSmith SDK.",
     images: ["/og/go"],
   },
   alternates: {

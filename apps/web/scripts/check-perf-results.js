@@ -20,18 +20,15 @@ const THRESHOLDS = {
   "slugifySymbolPath performance": 10,
 
   // Cached data access
-  "getTypeUrlMap": 5,
-  "getCrossProjectPackages": 10,
+  getTypeUrlMap: 5,
+  getCrossProjectPackages: 10,
 
   // Combined operations
   "combined routing map operations": 50,
 };
 
 // Path to performance results JSON
-const RESULTS_PATH = path.join(
-  __dirname,
-  "../lib/__tests__/performance/perf-results.json"
-);
+const RESULTS_PATH = path.join(__dirname, "../lib/__tests__/performance/perf-results.json");
 
 function main() {
   console.log("🔍 Checking performance test results...\n");
