@@ -10,6 +10,7 @@ import { symbolLanguageToLanguage } from "@langchain/ir-schema";
 import { getProjectForPackage } from "@/lib/config/projects";
 
 import { cn } from "@/lib/utils/cn";
+import { createTrace, timed } from "@/lib/utils/perf-trace";
 import type { UrlLanguage } from "@/lib/utils/url";
 import {
   buildPackageUrl,
@@ -1154,8 +1155,13 @@ export async function SymbolPage({
   symbolPath,
   version,
 }: SymbolPageProps) {
+  const trace = createTrace(`SymbolPage:${packageName}/${symbolPath}`);
+  trace.mark("start");
+
   // Get the package-specific buildId
-  const buildId = await getPackageBuildId(language, packageName);
+  const buildId = await timed(trace, "getPackageBuildId", () =>
+    getPackageBuildId(language, packageName),
+  );
 
   // Get project info for version history/switching
   const project = getProjectForPackage(packageName);
@@ -1170,10 +1176,12 @@ export async function SymbolPage({
     // OPTIMIZATION: Fetch package info, routing map, and typeUrlMap in parallel
     // This eliminates sequential awaits and a duplicate getPackageInfo call
     const currentPkgSlugForPreload = slugifyPackageName(packageName);
-    const [pkgInfo, routingMap] = await Promise.all([
-      getPackageInfo(buildId, packageId),
-      getRoutingMapData(buildId, packageId),
-    ]);
+    const [pkgInfo, routingMap] = await timed(trace, "getPackageInfo+RoutingMap", () =>
+      Promise.all([
+        getPackageInfo(buildId, packageId),
+        getRoutingMapData(buildId, packageId),
+      ]),
+    );
     cachedPkgInfo = pkgInfo;
 
     // Build knownSymbols map for local type linking
@@ -1188,7 +1196,10 @@ export async function SymbolPage({
     }
 
     // Main symbol lookup (routing map + individual symbol files; falls back as needed)
-    const irSymbol = await findSymbolOptimized(buildId, packageId, symbolPath);
+    trace.mark("beforeFindSymbol");
+    const irSymbol = await timed(trace, "findSymbolOptimized", () =>
+      findSymbolOptimized(buildId, packageId, symbolPath),
+    );
 
     // If the symbol isn't found, it may be an "alias" member that was included in a parent
     // module/class's member list but wasn't emitted as a full SymbolRecord in the IR.
@@ -1295,29 +1306,30 @@ export async function SymbolPage({
           return null;
         });
 
+        trace.start("memberPromises");
         const memberResults = await Promise.all(memberPromises);
         for (const result of memberResults) {
           if (result && result.memberId) {
             memberSymbols.set(result.memberId, result.symbol);
           }
         }
+        trace.end("memberPromises");
       }
 
       // For inherited members, we still need the full symbols (but only if class has extends)
       // This is a rare case and the data is cached, so it's acceptable
       let inheritedMembers: InheritedMemberGroup[] | undefined;
+      const extendsRelations = irSymbol.relations?.extends;
       if (
         (irSymbol.kind === "class" || irSymbol.kind === "interface") &&
-        irSymbol.relations?.extends &&
-        irSymbol.relations.extends.length > 0
+        extendsRelations &&
+        extendsRelations.length > 0
       ) {
         // For inherited members, avoid fetching full symbols.json during prerender.
         // We resolve base classes via lightweight lookup indexes + individual symbol files.
-        inheritedMembers = await resolveInheritedMembers(
-          buildId,
-          packageId,
-          irSymbol.relations.extends,
-          irSymbol.members?.map((m) => m.name) || [],
+        const memberNames = irSymbol.members?.map((m) => m.name) || [];
+        inheritedMembers = await timed(trace, "resolveInheritedMembers", () =>
+          resolveInheritedMembers(buildId, packageId, extendsRelations, memberNames),
         );
       }
 
@@ -1364,7 +1376,12 @@ export async function SymbolPage({
   // don't iterate over 20k+ symbols on every render. See getTypeUrlMap() in loader.ts.
   const currentPkgSlug = slugifyPackageName(packageName);
   const localSymbolSet = new Set(knownSymbols.keys());
-  const typeUrlMap = await getTypeUrlMap(language, currentPkgSlug, localSymbolSet);
+  const typeUrlMap = await timed(trace, "getTypeUrlMap", () =>
+    getTypeUrlMap(language, currentPkgSlug, localSymbolSet),
+  );
+
+  trace.mark("beforeRender");
+  trace.summary();
 
   // Prefer package repo path prefix from the build manifest (already part of the IR data).
   // This captures monorepo layouts like `libs/<package>` without hardcoding.

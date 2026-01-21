@@ -2083,6 +2083,9 @@ function slugifySymbolPathLocal(symbolPath: string, hasPackagePrefix = true): st
 async function fetchCrossProjectPackagesData(
   language: Language,
 ): Promise<CrossProjectCacheData> {
+  const startTime = performance.now();
+  console.log(`[PERF:fetchCrossProjectPackagesData] Starting for ${language}`);
+
   const packages: [string, SerializableCrossProjectPackage][] = [];
   // Pre-compute typeUrlMap: symbolName -> full URL
   // Use an object first to handle "first package wins" deduplication
@@ -2164,6 +2167,12 @@ async function fetchCrossProjectPackagesData(
       packages.push(...entries);
     }
   }
+
+  const duration = performance.now() - startTime;
+  console.log(
+    `[PERF:fetchCrossProjectPackagesData] Completed in ${duration.toFixed(0)}ms: ` +
+      `${packages.length} packages, ${Object.keys(typeUrlMapObj).length} typeUrls`,
+  );
 
   return {
     packages,

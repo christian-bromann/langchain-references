@@ -11,6 +11,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Box, Code, Folder, ChevronRight, FileType, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { createTrace, timed } from "@/lib/utils/perf-trace";
 import type { UrlLanguage } from "@/lib/utils/url";
 import { buildSymbolUrl, getKindColor, getKindLabel, slugifyPackageName } from "@/lib/utils/url";
 import {
@@ -68,6 +69,9 @@ function toDisplaySymbol(entry: CatalogEntry): DisplaySymbol {
 }
 
 export async function PackagePage({ language, packageId, packageName }: PackagePageProps) {
+  const trace = createTrace(`PackagePage:${packageName}`);
+  trace.mark("start");
+
   const ecosystem = language === "typescript" ? "javascript" : language;
 
   // Validate that packageName looks like a real package (not a project name)
@@ -85,13 +89,19 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
   }
 
   // Get the package-specific buildId
-  const buildId = await getPackageBuildId(ecosystem, packageName);
+  const buildId = await timed(trace, "getPackageBuildId", () =>
+    getPackageBuildId(ecosystem, packageName),
+  );
+  trace.mark("afterBuildId");
 
   // Fetch package description and catalog entries in parallel
-  const [catalogEntries, description] = await Promise.all([
-    buildId ? getCatalogEntries(buildId, packageId) : Promise.resolve([]),
-    buildId ? getPackageDescription(packageId, buildId) : Promise.resolve(null),
-  ]);
+  const [catalogEntries, description] = await timed(trace, "getCatalog+Description", () =>
+    Promise.all([
+      buildId ? getCatalogEntries(buildId, packageId) : Promise.resolve([]),
+      buildId ? getPackageDescription(packageId, buildId) : Promise.resolve(null),
+    ]),
+  );
+  trace.mark("afterCatalog");
 
   // If no catalog entries, try loading from symbols.json directly (fallback for Java/Go)
   let symbols: DisplaySymbol[] = [];
@@ -100,7 +110,9 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
     symbols = catalogEntries.map(toDisplaySymbol);
   } else if (buildId) {
     // Fallback: load from symbols.json directly
-    const symbolsData = await getPackageSymbols(buildId, packageId);
+    const symbolsData = await timed(trace, "getPackageSymbols(fallback)", () =>
+      getPackageSymbols(buildId, packageId),
+    );
     if (symbolsData?.symbols) {
       symbols = symbolsData.symbols
         .filter((s) => s.tags?.visibility === "public" || !s.tags?.visibility)
@@ -126,6 +138,9 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
   const modules = symbols.filter((s) => s.kind === "module");
   const interfaces = symbols.filter((s) => s.kind === "interface");
   const types = symbols.filter((s) => s.kind === "typeAlias" || s.kind === "enum");
+
+  trace.mark("afterGrouping");
+  trace.summary();
 
   // Build TOC sections for the sidebar
   const tocSections: PackageTOCSection[] = [];
