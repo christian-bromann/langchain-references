@@ -831,8 +831,8 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
         // Log detailed failure info
         console.error(
           `[blob] ✗ ${path} FAILED after ${attempt + 1} attempts, phase=${phase}, elapsed=${elapsed}ms, ` +
-            `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
-            `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`,
+          `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
+          `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`,
         );
         break;
       }
@@ -844,7 +844,7 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
 
       console.warn(
         `[blob] ⟳ ${path} retry ${attempt + 1}/${maxRetries} in ${Math.round(delay)}ms, ` +
-          `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`,
+        `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`,
       );
 
       await sleep(delay);
@@ -854,7 +854,7 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
   failedBlobFetches++;
   console.error(
     `[blob] ✗ ${path} EXHAUSTED after ${maxRetries} attempts ` +
-      `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
+    `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
     lastError,
   );
   return null;
@@ -2088,102 +2088,117 @@ async function fetchCrossProjectPackagesData(
   // Use an object first to handle "first package wins" deduplication
   const typeUrlMapObj: Record<string, string> = {};
 
-  const enabledProjects = getEnabledProjects();
+  try {
+    const enabledProjects = getEnabledProjects();
 
-  // OPTIMIZATION: Collect ALL packages across ALL projects first, then fetch in parallel
-  // This avoids sequential project-by-project fetching
-  type PackageInfo = { pkg: { buildId: string; packageId: string; publishedName: string; ecosystem: string }; modulePrefix: string };
-  const allPackages: PackageInfo[] = [];
+    // OPTIMIZATION: Collect ALL packages across ALL projects first, then fetch in parallel
+    // This avoids sequential project-by-project fetching
+    type PackageInfo = { pkg: { buildId: string; packageId: string; publishedName: string; ecosystem: string }; modulePrefix: string };
+    const allPackages: PackageInfo[] = [];
 
-  // Step 1: Gather package info (lightweight - just reads from project indexes)
-  await Promise.all(
-    enabledProjects.map(async (project) => {
-      const variant = project.variants.find((v) => v.language === language && v.enabled);
-      if (!variant) return;
+    // Step 1: Gather package info (lightweight - just reads from project indexes)
+    await Promise.all(
+      enabledProjects.map(async (project) => {
+        const variant = project.variants.find((v) => v.language === language && v.enabled);
+        if (!variant) return;
 
-      const packageIndex = await getProjectPackageIndex(project.id, language);
-      if (!packageIndex?.packages) return;
+        const packageIndex = await getProjectPackageIndex(project.id, language);
+        if (!packageIndex?.packages) return;
 
-      // NOTE: We already filtered by language when fetching the index, so all packages
-      // in this index are for the correct language. No need to filter by ecosystem again
-      // (which could fail for javascript where ecosystem might be "typescript").
-      const projectPkgs = Object.values(packageIndex.packages);
+        // NOTE: We already filtered by language when fetching the index, so all packages
+        // in this index are for the correct language. No need to filter by ecosystem again
+        // (which could fail for javascript where ecosystem might be "typescript").
+        const projectPkgs = Object.values(packageIndex.packages);
 
-      for (const pkg of projectPkgs) {
-        const modulePrefix = pkg.publishedName
-          .replace(/-/g, "_")
-          .replace(/^@/, "")
-          .replace(/\//g, "_");
-        allPackages.push({ pkg, modulePrefix });
-      }
-    })
-  );
+        for (const pkg of projectPkgs) {
+          // Skip packages without publishedName (malformed data)
+          if (!pkg.publishedName) continue;
 
-  // Step 2: Fetch ALL routing maps in parallel (bounded by fetchBlobJson's concurrency limiter)
-  const perPkgResults = await Promise.all(
-    allPackages.map(async ({ pkg, modulePrefix }) => {
-      // Load known symbols for this package.
-      //
-      // IMPORTANT:
-      // We intentionally avoid `lookup.json` here because some packages can
-      // exceed Next.js' 2MB data cache limit (leading to cache failures and
-      // slow navigations). The routing map is significantly smaller and still
-      // contains enough info for type-linking (public, routable symbols).
-      const routingMap = await getRoutingMapData(pkg.buildId, pkg.packageId);
-      const knownSymbols: [string, string][] = [];
+          const modulePrefix = pkg.publishedName
+            .replace(/-/g, "_")
+            .replace(/^@/, "")
+            .replace(/\//g, "_");
+          allPackages.push({ pkg, modulePrefix });
+        }
+      })
+    );
 
-      // Pre-compute URL slug for this package
-      const pkgUrlSlug = modulePrefix.replace(/_/g, "-").toLowerCase();
-      const isPython = language === "python";
+    // Step 2: Fetch ALL routing maps in parallel (bounded by fetchBlobJson's concurrency limiter)
+    const perPkgResults = await Promise.all(
+      allPackages.map(async ({ pkg, modulePrefix }) => {
+        try {
+          // Load known symbols for this package.
+          //
+          // IMPORTANT:
+          // We intentionally avoid `lookup.json` here because some packages can
+          // exceed Next.js' 2MB data cache limit (leading to cache failures and
+          // slow navigations). The routing map is significantly smaller and still
+          // contains enough info for type-linking (public, routable symbols).
+          const routingMap = await getRoutingMapData(pkg.buildId, pkg.packageId);
+          const knownSymbols: [string, string][] = [];
 
-      if (routingMap?.slugs) {
-        for (const [slug, entry] of Object.entries(routingMap.slugs)) {
-          if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
-            // Map symbol name to its URL path (slug)
-            knownSymbols.push([entry.title, slug]);
+          // Pre-compute URL slug for this package
+          const pkgUrlSlug = modulePrefix.replace(/_/g, "-").toLowerCase();
+          const isPython = language === "python";
 
-            // Pre-compute full URL for typeUrlMap (first package wins)
-            if (!(entry.title in typeUrlMapObj)) {
-              const hasPackagePrefix = isPython && slug.includes("_");
-              const urlPath = slugifySymbolPathLocal(slug, hasPackagePrefix);
-              typeUrlMapObj[entry.title] = `/${language}/${pkgUrlSlug}/${urlPath}`;
+          if (routingMap?.slugs) {
+            for (const [slug, entry] of Object.entries(routingMap.slugs)) {
+              if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
+                // Map symbol name to its URL path (slug)
+                knownSymbols.push([entry.title, slug]);
+
+                // Pre-compute full URL for typeUrlMap (first package wins)
+                if (!(entry.title in typeUrlMapObj)) {
+                  const hasPackagePrefix = isPython && slug.includes("_");
+                  const urlPath = slugifySymbolPathLocal(slug, hasPackagePrefix);
+                  typeUrlMapObj[entry.title] = `/${language}/${pkgUrlSlug}/${urlPath}`;
+                }
+              }
             }
           }
+
+          const serializedPackage: SerializableCrossProjectPackage = {
+            slug: modulePrefix,
+            language,
+            knownSymbols,
+          };
+
+          const entries: [string, SerializableCrossProjectPackage][] = [];
+          entries.push([modulePrefix, serializedPackage]);
+
+          // Also add the original published name as a key for lookups
+          if (pkg.publishedName && pkg.publishedName !== modulePrefix) {
+            entries.push([pkg.publishedName, serializedPackage]);
+          }
+
+          return entries;
+        } catch (err) {
+          console.error(`[fetchCrossProjectPackagesData] Error processing package ${pkg.packageId}:`, err);
+          return []; // Skip this package on error
         }
-      }
+      }),
+    );
 
-      const serializedPackage: SerializableCrossProjectPackage = {
-        slug: modulePrefix,
-        language,
-        knownSymbols,
-      };
+    for (const entries of perPkgResults) {
+      packages.push(...entries);
+    }
 
-      const entries: [string, SerializableCrossProjectPackage][] = [];
-      entries.push([modulePrefix, serializedPackage]);
-
-      // Also add the original published name as a key for lookups
-      if (pkg.publishedName !== modulePrefix) {
-        entries.push([pkg.publishedName, serializedPackage]);
-      }
-
-      return entries;
-    }),
-  );
-
-  for (const entries of perPkgResults) {
-    packages.push(...entries);
-  }
-
-  const duration = performance.now() - startTime;
-  console.log(
-    `[PERF:fetchCrossProjectPackagesData] Completed in ${duration.toFixed(0)}ms: ` +
+    const duration = performance.now() - startTime;
+    console.log(
+      `[PERF:fetchCrossProjectPackagesData] Completed in ${duration.toFixed(0)}ms: ` +
       `${packages.length} packages, ${Object.keys(typeUrlMapObj).length} typeUrls`,
-  );
+    );
 
-  return {
-    packages,
-    typeUrlMap: Object.entries(typeUrlMapObj),
-  };
+    return {
+      packages,
+      typeUrlMap: Object.entries(typeUrlMapObj),
+    };
+  } catch (err) {
+    const duration = performance.now() - startTime;
+    console.error(`[PERF:fetchCrossProjectPackagesData] FAILED after ${duration.toFixed(0)}ms:`, err);
+    // Return empty data on error to prevent caching of error state
+    return { packages: [], typeUrlMap: [] };
+  }
 }
 
 /**
