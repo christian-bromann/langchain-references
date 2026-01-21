@@ -2,7 +2,7 @@
   "project": "langgraph",
   "language": "typescript",
   "repo": "langchain-ai/langgraphjs",
-  "lastSynced": "2026-01-16T06:34:37.214Z",
+  "lastSynced": "2026-01-21T04:33:15.329Z",
   "packages": [
     {
       "packageName": "@langchain/langgraph",
@@ -22,10 +22,10 @@
       "tagPattern": "@langchain/langgraph-sdk@*",
       "versions": [
         {
-          "version": "1.5.4",
-          "sha": "b7f7154d0a532920f192740c6287c7fa0756011c",
-          "tag": "@langchain/langgraph-sdk@1.5.4",
-          "releaseDate": "2026-01-16T00:15:23Z"
+          "version": "1.5.5",
+          "sha": "0812242b86c08360cf76564fe53e573d9991f75e",
+          "tag": "@langchain/langgraph-sdk@1.5.5",
+          "releaseDate": "2026-01-20T22:55:17Z"
         },
         {
           "version": "1.5.0",
@@ -52,7 +52,7 @@
           "releaseDate": "2025-07-07T12:53:46Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:34:37.212Z"
+      "lastUpdated": "2026-01-21T04:29:02.711Z"
     },
     {
       "packageName": "@langchain/langgraph-checkpoint",

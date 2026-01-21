@@ -2,7 +2,7 @@
   "project": "langgraph",
   "language": "python",
   "repo": "langchain-ai/langgraph",
-  "lastSynced": "2026-01-16T06:34:36.305Z",
+  "lastSynced": "2026-01-21T04:33:14.736Z",
   "packages": [
     {
       "packageName": "langgraph",
@@ -108,10 +108,10 @@
       "tagPattern": "checkpointsqlite==*",
       "versions": [
         {
-          "version": "3.0.2",
-          "sha": "f91d79d0c86932ded6e3b9f195d5a0bbd5aef99c",
-          "tag": "checkpointsqlite==3.0.2",
-          "releaseDate": "2026-01-12T20:26:37Z"
+          "version": "3.0.3",
+          "sha": "30355a7a5df0c7ec49eba125e546c58b7360c10e",
+          "tag": "checkpointsqlite==3.0.3",
+          "releaseDate": "2026-01-19T00:35:50Z"
         },
         {
           "version": "3.0.0",
@@ -144,7 +144,7 @@
           "releaseDate": "2024-08-07T02:43:35Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:34:35.742Z"
+      "lastUpdated": "2026-01-21T04:29:01.858Z"
     },
     {
       "packageName": "langgraph.checkpoint.postgres",

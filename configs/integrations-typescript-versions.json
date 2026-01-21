@@ -2,17 +2,17 @@
   "project": "integrations",
   "language": "typescript",
   "repo": "langchain-ai/langchainjs",
-  "lastSynced": "2026-01-16T06:34:29.954Z",
+  "lastSynced": "2026-01-21T04:33:12.722Z",
   "packages": [
     {
       "packageName": "@langchain/community",
       "tagPattern": "@langchain/community@*",
       "versions": [
         {
-          "version": "1.1.4",
-          "sha": "1c16ce9926830690adadd23f6413c197d7306245",
-          "tag": "@langchain/community@1.1.4",
-          "releaseDate": "2026-01-13T18:52:09Z"
+          "version": "1.1.5",
+          "sha": "8ff40a74e634824ea083ae393c8fbd6fa80690ee",
+          "tag": "@langchain/community@1.1.5",
+          "releaseDate": "2026-01-20T21:22:09Z"
         },
         {
           "version": "1.1.0",
@@ -39,17 +39,17 @@
           "releaseDate": "2025-09-29T22:58:35Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:34:13.027Z"
+      "lastUpdated": "2026-01-21T04:28:55.934Z"
     },
     {
       "packageName": "@langchain/anthropic",
       "tagPattern": "@langchain/anthropic@*",
       "versions": [
         {
-          "version": "1.3.10",
-          "sha": "a1499ae640a9cb0d713979efa7cba1d13c19e38e",
-          "tag": "@langchain/anthropic@1.3.10",
-          "releaseDate": "2026-01-14T21:58:52Z"
+          "version": "1.3.11",
+          "sha": "8ff40a74e634824ea083ae393c8fbd6fa80690ee",
+          "tag": "@langchain/anthropic@1.3.11",
+          "releaseDate": "2026-01-20T21:22:09Z"
         },
         {
           "version": "1.3.0",
@@ -94,12 +94,18 @@
           "releaseDate": "2025-10-27T19:02:21Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:34:16.360Z"
+      "lastUpdated": "2026-01-21T04:28:56.210Z"
     },
     {
       "packageName": "@langchain/aws",
       "tagPattern": "@langchain/aws@*",
       "versions": [
+        {
+          "version": "1.2.1",
+          "sha": "8ff40a74e634824ea083ae393c8fbd6fa80690ee",
+          "tag": "@langchain/aws@1.2.1",
+          "releaseDate": "2026-01-20T21:22:09Z"
+        },
         {
           "version": "1.2.0",
           "sha": "1c16ce9926830690adadd23f6413c197d7306245",
@@ -137,17 +143,17 @@
           "releaseDate": "2025-09-02T19:39:31Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:34:18.687Z"
+      "lastUpdated": "2026-01-21T04:28:56.521Z"
     },
     {
       "packageName": "@langchain/deepseek",
       "tagPattern": "@langchain/deepseek@*",
       "versions": [
         {
-          "version": "1.0.5",
-          "sha": "1c16ce9926830690adadd23f6413c197d7306245",
-          "tag": "@langchain/deepseek@1.0.5",
-          "releaseDate": "2026-01-13T18:52:09Z"
+          "version": "1.0.6",
+          "sha": "8ff40a74e634824ea083ae393c8fbd6fa80690ee",
+          "tag": "@langchain/deepseek@1.0.6",
+          "releaseDate": "2026-01-20T21:22:09Z"
         },
         {
           "version": "1.0.0",
@@ -162,17 +168,17 @@
           "releaseDate": "2025-07-05T00:59:44Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:34:19.816Z"
+      "lastUpdated": "2026-01-21T04:28:56.830Z"
     },
     {
       "packageName": "@langchain/google-genai",
       "tagPattern": "@langchain/google-genai@*",
       "versions": [
         {
-          "version": "2.1.10",
-          "sha": "a1499ae640a9cb0d713979efa7cba1d13c19e38e",
-          "tag": "@langchain/google-genai@2.1.10",
-          "releaseDate": "2026-01-14T21:58:52Z"
+          "version": "2.1.11",
+          "sha": "8ff40a74e634824ea083ae393c8fbd6fa80690ee",
+          "tag": "@langchain/google-genai@2.1.11",
+          "releaseDate": "2026-01-20T21:22:09Z"
         },
         {
           "version": "2.1.0",
@@ -211,17 +217,17 @@
           "releaseDate": "2025-09-15T21:41:49Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:34:22.426Z"
+      "lastUpdated": "2026-01-21T04:28:57.236Z"
     },
     {
       "packageName": "@langchain/google-vertexai",
       "tagPattern": "@langchain/google-vertexai@*",
       "versions": [
         {
-          "version": "2.1.10",
-          "sha": "a1499ae640a9cb0d713979efa7cba1d13c19e38e",
-          "tag": "@langchain/google-vertexai@2.1.10",
-          "releaseDate": "2026-01-14T21:58:52Z"
+          "version": "2.1.11",
+          "sha": "8ff40a74e634824ea083ae393c8fbd6fa80690ee",
+          "tag": "@langchain/google-vertexai@2.1.11",
+          "releaseDate": "2026-01-20T21:22:09Z"
         },
         {
           "version": "2.1.0",
@@ -260,17 +266,17 @@
           "releaseDate": "2025-09-15T21:41:49Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:34:24.751Z"
+      "lastUpdated": "2026-01-21T04:28:57.585Z"
     },
     {
       "packageName": "@langchain/google-vertexai-web",
       "tagPattern": "@langchain/google-vertexai-web@*",
       "versions": [
         {
-          "version": "2.1.10",
-          "sha": "a1499ae640a9cb0d713979efa7cba1d13c19e38e",
-          "tag": "@langchain/google-vertexai-web@2.1.10",
-          "releaseDate": "2026-01-14T21:58:52Z"
+          "version": "2.1.11",
+          "sha": "8ff40a74e634824ea083ae393c8fbd6fa80690ee",
+          "tag": "@langchain/google-vertexai-web@2.1.11",
+          "releaseDate": "2026-01-20T21:22:09Z"
         },
         {
           "version": "2.1.0",
@@ -309,7 +315,7 @@
           "releaseDate": "2025-09-15T21:41:49Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:34:26.950Z"
+      "lastUpdated": "2026-01-21T04:28:57.946Z"
     },
     {
       "packageName": "@langchain/groq",
@@ -341,10 +347,10 @@
       "tagPattern": "@langchain/openai@*",
       "versions": [
         {
-          "version": "1.2.2",
-          "sha": "1c16ce9926830690adadd23f6413c197d7306245",
-          "tag": "@langchain/openai@1.2.2",
-          "releaseDate": "2026-01-13T18:52:09Z"
+          "version": "1.2.3",
+          "sha": "8ff40a74e634824ea083ae393c8fbd6fa80690ee",
+          "tag": "@langchain/openai@1.2.3",
+          "releaseDate": "2026-01-20T21:22:09Z"
         },
         {
           "version": "1.2.0",
@@ -377,7 +383,7 @@
           "releaseDate": "2025-09-29T22:58:35Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:34:29.954Z"
+      "lastUpdated": "2026-01-21T04:28:58.398Z"
     }
   ]
 }

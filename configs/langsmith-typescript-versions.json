@@ -2,5 +2,20 @@
   "project": "langsmith",
   "language": "typescript",
   "repo": "langchain-ai/langsmith-sdk",
-  "packages": []
+  "lastSynced": "2026-01-21T04:33:16.476Z",
+  "packages": [
+    {
+      "packageName": "langsmith",
+      "tagPattern": "v*",
+      "versions": [
+        {
+          "version": "0.6.4",
+          "sha": "5f23962be987db43c4f26e9f042dcb4ffadff204",
+          "tag": "v0.6.4",
+          "releaseDate": "2026-01-15T20:01:40Z"
+        }
+      ],
+      "lastUpdated": "2026-01-21T04:29:04.469Z"
+    }
+  ]
 }

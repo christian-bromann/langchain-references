@@ -2,7 +2,7 @@
   "project": "integrations",
   "language": "python",
   "repo": "langchain-ai/langchain",
-  "lastSynced": "2026-01-16T06:34:08.948Z",
+  "lastSynced": "2026-01-21T04:33:09.916Z",
   "packages": [
     {
       "packageName": "langchain_community",
@@ -67,37 +67,6 @@
       "lastUpdated": "2026-01-16T06:33:43.385Z"
     },
     {
-      "packageName": "langchain_astradb",
-      "tagPattern": "langchain-astradb==*",
-      "versions": [],
-      "lastUpdated": "2026-01-16T06:33:43.386Z"
-    },
-    {
-      "packageName": "langchain_aws",
-      "tagPattern": "langchain-aws==*",
-      "versions": [],
-      "lastUpdated": "2026-01-16T06:33:43.386Z"
-    },
-    {
-      "packageName": "langchain_azure_dynamic_sessions",
-      "tagPattern": "langchain-azure-dynamic-sessions==*",
-      "versions": [
-        {
-          "version": "0.2.0",
-          "sha": "a2bfa412162c5d96cc477b2d7f322249efc542da",
-          "tag": "langchain-azure-dynamic-sessions==0.2.0",
-          "releaseDate": "2024-09-13T23:09:48Z"
-        }
-      ],
-      "lastUpdated": "2026-01-16T06:33:43.689Z"
-    },
-    {
-      "packageName": "langchain_cerebras",
-      "tagPattern": "langchain-cerebras==*",
-      "versions": [],
-      "lastUpdated": "2026-01-16T06:33:43.689Z"
-    },
-    {
       "packageName": "langchain_chroma",
       "tagPattern": "langchain-chroma==*",
       "versions": [
@@ -123,18 +92,6 @@
       "lastUpdated": "2026-01-16T06:33:44.438Z"
     },
     {
-      "packageName": "langchain_cohere",
-      "tagPattern": "langchain-cohere==*",
-      "versions": [],
-      "lastUpdated": "2026-01-16T06:33:44.438Z"
-    },
-    {
-      "packageName": "langchain_ibm_db2",
-      "tagPattern": "langchain-ibm-db2==*",
-      "versions": [],
-      "lastUpdated": "2026-01-16T06:33:44.438Z"
-    },
-    {
       "packageName": "langchain_deepseek",
       "tagPattern": "langchain-deepseek==*",
       "versions": [
@@ -157,12 +114,6 @@
           "releaseDate": "2025-07-22T17:29:52Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:33:45.194Z"
-    },
-    {
-      "packageName": "langchain_elasticsearch",
-      "tagPattern": "langchain-elasticsearch==*",
-      "versions": [],
       "lastUpdated": "2026-01-16T06:33:45.194Z"
     },
     {
@@ -207,12 +158,6 @@
           "releaseDate": "2025-04-23T14:08:38Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:33:46.639Z"
-    },
-    {
-      "packageName": "langchain_google_community",
-      "tagPattern": "langchain-google-community==*",
-      "versions": [],
       "lastUpdated": "2026-01-16T06:33:46.639Z"
     },
     {
@@ -290,32 +235,6 @@
       "lastUpdated": "2026-01-16T06:33:48.766Z"
     },
     {
-      "packageName": "langchain_ibm",
-      "tagPattern": "langchain-ibm==*",
-      "versions": [
-        {
-          "version": "0.1.9",
-          "sha": "902b57d107c8612e9f9b74ba8980dbbbfae7238e",
-          "tag": "langchain-ibm==0.1.9",
-          "releaseDate": "2024-07-05T18:07:50Z"
-        }
-      ],
-      "lastUpdated": "2026-01-16T06:33:49.079Z"
-    },
-    {
-      "packageName": "langchain_milvus",
-      "tagPattern": "langchain-milvus==*",
-      "versions": [
-        {
-          "version": "0.1.5",
-          "sha": "7c05f71e0f91948139068b6a4243493c1f8abe74",
-          "tag": "langchain-milvus==0.1.5",
-          "releaseDate": "2024-09-17T18:17:05Z"
-        }
-      ],
-      "lastUpdated": "2026-01-16T06:33:49.358Z"
-    },
-    {
       "packageName": "langchain_mistralai",
       "tagPattern": "langchain-mistralai==*",
       "versions": [
@@ -353,25 +272,6 @@
       "lastUpdated": "2026-01-16T06:33:50.685Z"
     },
     {
-      "packageName": "langchain_mongodb",
-      "tagPattern": "langchain-mongodb==*",
-      "versions": [
-        {
-          "version": "0.2.0",
-          "sha": "b47f4cfe51d2a33cf02a97332a2b1a9f9368d6f5",
-          "tag": "langchain-mongodb==0.2.0",
-          "releaseDate": "2024-09-14T02:17:36Z"
-        }
-      ],
-      "lastUpdated": "2026-01-16T06:33:51.004Z"
-    },
-    {
-      "packageName": "langchain_neo4j",
-      "tagPattern": "langchain-neo4j==*",
-      "versions": [],
-      "lastUpdated": "2026-01-16T06:33:51.005Z"
-    },
-    {
       "packageName": "langchain_nomic",
       "tagPattern": "langchain-nomic==*",
       "versions": [
@@ -394,12 +294,6 @@
           "releaseDate": "2025-09-11T20:00:41Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:33:51.786Z"
-    },
-    {
-      "packageName": "langchain_nvidia_ai_endpoints",
-      "tagPattern": "langchain-nvidia-ai-endpoints==*",
-      "versions": [],
       "lastUpdated": "2026-01-16T06:33:51.786Z"
     },
     {
@@ -490,25 +384,6 @@
       "lastUpdated": "2026-01-16T06:33:52.738Z"
     },
     {
-      "packageName": "langchain_pinecone",
-      "tagPattern": "langchain-pinecone==*",
-      "versions": [
-        {
-          "version": "0.2.3",
-          "sha": "ec5555380727bf623d71fae3803d5ea99f126e07",
-          "tag": "langchain-pinecone==0.2.3",
-          "releaseDate": "2026-01-16T06:33:52.797Z"
-        }
-      ],
-      "lastUpdated": "2026-01-16T06:33:52.797Z"
-    },
-    {
-      "packageName": "langchain_postgres",
-      "tagPattern": "langchain-postgres==*",
-      "versions": [],
-      "lastUpdated": "2026-01-16T06:33:52.797Z"
-    },
-    {
       "packageName": "langchain_prompty",
       "tagPattern": "langchain-prompty==*",
       "versions": [
@@ -551,6 +426,218 @@
         }
       ],
       "lastUpdated": "2026-01-16T06:33:53.088Z"
+    },
+    {
+      "packageName": "langchain_xai",
+      "tagPattern": "langchain-xai==*",
+      "versions": [
+        {
+          "version": "1.2.1",
+          "sha": "b5c5ba0a5f9b622c8e3ab04a7806c44eb214dcdc",
+          "tag": "langchain-xai==1.2.1",
+          "releaseDate": "2026-01-16T06:33:53.343Z"
+        },
+        {
+          "version": "1.2.0",
+          "sha": "a7aad60989581d80283ed2a13e19b41706daaec3",
+          "tag": "langchain-xai==1.2.0",
+          "releaseDate": "2026-01-16T06:33:53.398Z"
+        },
+        {
+          "version": "1.1.0",
+          "sha": "880652b7138b1fa22839249889dff6d4cd3f4105",
+          "tag": "langchain-xai==1.1.0",
+          "releaseDate": "2026-01-16T06:33:53.456Z"
+        },
+        {
+          "version": "1.0.0",
+          "sha": "7aef3388d9be54d7a96f3fb7d93c53ab9509f35f",
+          "tag": "langchain-xai==1.0.0",
+          "releaseDate": "2026-01-16T06:33:53.518Z"
+        },
+        {
+          "version": "0.2.5",
+          "sha": "116b7584986d69c34f7ec9dac6b9a2a6ae40c5f4",
+          "tag": "langchain-xai==0.2.5",
+          "releaseDate": "2026-01-16T06:33:53.579Z"
+        }
+      ],
+      "lastUpdated": "2026-01-16T06:33:53.579Z"
+    },
+    {
+      "packageName": "langchain_astradb",
+      "tagPattern": "langchain-astradb==*",
+      "versions": [],
+      "lastUpdated": "2026-01-16T06:33:43.386Z"
+    },
+    {
+      "packageName": "langchain_aws",
+      "tagPattern": "langchain-aws==*",
+      "versions": [
+        {
+          "version": "1.2.1",
+          "sha": "6503b7cfe699f7db4aacefac7e13ec17d2f4c1b9",
+          "tag": "langchain-aws==1.2.1",
+          "releaseDate": "2026-01-15T03:16:43Z"
+        },
+        {
+          "version": "1.2.0",
+          "sha": "a901806d2547c11f5c3aa857df3e8a4923d7c813",
+          "tag": "langchain-aws==1.2.0",
+          "releaseDate": "2025-12-31T22:02:09Z"
+        },
+        {
+          "version": "1.1.1",
+          "sha": "2ad6282b0665273ce0523be544a167d4ec88e20e",
+          "tag": "langchain-aws==1.1.1",
+          "releaseDate": "2025-12-24T06:33:32Z"
+        },
+        {
+          "version": "1.1.0",
+          "sha": "4af20bac02725200199747dc68642a74d932c9cb",
+          "tag": "langchain-aws==1.1.0",
+          "releaseDate": "2025-11-24T14:21:18Z"
+        },
+        {
+          "version": "1.0.0",
+          "sha": "474671e7d521d83a9be04ef7d8d3affcbbd37dfb",
+          "tag": "langchain-aws==1.0.0",
+          "releaseDate": "2025-10-17T18:49:28Z"
+        },
+        {
+          "version": "0.2.35",
+          "sha": "06c8d030b3afca94a00a2f53a6234a34c5526d19",
+          "tag": "langchain-aws==0.2.35",
+          "releaseDate": "2025-10-02T23:41:54Z"
+        }
+      ],
+      "lastUpdated": "2026-01-21T04:33:09.623Z"
+    },
+    {
+      "packageName": "langchain_azure_dynamic_sessions",
+      "tagPattern": "langchain-azure-dynamic-sessions==*",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "sha": "a2bfa412162c5d96cc477b2d7f322249efc542da",
+          "tag": "langchain-azure-dynamic-sessions==0.2.0",
+          "releaseDate": "2024-09-13T23:09:48Z"
+        }
+      ],
+      "lastUpdated": "2026-01-16T06:33:43.689Z"
+    },
+    {
+      "packageName": "langchain_cerebras",
+      "tagPattern": "langchain-cerebras==*",
+      "versions": [],
+      "lastUpdated": "2026-01-16T06:33:43.689Z"
+    },
+    {
+      "packageName": "langchain_cohere",
+      "tagPattern": "langchain-cohere==*",
+      "versions": [],
+      "lastUpdated": "2026-01-16T06:33:44.438Z"
+    },
+    {
+      "packageName": "langchain_ibm_db2",
+      "tagPattern": "langchain-ibm-db2==*",
+      "versions": [],
+      "lastUpdated": "2026-01-16T06:33:44.438Z"
+    },
+    {
+      "packageName": "langchain_elasticsearch",
+      "tagPattern": "langchain-elasticsearch==*",
+      "versions": [],
+      "lastUpdated": "2026-01-16T06:33:45.194Z"
+    },
+    {
+      "packageName": "langchain_google_community",
+      "tagPattern": "langchain-google-community==*",
+      "versions": [],
+      "lastUpdated": "2026-01-16T06:33:46.639Z"
+    },
+    {
+      "packageName": "langchain_google_genai",
+      "tagPattern": "langchain-google-genai==*",
+      "versions": [],
+      "lastUpdated": "2026-01-21T04:33:09.623Z"
+    },
+    {
+      "packageName": "langchain_ibm",
+      "tagPattern": "langchain-ibm==*",
+      "versions": [
+        {
+          "version": "0.1.9",
+          "sha": "902b57d107c8612e9f9b74ba8980dbbbfae7238e",
+          "tag": "langchain-ibm==0.1.9",
+          "releaseDate": "2024-07-05T18:07:50Z"
+        }
+      ],
+      "lastUpdated": "2026-01-16T06:33:49.079Z"
+    },
+    {
+      "packageName": "langchain_milvus",
+      "tagPattern": "langchain-milvus==*",
+      "versions": [
+        {
+          "version": "0.1.5",
+          "sha": "7c05f71e0f91948139068b6a4243493c1f8abe74",
+          "tag": "langchain-milvus==0.1.5",
+          "releaseDate": "2024-09-17T18:17:05Z"
+        }
+      ],
+      "lastUpdated": "2026-01-16T06:33:49.358Z"
+    },
+    {
+      "packageName": "langchain_mongodb",
+      "tagPattern": "langchain-mongodb==*",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "sha": "b47f4cfe51d2a33cf02a97332a2b1a9f9368d6f5",
+          "tag": "langchain-mongodb==0.2.0",
+          "releaseDate": "2024-09-14T02:17:36Z"
+        }
+      ],
+      "lastUpdated": "2026-01-16T06:33:51.004Z"
+    },
+    {
+      "packageName": "langchain_neo4j",
+      "tagPattern": "langchain-neo4j==*",
+      "versions": [],
+      "lastUpdated": "2026-01-16T06:33:51.005Z"
+    },
+    {
+      "packageName": "langchain_nvidia_ai_endpoints",
+      "tagPattern": "langchain-nvidia-ai-endpoints==*",
+      "versions": [],
+      "lastUpdated": "2026-01-16T06:33:51.786Z"
+    },
+    {
+      "packageName": "langchain_pinecone",
+      "tagPattern": "langchain-pinecone==*",
+      "versions": [
+        {
+          "version": "0.2.3",
+          "sha": "ec5555380727bf623d71fae3803d5ea99f126e07",
+          "tag": "langchain-pinecone==0.2.3",
+          "releaseDate": "2026-01-16T06:33:52.797Z"
+        }
+      ],
+      "lastUpdated": "2026-01-16T06:33:52.797Z"
+    },
+    {
+      "packageName": "langchain_postgres",
+      "tagPattern": "langchain-postgres==*",
+      "versions": [
+        {
+          "version": "0.0.16",
+          "sha": "01549d469e8bb58b6ee0b26ddb13e7ee936c5d1f",
+          "tag": "langchain-postgres==0.0.16",
+          "releaseDate": "2025-10-17T14:59:03Z"
+        }
+      ],
+      "lastUpdated": "2026-01-21T04:33:09.916Z"
     },
     {
       "packageName": "langchain_redis",
@@ -622,41 +709,16 @@
       "lastUpdated": "2026-01-16T06:33:53.281Z"
     },
     {
-      "packageName": "langchain_xai",
-      "tagPattern": "langchain-xai==*",
-      "versions": [
-        {
-          "version": "1.2.1",
-          "sha": "b5c5ba0a5f9b622c8e3ab04a7806c44eb214dcdc",
-          "tag": "langchain-xai==1.2.1",
-          "releaseDate": "2026-01-16T06:33:53.343Z"
-        },
-        {
-          "version": "1.2.0",
-          "sha": "a7aad60989581d80283ed2a13e19b41706daaec3",
-          "tag": "langchain-xai==1.2.0",
-          "releaseDate": "2026-01-16T06:33:53.398Z"
-        },
-        {
-          "version": "1.1.0",
-          "sha": "880652b7138b1fa22839249889dff6d4cd3f4105",
-          "tag": "langchain-xai==1.1.0",
-          "releaseDate": "2026-01-16T06:33:53.456Z"
-        },
-        {
-          "version": "1.0.0",
-          "sha": "7aef3388d9be54d7a96f3fb7d93c53ab9509f35f",
-          "tag": "langchain-xai==1.0.0",
-          "releaseDate": "2026-01-16T06:33:53.518Z"
-        },
-        {
-          "version": "0.2.5",
-          "sha": "116b7584986d69c34f7ec9dac6b9a2a6ae40c5f4",
-          "tag": "langchain-xai==0.2.5",
-          "releaseDate": "2026-01-16T06:33:53.579Z"
-        }
-      ],
-      "lastUpdated": "2026-01-16T06:33:53.579Z"
+      "packageName": "langchain_weaviate",
+      "tagPattern": "langchain-weaviate==*",
+      "versions": [],
+      "lastUpdated": "2026-01-21T04:33:09.916Z"
+    },
+    {
+      "packageName": "langchain_parallel",
+      "tagPattern": "langchain-parallel==*",
+      "versions": [],
+      "lastUpdated": "2026-01-21T04:33:09.916Z"
     }
   ]
 }

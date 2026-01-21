@@ -2,17 +2,17 @@
   "project": "langchain",
   "language": "typescript",
   "repo": "langchain-ai/langchainjs",
-  "lastSynced": "2026-01-16T06:34:33.586Z",
+  "lastSynced": "2026-01-21T04:33:12.732Z",
   "packages": [
     {
       "packageName": "langchain",
       "tagPattern": "langchain@*",
       "versions": [
         {
-          "version": "1.2.10",
-          "sha": "a1499ae640a9cb0d713979efa7cba1d13c19e38e",
-          "tag": "langchain@1.2.10",
-          "releaseDate": "2026-01-14T21:58:52Z"
+          "version": "1.2.11",
+          "sha": "8ff40a74e634824ea083ae393c8fbd6fa80690ee",
+          "tag": "langchain@1.2.11",
+          "releaseDate": "2026-01-20T21:22:09Z"
         },
         {
           "version": "1.2.0",
@@ -51,17 +51,17 @@
           "releaseDate": "2025-09-29T22:58:35Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:34:31.016Z"
+      "lastUpdated": "2026-01-21T04:28:59.718Z"
     },
     {
       "packageName": "@langchain/core",
       "tagPattern": "@langchain/core@*",
       "versions": [
         {
-          "version": "1.1.15",
-          "sha": "a1499ae640a9cb0d713979efa7cba1d13c19e38e",
-          "tag": "@langchain/core@1.1.15",
-          "releaseDate": "2026-01-14T21:58:52Z"
+          "version": "1.1.16",
+          "sha": "8ff40a74e634824ea083ae393c8fbd6fa80690ee",
+          "tag": "@langchain/core@1.1.16",
+          "releaseDate": "2026-01-20T21:22:09Z"
         },
         {
           "version": "1.1.1",
@@ -88,7 +88,7 @@
           "releaseDate": "2025-10-27T19:02:21Z"
         }
       ],
-      "lastUpdated": "2026-01-16T06:34:31.385Z"
+      "lastUpdated": "2026-01-21T04:29:00.060Z"
     },
     {
       "packageName": "@langchain/textsplitters",

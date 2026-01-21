@@ -58,6 +58,7 @@ interface PackageConfig {
   name: string;
   path: string;
   displayName?: string;
+  repo?: string; // For external packages that live in a different repo
   versioning?: {
     tagPattern: string;
     maxVersions?: number;
@@ -72,6 +73,7 @@ interface BuildConfig {
   language: string;
   repo: string;
   packages: PackageConfig[];
+  externalPackages?: PackageConfig[];
 }
 
 // =============================================================================
@@ -470,8 +472,9 @@ async function syncProject(
   console.log(`\n📦 Syncing ${config.project || "unknown"} (${config.language})`);
   console.log(`   Repo: ${config.repo}`);
 
-  // Get packages with versioning enabled
-  const versionedPackages = config.packages.filter(
+  // Get all packages with versioning enabled (both regular and external)
+  const allConfigPackages = [...config.packages, ...(config.externalPackages ?? [])];
+  const versionedPackages = allConfigPackages.filter(
     (p) => p.versioning?.tagPattern && p.versioning.enabled !== false,
   );
 
@@ -480,7 +483,10 @@ async function syncProject(
     return null;
   }
 
-  console.log(`   Packages: ${versionedPackages.map((p) => p.name).join(", ")}`);
+  // Count packages by repo for logging
+  const mainRepoPackages = versionedPackages.filter((p) => !p.repo);
+  const externalPackages = versionedPackages.filter((p) => p.repo);
+  console.log(`   Packages: ${mainRepoPackages.length} from main repo, ${externalPackages.length} from external repos`);
 
   // Build headers for API calls
   const headers: Record<string, string> = {
@@ -491,14 +497,29 @@ async function syncProject(
     headers.Authorization = getAuthHeader(githubToken);
   }
 
-  // Fetch all tags from the repo once (cached for efficiency)
-  const allRepoTags = await fetchAllRepoTags(config.repo, headers);
+  // Group packages by repo to minimize API calls
+  const packagesByRepo = new Map<string, PackageConfig[]>();
+  for (const pkg of versionedPackages) {
+    const repo = pkg.repo ?? config.repo;
+    if (!packagesByRepo.has(repo)) {
+      packagesByRepo.set(repo, []);
+    }
+    packagesByRepo.get(repo)!.push(pkg);
+  }
+
+  // Pre-fetch tags for all repos (cached for efficiency)
+  console.log(`   Fetching tags from ${packagesByRepo.size} repo(s)...`);
+  for (const repo of packagesByRepo.keys()) {
+    await fetchAllRepoTags(repo, headers);
+  }
 
   // Process each package using cached tags
   const packages: PackageVersions[] = [];
 
   for (const pkg of versionedPackages) {
-    console.log(`\n   📄 ${pkg.name}`);
+    const pkgRepo = pkg.repo ?? config.repo;
+    const isExternal = !!pkg.repo;
+    console.log(`\n   📄 ${pkg.name}${isExternal ? ` (${pkgRepo})` : ""}`);
 
     const pattern = pkg.versioning!.tagPattern;
     const maxVersions = pkg.versioning!.maxVersions ?? 10;
@@ -506,8 +527,9 @@ async function syncProject(
     // Check existing data first
     const existingPkg = existingVersions?.packages.find((p) => p.packageName === pkg.name);
 
-    // Filter cached tags for this package's pattern
-    const matchingVersions = filterTagsForPattern(allRepoTags, pattern);
+    // Get cached tags for this package's repo and filter by pattern
+    const repoTags = repoTagCache.get(pkgRepo)?.tags ?? [];
+    const matchingVersions = filterTagsForPattern(repoTags, pattern);
 
     console.log(`      Found ${matchingVersions.length} matching tags`);
 
@@ -643,7 +665,7 @@ async function syncProject(
       process.stdout.write(`\r      Fetching dates... ${fetchCount}/${versionsToFetch.length}`);
 
       const { date, commitSha } = await fetchCommitDate(
-        config.repo,
+        pkgRepo,
         v.sha,
         headers,
         v.objectType,
