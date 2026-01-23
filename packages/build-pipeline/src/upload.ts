@@ -18,6 +18,7 @@ import { createHash } from "crypto";
 import fs from "fs/promises";
 import path from "path";
 import type { SymbolRecord, RoutingMap, PackageChangelog, Language } from "@langchain/ir-schema";
+import { renderMarkdown } from "./markdown-renderer.js";
 
 // Maximum concurrent uploads to avoid overwhelming the Vercel Blob API
 // Vercel Blob has strict rate limits, so we keep this conservative
@@ -369,7 +370,7 @@ interface CatalogEntry {
   kind: string;
   name: string;
   qualifiedName: string;
-  summary?: string;
+  summaryHtml?: string;
   signature?: string;
 }
 
@@ -381,7 +382,7 @@ export interface CatalogEntryPublic {
   kind: string;
   name: string;
   qualifiedName: string;
-  summary?: string;
+  summaryHtml?: string;
   signature?: string;
 }
 
@@ -389,11 +390,14 @@ export interface CatalogEntryPublic {
  * Generate a single catalog file containing all public symbols.
  * This replaces the previous sharded approach which created 100+ small files.
  */
-export function generateCatalog(
+export async function generateCatalog(
   packageId: string,
   symbols: SymbolRecord[],
-): CatalogEntry[] {
+): Promise<CatalogEntry[]> {
   const entries: CatalogEntry[] = [];
+
+  // First pass: collect entries and queue summaries for rendering
+  const entriesToRender: { index: number; summary: string }[] = [];
 
   for (const symbol of symbols) {
     // Only include public symbols that should appear in package overview
@@ -401,14 +405,41 @@ export function generateCatalog(
     if (!["class", "function", "interface", "module", "typeAlias", "enum"].includes(symbol.kind))
       continue;
 
+    const summary = symbol.docs?.summary?.substring(0, 200);
+    const index = entries.length;
+
+    // Note: We don't store raw `summary` anymore - only `summaryHtml`
+    // This reduces catalog size and avoids redundancy
     entries.push({
       id: symbol.id,
       kind: symbol.kind,
       name: symbol.name,
       qualifiedName: symbol.qualifiedName,
-      summary: symbol.docs?.summary?.substring(0, 200),
       signature: symbol.signature?.substring(0, 300),
     });
+
+    // Queue for HTML rendering if summary exists
+    if (summary) {
+      entriesToRender.push({ index, summary });
+    }
+  }
+
+  // Second pass: batch render summaries to HTML
+  if (entriesToRender.length > 0) {
+    // Render in parallel with concurrency limit
+    const BATCH_SIZE = 20;
+    for (let i = 0; i < entriesToRender.length; i += BATCH_SIZE) {
+      const batch = entriesToRender.slice(i, i + BATCH_SIZE);
+      const htmlResults = await Promise.all(
+        batch.map(({ summary }) => renderMarkdown(summary)),
+      );
+
+      // Store results back in entries
+      for (let j = 0; j < batch.length; j++) {
+        const { index } = batch[j];
+        entries[index].summaryHtml = htmlResults[j];
+      }
+    }
   }
 
   return entries;
@@ -624,8 +655,8 @@ async function uploadPackageIR(options: UploadOptions): Promise<UploadResult> {
     content: JSON.stringify(lookupIndex),
   });
 
-  // Generate and upload single catalog file
-  const catalogEntries = generateCatalog(packageId, symbols);
+  // Generate and upload single catalog file (with pre-rendered HTML)
+  const catalogEntries = await generateCatalog(packageId, symbols);
   uploadTasks.push({
     blobPath: `${basePath}/catalog.json`,
     content: JSON.stringify(catalogEntries),

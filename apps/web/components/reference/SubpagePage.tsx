@@ -52,7 +52,7 @@ interface DisplaySymbol {
     | "enum";
   name: string;
   qualifiedName: string;
-  summary?: string;
+  summaryHtml?: string;
   signature?: string;
 }
 
@@ -65,7 +65,7 @@ function toDisplaySymbol(entry: CatalogEntry): DisplaySymbol {
     kind: entry.kind as DisplaySymbol["kind"],
     name: entry.name,
     qualifiedName: entry.qualifiedName,
-    summary: entry.summary,
+    summaryHtml: entry.summaryHtml,
     signature: entry.signature,
   };
 }
@@ -397,9 +397,12 @@ async function SymbolCard({
             {symbol.name}
           </h3>
         </div>
-        {symbol.summary && (
+        {symbol.summaryHtml && (
           <div className="mt-1 [&_code]:text-xs">
-            <MarkdownContent compact paragraphClassName="text-sm text-foreground-secondary line-clamp-2 m-0">{symbol.summary}</MarkdownContent>
+            <div
+              className="text-sm text-foreground-secondary line-clamp-2 m-0 [&_p]:m-0"
+              dangerouslySetInnerHTML={{ __html: symbol.summaryHtml }}
+            />
           </div>
         )}
         {symbol.signature && (

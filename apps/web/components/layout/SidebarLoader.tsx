@@ -241,10 +241,14 @@ async function loadSidebarPackagesForProject(
   // OPTIMIZATION: Use manifest data directly instead of fetching each package.json
   // The manifest already contains displayName, subpages, and exportPaths
   const buildId = await getBuildIdForLanguage(language, projectId);
-  if (!buildId) return [];
+  if (!buildId) {
+    return [];
+  }
 
   const manifest = await getManifestData(buildId);
-  if (!manifest) return [];
+  if (!manifest) {
+    return [];
+  }
 
   // Filter by language/ecosystem AND by project
   const packages = manifest.packages.filter((p) => {
@@ -354,15 +358,12 @@ async function loadSidebarPackages(language: Language): Promise<SidebarPackage[]
  * use SidebarWithData instead to avoid duplicate fetching.
  */
 export async function SidebarLoader() {
-  const sidebarStart = Date.now();
-  console.log(`[SidebarLoader] START`);
   const [pythonPackages, javascriptPackages, javaPackages, goPackages] = await Promise.all([
     loadSidebarPackages("python"),
     loadSidebarPackages("javascript"),
     loadSidebarPackages("java"),
     loadSidebarPackages("go"),
   ]);
-  console.log(`[SidebarLoader] END: ${Date.now() - sidebarStart}ms (py=${pythonPackages.length}, js=${javascriptPackages.length}, java=${javaPackages.length}, go=${goPackages.length})`);
 
   return (
     <Sidebar

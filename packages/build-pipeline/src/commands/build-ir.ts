@@ -2069,8 +2069,8 @@ async function buildConfig(
           JSON.stringify(lookupIndex, null, 2),
         );
 
-        // Generate and write single catalog file
-        const catalogEntries = generateCatalog(
+        // Generate and write single catalog file (with pre-rendered HTML summaries)
+        const catalogEntries = await generateCatalog(
           pkgInfo.packageId,
           symbolsData.symbols,
         );

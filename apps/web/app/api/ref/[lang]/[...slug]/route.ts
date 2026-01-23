@@ -93,7 +93,7 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
             name: e.name,
             kind: e.kind,
             qualifiedName: e.qualifiedName,
-            summary: e.summary,
+            summaryHtml: e.summaryHtml,
           })),
         },
         { headers: getCacheHeaders() },

@@ -1,3 +1,4 @@
+// oxlint-disable no-console
 /**
  * Markdown Content Component
  *
@@ -423,9 +424,7 @@ function postProcessAdmonitions(html: string): string {
     const { startMarker, endMarker } = pair;
 
     try {
-      const metadata = JSON.parse(
-        Buffer.from(startMarker.metadata!, "base64").toString("utf-8"),
-      );
+      const metadata = JSON.parse(Buffer.from(startMarker.metadata!, "base64").toString("utf-8"));
       const { type, title, icon } = metadata;
 
       // Extract content between markers
@@ -528,6 +527,10 @@ async function processMarkdown(content: string, paragraphClassName?: string): Pr
   return html;
 }
 
+// Track markdown processing stats for performance analysis
+let markdownCallCount = 0;
+let markdownTotalTime = 0;
+
 /**
  * Renders markdown content with syntax highlighting for code blocks.
  * Uses Mintlify-inspired styling with the same Shiki themes as CodeBlock.
@@ -540,7 +543,17 @@ export async function MarkdownContent({
   compact = false,
   paragraphClassName,
 }: MarkdownContentProps) {
+  const start = Date.now();
   const html = await processMarkdown(children, paragraphClassName);
+  const elapsed = Date.now() - start;
+  
+  markdownCallCount++;
+  markdownTotalTime += elapsed;
+  
+  // Log every 50 calls to show progress without flooding
+  if (markdownCallCount % 50 === 0) {
+    console.log(`[MarkdownContent] ${markdownCallCount} calls, total: ${markdownTotalTime}ms, avg: ${(markdownTotalTime / markdownCallCount).toFixed(1)}ms`);
+  }
 
   return (
     <MarkdownWrapper html={html} rawContent={children} className={className} compact={compact} />

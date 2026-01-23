@@ -40,12 +40,18 @@
   "dependencies": {
     "@langchain/extractor-typescript": "workspace:*",
     "@langchain/ir-schema": "workspace:*",
+    "@shikijs/rehype": "^3.6.0",
     "@vercel/blob": "^2.0.0",
     "commander": "^14.0.2",
     "p-limit": "^7.2.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.1",
     "semver": "^7.6.0",
     "tar": "^7.5.2",
-    "tinyglobby": "^0.2.14"
+    "tinyglobby": "^0.2.14",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
     "@types/node": "^25.0.3",

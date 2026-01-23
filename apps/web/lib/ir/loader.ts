@@ -69,7 +69,7 @@ export interface CatalogEntry {
   kind: string;
   name: string;
   qualifiedName: string;
-  summary?: string;
+  summaryHtml?: string;
   signature?: string;
 }
 
@@ -327,7 +327,6 @@ interface ProjectPackageIndex {
 // Cache for package-level data
 const packagePointerCache = new Map<string, PackagePointer>();
 const projectPackageIndexCache = new Map<string, ProjectPackageIndex>();
-const packageSymbolsCacheV2 = new Map<string, { symbols: SymbolRecord[]; total: number }>();
 
 /**
  * Fetch a pointer JSON from Vercel Blob (public access) with retry logic
@@ -561,42 +560,6 @@ export async function getProjectPackageIndex(
     console.error(`Failed to get project package index for ${project}-${language}:`, error);
     return null;
   }
-}
-
-/**
- * Get package symbols using the package-level path structure.
- *
- * Path: ir/packages/{packageId}/{buildId}/symbols.json
- */
-export async function getPackageSymbolsV2(
-  packageId: string,
-  buildId?: string,
-): Promise<{ symbols: SymbolRecord[]; total: number } | null> {
-  // If no buildId provided, try to get it from the package pointer
-  let actualBuildId = buildId;
-  if (!actualBuildId) {
-    actualBuildId = (await getBuildIdForPackageId(packageId)) || undefined;
-  }
-
-  if (!actualBuildId) {
-    return null;
-  }
-
-  const cacheKey = `${packageId}:${actualBuildId}`;
-  if (packageSymbolsCacheV2.has(cacheKey)) {
-    return packageSymbolsCacheV2.get(cacheKey)!;
-  }
-
-  const blobPath = `${IR_BASE_PATH}/packages/${packageId}/${actualBuildId}/symbols.json`;
-  const response = await fetchBlobJson<{ symbols: SymbolRecord[] }>(blobPath);
-
-  if (!response?.symbols) {
-    return null;
-  }
-
-  const result = { symbols: response.symbols, total: response.symbols.length };
-  packageSymbolsCacheV2.set(cacheKey, result);
-  return result;
 }
 
 /**
@@ -966,12 +929,18 @@ const getCachedRoutingMap = unstable_cache(fetchRoutingMap, ["routing-map"], {
 });
 
 /**
+ * In-flight promise cache for routing map fetches.
+ * This prevents multiple concurrent calls from all fetching the same routing.json.
+ */
+const routingFetchPromises = new Map<string, Promise<RoutingMap | null>>();
+
+/**
  * Get the routing map for a package from Vercel Blob.
  * Routing maps are much smaller than full symbols and contain only
  * the slug → kind mapping needed for static generation.
  *
- * OPTIMIZATION: Uses Next.js unstable_cache to persist routing maps
- * across serverless function invocations.
+ * OPTIMIZATION: Uses in-memory cache, in-flight deduplication, AND
+ * Next.js unstable_cache to persist routing maps across invocations.
  */
 export async function getRoutingMap(
   buildId: string,
@@ -984,14 +953,26 @@ export async function getRoutingMap(
     return routingCache.get(cacheKey)!;
   }
 
-  // Fetch from Next.js data cache (persists across invocations)
-  const routingMap = await getCachedRoutingMap(buildId, packageId);
-
-  if (routingMap) {
-    routingCache.set(cacheKey, routingMap);
+  // Check for in-flight fetch - if another call is already fetching, await it
+  if (routingFetchPromises.has(cacheKey)) {
+    return routingFetchPromises.get(cacheKey)!;
   }
 
-  return routingMap;
+  // Start the fetch and store the promise
+  const fetchPromise = (async () => {
+    // Fetch from Next.js data cache (persists across invocations)
+    const routingMap = await getCachedRoutingMap(buildId, packageId);
+
+    if (routingMap) {
+      routingCache.set(cacheKey, routingMap);
+    }
+
+    routingFetchPromises.delete(cacheKey);
+    return routingMap;
+  })();
+
+  routingFetchPromises.set(cacheKey, fetchPromise);
+  return fetchPromise;
 }
 
 // =============================================================================
@@ -1127,10 +1108,16 @@ export async function getSymbolByPath(
 const packageSymbolsCache = new Map<string, { symbols: SymbolRecord[]; total: number }>();
 
 /**
+ * In-flight promise cache for symbol fetches.
+ * This prevents multiple concurrent calls from all fetching the same symbols.json.
+ */
+const symbolsFetchPromises = new Map<string, Promise<{ symbols: SymbolRecord[]; total: number } | null>>();
+
+/**
  * Get all symbols for a package (paginated)
  *
- * OPTIMIZATION: Uses in-memory cache to prevent duplicate fetches within
- * the same worker. Since these files are >2MB, Next.js can't cache them,
+ * OPTIMIZATION: Uses both in-memory cache AND in-flight promise deduplication
+ * to prevent duplicate fetches. Since these files are >2MB, Next.js can't cache them,
  * so this is critical for build performance.
  */
 export async function getPackageSymbols(
@@ -1139,21 +1126,34 @@ export async function getPackageSymbols(
 ): Promise<{ symbols: SymbolRecord[]; total: number } | null> {
   const cacheKey = `${buildId}:${packageId}`;
 
-  // Check in-memory cache first
+  // Check in-memory cache first (fastest path)
   if (packageSymbolsCache.has(cacheKey)) {
     return packageSymbolsCache.get(cacheKey)!;
   }
 
-  const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/symbols.json`;
-  const response = await fetchBlobJson<{ symbols: SymbolRecord[] }>(path);
-
-  if (!response?.symbols) {
-    return null;
+  // Check for in-flight fetch - if another call is already fetching, await it
+  if (symbolsFetchPromises.has(cacheKey)) {
+    return symbolsFetchPromises.get(cacheKey)!;
   }
 
-  const result = { symbols: response.symbols, total: response.symbols.length };
-  packageSymbolsCache.set(cacheKey, result);
-  return result;
+  // Start the fetch and store the promise
+  const fetchPromise = (async () => {
+    const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/symbols.json`;
+    const response = await fetchBlobJson<{ symbols: SymbolRecord[] }>(path);
+
+    if (!response?.symbols) {
+      symbolsFetchPromises.delete(cacheKey);
+      return null;
+    }
+
+    const result = { symbols: response.symbols, total: response.symbols.length };
+    packageSymbolsCache.set(cacheKey, result);
+    symbolsFetchPromises.delete(cacheKey);
+    return result;
+  })();
+
+  symbolsFetchPromises.set(cacheKey, fetchPromise);
+  return fetchPromise;
 }
 
 // =============================================================================
