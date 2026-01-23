@@ -733,8 +733,16 @@ function sleep(ms: number): Promise<void> {
  * and rate limit errors, which can occur during parallel static generation.
  */
 async function fetchBlobJson<T>(path: string): Promise<T | null> {
+  const fetchStart = Date.now();
   const url = getBlobUrl(path);
   if (!url) return null;
+  console.log(`[fetch] START: ${path} (queue=${blobFetchWaiters.length}, active=${activeBlobFetches})`);
+  const result = await fetchBlobJsonInner<T>(path, url);
+  console.log(`[fetch] END: ${path} took ${Date.now() - fetchStart}ms`);
+  return result;
+}
+
+async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | null> {
 
   // Use no-store for large files (symbols.json) to avoid Next.js cache issues
   // Use time-based revalidation for smaller files (manifests, routing maps, catalogs)
@@ -883,10 +891,19 @@ export function normalizePackageId(pkgName: string, language: Language): string 
 }
 
 /**
+ * Promise cache for in-flight manifest fetches.
+ * This prevents multiple concurrent calls from all fetching the manifest.
+ */
+let manifestFetchPromise: Promise<Manifest | null> | null = null;
+
+/**
  * Get the manifest for a build
  *
  * With package-level architecture, we build a synthetic manifest
  * from the package indexes instead of fetching a monolithic manifest file.
+ *
+ * OPTIMIZATION: Uses promise-based deduplication to ensure only one fetch
+ * happens even when multiple parallel calls occur (e.g., sidebar loading).
  */
 export async function getManifest(_buildId: string): Promise<Manifest | null> {
   // Use a single cache key since manifest is now built from all packages
@@ -897,15 +914,22 @@ export async function getManifest(_buildId: string): Promise<Manifest | null> {
     return manifestCache.get(cacheKey)!;
   }
 
-  // Build (and persist) manifest from package indexes.
-  // This avoids occasional cold-start spikes from rebuilding the synthetic manifest.
-  const manifest = await getCachedSyntheticManifest();
-
-  if (manifest) {
-    manifestCache.set(cacheKey, manifest);
+  // If there's already an in-flight fetch, await it instead of starting a new one
+  if (manifestFetchPromise) {
+    return manifestFetchPromise;
   }
 
-  return manifest;
+  // Build (and persist) manifest from package indexes.
+  // This avoids occasional cold-start spikes from rebuilding the synthetic manifest.
+  manifestFetchPromise = getCachedSyntheticManifest().then((manifest) => {
+    if (manifest) {
+      manifestCache.set(cacheKey, manifest);
+    }
+    manifestFetchPromise = null; // Clear the promise after completion
+    return manifest;
+  });
+
+  return manifestFetchPromise;
 }
 
 /**

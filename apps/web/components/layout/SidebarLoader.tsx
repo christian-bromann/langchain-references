@@ -128,8 +128,15 @@ async function loadSidebarPackagesForProject(
   const hasLanguageVariant = project.variants.some((v) => v.language === language && v.enabled);
   if (!hasLanguageVariant) return [];
 
+  // OPTIMIZATION: For Python/JavaScript, skip package-level architecture and use manifest directly.
+  // The manifest already contains displayName, subpages, exportPaths - no need to fetch each package.json.
+  // Only use package-level architecture for Java/Go which don't have rich manifest data.
+  const useManifestPath = language === "python" || language === "javascript";
+
   // First try package-level architecture (Java/Go use this)
-  const packageIndex = await getProjectPackageIndex(projectId, language);
+  const packageIndex = !useManifestPath
+    ? await getProjectPackageIndex(projectId, language)
+    : null;
   if (packageIndex && Object.keys(packageIndex.packages).length > 0) {
     // OPTIMIZATION: Fetch all package data in parallel instead of sequential for-loop
     const packageEntries = Object.entries(packageIndex.packages);
@@ -231,6 +238,8 @@ async function loadSidebarPackagesForProject(
   }
 
   // Fallback to manifest-based architecture (Python/JavaScript)
+  // OPTIMIZATION: Use manifest data directly instead of fetching each package.json
+  // The manifest already contains displayName, subpages, and exportPaths
   const buildId = await getBuildIdForLanguage(language, projectId);
   if (!buildId) return [];
 
@@ -257,63 +266,55 @@ async function loadSidebarPackagesForProject(
     return matchesLanguage && matchesProject;
   });
 
-  // OPTIMIZATION: Fetch all package data in parallel instead of sequential for-loop
-  const sidebarPackages = (
-    await Promise.all(
-      packages.map(async (pkg) => {
-        try {
-          const slug = getPackageSlug(pkg, language);
-          const pkgBuildId = (pkg as { buildId?: string }).buildId || buildId;
+  // OPTIMIZATION: Build sidebar directly from manifest data (NO additional fetches)
+  // The manifest already has displayName, subpages, exportPaths for all packages
+  const sidebarPackages = packages
+    .map((pkg) => {
+      try {
+        const slug = getPackageSlug(pkg, language);
 
-          // Fetch routing map and package info in parallel
-          const [routingMap, packageInfoV2] = await Promise.all([
-            language === "javascript"
-              ? getRoutingMapData(pkgBuildId, pkg.packageId)
-              : Promise.resolve(null),
-            getPackageInfoV2(pkg.packageId, pkgBuildId),
-          ]);
+        // Use exportPaths directly from manifest (for JavaScript)
+        // For Python, we skip module sub-items in sidebar for now (faster load)
+        const manifestPkg = pkg as {
+          exportPaths?: Array<{ slug: string; title: string }>;
+          subpages?: Array<{ slug: string; title: string }>;
+        };
 
-          // For JavaScript, use exportPaths from package info instead of routing map modules
-          // For Python, use routing map modules
-          let items: SidebarPackage["items"] = [];
-          if (language !== "javascript") {
-            items = routingMap ? buildNavItemsFromRouting(routingMap, language, slug) : [];
-          } else if (packageInfoV2?.exportPaths && Array.isArray(packageInfoV2.exportPaths)) {
-            // Use export paths for JavaScript packages
-            items = packageInfoV2.exportPaths.map((ep: { slug: string; title: string }) => ({
-              name: ep.title,
-              path: `/${language}/${slug}/${ep.slug}`,
-              kind: "module" as const,
-            }));
-          }
-
-          let subpages: SidebarSubpage[] | undefined;
-          if (packageInfoV2?.subpages && Array.isArray(packageInfoV2.subpages)) {
-            subpages = packageInfoV2.subpages.map((sp: { slug: string; title: string }) => ({
-              slug: sp.slug,
-              title: sp.title,
-              path: `/${language}/${slug}/${sp.slug}`,
-            }));
-          }
-
-          const derivedName = pkg.packageId.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
-          const pkgDisplayName = pkg.displayName || pkg.publishedName || derivedName;
-
-          return {
-            id: pkg.packageId,
-            name: pkgDisplayName,
-            path: `/${language}/${slug}`,
-            items,
-            project: projectId,
-            subpages,
-          };
-        } catch (err) {
-          console.error(`[SidebarLoader] Error loading manifest package ${pkg.packageId}:`, err);
-          return null;
+        let items: SidebarPackage["items"] = [];
+        if (language === "javascript" && manifestPkg.exportPaths && Array.isArray(manifestPkg.exportPaths)) {
+          items = manifestPkg.exportPaths.map((ep) => ({
+            name: ep.title,
+            path: `/${language}/${slug}/${ep.slug}`,
+            kind: "module" as const,
+          }));
         }
-      }),
-    )
-  ).filter((pkg) => pkg !== null) as SidebarPackage[];
+
+        let subpages: SidebarSubpage[] | undefined;
+        if (manifestPkg.subpages && Array.isArray(manifestPkg.subpages)) {
+          subpages = manifestPkg.subpages.map((sp) => ({
+            slug: sp.slug,
+            title: sp.title,
+            path: `/${language}/${slug}/${sp.slug}`,
+          }));
+        }
+
+        const derivedName = pkg.packageId.replace(/^pkg_(py|js|java|go)_/, "").replace(/_/g, "-");
+        const pkgDisplayName = pkg.displayName || pkg.publishedName || derivedName;
+
+        return {
+          id: pkg.packageId,
+          name: pkgDisplayName,
+          path: `/${language}/${slug}`,
+          items,
+          project: projectId,
+          subpages,
+        };
+      } catch (err) {
+        console.error(`[SidebarLoader] Error loading manifest package ${pkg.packageId}:`, err);
+        return null;
+      }
+    })
+    .filter((pkg) => pkg !== null) as SidebarPackage[];
 
   return sidebarPackages;
 }
@@ -353,12 +354,15 @@ async function loadSidebarPackages(language: Language): Promise<SidebarPackage[]
  * use SidebarWithData instead to avoid duplicate fetching.
  */
 export async function SidebarLoader() {
+  const sidebarStart = Date.now();
+  console.log(`[SidebarLoader] START`);
   const [pythonPackages, javascriptPackages, javaPackages, goPackages] = await Promise.all([
     loadSidebarPackages("python"),
     loadSidebarPackages("javascript"),
     loadSidebarPackages("java"),
     loadSidebarPackages("go"),
   ]);
+  console.log(`[SidebarLoader] END: ${Date.now() - sidebarStart}ms (py=${pythonPackages.length}, js=${javascriptPackages.length}, java=${javaPackages.length}, go=${goPackages.length})`);
 
   return (
     <Sidebar

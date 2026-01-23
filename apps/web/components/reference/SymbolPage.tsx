@@ -1165,8 +1165,13 @@ export async function SymbolPage({
   symbolPath,
   version,
 }: SymbolPageProps) {
+  const pageStart = Date.now();
+  const log = (msg: string) => console.log(`[SymbolPage] ${msg} (+${Date.now() - pageStart}ms)`);
+  log(`START: ${packageName}/${symbolPath}`);
+
   // Get the package-specific buildId
   const buildId = await getPackageBuildId(language, packageName);
+  log(`buildId: ${buildId}`);
 
   // Get project info for version history/switching
   const project = getProjectForPackage(packageName);
@@ -1184,6 +1189,7 @@ export async function SymbolPage({
       getPackageInfo(buildId, packageId),
       getRoutingMapData(buildId, packageId),
     ]);
+    log(`pkgInfo + routingMap loaded`);
     cachedPkgInfo = pkgInfo;
 
     // Build knownSymbols map for local type linking
@@ -1204,7 +1210,9 @@ export async function SymbolPage({
     typeUrlMapPromise = getTypeUrlMap(language, currentPkgSlugForTypeUrl, localSymbolSetForTypeUrl);
 
     // Main symbol lookup (routing map + individual symbol files; falls back as needed)
+    log(`findSymbolOptimized START`);
     const irSymbol = await findSymbolOptimized(buildId, packageId, symbolPath);
+    log(`findSymbolOptimized END: ${irSymbol ? 'found' : 'not found'}`);
 
     // If the symbol isn't found, it may be an "alias" member that was included in a parent
     // module/class's member list but wasn't emitted as a full SymbolRecord in the IR.
@@ -1279,6 +1287,7 @@ export async function SymbolPage({
       let memberSymbols: Map<string, SymbolRecord> | undefined;
 
       if (irSymbol.members && irSymbol.members.length > 0) {
+        log(`fetching ${irSymbol.members.length} member symbols`);
         memberSymbols = new Map();
         // Fetch each member symbol individually in parallel
         const memberPromises = irSymbol.members.map(async (member) => {
@@ -1317,6 +1326,7 @@ export async function SymbolPage({
             memberSymbols.set(result.memberId, result.symbol);
           }
         }
+        log(`member symbols done (${memberResults.filter(Boolean).length} found)`);
       }
 
       // STREAMING OPTIMIZATION: Don't await inherited members here.
@@ -1341,6 +1351,8 @@ export async function SymbolPage({
           ownMemberNames: irSymbolForMarkdown.members?.map((m) => m.name) || [],
         }
       : null;
+
+  log(`data loading complete, symbol=${!!symbol}`);
 
   // Show not found state if symbol wasn't loaded
   if (!symbol) {
@@ -1381,9 +1393,11 @@ export async function SymbolPage({
   // OPTIMIZATION #2: The promise was started early (after routingMap loaded) and has been
   // running in parallel with symbol loading. Now we just await the result.
   // If buildId existed, we started the fetch early; otherwise fetch now
+  log(`typeUrlMap await START`);
   const typeUrlMap = buildId
     ? await typeUrlMapPromise!
     : await getTypeUrlMap(language, slugifyPackageName(packageName), new Set(knownSymbols.keys()));
+  log(`typeUrlMap await END (${typeUrlMap.size} entries)`);
 
   // Prefer package repo path prefix from the build manifest (already part of the IR data).
   // This captures monorepo layouts like `libs/<package>` without hardcoding.

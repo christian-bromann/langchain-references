@@ -68,6 +68,10 @@ function toDisplaySymbol(entry: CatalogEntry): DisplaySymbol {
 }
 
 export async function PackagePage({ language, packageId, packageName }: PackagePageProps) {
+  const pageStart = Date.now();
+  const log = (msg: string) => console.log(`[PackagePage] ${msg} (+${Date.now() - pageStart}ms)`);
+  log(`START: ${packageName}`);
+
   const ecosystem = language === "typescript" ? "javascript" : language;
 
   // Validate that packageName looks like a real package (not a project name)
@@ -86,12 +90,14 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
 
   // Get the package-specific buildId
   const buildId = await getPackageBuildId(ecosystem, packageName);
+  log(`buildId: ${buildId}`);
 
   // Fetch package description and catalog entries in parallel
   const [catalogEntries, description] = await Promise.all([
     buildId ? getCatalogEntries(buildId, packageId) : Promise.resolve([]),
     buildId ? getPackageDescription(packageId, buildId) : Promise.resolve(null),
   ]);
+  log(`catalogEntries: ${catalogEntries?.length || 0}, description: ${!!description}`);
 
   // If no catalog entries, try loading from symbols.json directly (fallback for Java/Go)
   let symbols: DisplaySymbol[] = [];
