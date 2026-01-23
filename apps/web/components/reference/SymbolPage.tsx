@@ -286,7 +286,9 @@ interface DisplayMember {
   refId?: string;
   visibility?: Visibility;
   type?: string;
+  /** Raw summary text for inline plain-text display */
   summary?: string;
+  /** Pre-rendered HTML summary for rich display */
   summaryHtml?: string;
   signature?: string;
   /** Fully qualified name for the member (e.g., langchain_core.messages.base.merge_content) */
@@ -399,8 +401,8 @@ function toDisplaySymbol(
       refId: memberId,
       visibility: m.visibility,
       type,
-      summary: memberSymbol?.docs?.summary || undefined,
-      summaryHtml: memberSymbol?.docs?.summaryHtml || undefined,
+      summary: memberSymbol?.docs?.summary,
+      summaryHtml: memberSymbol?.docs?.summaryHtml,
       signature: memberSymbol?.signature,
       // Use the actual qualified name from the symbol record (handles re-exports correctly)
       qualifiedName: memberSymbol?.qualifiedName,
@@ -1100,8 +1102,8 @@ async function resolveInheritedMembers(
         refId: memberId,
         visibility: member.visibility,
         type,
-        summary: memberSymbol?.docs?.summary || undefined,
-        summaryHtml: memberSymbol?.docs?.summaryHtml || undefined,
+        summary: memberSymbol?.docs?.summary,
+        summaryHtml: memberSymbol?.docs?.summaryHtml,
         signature: memberSymbol?.signature,
         // Use the actual qualified name from the symbol record (handles re-exports correctly)
         qualifiedName: memberSymbol?.qualifiedName,
@@ -1533,17 +1535,11 @@ export async function SymbolPage({
               )}
             </div>
             <h1 className="text-3xl font-bold text-foreground font-mono">{symbol.name}</h1>
-            {(symbol.docs?.summaryHtml || symbol.docs?.summary) && (
-              symbol.docs.summaryHtml ? (
-                <div
-                  className="mt-3 text-foreground-secondary text-lg prose prose-sm dark:prose-invert max-w-none [&_p]:m-0"
-                  dangerouslySetInnerHTML={{ __html: symbol.docs.summaryHtml }}
-                />
-              ) : (
-                <MarkdownContent compact className="mt-3 text-foreground-secondary text-lg">
-                  {symbol.docs.summary}
-                </MarkdownContent>
-              )
+            {symbol.docs?.summaryHtml && (
+              <div
+                className="mt-3 text-foreground-secondary text-lg prose prose-sm dark:prose-invert max-w-none [&_p]:m-0"
+                dangerouslySetInnerHTML={{ __html: symbol.docs.summaryHtml }}
+              />
             )}
           </div>
 
@@ -1593,15 +1589,11 @@ export async function SymbolPage({
           )}
 
           {/* Description */}
-          {(symbol.docs?.descriptionHtml || symbol.docs?.description) && (
-            symbol.docs.descriptionHtml ? (
-              <div
-                className="prose prose-sm dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: symbol.docs.descriptionHtml }}
-              />
-            ) : (
-              <MarkdownContent>{symbol.docs.description!}</MarkdownContent>
-            )
+          {symbol.docs?.descriptionHtml && (
+            <div
+              className="prose prose-sm dark:prose-invert max-w-none"
+              dangerouslySetInnerHTML={{ __html: symbol.docs.descriptionHtml }}
+            />
           )}
 
           {/* Sections (parameters, examples, etc.) */}
@@ -2109,27 +2101,15 @@ async function MemberCard({
         </div>
 
         {/* Show summary - truncate for linkable members, show full for non-linkable (attributes) */}
-        {(member.summaryHtml || member.summary) && (
+        {member.summaryHtml && (
           <div className="mt-1 [&_code]:text-xs">
-            {member.summaryHtml ? (
-              <div
-                className={cn(
-                  "text-sm text-foreground-secondary m-0 [&_p]:m-0",
-                  isLinkable && "line-clamp-2",
-                )}
-                dangerouslySetInnerHTML={{ __html: member.summaryHtml }}
-              />
-            ) : (
-              <MarkdownContent
-                compact
-                paragraphClassName={cn(
-                  "text-sm text-foreground-secondary m-0",
-                  isLinkable && "line-clamp-2",
-                )}
-              >
-                {member.summary!}
-              </MarkdownContent>
-            )}
+            <div
+              className={cn(
+                "text-sm text-foreground-secondary m-0 [&_p]:m-0",
+                isLinkable && "line-clamp-2",
+              )}
+              dangerouslySetInnerHTML={{ __html: member.summaryHtml }}
+            />
           </div>
         )}
       </div>
