@@ -5,11 +5,17 @@
  * Handles latest build pointers, build history, and package version tracking.
  */
 
-import type { Manifest, Language, SymbolLanguage } from "@langchain/ir-schema";
+import fs from "node:fs/promises";
+import path from "node:path";
+
+import type { Manifest, Language, SymbolLanguage, Package } from "@langchain/ir-schema";
 import { putWithRetry } from "./upload.js";
 import { getBlobBaseUrl } from "./blob-utils.js";
 
 const POINTERS_PATH = "pointers";
+
+/** Local output directory for IR data */
+const IR_OUTPUT_DIR = "ir-output";
 
 export interface PointerUpdateOptions {
   buildId: string;
@@ -430,6 +436,161 @@ export async function getProjectPackageIndex(
   language: "python" | "javascript",
 ): Promise<ProjectPackageIndex | null> {
   return fetchPointer<ProjectPackageIndex>(`${POINTERS_PATH}/index-${project}-${language}.json`);
+}
+
+/**
+ * Fetch a package.json file from blob storage.
+ */
+async function fetchPackageJson(
+  packageId: string,
+  buildId: string,
+): Promise<Package | null> {
+  const baseUrl = getBlobBaseUrl();
+  if (!baseUrl) return null;
+
+  const url = `${baseUrl}/ir/packages/${packageId}/${buildId}/package.json`;
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) return null;
+    return (await response.json()) as Package;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Normalize a package name to a packageId.
+ */
+function normalizePackageId(packageName: string, language: Language): string {
+  const prefix =
+    language === "python"
+      ? "pkg_py_"
+      : language === "javascript"
+        ? "pkg_js_"
+        : language === "java"
+          ? "pkg_java_"
+          : "pkg_go_";
+  const normalized = packageName.replace(/^@/, "").replace(/[./-]/g, "_");
+  return `${prefix}${normalized}`;
+}
+
+/**
+ * Generate a global manifest from all project package indexes.
+ * This creates a single file that can be loaded at runtime instead of
+ * fetching 20+ individual index files.
+ *
+ * Fetches each package's package.json to build a complete Manifest with
+ * all package details (repo, entry, nav, stats).
+ *
+ * @param projects - List of project identifiers
+ * @param languages - List of languages to include
+ * @param dryRun - If true, don't actually upload
+ */
+export async function generateGlobalManifest(
+  projects: readonly string[],
+  languages: readonly Language[],
+  dryRun: boolean = false,
+): Promise<void> {
+  console.log(`\n📦 Generating global manifest from project indexes`);
+  if (dryRun) {
+    console.log("   (dry-run mode - no actual updates)\n");
+  }
+
+  // Collect all package info from indexes
+  const packageInfos: Array<{
+    packageName: string;
+    packageId: string;
+    buildId: string;
+    project: string;
+    language: Language;
+    version: string;
+  }> = [];
+
+  // Fetch all project indexes
+  for (const project of projects) {
+    for (const language of languages) {
+      const index = await fetchPointer<ProjectPackageIndex>(
+        `${POINTERS_PATH}/index-${project}-${language}.json`,
+      );
+
+      if (!index?.packages) {
+        // Silently skip missing indexes (expected for some project/language combos)
+        continue;
+      }
+
+      console.log(
+        `   ✓ Found ${Object.keys(index.packages).length} packages in ${project}-${language}`,
+      );
+
+      // Collect package info
+      for (const [packageName, pkgInfo] of Object.entries(index.packages)) {
+        const packageId = normalizePackageId(packageName, language);
+        packageInfos.push({
+          packageName,
+          packageId,
+          buildId: pkgInfo.buildId,
+          project,
+          language,
+          version: pkgInfo.version,
+        });
+      }
+    }
+  }
+
+  if (packageInfos.length === 0) {
+    console.warn("   ⚠️  No packages found in any index");
+    return;
+  }
+
+  console.log(`\n   📥 Fetching ${packageInfos.length} package.json files...`);
+
+  // Fetch all package.json files in parallel
+  const packagePromises = packageInfos.map(async (info) => {
+    const pkg = await fetchPackageJson(info.packageId, info.buildId);
+    if (!pkg) {
+      console.warn(`   ⚠️  Could not fetch package.json for ${info.packageId}`);
+      return null;
+    }
+    // Ensure project and buildId are set (might not be in older package.json files)
+    return {
+      ...pkg,
+      project: (pkg as { project?: string }).project ?? info.project,
+      buildId: (pkg as { buildId?: string }).buildId ?? info.buildId,
+    } as Package & { project?: string; buildId?: string };
+  });
+
+  const packages = (await Promise.all(packagePromises)).filter(
+    (p): p is NonNullable<typeof p> => p !== null,
+  );
+
+  console.log(`   ✓ Fetched ${packages.length} packages`);
+
+  const now = new Date().toISOString();
+  const manifest: Manifest = {
+    irVersion: "1.0",
+    project: "all-packages",
+    build: {
+      buildId: packages[0]?.buildId ?? "",
+      createdAt: now,
+      baseUrl: "",
+    },
+    sources: [],
+    packages: packages as Package[],
+  };
+
+  // Write to local ir-output directory
+  const localManifestPath = path.join(process.cwd(), IR_OUTPUT_DIR, POINTERS_PATH, "manifest.json");
+  if (!dryRun) {
+    await fs.mkdir(path.dirname(localManifestPath), { recursive: true });
+    await fs.writeFile(localManifestPath, JSON.stringify(manifest, null, 2));
+    console.log(`   ✅ Wrote ${localManifestPath}`);
+  } else {
+    console.log(`   [dry-run] Would write ${localManifestPath}`);
+  }
+
+  // Upload to blob storage
+  await uploadPointer(`${POINTERS_PATH}/manifest.json`, manifest, dryRun);
+  console.log(`   ✅ Uploaded ${POINTERS_PATH}/manifest.json with ${packages.length} packages`);
 }
 
 /**

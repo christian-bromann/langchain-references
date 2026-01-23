@@ -18,6 +18,8 @@ interface MarkdownContentProps {
   className?: string;
   /** Use compact styling for inline/small contexts */
   compact?: boolean;
+  /** Classes to add directly to all <p> tags in the rendered markdown */
+  paragraphClassName?: string;
 }
 
 /**
@@ -213,10 +215,21 @@ function parseAdmonitionLine(
 }
 
 /**
- * Convert MkDocs admonition blocks to markdown headings with styled headers.
+ * Unique markers for admonition boundaries.
+ * These use a special format that won't be confused with normal content
+ * and will become <p> tags after markdown parsing, making them easy to find and replace.
+ * Using Unicode private use area characters to ensure uniqueness.
+ */
+const ADMONITION_START_MARKER = "\uE000ADMON_START\uE001";
+const ADMONITION_END_MARKER = "\uE000ADMON_END\uE001";
+
+/**
+ * Convert MkDocs admonition blocks to marked sections.
  *
- * We use styled headers instead of HTML wrappers so that content inside
- * (like tables) gets properly processed by the markdown parser.
+ * We use HTML comment markers instead of actual HTML wrappers so that
+ * content inside (like code blocks and tables) gets properly processed
+ * by the markdown parser. The markers are then converted to proper HTML
+ * in post-processing.
  */
 function convertAdmonitions(content: string): string {
   if (!content) return content;
@@ -232,7 +245,10 @@ function convertAdmonitions(content: string): string {
     if (parsed) {
       const { type, title, inlineContent } = parsed;
 
-      // Collect admonition content (indented lines)
+      // Determine the base indentation of the admonition line itself
+      const admonitionIndent = line.length - line.trimStart().length;
+
+      // Collect admonition content (lines indented more than the admonition line)
       const contentLines: string[] = [];
 
       // If there's inline content on the same line, add it first
@@ -244,10 +260,22 @@ function convertAdmonitions(content: string): string {
 
       while (i < lines.length) {
         const contentLine = lines[i];
-        // Check if line is indented (part of admonition) or empty
-        if (contentLine.match(/^[\t ]{4}/) || contentLine.trim() === "") {
-          // Remove the 4-space indent
-          contentLines.push(contentLine.replace(/^[\t ]{4}/, ""));
+        const lineIndent = contentLine.length - contentLine.trimStart().length;
+
+        // Check if line is part of admonition:
+        // - Empty lines are included
+        // - Lines indented more than the admonition base indent are included
+        if (contentLine.trim() === "") {
+          contentLines.push("");
+          i++;
+        } else if (lineIndent > admonitionIndent) {
+          // Remove the admonition's base indent + 4 spaces (standard admonition content indent)
+          const indentToRemove = admonitionIndent + 4;
+          if (contentLine.length >= indentToRemove) {
+            contentLines.push(contentLine.slice(indentToRemove));
+          } else {
+            contentLines.push(contentLine.trimStart());
+          }
           i++;
         } else {
           break;
@@ -258,25 +286,33 @@ function convertAdmonitions(content: string): string {
       const icon = ADMONITION_ICONS[type.toLowerCase()] || DEFAULT_ADMONITION_ICON;
       const displayTitle =
         title || type.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-      const admonitionContent = contentLines.join("\n").trim();
+
+      // Recursively process the content to handle nested admonitions
+      const rawContent = contentLines.join("\n").trim();
+      const admonitionContent = convertAdmonitions(rawContent);
 
       // Skip empty admonitions (content was likely stripped, e.g., code examples extracted separately)
       if (!admonitionContent) {
         continue;
       }
 
-      // Generate Mintlify-style callout container
-      // The content stays as markdown for proper parsing but we wrap with styled container
+      // Encode metadata as base64 to avoid issues with special characters
+      const metadata = JSON.stringify({
+        type: type.toLowerCase(),
+        title: displayTitle,
+        icon,
+      });
+      const encodedMetadata = Buffer.from(metadata).toString("base64");
+
+      // Use markers that will be processed AFTER markdown parsing
+      // The markers are on their own lines and will become <p> tags
+      // We use a format that's unlikely to appear in normal content
       result.push("");
-      result.push(`<div class="callout" data-callout-type="${type.toLowerCase()}">`);
-      result.push(`<div class="callout-icon">${icon}</div>`);
-      result.push(`<div class="callout-content">`);
-      result.push(`<div class="callout-title">${displayTitle}</div>`);
+      result.push(`${ADMONITION_START_MARKER}${encodedMetadata}${ADMONITION_START_MARKER}`);
       result.push("");
       result.push(admonitionContent);
       result.push("");
-      result.push(`</div>`);
-      result.push(`</div>`);
+      result.push(ADMONITION_END_MARKER);
       result.push("");
     } else {
       result.push(line);
@@ -308,58 +344,158 @@ function processMkDocsContent(content: string): string {
 }
 
 /**
- * Post-process HTML to convert any remaining admonition syntax that wasn't caught.
- * This handles edge cases where admonitions were wrapped in <p> tags before processing.
+ * Post-process HTML to convert admonition markers into proper HTML structure.
+ * This runs AFTER markdown parsing, so code blocks and other elements are already HTML.
+ *
+ * Uses a stack-based algorithm to correctly handle nested admonitions.
  */
 function postProcessAdmonitions(html: string): string {
-  // Match admonitions that ended up wrapped in <p> tags
+  // The markers may be wrapped in <p> tags by the markdown parser
+  // First, find all start and end markers with their positions
+
+  const startMarkerEscaped = escapeRegExp(ADMONITION_START_MARKER);
+  const endMarkerEscaped = escapeRegExp(ADMONITION_END_MARKER);
+
+  // Regex to find start markers (possibly wrapped in <p> tags)
+  const startRegex = new RegExp(
+    `(?:<p[^>]*>)?${startMarkerEscaped}([A-Za-z0-9+/=]+)${startMarkerEscaped}(?:</p>)?`,
+    "g",
+  );
+
+  // Regex to find end markers (possibly wrapped in <p> tags)
+  const endRegex = new RegExp(`(?:<p[^>]*>)?${endMarkerEscaped}(?:</p>)?`, "g");
+
+  // Find all markers and their positions
+  interface MarkerInfo {
+    type: "start" | "end";
+    start: number;
+    end: number;
+    metadata?: string;
+  }
+
+  const markers: MarkerInfo[] = [];
+
+  let match;
+  while ((match = startRegex.exec(html)) !== null) {
+    markers.push({
+      type: "start",
+      start: match.index,
+      end: match.index + match[0].length,
+      metadata: match[1],
+    });
+  }
+
+  while ((match = endRegex.exec(html)) !== null) {
+    markers.push({
+      type: "end",
+      start: match.index,
+      end: match.index + match[0].length,
+    });
+  }
+
+  // Sort markers by position
+  markers.sort((a, b) => a.start - b.start);
+
+  // Match start and end markers using a stack (process innermost first)
+  interface MatchedPair {
+    startMarker: MarkerInfo;
+    endMarker: MarkerInfo;
+  }
+
+  const pairs: MatchedPair[] = [];
+  const stack: MarkerInfo[] = [];
+
+  for (const marker of markers) {
+    if (marker.type === "start") {
+      stack.push(marker);
+    } else if (marker.type === "end" && stack.length > 0) {
+      const startMarker = stack.pop()!;
+      pairs.push({ startMarker, endMarker: marker });
+    }
+  }
+
+  // Sort pairs by start position descending (process from end to start to preserve positions)
+  pairs.sort((a, b) => b.startMarker.start - a.startMarker.start);
+
+  // Replace each pair
+  let result = html;
+  for (const pair of pairs) {
+    const { startMarker, endMarker } = pair;
+
+    try {
+      const metadata = JSON.parse(
+        Buffer.from(startMarker.metadata!, "base64").toString("utf-8"),
+      );
+      const { type, title, icon } = metadata;
+
+      // Extract content between markers
+      const content = result.slice(startMarker.end, endMarker.start).trim();
+
+      // Build the callout HTML
+      const calloutHtml = `<div class="callout" data-callout-type="${type}"><div class="callout-icon">${icon}</div><div class="callout-content"><div class="callout-title">${title}</div>${content}</div></div>`;
+
+      // Replace the entire range from start marker to end marker
+      result = result.slice(0, startMarker.start) + calloutHtml + result.slice(endMarker.end);
+    } catch {
+      // If decoding fails, just remove the markers
+      const content = result.slice(startMarker.end, endMarker.start);
+      result = result.slice(0, startMarker.start) + content + result.slice(endMarker.end);
+    }
+  }
+
+  // Also handle admonitions that ended up wrapped in <p> tags (legacy handling)
   // Pattern: <p>!!! type "title"\ncontent...</p> or <p>!!! type content...</p>
-  // The content might contain <code> tags, newlines, or other HTML
-  // Quote chars: " ' " " ' ' (using unicode escapes for smart quotes)
-  //
-  // Use a function to handle the complex matching since we need to handle:
-  // 1. Quoted title followed by optional content on subsequent lines
-  // 2. Unquoted inline content (possibly multi-line)
+  result = result.replace(
+    /<p>([!?]{3}\+?)\s+([\w-]+)([\s\S]*?)<\/p>/g,
+    (match, _marker, type, rest) => {
+      const icon = ADMONITION_ICONS[type.toLowerCase()] || DEFAULT_ADMONITION_ICON;
 
-  return html.replace(/<p>([!?]{3}\+?)\s+([\w-]+)([\s\S]*?)<\/p>/g, (match, marker, type, rest) => {
-    const icon = ADMONITION_ICONS[type.toLowerCase()] || DEFAULT_ADMONITION_ICON;
+      // Try to extract quoted title from the beginning of rest
+      const trimmedRest = rest.trim();
+      const quoteMatch = trimmedRest.match(
+        /^["'\u201C\u201D\u2018\u2019](.*?)["'\u201C\u201D\u2018\u2019](.*)$/s,
+      );
 
-    // Try to extract quoted title from the beginning of rest
-    const trimmedRest = rest.trim();
-    const quoteMatch = trimmedRest.match(
-      /^["'\u201C\u201D\u2018\u2019](.*?)["'\u201C\u201D\u2018\u2019](.*)$/s,
-    );
+      let displayTitle: string;
+      let content: string;
 
-    let displayTitle: string;
-    let content: string;
+      if (quoteMatch) {
+        // Quoted title found
+        displayTitle = quoteMatch[1];
+        content = quoteMatch[2].trim();
+      } else if (trimmedRest) {
+        // No quoted title, treat everything as content
+        displayTitle = type.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
+        content = trimmedRest;
+      } else {
+        // Empty admonition - remove entirely
+        return "";
+      }
 
-    if (quoteMatch) {
-      // Quoted title found
-      displayTitle = quoteMatch[1];
-      content = quoteMatch[2].trim();
-    } else if (trimmedRest) {
-      // No quoted title, treat everything as content
-      displayTitle = type.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
-      content = trimmedRest;
-    } else {
-      // Empty admonition - remove entirely
-      return "";
-    }
+      // Skip if no content after extracting title
+      if (!content) {
+        return "";
+      }
 
-    // Skip if no content after extracting title
-    if (!content) {
-      return "";
-    }
+      // Render Mintlify-style callout container
+      return `<div class="callout" data-callout-type="${type.toLowerCase()}"><div class="callout-icon">${icon}</div><div class="callout-content"><div class="callout-title">${displayTitle}</div><p>${content}</p></div></div>`;
+    },
+  );
 
-    // Render Mintlify-style callout container
-    return `<div class="callout" data-callout-type="${type.toLowerCase()}"><div class="callout-icon">${icon}</div><div class="callout-content"><div class="callout-title">${displayTitle}</div><p>${content}</p></div></div>`;
-  });
+  return result;
+}
+
+/**
+ * Escape special regex characters in a string
+ */
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
  * Process markdown to HTML with Shiki syntax highlighting.
  */
-async function processMarkdown(content: string): Promise<string> {
+async function processMarkdown(content: string, paragraphClassName?: string): Promise<string> {
   // Process MkDocs syntax (convert admonitions, dedent, etc.)
   const processedContent = processMkDocsContent(content);
 
@@ -377,7 +513,19 @@ async function processMarkdown(content: string): Promise<string> {
     .process(processedContent);
 
   // Post-process to catch any admonitions that ended up in <p> tags
-  return postProcessAdmonitions(String(result));
+  let html = postProcessAdmonitions(String(result));
+
+  // Add classes to paragraph tags if specified
+  if (paragraphClassName) {
+    html = html.replace(/<p>/g, `<p class="${paragraphClassName}">`);
+    html = html.replace(/<p class="([^"]*)">/g, (match, existingClasses) => {
+      // Don't double-add if already has our classes
+      if (existingClasses.includes(paragraphClassName)) return match;
+      return `<p class="${existingClasses} ${paragraphClassName}">`;
+    });
+  }
+
+  return html;
 }
 
 /**
@@ -390,8 +538,9 @@ export async function MarkdownContent({
   children,
   className = "",
   compact = false,
+  paragraphClassName,
 }: MarkdownContentProps) {
-  const html = await processMarkdown(children);
+  const html = await processMarkdown(children, paragraphClassName);
 
   return (
     <MarkdownWrapper html={html} rawContent={children} className={className} compact={compact} />

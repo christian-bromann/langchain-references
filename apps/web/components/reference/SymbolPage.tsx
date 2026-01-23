@@ -15,7 +15,7 @@ import { Suspense } from "react";
 import { ChevronRight, ExternalLink } from "lucide-react";
 import { symbolLanguageToLanguage } from "@langchain/ir-schema";
 import { getProjectForPackage } from "@/lib/config/projects";
-import { SymbolContentSkeleton, MembersSkeleton, InheritedMembersSkeleton } from "./skeletons";
+import { InheritedMembersSkeleton } from "./skeletons";
 
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
@@ -1180,9 +1180,6 @@ export async function SymbolPage({
   let typeUrlMapPromise: Promise<Map<string, string>> | null = null;
 
   if (buildId) {
-    // OPTIMIZATION: Fetch package info, routing map, and typeUrlMap in parallel
-    // This eliminates sequential awaits and a duplicate getPackageInfo call
-    const currentPkgSlugForPreload = slugifyPackageName(packageName);
     const [pkgInfo, routingMap] = await Promise.all([
       getPackageInfo(buildId, packageId),
       getRoutingMapData(buildId, packageId),
@@ -1987,7 +1984,7 @@ const LINKABLE_MEMBER_KINDS = new Set([
 /**
  * Individual member card
  */
-function MemberCard({
+async function MemberCard({
   member,
   language,
   packageName,
@@ -2076,9 +2073,17 @@ function MemberCard({
 
         {/* Show summary - truncate for linkable members, show full for non-linkable (attributes) */}
         {member.summary && (
-          <p className={cn("text-sm text-foreground-secondary mt-1", isLinkable && "line-clamp-2")}>
-            {member.summary}
-          </p>
+          <div className="mt-1 [&_code]:text-xs">
+            <MarkdownContent
+              compact
+              paragraphClassName={cn(
+                "text-sm text-foreground-secondary m-0",
+                isLinkable && "line-clamp-2",
+              )}
+            >
+              {member.summary}
+            </MarkdownContent>
+          </div>
         )}
       </div>
 

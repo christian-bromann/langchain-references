@@ -15,6 +15,7 @@ import {
   getRoutingMapData,
   getPackageInfoV2,
   getProjectPackageIndex,
+  normalizePackageId,
 } from "@/lib/ir/loader";
 import { getEnabledProjects, getProjectById } from "@/lib/config/projects";
 import type { Package, RoutingMap, SymbolKind } from "@/lib/ir/types";
@@ -132,7 +133,6 @@ async function loadSidebarPackagesForProject(
   if (packageIndex && Object.keys(packageIndex.packages).length > 0) {
     // OPTIMIZATION: Fetch all package data in parallel instead of sequential for-loop
     const packageEntries = Object.entries(packageIndex.packages);
-    const langPrefix = language === "python" ? "py" : language === "javascript" ? "js" : language;
     const symbolLanguage = languageToSymbolLanguage(language);
 
     const sidebarPackages = (
@@ -143,7 +143,8 @@ async function loadSidebarPackagesForProject(
             if (!pkgPointer?.buildId) return null;
 
             const pkgBuildId = pkgPointer.buildId;
-            const packageId = pkgKey.startsWith("pkg_") ? pkgKey : `pkg_${langPrefix}_${pkgKey}`;
+            // Use centralized normalization (handles @, /, -, . in package names)
+            const packageId = pkgKey.startsWith("pkg_") ? pkgKey : normalizePackageId(pkgKey, language);
 
             // Fetch package info and routing map in parallel
             const [packageInfoV2, routingMap] = await Promise.all([

@@ -27,7 +27,7 @@ import url from "node:url";
 
 import { Command } from "commander";
 import type { Language, SymbolLanguage } from "@langchain/ir-schema";
-import { regenerateProjectPackageIndex } from "../pointers.js";
+import { regenerateProjectPackageIndex, generateGlobalManifest } from "../pointers.js";
 import { PROJECTS, OUTPUT_LANGUAGES } from "../constants.js";
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
@@ -191,6 +191,15 @@ async function main(): Promise<void> {
 
         console.log(`\n${"─".repeat(40)}`);
         console.log(`📊 Summary: ${successCount} succeeded, ${failCount} failed`);
+
+        // Generate global manifest after updating all indexes
+        if (successCount > 0 && options.all) {
+          await generateGlobalManifest(
+            PROJECTS,
+            OUTPUT_LANGUAGES,
+            options.dryRun ?? false,
+          );
+        }
 
         if (failCount > 0) {
           process.exit(1);

@@ -85,7 +85,7 @@ export default function RootLayout({
           <link rel="preconnect" href={new URL(process.env.NEXT_PUBLIC_BLOB_URL).origin} />
         )}
       </head>
-      <body className="antialiased">
+      <body className="antialiased" suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

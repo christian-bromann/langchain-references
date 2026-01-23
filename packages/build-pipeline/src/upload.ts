@@ -316,41 +316,32 @@ function computeShardKey(qualifiedName: string): string {
 }
 
 /**
- * Sharded lookup index manifest
+ * Lookup index - maps qualifiedName to symbol info for efficient lookups
  */
-interface ShardedLookupIndex {
+export interface LookupIndex {
   packageId: string;
   symbolCount: number;
-  shards: string[];
+  /** Symbol names that can be linked (classes, interfaces, typeAliases, enums) */
   knownSymbols: string[];
+  /** Map of qualifiedName -> symbol info */
+  symbols: Record<string, SymbolLookupEntry>;
 }
 
 /**
- * Single shard of the lookup index
+ * Generate a single lookup index file.
+ * Contains qualifiedName -> { id, kind, name } mappings for all symbols.
+ * This replaces the previous sharded approach which created 200+ small files.
  */
-type LookupShard = Record<string, SymbolLookupEntry>;
-
-/**
- * Generate sharded lookup index files.
- * Each shard contains qualifiedName -> { id, kind, name } mappings for symbols
- * whose qualifiedName hashes to that shard.
- */
-export function generateShardedLookupIndex(
+export function generateLookupIndex(
   packageId: string,
   symbols: SymbolRecord[],
-): { index: ShardedLookupIndex; shards: Map<string, LookupShard> } {
-  const shards = new Map<string, LookupShard>();
+): LookupIndex {
+  const symbolsMap: Record<string, SymbolLookupEntry> = {};
   const knownSymbols: string[] = [];
   const linkableKinds = ["class", "interface", "typeAlias", "enum"];
 
   for (const symbol of symbols) {
-    const shardKey = computeShardKey(symbol.qualifiedName);
-
-    if (!shards.has(shardKey)) {
-      shards.set(shardKey, {});
-    }
-
-    shards.get(shardKey)![symbol.qualifiedName] = {
+    symbolsMap[symbol.qualifiedName] = {
       id: symbol.id,
       kind: symbol.kind,
       name: symbol.name,
@@ -362,14 +353,12 @@ export function generateShardedLookupIndex(
     }
   }
 
-  const index: ShardedLookupIndex = {
+  return {
     packageId,
     symbolCount: symbols.length,
-    shards: Array.from(shards.keys()).sort(),
     knownSymbols: [...new Set(knownSymbols)],
+    symbols: symbolsMap,
   };
-
-  return { index, shards };
 }
 
 /**
@@ -385,15 +374,6 @@ interface CatalogEntry {
 }
 
 /**
- * Sharded catalog manifest
- */
-interface ShardedCatalogIndex {
-  packageId: string;
-  symbolCount: number;
-  shards: string[];
-}
-
-/**
  * Catalog entry - lightweight symbol summary for package overview
  */
 export interface CatalogEntryPublic {
@@ -406,23 +386,14 @@ export interface CatalogEntryPublic {
 }
 
 /**
- * Sharded catalog manifest
+ * Generate a single catalog file containing all public symbols.
+ * This replaces the previous sharded approach which created 100+ small files.
  */
-export interface ShardedCatalogIndexPublic {
-  packageId: string;
-  symbolCount: number;
-  shards: string[];
-}
-
-/**
- * Generate sharded catalog files for package overview pages.
- * Each shard contains lightweight symbol summaries.
- */
-export function generateShardedCatalog(
+export function generateCatalog(
   packageId: string,
   symbols: SymbolRecord[],
-): { index: ShardedCatalogIndex; shards: Map<string, CatalogEntry[]> } {
-  const shards = new Map<string, CatalogEntry[]>();
+): CatalogEntry[] {
+  const entries: CatalogEntry[] = [];
 
   for (const symbol of symbols) {
     // Only include public symbols that should appear in package overview
@@ -430,13 +401,7 @@ export function generateShardedCatalog(
     if (!["class", "function", "interface", "module", "typeAlias", "enum"].includes(symbol.kind))
       continue;
 
-    const shardKey = computeShardKey(symbol.qualifiedName);
-
-    if (!shards.has(shardKey)) {
-      shards.set(shardKey, []);
-    }
-
-    shards.get(shardKey)!.push({
+    entries.push({
       id: symbol.id,
       kind: symbol.kind,
       name: symbol.name,
@@ -446,13 +411,7 @@ export function generateShardedCatalog(
     });
   }
 
-  const index: ShardedCatalogIndex = {
-    packageId,
-    symbolCount: symbols.length,
-    shards: Array.from(shards.keys()).sort(),
-  };
-
-  return { index, shards };
+  return entries;
 }
 
 /**
@@ -658,33 +617,19 @@ async function uploadPackageIR(options: UploadOptions): Promise<UploadResult> {
   });
 
   // Generate and upload sharded lookup index
-  const { index: lookupIndex, shards: lookupShards } = generateShardedLookupIndex(
-    packageId,
-    symbols,
-  );
+  // Generate and upload single lookup file
+  const lookupIndex = generateLookupIndex(packageId, symbols);
   uploadTasks.push({
-    blobPath: `${basePath}/lookup/index.json`,
+    blobPath: `${basePath}/lookup.json`,
     content: JSON.stringify(lookupIndex),
   });
-  for (const [shardKey, shardData] of lookupShards) {
-    uploadTasks.push({
-      blobPath: `${basePath}/lookup/${shardKey}.json`,
-      content: JSON.stringify(shardData),
-    });
-  }
 
-  // Generate and upload sharded catalog
-  const { index: catalogIndex, shards: catalogShards } = generateShardedCatalog(packageId, symbols);
+  // Generate and upload single catalog file
+  const catalogEntries = generateCatalog(packageId, symbols);
   uploadTasks.push({
-    blobPath: `${basePath}/catalog/index.json`,
-    content: JSON.stringify(catalogIndex),
+    blobPath: `${basePath}/catalog.json`,
+    content: JSON.stringify(catalogEntries),
   });
-  for (const [shardKey, shardData] of catalogShards) {
-    uploadTasks.push({
-      blobPath: `${basePath}/catalog/${shardKey}.json`,
-      content: JSON.stringify(shardData),
-    });
-  }
 
   // Upload individual symbols (sharded)
   const shards = shardSymbols(symbols);

@@ -28,6 +28,7 @@ export {
   getPackagePointer,
   getProjectPackageIndex,
   regenerateProjectPackageIndex,
+  generateGlobalManifest,
   type PointerUpdateOptions,
   type BuildMetadata,
   type LatestPointer,

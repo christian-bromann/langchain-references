@@ -347,7 +347,7 @@ function SymbolSection({
 /**
  * Card for a single symbol
  */
-function SymbolCard({
+async function SymbolCard({
   symbol,
   language,
   packageName,
@@ -379,7 +379,9 @@ function SymbolCard({
           </h3>
         </div>
         {symbol.summary && (
-          <p className="mt-1 text-sm text-foreground-secondary line-clamp-2">{symbol.summary}</p>
+          <div className="mt-1 [&_code]:text-xs">
+            <MarkdownContent compact paragraphClassName="text-sm text-foreground-secondary line-clamp-2 m-0">{symbol.summary}</MarkdownContent>
+          </div>
         )}
         {symbol.signature && (
           <code className="mt-2 block text-xs text-foreground-muted font-mono truncate">

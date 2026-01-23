@@ -12,7 +12,7 @@
  */
 
 import { unstable_cache } from "next/cache";
-import { languageToSymbolLanguage, type Language, LANGUAGE } from "@langchain/ir-schema";
+import { type Language } from "@langchain/ir-schema";
 
 import type { Manifest, Package, SymbolRecord, RoutingMap } from "./types";
 import { PROJECTS, getEnabledProjects } from "@/lib/config/projects";
@@ -61,15 +61,6 @@ interface SymbolLookupIndex {
   knownSymbols: string[];
 }
 
-// =============================================================================
-// SHARDED INDEX TYPES
-// =============================================================================
-
-/**
- * Single shard of the lookup index
- */
-type LookupShard = Record<string, SymbolLookupEntry>;
-
 /**
  * Catalog entry - lightweight symbol summary for package overview
  */
@@ -80,15 +71,6 @@ export interface CatalogEntry {
   qualifiedName: string;
   summary?: string;
   signature?: string;
-}
-
-/**
- * Sharded catalog manifest
- */
-interface ShardedCatalogIndex {
-  packageId: string;
-  symbolCount: number;
-  shards: string[];
 }
 
 /**
@@ -115,10 +97,7 @@ const pointerCache = new Map<string, unknown>();
 const lookupIndexCache = new Map<string, SymbolLookupIndex>();
 const individualSymbolCache = new Map<string, SymbolRecord>();
 
-// Sharded index caches
-const lookupShardCache = new Map<string, LookupShard>();
-const shardedCatalogIndexCache = new Map<string, ShardedCatalogIndex>();
-const catalogShardCache = new Map<string, CatalogEntry[]>();
+// Changelog cache (still sharded for now)
 const changelogShardCache = new Map<string, ChangelogShard>();
 
 // =============================================================================
@@ -857,84 +836,40 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
 }
 
 /**
- * Build a synthetic manifest from all available project package indexes.
+ * Fetch the pre-built global manifest from blob storage.
  *
- * With the package-level architecture, there is no global manifest file.
- * Instead, we build one dynamically from the package indexes.
+ * The manifest is generated at build time by the build pipeline's
+ * `update-indexes --all` command, aggregating all project package indexes
+ * into a single file.
+ *
+ * This eliminates the need to fetch 20+ individual index files at runtime.
  */
-async function buildManifestFromPackageIndexes(): Promise<Manifest | null> {
-  const projects = ["langchain", "langgraph", "deepagent", "integrations", "langsmith"] as const;
-  const packages: Package[] = [];
-  let latestBuildId = "";
+async function fetchGlobalManifest(): Promise<Manifest | null> {
+  const manifestData = await fetchBlobJson<Manifest>(`${POINTERS_PATH}/manifest.json`);
 
-  // Fetch all project indexes in parallel
-  const indexPromises = projects.flatMap((project) =>
-    LANGUAGE.map(async (language) => {
-      const index = await getProjectPackageIndex(project, language);
-      return { project, language, index };
-    }),
-  );
-
-  const results = await Promise.all(indexPromises);
-
-  // Fetch package.json files in parallel (bounded by withBlobFetchLimit inside fetchBlobJson)
-  const packageInfoPromises: Array<Promise<Package | null>> = [];
-
-  for (const { project, language, index } of results) {
-    if (!index?.packages) continue;
-
-    for (const [pkgName, pkgInfo] of Object.entries(index.packages)) {
-      const packageId = normalizePackageId(pkgName, language);
-
-      packageInfoPromises.push(
-        (async () => {
-          const pkgDetails = await getPackageInfoV2(packageId, pkgInfo.buildId);
-          if (!pkgDetails) return null;
-
-          // Ensure metadata is present even if older package.json files omit it
-          return {
-            ...pkgDetails,
-            buildId: (pkgDetails as ExtendedPackageInfo).buildId ?? pkgInfo.buildId,
-            project: (pkgDetails as ExtendedPackageInfo).project ?? project,
-            // Normalize language/ecosystem defaults for safety
-            language:
-              (pkgDetails as ExtendedPackageInfo).language ?? languageToSymbolLanguage(language),
-            ecosystem: (pkgDetails as ExtendedPackageInfo).ecosystem ?? language,
-          } as unknown as Package;
-        })(),
-      );
-
-      // Track latest build ID (best-effort; used for legacy callers)
-      if (!latestBuildId) {
-        latestBuildId = pkgInfo.buildId;
-      }
-    }
-  }
-
-  const resolvedPackages = await Promise.all(packageInfoPromises);
-  packages.push(...(resolvedPackages.filter(Boolean) as Package[]));
-
-  if (packages.length === 0) {
+  if (!manifestData?.packages) {
+    console.error("[loader] No global manifest found at pointers/manifest.json");
+    console.error("[loader] Run 'pnpm update-indexes --all' to generate the manifest");
     return null;
   }
 
-  return {
-    irVersion: "1.0",
-    project: "all-packages",
-    build: {
-      buildId: latestBuildId,
-      createdAt: new Date().toISOString(),
-      baseUrl: "",
-    },
-    sources: [],
-    packages,
-  };
+  return manifestData;
 }
 
 /**
- * Helper to normalize package name to packageId
+ * Normalize a package name to a packageId.
+ *
+ * Handles all package naming conventions:
+ * - JavaScript scoped packages: @langchain/core -> pkg_js_langchain_core
+ * - Python packages: langchain-core -> pkg_py_langchain_core
+ * - Java packages: io.langchain.langsmith -> pkg_java_io_langchain_langsmith
+ * - Go packages: github.com/langchain-ai/langsmith-go -> pkg_go_github_com_langchain_ai_langsmith_go
+ *
+ * @param pkgName - The package name (e.g., "@langchain/core", "langchain-core")
+ * @param language - The language/ecosystem
+ * @returns The normalized packageId (e.g., "pkg_js_langchain_core")
  */
-function normalizePackageId(pkgName: string, language: Language): string {
+export function normalizePackageId(pkgName: string, language: Language): string {
   const prefixMap: Record<Language, string> = {
     python: "pkg_py_",
     javascript: "pkg_js_",
@@ -942,7 +877,8 @@ function normalizePackageId(pkgName: string, language: Language): string {
     go: "pkg_go_",
   };
   const prefix = prefixMap[language];
-  const normalized = pkgName.replace(/^@/, "").replace(/\//g, "_").replace(/-/g, "_");
+  // Remove @ prefix, then replace special chars (. / -) with underscores
+  const normalized = pkgName.replace(/^@/, "").replace(/[./-]/g, "_");
   return `${prefix}${normalized}`;
 }
 
@@ -981,7 +917,7 @@ export async function getManifest(_buildId: string): Promise<Manifest | null> {
  * Manual cache busting can be triggered via the "synthetic-manifest" tag.
  */
 const getCachedSyntheticManifest = unstable_cache(
-  async (): Promise<Manifest | null> => buildManifestFromPackageIndexes(),
+  async (): Promise<Manifest | null> => fetchGlobalManifest(),
   ["synthetic-manifest:all-packages"],
   { revalidate: 86400, tags: ["synthetic-manifest"] }, // 24 hours
 );
@@ -1691,120 +1627,51 @@ export async function batchGetSymbols(
 // Each shard is <500KB and can be CDN-cached, avoiding the 2MB Next.js cache limit.
 
 /**
- * Get a specific lookup shard.
+ * Look up a symbol by qualified name using the lookup index.
+ * Fetches a single lookup.json file (100-500KB) containing all symbols.
  */
-async function getLookupShard(
-  buildId: string,
-  packageId: string,
-  shardKey: string,
-): Promise<LookupShard | null> {
-  const cacheKey = `${buildId}:${packageId}:lookup:${shardKey}`;
-  if (lookupShardCache.has(cacheKey)) {
-    return lookupShardCache.get(cacheKey)!;
-  }
-
-  const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/lookup/${shardKey}.json`;
-  const shard = await fetchBlobJson<LookupShard>(path);
-
-  if (shard) {
-    lookupShardCache.set(cacheKey, shard);
-  }
-
-  return shard;
-}
-
-/**
- * Look up a symbol by qualified name using the sharded lookup index.
- * Only fetches the specific shard needed (~50-200KB).
- */
-export async function getSymbolFromShardedLookup(
+export async function getSymbolFromLookup(
   buildId: string,
   packageId: string,
   qualifiedName: string,
 ): Promise<SymbolLookupEntry | null> {
-  const shardKey = computeShardKey(qualifiedName);
-  const shard = await getLookupShard(buildId, packageId, shardKey);
+  const index = await getSymbolLookupIndex(buildId, packageId);
 
-  if (!shard) {
+  if (!index) {
     return null;
   }
 
-  return shard[qualifiedName] || null;
+  return index.symbols[qualifiedName] || null;
 }
 
-/**
- * Get the sharded catalog index manifest for a package.
- */
-async function getShardedCatalogIndexManifest(
-  buildId: string,
-  packageId: string,
-): Promise<ShardedCatalogIndex | null> {
-  const cacheKey = `${buildId}:${packageId}:catalog-index`;
-  if (shardedCatalogIndexCache.has(cacheKey)) {
-    return shardedCatalogIndexCache.get(cacheKey)!;
-  }
+// Backwards compatibility alias
+export const getSymbolFromShardedLookup = getSymbolFromLookup;
 
-  const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/catalog/index.json`;
-  const index = await fetchBlobJson<ShardedCatalogIndex>(path);
-
-  if (index) {
-    shardedCatalogIndexCache.set(cacheKey, index);
-  }
-
-  return index;
-}
+// Cache for catalog entries (single file per package)
+const catalogCache = new Map<string, CatalogEntry[]>();
 
 /**
- * Get a specific catalog shard.
- */
-async function getCatalogShard(
-  buildId: string,
-  packageId: string,
-  shardKey: string,
-): Promise<CatalogEntry[] | null> {
-  const cacheKey = `${buildId}:${packageId}:catalog:${shardKey}`;
-  if (catalogShardCache.has(cacheKey)) {
-    return catalogShardCache.get(cacheKey)!;
-  }
-
-  const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/catalog/${shardKey}.json`;
-  const shard = await fetchBlobJson<CatalogEntry[]>(path);
-
-  if (shard) {
-    catalogShardCache.set(cacheKey, shard);
-  }
-
-  return shard;
-}
-
-/**
- * Get all catalog entries for a package by fetching all shards in parallel.
- * Each shard is <500KB and CDN-cacheable.
+ * Get all catalog entries for a package.
+ * Fetches a single catalog.json file containing all public symbols.
  */
 export async function getCatalogEntries(
   buildId: string,
   packageId: string,
 ): Promise<CatalogEntry[]> {
-  const manifest = await getShardedCatalogIndexManifest(buildId, packageId);
-  if (!manifest?.shards) {
-    return [];
+  const cacheKey = `${buildId}:${packageId}:catalog`;
+  if (catalogCache.has(cacheKey)) {
+    return catalogCache.get(cacheKey)!;
   }
 
-  // Fetch all shards in parallel
-  const shardPromises = manifest.shards.map((shardKey) =>
-    getCatalogShard(buildId, packageId, shardKey),
-  );
-  const shards = await Promise.all(shardPromises);
+  const path = `${IR_BASE_PATH}/packages/${packageId}/${buildId}/catalog.json`;
+  const entries = await fetchBlobJson<CatalogEntry[]>(path);
 
-  // Flatten results
-  const entries: CatalogEntry[] = [];
-  for (const shard of shards) {
-    if (shard) {
-      entries.push(...shard);
-    }
+  if (entries) {
+    catalogCache.set(cacheKey, entries);
+    return entries;
   }
 
-  return entries;
+  return [];
 }
 
 /**
@@ -2103,11 +1970,7 @@ async function fetchCrossProjectPackagesData(language: Language): Promise<CrossP
           // Skip packages without buildId (malformed data)
           if (!pkg.buildId) continue;
 
-          // Derive packageId from language and package name
-          // e.g., langchain_core + python -> pkg_py_langchain_core
-          const langPrefix = language === "python" ? "py" : "js";
-          const normalizedName = packageName.replace(/[.@/-]/g, "_");
-          const packageId = `pkg_${langPrefix}_${normalizedName}`;
+          const packageId = normalizePackageId(packageName, language);
 
           // Module prefix for import resolution
           const modulePrefix = packageName
@@ -2246,11 +2109,8 @@ export async function prewarmCorePackages(language: Language): Promise<void> {
         pkgName === "langchain";
 
       if (isCore && pkgInfo.buildId) {
-        // Derive packageId from language and package name
-        const langPrefix = language === "python" ? "py" : "js";
-        const normalizedName = pkgName.replace(/[.@/-]/g, "_");
         corePackages.push({
-          packageId: `pkg_${langPrefix}_${normalizedName}`,
+          packageId: normalizePackageId(pkgName, language),
           buildId: pkgInfo.buildId,
         });
       }

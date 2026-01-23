@@ -65,9 +65,9 @@ import pLimit from "p-limit";
 import { fetchTarball, getLatestSha, getCacheBaseDir, type FetchResult } from "../tarball.js";
 import {
   uploadIR,
-  generateShardedCatalog,
+  generateCatalog,
   generateRoutingMap,
-  generateShardedLookupIndex,
+  generateLookupIndex,
 } from "../upload.js";
 import { updatePointers } from "../pointers.js";
 import { checkForUpdates } from "./check-updates.js";
@@ -2059,41 +2059,25 @@ async function buildConfig(
           JSON.stringify(routingMap, null, 2),
         );
 
-        // Generate and write lookup index
-        const { index: lookupIndex, shards: lookupShards } = generateShardedLookupIndex(
+        // Generate and write single lookup file
+        const lookupIndex = generateLookupIndex(
           pkgInfo.packageId,
           symbolsData.symbols,
         );
-        const lookupDir = path.join(pkgInfo.outputDir, "lookup");
-        await fs.mkdir(lookupDir, { recursive: true });
         await fs.writeFile(
-          path.join(lookupDir, "index.json"),
+          path.join(pkgInfo.outputDir, "lookup.json"),
           JSON.stringify(lookupIndex, null, 2),
         );
-        for (const [shardKey, shardData] of lookupShards) {
-          await fs.writeFile(
-            path.join(lookupDir, `${shardKey}.json`),
-            JSON.stringify(shardData, null, 2),
-          );
-        }
 
-        // Generate and write catalog
-        const { index: catalogIndex, shards: catalogShards } = generateShardedCatalog(
+        // Generate and write single catalog file
+        const catalogEntries = generateCatalog(
           pkgInfo.packageId,
           symbolsData.symbols,
         );
-        const catalogDir = path.join(pkgInfo.outputDir, "catalog");
-        await fs.mkdir(catalogDir, { recursive: true });
         await fs.writeFile(
-          path.join(catalogDir, "index.json"),
-          JSON.stringify(catalogIndex, null, 2),
+          path.join(pkgInfo.outputDir, "catalog.json"),
+          JSON.stringify(catalogEntries, null, 2),
         );
-        for (const [shardKey, shardData] of catalogShards) {
-          await fs.writeFile(
-            path.join(catalogDir, `${shardKey}.json`),
-            JSON.stringify(shardData, null, 2),
-          );
-        }
       }
     } catch (catalogError) {
       // Non-fatal: these files are optional for local builds with fallback
