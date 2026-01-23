@@ -89,6 +89,7 @@ export function MarkdownWrapper({ html, className = "", compact = false }: Markd
               if (tooltip) tooltip.textContent = "Copy";
             }, 2000);
           } catch (err) {
+            // oxlint-disable-next-line no-console
             console.error("Failed to copy:", err);
           }
         });

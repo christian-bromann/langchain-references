@@ -44,6 +44,7 @@
   },
   "devDependencies": {
     "@langchain/ir-schema": "workspace:*",
+    "@langchain/markdown-utils": "workspace:*",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/typography": "next",
     "@types/node": "^25.0.3",

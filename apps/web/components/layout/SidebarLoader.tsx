@@ -134,9 +134,7 @@ async function loadSidebarPackagesForProject(
   const useManifestPath = language === "python" || language === "javascript";
 
   // First try package-level architecture (Java/Go use this)
-  const packageIndex = !useManifestPath
-    ? await getProjectPackageIndex(projectId, language)
-    : null;
+  const packageIndex = !useManifestPath ? await getProjectPackageIndex(projectId, language) : null;
   if (packageIndex && Object.keys(packageIndex.packages).length > 0) {
     // OPTIMIZATION: Fetch all package data in parallel instead of sequential for-loop
     const packageEntries = Object.entries(packageIndex.packages);
@@ -151,7 +149,9 @@ async function loadSidebarPackagesForProject(
 
             const pkgBuildId = pkgPointer.buildId;
             // Use centralized normalization (handles @, /, -, . in package names)
-            const packageId = pkgKey.startsWith("pkg_") ? pkgKey : normalizePackageId(pkgKey, language);
+            const packageId = pkgKey.startsWith("pkg_")
+              ? pkgKey
+              : normalizePackageId(pkgKey, language);
 
             // Fetch package info and routing map in parallel
             const [packageInfoV2, routingMap] = await Promise.all([
@@ -209,6 +209,7 @@ async function loadSidebarPackagesForProject(
               _pkgKey: pkgKey, // Store for sorting
             };
           } catch (err) {
+            // oxlint-disable-next-line no-console
             console.error(`[SidebarLoader] Error loading package ${pkgKey}:`, err);
             return null;
           }
@@ -285,7 +286,11 @@ async function loadSidebarPackagesForProject(
         };
 
         let items: SidebarPackage["items"] = [];
-        if (language === "javascript" && manifestPkg.exportPaths && Array.isArray(manifestPkg.exportPaths)) {
+        if (
+          language === "javascript" &&
+          manifestPkg.exportPaths &&
+          Array.isArray(manifestPkg.exportPaths)
+        ) {
           items = manifestPkg.exportPaths.map((ep) => ({
             name: ep.title,
             path: `/${language}/${slug}/${ep.slug}`,
@@ -314,6 +319,7 @@ async function loadSidebarPackagesForProject(
           subpages,
         };
       } catch (err) {
+        // oxlint-disable-next-line no-console
         console.error(`[SidebarLoader] Error loading manifest package ${pkg.packageId}:`, err);
         return null;
       }

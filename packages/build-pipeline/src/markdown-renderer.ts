@@ -11,6 +11,7 @@ import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
 import rehypeShiki from "@shikijs/rehype";
 import rehypeStringify from "rehype-stringify";
+import { processMkDocsContent, postProcessAdmonitions } from "@langchain/markdown-utils";
 
 /**
  * Get or create the markdown processor with Shiki.
@@ -89,6 +90,8 @@ function dedentContent(content: string): string {
  * Uses Shiki for syntax highlighting if code blocks are present,
  * otherwise uses a simpler/faster processor.
  *
+ * Handles MkDocs admonition syntax (!!!, ???, ???+).
+ *
  * @param content - Raw markdown content
  * @returns HTML string
  */
@@ -97,22 +100,27 @@ export async function renderMarkdown(content: string): Promise<string> {
     return "";
   }
 
-  // Dedent content to handle docstring indentation
-  const processedContent = dedentContent(content);
+  // Dedent content and process MkDocs admonitions
+  const dedented = dedentContent(content);
+  const processedContent = processMkDocsContent(dedented);
 
   // Use simpler processor for content without code blocks
   const needsShiki = hasCodeBlocks(processedContent);
 
   try {
+    let html: string;
     if (needsShiki) {
       const processor = await getProcessor();
       const result = await processor.process(processedContent);
-      return String(result);
+      html = String(result);
     } else {
       const processor = getSimpleProcessor();
       const result = await processor.process(processedContent);
-      return String(result);
+      html = String(result);
     }
+
+    // Post-process to convert admonition markers to proper HTML
+    return postProcessAdmonitions(html);
   } catch (error) {
     console.error("[markdown-renderer] Error rendering markdown:", error);
     // Fallback: return escaped content
@@ -132,7 +140,7 @@ export async function renderMarkdownBatch(
   contents: string[],
   concurrency = 10,
 ): Promise<string[]> {
-  const results: string[] = new Array(contents.length);
+  const results: string[] = Array.from({ length: contents.length });
 
   // Process in batches to control concurrency
   for (let i = 0; i < contents.length; i += concurrency) {

@@ -69,6 +69,7 @@ function toDisplaySymbol(entry: CatalogEntry): DisplaySymbol {
 
 export async function PackagePage({ language, packageId, packageName }: PackagePageProps) {
   const pageStart = Date.now();
+  // oxlint-disable-next-line no-console
   const log = (msg: string) => console.log(`[PackagePage] ${msg} (+${Date.now() - pageStart}ms)`);
   log(`START: ${packageName}`);
 

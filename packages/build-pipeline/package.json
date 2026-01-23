@@ -40,6 +40,7 @@
   "dependencies": {
     "@langchain/extractor-typescript": "workspace:*",
     "@langchain/ir-schema": "workspace:*",
+    "@langchain/markdown-utils": "workspace:*",
     "@shikijs/rehype": "^3.6.0",
     "@vercel/blob": "^2.0.0",
     "commander": "^14.0.2",
