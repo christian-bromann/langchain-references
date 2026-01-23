@@ -446,6 +446,64 @@ export async function generateCatalog(
 }
 
 /**
+ * Pre-render markdown to HTML for all symbol docs (summary and description).
+ * This avoids expensive runtime Shiki processing on the frontend.
+ *
+ * Modifies symbols in-place and returns the count of rendered fields.
+ */
+export async function preRenderSymbolDocs(
+  symbols: SymbolRecord[],
+): Promise<{ summariesRendered: number; descriptionsRendered: number }> {
+  let summariesRendered = 0;
+  let descriptionsRendered = 0;
+
+  // Collect all docs that need rendering
+  const toRender: Array<{
+    symbol: SymbolRecord;
+    field: "summary" | "description";
+    content: string;
+  }> = [];
+
+  for (const symbol of symbols) {
+    if (symbol.docs?.summary) {
+      toRender.push({ symbol, field: "summary", content: symbol.docs.summary });
+    }
+    if (symbol.docs?.description) {
+      toRender.push({ symbol, field: "description", content: symbol.docs.description });
+    }
+  }
+
+  if (toRender.length === 0) {
+    return { summariesRendered: 0, descriptionsRendered: 0 };
+  }
+
+  // Render in batches with concurrency limit
+  const BATCH_SIZE = 20;
+  for (let i = 0; i < toRender.length; i += BATCH_SIZE) {
+    const batch = toRender.slice(i, i + BATCH_SIZE);
+    const htmlResults = await Promise.all(
+      batch.map(({ content }) => renderMarkdown(content)),
+    );
+
+    // Store results back in symbols
+    for (let j = 0; j < batch.length; j++) {
+      const { symbol, field } = batch[j];
+      const html = htmlResults[j];
+
+      if (field === "summary") {
+        symbol.docs.summaryHtml = html;
+        summariesRendered++;
+      } else {
+        symbol.docs.descriptionHtml = html;
+        descriptionsRendered++;
+      }
+    }
+  }
+
+  return { summariesRendered, descriptionsRendered };
+}
+
+/**
  * Changelog entry for a single symbol
  */
 interface SymbolChangelogEntry {

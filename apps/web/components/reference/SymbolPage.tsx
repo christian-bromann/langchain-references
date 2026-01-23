@@ -240,7 +240,9 @@ interface DisplaySymbol {
   stability?: Stability;
   docs: {
     summary: string;
+    summaryHtml?: string;
     description?: string;
+    descriptionHtml?: string;
     sections?: DocSection[];
   };
   source?: {
@@ -285,6 +287,7 @@ interface DisplayMember {
   visibility?: Visibility;
   type?: string;
   summary?: string;
+  summaryHtml?: string;
   signature?: string;
   /** Fully qualified name for the member (e.g., langchain_core.messages.base.merge_content) */
   qualifiedName?: string;
@@ -397,6 +400,7 @@ function toDisplaySymbol(
       visibility: m.visibility,
       type,
       summary: memberSymbol?.docs?.summary || undefined,
+      summaryHtml: memberSymbol?.docs?.summaryHtml || undefined,
       signature: memberSymbol?.signature,
       // Use the actual qualified name from the symbol record (handles re-exports correctly)
       qualifiedName: memberSymbol?.qualifiedName,
@@ -413,7 +417,9 @@ function toDisplaySymbol(
     stability: symbol.tags?.stability,
     docs: {
       summary: symbol.docs?.summary || "",
+      summaryHtml: symbol.docs?.summaryHtml,
       description: symbol.docs?.description,
+      descriptionHtml: symbol.docs?.descriptionHtml,
       sections: sections.length > 0 ? sections : undefined,
     },
     source: symbol.source
@@ -1095,6 +1101,7 @@ async function resolveInheritedMembers(
         visibility: member.visibility,
         type,
         summary: memberSymbol?.docs?.summary || undefined,
+        summaryHtml: memberSymbol?.docs?.summaryHtml || undefined,
         signature: memberSymbol?.signature,
         // Use the actual qualified name from the symbol record (handles re-exports correctly)
         qualifiedName: memberSymbol?.qualifiedName,
@@ -1526,10 +1533,17 @@ export async function SymbolPage({
               )}
             </div>
             <h1 className="text-3xl font-bold text-foreground font-mono">{symbol.name}</h1>
-            {symbol.docs?.summary && (
-              <MarkdownContent compact className="mt-3 text-foreground-secondary text-lg">
-                {symbol.docs.summary}
-              </MarkdownContent>
+            {(symbol.docs?.summaryHtml || symbol.docs?.summary) && (
+              symbol.docs.summaryHtml ? (
+                <div
+                  className="mt-3 text-foreground-secondary text-lg prose prose-sm dark:prose-invert max-w-none [&_p]:m-0"
+                  dangerouslySetInnerHTML={{ __html: symbol.docs.summaryHtml }}
+                />
+              ) : (
+                <MarkdownContent compact className="mt-3 text-foreground-secondary text-lg">
+                  {symbol.docs.summary}
+                </MarkdownContent>
+              )
             )}
           </div>
 
@@ -1579,7 +1593,16 @@ export async function SymbolPage({
           )}
 
           {/* Description */}
-          {symbol.docs?.description && <MarkdownContent>{symbol.docs.description}</MarkdownContent>}
+          {(symbol.docs?.descriptionHtml || symbol.docs?.description) && (
+            symbol.docs.descriptionHtml ? (
+              <div
+                className="prose prose-sm dark:prose-invert max-w-none"
+                dangerouslySetInnerHTML={{ __html: symbol.docs.descriptionHtml }}
+              />
+            ) : (
+              <MarkdownContent>{symbol.docs.description!}</MarkdownContent>
+            )
+          )}
 
           {/* Sections (parameters, examples, etc.) */}
           {symbol.docs?.sections?.map((section, i) => (
@@ -2086,17 +2109,27 @@ async function MemberCard({
         </div>
 
         {/* Show summary - truncate for linkable members, show full for non-linkable (attributes) */}
-        {member.summary && (
+        {(member.summaryHtml || member.summary) && (
           <div className="mt-1 [&_code]:text-xs">
-            <MarkdownContent
-              compact
-              paragraphClassName={cn(
-                "text-sm text-foreground-secondary m-0",
-                isLinkable && "line-clamp-2",
-              )}
-            >
-              {member.summary}
-            </MarkdownContent>
+            {member.summaryHtml ? (
+              <div
+                className={cn(
+                  "text-sm text-foreground-secondary m-0 [&_p]:m-0",
+                  isLinkable && "line-clamp-2",
+                )}
+                dangerouslySetInnerHTML={{ __html: member.summaryHtml }}
+              />
+            ) : (
+              <MarkdownContent
+                compact
+                paragraphClassName={cn(
+                  "text-sm text-foreground-secondary m-0",
+                  isLinkable && "line-clamp-2",
+                )}
+              >
+                {member.summary!}
+              </MarkdownContent>
+            )}
           </div>
         )}
       </div>

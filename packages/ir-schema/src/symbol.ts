@@ -135,11 +135,17 @@ export interface SymbolDisplay {
  * Documentation for the symbol.
  */
 export interface SymbolDocs {
-  /** One-line summary */
+  /** One-line summary (raw markdown) */
   summary: string;
 
-  /** Full description (markdown) */
+  /** Pre-rendered HTML for summary (avoids expensive runtime Shiki processing) */
+  summaryHtml?: string;
+
+  /** Full description (raw markdown) */
   description?: string;
+
+  /** Pre-rendered HTML for description (avoids expensive runtime Shiki processing) */
+  descriptionHtml?: string;
 
   /** Usage examples */
   examples?: SymbolExample[];

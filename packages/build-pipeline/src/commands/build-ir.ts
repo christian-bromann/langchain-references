@@ -68,6 +68,7 @@ import {
   generateCatalog,
   generateRoutingMap,
   generateLookupIndex,
+  preRenderSymbolDocs,
 } from "../upload.js";
 import { updatePointers } from "../pointers.js";
 import { checkForUpdates } from "./check-updates.js";
@@ -2039,6 +2040,14 @@ async function buildConfig(
       const symbolsContent = await fs.readFile(symbolsPath, "utf-8");
       const symbolsData = JSON.parse(symbolsContent);
       if (symbolsData.symbols) {
+        // Pre-render markdown to HTML for symbol docs (summary and description)
+        // This avoids expensive runtime Shiki processing on the frontend
+        const renderStats = await preRenderSymbolDocs(symbolsData.symbols);
+        if (renderStats.summariesRendered > 0 || renderStats.descriptionsRendered > 0) {
+          // Write back the updated symbols with HTML fields
+          await fs.writeFile(symbolsPath, JSON.stringify(symbolsData, null, 2));
+        }
+
         const ecosystemMap: Record<string, Language> = {
           python: "python",
           typescript: "javascript",
