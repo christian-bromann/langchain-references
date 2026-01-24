@@ -13,4 +13,4 @@ export {
   convertAdmonitions,
   postProcessAdmonitions,
   processMkDocsContent,
-} from "./admonitions.js";
+} from "./admonitions";
