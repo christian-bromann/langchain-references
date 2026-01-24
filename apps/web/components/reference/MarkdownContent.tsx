@@ -10,10 +10,28 @@ import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
-import rehypeShiki from "@shikijs/rehype";
+import rehypeShikiFromHighlighter from "@shikijs/rehype/core";
+import { createHighlighter, type Highlighter } from "shiki";
 import rehypeStringify from "rehype-stringify";
 import { MarkdownWrapper } from "./MarkdownWrapper";
 import { convertAdmonitions, postProcessAdmonitions } from "@langchain/markdown-utils";
+
+// Cached highlighter instance - created once, reused across all calls
+let highlighterPromise: Promise<Highlighter> | null = null;
+
+/**
+ * Get or create the singleton Shiki highlighter with only the languages we need.
+ * This is much faster than loading all 200+ languages.
+ */
+function getHighlighter(): Promise<Highlighter> {
+  if (!highlighterPromise) {
+    highlighterPromise = createHighlighter({
+      themes: ["github-light", "github-dark"],
+      langs: ["typescript", "javascript", "python", "java", "go", "bash", "json", "yaml", "text"],
+    });
+  }
+  return highlighterPromise;
+}
 
 interface MarkdownContentProps {
   children: string;
@@ -126,24 +144,52 @@ function processMkDocsContent(content: string): string {
 }
 
 /**
+ * Check if content has fenced code blocks that need syntax highlighting.
+ * This allows us to skip the expensive Shiki processor for plain text.
+ */
+function hasCodeBlocks(content: string): boolean {
+  // Match fenced code blocks: ``` or ~~~
+  return /^(```|~~~)/m.test(content);
+}
+
+/**
  * Process markdown to HTML with Shiki syntax highlighting.
+ * Optimized to skip Shiki when no code blocks are present.
  */
 async function processMarkdown(content: string, paragraphClassName?: string): Promise<string> {
   // Process MkDocs syntax (convert admonitions, dedent, etc.)
   const processedContent = processMkDocsContent(content);
 
-  const result = await unified()
-    .use(remarkParse)
-    .use(remarkGfm) // Enable GFM tables, strikethrough, autolinks, etc.
-    .use(remarkRehype, { allowDangerousHtml: true }) // Allow HTML from admonitions
-    .use(rehypeShiki, {
-      themes: {
-        light: "github-light",
-        dark: "github-dark",
-      },
-    })
-    .use(rehypeStringify, { allowDangerousHtml: true }) // Preserve HTML in output
-    .process(processedContent);
+  // Optimization: Skip expensive Shiki processing when there are no code blocks
+  const needsShiki = hasCodeBlocks(processedContent);
+
+  let result;
+  if (needsShiki) {
+    // Get our cached highlighter with only the languages we need
+    const highlighter = await getHighlighter();
+
+    // Full pipeline with syntax highlighting
+    result = await unified()
+      .use(remarkParse)
+      .use(remarkGfm)
+      .use(remarkRehype, { allowDangerousHtml: true })
+      .use(rehypeShikiFromHighlighter, highlighter, {
+        themes: {
+          light: "github-light",
+          dark: "github-dark",
+        },
+      })
+      .use(rehypeStringify, { allowDangerousHtml: true })
+      .process(processedContent);
+  } else {
+    // Fast path: No code blocks, skip Shiki entirely
+    result = await unified()
+      .use(remarkParse)
+      .use(remarkGfm)
+      .use(remarkRehype, { allowDangerousHtml: true })
+      .use(rehypeStringify, { allowDangerousHtml: true })
+      .process(processedContent);
+  }
 
   // Post-process to catch any admonitions that ended up in <p> tags
   let html = postProcessAdmonitions(String(result));
