@@ -1,0 +1,116 @@
+# CI Workflow
+#
+# Runs lint, type checking, unit tests, and e2e tests on pull requests and pushes.
+# On success, triggers the Performance Tests workflow.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linter
+        run: pnpm lint
+
+      - name: Run format check
+        run: pnpm fmt:check
+
+      - name: Type check
+        run: pnpm typecheck
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run unit tests
+        run: pnpm test
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start server and run e2e tests
+        run: |
+          # Start the dev server (includes static IR server) in the background
+          pnpm dev &
+          SERVER_PID=$!
+
+          # Wait for server to be ready
+          echo "Waiting for server to start..."
+          for i in {1..30}; do
+            if curl -s http://localhost:3000 > /dev/null 2>&1; then
+              echo "Server is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Server failed to start"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          # Run e2e tests (agent tests will be skipped without API keys)
+          pnpm --filter @langchain/reference-web test:e2e
+
+          # Cleanup
+          kill $SERVER_PID 2>/dev/null || true
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          MCP_TEST_URL: http://localhost:3000
+          # Optional: enables agent-based e2e tests (tests are skipped if not set)
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  perf-tests:
+    name: Performance Tests
+    needs: [lint, unit-tests, e2e-tests]
+    if: success()
+    uses: ./.github/workflows/perf-tests.yml

@@ -1,6 +1,13 @@
 name: Performance Tests
 
 on:
+  # Manual trigger
+  workflow_dispatch:
+
+  # Triggered by CI workflow after tests pass
+  workflow_call:
+
+  # Also run on relevant file changes (for direct feedback)
   pull_request:
     paths:
       - "apps/web/lib/**"
