@@ -86,6 +86,9 @@ jobs:
 
       - name: Start server and run e2e tests
         run: |
+          # Create .env.local for the dev server to use the local IR server
+          echo "BLOB_URL=http://localhost:3001" > .env.local
+          
           # Start the dev server (includes static IR server) in the background
           pnpm dev &
           SERVER_PID=$!
