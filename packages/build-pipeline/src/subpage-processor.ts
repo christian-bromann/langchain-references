@@ -63,8 +63,113 @@ const INCLUDE_REPLACEMENTS: Record<string, string> = {
 };
 
 /**
+ * Transform relative image URLs in markdown to absolute URLs.
+ *
+ * Handles both markdown syntax: ![alt](image.png)
+ * And HTML syntax: <img src="image.png" />
+ *
+ * @param content - Markdown content with potential relative image paths
+ * @param baseUrl - The base URL to prepend to relative paths (should end with /)
+ * @returns Content with absolute image URLs
+ */
+export function transformRelativeImageUrlsWithBase(content: string, baseUrl: string): string {
+  if (!content || !baseUrl) return content;
+
+  // Ensure baseUrl ends with /
+  const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+
+  // Helper to resolve a relative path against the base URL
+  const resolveUrl = (relativePath: string): string => {
+    // Already absolute URL - return as-is
+    if (relativePath.startsWith("http://") || relativePath.startsWith("https://")) {
+      return relativePath;
+    }
+    // Data URLs - return as-is
+    if (relativePath.startsWith("data:")) {
+      return relativePath;
+    }
+    // Anchor links - return as-is
+    if (relativePath.startsWith("#")) {
+      return relativePath;
+    }
+    // Remove leading ./ if present
+    const cleanPath = relativePath.replace(/^\.\//, "");
+    return `${normalizedBaseUrl}${cleanPath}`;
+  };
+
+  let result = content;
+
+  // Transform markdown image syntax: ![alt](path)
+  // Match ![any text](path) where path doesn't start with http
+  result = result.replace(
+    /!\[([^\]]*)\]\(([^)]+)\)/g,
+    (match, alt, imagePath) => {
+      const trimmedPath = imagePath.trim();
+      // Only transform if it looks like a relative path to an image
+      if (
+        !trimmedPath.startsWith("http") &&
+        !trimmedPath.startsWith("data:") &&
+        !trimmedPath.startsWith("#") &&
+        /\.(png|jpg|jpeg|gif|svg|webp|avif)(\?.*)?$/i.test(trimmedPath)
+      ) {
+        return `![${alt}](${resolveUrl(trimmedPath)})`;
+      }
+      return match;
+    },
+  );
+
+  // Transform HTML img src attributes: <img src="path" /> or <img src='path' />
+  result = result.replace(
+    /<img\s+([^>]*?)src=(["'])([^"']+)\2([^>]*?)\/?>/gi,
+    (match, before, quote, src, after) => {
+      const trimmedSrc = src.trim();
+      // Only transform if it looks like a relative path to an image
+      if (
+        !trimmedSrc.startsWith("http") &&
+        !trimmedSrc.startsWith("data:") &&
+        !trimmedSrc.startsWith("#") &&
+        /\.(png|jpg|jpeg|gif|svg|webp|avif)(\?.*)?$/i.test(trimmedSrc)
+      ) {
+        return `<img ${before}src=${quote}${resolveUrl(trimmedSrc)}${quote}${after}/>`;
+      }
+      return match;
+    },
+  );
+
+  return result;
+}
+
+/**
+ * Transform relative image URLs in markdown to absolute raw GitHub URLs.
+ * Derives the base URL from the source URL of the markdown file.
+ *
+ * @param content - Markdown content with potential relative image paths
+ * @param sourceUrl - The source URL of the markdown file (used to derive base path)
+ * @returns Content with absolute image URLs
+ */
+function transformRelativeImageUrls(content: string, sourceUrl: string): string {
+  if (!content || !sourceUrl) return content;
+
+  // Only process raw.githubusercontent.com URLs
+  if (!sourceUrl.includes("raw.githubusercontent.com")) {
+    return content;
+  }
+
+  // Extract the base directory from the source URL
+  // e.g., https://raw.githubusercontent.com/org/repo/branch/path/to/file.md
+  //    -> https://raw.githubusercontent.com/org/repo/branch/path/to/
+  const lastSlashIndex = sourceUrl.lastIndexOf("/");
+  if (lastSlashIndex === -1) {
+    return content;
+  }
+  const baseUrl = sourceUrl.slice(0, lastSlashIndex + 1);
+
+  return transformRelativeImageUrlsWithBase(content, baseUrl);
+}
+
+/**
  * Process MkDocs include syntax (--8<-- "filename.md") and replace with content.
- * 
+ *
  * @param content - Raw markdown content with potential includes
  * @returns Content with includes replaced
  */
@@ -331,7 +436,10 @@ export async function processSubpage(
     return null;
   }
 
-  const { markdownContent, symbolRefs } = parseSubpageMarkdown(content);
+  // Transform relative image URLs to absolute GitHub raw URLs
+  // This ensures images render correctly when displayed on the reference site
+  const contentWithAbsoluteUrls = transformRelativeImageUrls(content, config.source);
+  const { markdownContent, symbolRefs } = parseSubpageMarkdown(contentWithAbsoluteUrls);
 
   return {
     slug: config.slug,

@@ -76,6 +76,7 @@ import { fetchDeployedChangelog, type DeployedChangelog } from "../changelog-fet
 import {
   processSubpages,
   clearFetchCache,
+  transformRelativeImageUrlsWithBase,
   type SubpageConfig,
   type ParsedSubpage,
 } from "../subpage-processor.js";
@@ -157,6 +158,27 @@ function generatePackageBuildId(repo: string, sha: string, packageName: string):
 }
 
 /**
+ * Repository info for constructing GitHub raw URLs.
+ */
+interface RepoInfo {
+  /** Repository owner (e.g., "langchain-ai") */
+  owner: string;
+  /** Repository name (e.g., "deepagents") */
+  name: string;
+  /** Git SHA or branch/tag */
+  ref: string;
+  /** Package path within repo (e.g., "libs/deepagents-cli") */
+  packagePath: string;
+}
+
+/**
+ * Build GitHub raw content base URL for image resolution.
+ */
+function buildGitHubRawBaseUrl(repoInfo: RepoInfo): string {
+  return `https://raw.githubusercontent.com/${repoInfo.owner}/${repoInfo.name}/${repoInfo.ref}/${repoInfo.packagePath}/`;
+}
+
+/**
  * Fetch package description markdown content.
  *
  * Resolution order:
@@ -165,18 +187,19 @@ function generatePackageBuildId(repo: string, sha: string, packageName: string):
  * 3. Otherwise, try to read README.md from the package directory in the tarball
  *
  * @param pkgConfig - Package configuration
- * @param config - Build configuration
  * @param packagePath - Path to the extracted package directory
+ * @param repoInfo - Repository info for constructing image URLs
  * @returns Markdown content or undefined if not found
  */
 async function fetchPackageDescription(
   pkgConfig: PackageConfig,
   packagePath: string,
+  repoInfo?: RepoInfo,
 ): Promise<string | undefined> {
   // Check if package has explicit descriptionSource
   if (!pkgConfig.descriptionSource || pkgConfig.descriptionSource === "readme") {
     // Use README.md from the package
-    return readReadmeFromPackage(packagePath);
+    return readReadmeFromPackage(packagePath, repoInfo);
   }
 
   // Fetch from GitHub raw URL
@@ -190,41 +213,58 @@ async function fetchPackageDescription(
     const response = await fetch(rawUrl);
 
     if (response.ok) {
-      const content = await response.text();
+      let content = await response.text();
       // Clean up the markdown - remove frontmatter and any MkDocs-specific syntax
-      return cleanMarkdownContent(content);
+      content = cleanMarkdownContent(content);
+      // Transform relative image URLs to absolute GitHub raw URLs
+      if (repoInfo) {
+        content = transformRelativeImageUrlsWithBase(content, buildGitHubRawBaseUrl(repoInfo));
+      }
+      return content;
     } else if (response.status === 404) {
       // Try index.md for packages that have a directory structure
       const indexUrl = rawUrl.replace(/\.md$/, "/index.md");
       const indexResponse = await fetch(indexUrl);
       if (indexResponse.ok) {
-        const content = await indexResponse.text();
-        return cleanMarkdownContent(content);
+        let content = await indexResponse.text();
+        content = cleanMarkdownContent(content);
+        if (repoInfo) {
+          content = transformRelativeImageUrlsWithBase(content, buildGitHubRawBaseUrl(repoInfo));
+        }
+        return content;
       }
       console.log(`      ⚠️  Description not found (404), falling back to README`);
-      return readReadmeFromPackage(packagePath);
+      return readReadmeFromPackage(packagePath, repoInfo);
     } else {
       console.log(`      ⚠️  Failed to fetch description: ${response.status}`);
-      return readReadmeFromPackage(packagePath);
+      return readReadmeFromPackage(packagePath, repoInfo);
     }
   } catch (error) {
     console.log(`      ⚠️  Error fetching description: ${error}`);
-    return readReadmeFromPackage(packagePath);
+    return readReadmeFromPackage(packagePath, repoInfo);
   }
 }
 
 /**
  * Read README.md from a package directory.
  */
-async function readReadmeFromPackage(packagePath: string): Promise<string | undefined> {
+async function readReadmeFromPackage(
+  packagePath: string,
+  repoInfo?: RepoInfo,
+): Promise<string | undefined> {
   const readmePaths = ["README.md", "readme.md", "Readme.md"];
 
   for (const readmeName of readmePaths) {
     const readmePath = path.join(packagePath, readmeName);
     try {
-      const content = await fs.readFile(readmePath, "utf-8");
+      let content = await fs.readFile(readmePath, "utf-8");
       console.log(`      📄 Using ${readmeName} from package`);
-      return cleanMarkdownContent(content);
+      content = cleanMarkdownContent(content);
+      // Transform relative image URLs to absolute GitHub raw URLs
+      if (repoInfo) {
+        content = transformRelativeImageUrlsWithBase(content, buildGitHubRawBaseUrl(repoInfo));
+      }
+      return content;
     } catch {
       // Try next path
     }
@@ -1969,7 +2009,13 @@ async function buildConfig(
     }
 
     // Fetch package description markdown
-    const description = await fetchPackageDescription(pkgConfig, pkgInfo.packagePath);
+    const repoInfo: RepoInfo = {
+      owner,
+      name: repoName,
+      ref: sha,
+      packagePath: pkgConfig.path,
+    };
+    const description = await fetchPackageDescription(pkgConfig, pkgInfo.packagePath, repoInfo);
 
     // Create package info file
     const packageInfo: Record<string, unknown> = {
