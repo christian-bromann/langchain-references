@@ -27,8 +27,15 @@ export default defineConfig(({ mode }) => {
   // Exclude performance and e2e tests from default run
   // (they have dedicated test modes and CI workflows)
   const getExclude = () => {
-    if (isPerf || isE2E) return [];
-    return ["lib/__tests__/performance/**/*.perf.test.ts", "lib/__tests__/e2e/**/*.e2e.test.ts"];
+    const exclude = ["lib/__tests__/wdio/**/*"];
+    if (isPerf || isE2E) {
+      return exclude;
+    }
+    return [
+      ...exclude,
+      "lib/__tests__/performance/**/*.perf.test.ts",
+      "lib/__tests__/e2e/**/*.e2e.test.ts",
+    ];
   };
 
   const getTimeout = () => {
