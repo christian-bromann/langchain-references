@@ -6,10 +6,11 @@ import path from "node:path";
 import url from "node:url";
 
 import { describe, it, expect, beforeAll } from "vitest";
+import type { SymbolRecord, MemberReference } from "@langchain/ir-schema";
+
 import { GoExtractor, type ExtractionResult } from "../extractor.js";
 import { GoTransformer } from "../transformer.js";
 import { createConfig, type GoExtractorConfig } from "../config.js";
-import type { SymbolRecord, MemberReference } from "@langchain/ir-schema";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

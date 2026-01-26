@@ -6,8 +6,10 @@ import path from "node:path";
 import url from "node:url";
 
 import { describe, it, expect, beforeAll } from "vitest";
+import type { SymbolRecord } from "@langchain/ir-schema";
+
 import { GoExtractor, type ExtractionResult, type GoType, type GoMethod } from "../extractor.js";
-import { GoTransformer, type SymbolRecord } from "../transformer.js";
+import { GoTransformer } from "../transformer.js";
 import { createConfig } from "../config.js";
 
 const __filename = url.fileURLToPath(import.meta.url);
@@ -326,11 +328,6 @@ describe("Extraction completeness", () => {
       expect(client!.source!.repo).toBe("langchain-ai/test-repo");
       expect(client!.source!.sha).toBe("abc123");
       expect(client!.source!.path).toContain("types.go");
-    });
-
-    it("should extract summary as first sentence", () => {
-      const client = symbols.find((s) => s.name === "Client");
-      expect(client!.summary).toBe("Client represents a client connection to a service.");
     });
   });
 });

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { TypeDocTransformer, type TypeDocProject, type TypeDocReflection } from "../transformer.js";
+import { TypeDocTransformer, type TypeDocProject } from "../transformer.js";
 
 // TypeDoc uses branded types for IDs, so we need to cast
 type ReflectionId = number & { __reflectionIdBrand: never };
@@ -12,10 +12,13 @@ const id = (n: number): ReflectionId => n as ReflectionId;
 /**
  * Create a minimal TypeDoc project for testing
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MockChild = Record<string, any> & { id?: number };
+
 function createMockProject(
   overrides: Partial<Omit<TypeDocProject, "id" | "children">> & {
     id?: number;
-    children?: Array<Partial<TypeDocReflection> & { id?: number }>;
+    children?: MockChild[];
   } = {},
 ): TypeDocProject {
   const { id: projectId = 0, children = [], ...rest } = overrides;

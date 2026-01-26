@@ -6,6 +6,7 @@ import path from "node:path";
 import url from "node:url";
 
 import { describe, it, expect, beforeAll } from "vitest";
+
 import { GoExtractor, type ExtractionResult } from "../extractor.js";
 import { createConfig } from "../config.js";
 
