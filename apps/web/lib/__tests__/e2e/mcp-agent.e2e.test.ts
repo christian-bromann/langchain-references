@@ -33,9 +33,7 @@ const MultiStepResultSchema = z.object({
   searchPerformed: z.boolean().describe("Whether the search was performed"),
   symbolFound: z.boolean().describe("Whether a symbol was found and retrieved"),
   symbolName: z.string().describe("The name of the symbol that was retrieved"),
-  symbolType: z
-    .string()
-    .describe("The type of the symbol (e.g., class, function, interface)"),
+  symbolType: z.string().describe("The type of the symbol (e.g., class, function, interface)"),
 });
 
 const MCP_TEST_URL = process.env.MCP_TEST_URL || "http://localhost:3000";

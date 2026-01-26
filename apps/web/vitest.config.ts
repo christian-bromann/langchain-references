@@ -28,10 +28,7 @@ export default defineConfig(({ mode }) => {
   // (they have dedicated test modes and CI workflows)
   const getExclude = () => {
     if (isPerf || isE2E) return [];
-    return [
-      "lib/__tests__/performance/**/*.perf.test.ts",
-      "lib/__tests__/e2e/**/*.e2e.test.ts",
-    ];
+    return ["lib/__tests__/performance/**/*.perf.test.ts", "lib/__tests__/e2e/**/*.e2e.test.ts"];
   };
 
   const getTimeout = () => {
