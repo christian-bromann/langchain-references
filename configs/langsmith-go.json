@@ -12,7 +12,54 @@
         "tagPattern": "v*",
         "maxVersions": 10
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        {
+          "slug": "client",
+          "title": "Client",
+          "source": "docs/langsmith/go/client.md"
+        },
+        {
+          "slug": "datasets",
+          "title": "Datasets",
+          "source": "docs/langsmith/go/datasets.md"
+        },
+        {
+          "slug": "examples",
+          "title": "Examples",
+          "source": "docs/langsmith/go/examples.md"
+        },
+        {
+          "slug": "runs",
+          "title": "Runs",
+          "source": "docs/langsmith/go/runs.md"
+        },
+        {
+          "slug": "sessions",
+          "title": "Sessions",
+          "source": "docs/langsmith/go/sessions.md"
+        },
+        {
+          "slug": "feedback",
+          "title": "Feedback",
+          "source": "docs/langsmith/go/feedback.md"
+        },
+        {
+          "slug": "repos",
+          "title": "Repos (Prompts)",
+          "source": "docs/langsmith/go/repos.md"
+        },
+        {
+          "slug": "annotation-queues",
+          "title": "Annotation Queues",
+          "source": "docs/langsmith/go/annotation-queues.md"
+        },
+        {
+          "slug": "tracing",
+          "title": "Tracing & OpenTelemetry",
+          "source": "docs/langsmith/go/tracing.md"
+        }
+      ]
     }
   ]
 }

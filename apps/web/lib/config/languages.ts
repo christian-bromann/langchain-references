@@ -63,6 +63,20 @@ export function getLanguageConfig(language: string) {
 }
 
 /**
+ * Get the best language for a project given a preferred language.
+ * Returns the preferred language if available, otherwise defaults to Python,
+ * or the first available language if Python isn't available.
+ */
+export function getLanguageForProject(projectId: string, preferredLanguage: Language): Language {
+  const available = getAvailableLanguages(projectId);
+  if (available.includes(preferredLanguage)) {
+    return preferredLanguage;
+  }
+  // Default to Python if available, otherwise first available language
+  return available.includes("python") ? "python" : available[0];
+}
+
+/**
  * Get all languages that have any packages available.
  */
 export function getAllAvailableLanguages(): Language[] {

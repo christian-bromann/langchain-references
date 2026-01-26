@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils/cn";
 import { getDefaultPackageSlug } from "@/lib/config/projects";
 import type { ResolveSymbolResponse } from "@/lib/symbol-resolution";
 import type { SidebarPackage, NavItem } from "./Sidebar";
-import { LANGUAGE_CONFIG } from "@/lib/config/languages";
+import { LANGUAGE_CONFIG, getLanguageForProject } from "@/lib/config/languages";
 
 interface MobileProjectMenuProps {
   open: boolean;
@@ -355,8 +355,10 @@ function ProjectsList({
     <div className="py-2">
       {projects.map((project) => {
         const isActive = currentProject?.id === project.id;
-        const packageSlug = getDefaultPackageSlug(project.id, currentLanguage);
-        const href = `/${currentLanguage}/${packageSlug}`;
+        // Get the best language for this project (current if available, else Python)
+        const targetLanguage = getLanguageForProject(project.id, currentLanguage);
+        const packageSlug = getDefaultPackageSlug(project.id, targetLanguage);
+        const href = `/${targetLanguage}/${packageSlug}`;
 
         return (
           <Link

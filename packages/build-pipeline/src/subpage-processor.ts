@@ -8,6 +8,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+const WORKSPACE_ROOT = path.resolve(import.meta.dirname, "..", "..", "..");
+
 /**
  * Configuration for a subpage as defined in package config.
  */
@@ -479,6 +481,11 @@ export function parseSubpageMarkdown(content: string): {
 /**
  * Fetch subpage content from a URL or local file path.
  *
+ * Supports three source types:
+ * - Absolute URL (https://...): Fetched from the web
+ * - Relative path: Resolved relative to repoDir (cloned repo)
+ * - Workspace path (docs/...): Resolved relative to workspace root
+ *
  * @param source - URL or relative file path
  * @param repoDir - Directory of the cloned repository (for relative paths)
  * @returns Content string or null if fetch failed
@@ -507,6 +514,10 @@ export async function fetchSubpageContent(
         return null;
       }
       content = await response.text();
+    } else if (source.startsWith("docs/")) {
+      // Read from workspace docs directory (relative to workspace root)
+      const filePath = path.resolve(WORKSPACE_ROOT, source);
+      content = await fs.readFile(filePath, "utf-8");
     } else if (repoDir) {
       // Read from local file (relative to repo directory)
       const filePath = path.resolve(repoDir, source);
