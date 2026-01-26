@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { WebsiteJsonLd } from "@/components/seo/JsonLd";
+import { Header } from "@/components/layout/Header";
 
 export const metadata: Metadata = {
   title: "LangChain Reference Docs",
@@ -135,21 +136,11 @@ export default function HomePage() {
     <>
       <WebsiteJsonLd />
       <div className="min-h-screen bg-background flex flex-col">
-        {/* Hero */}
-        <div className="border-b border-border bg-background-secondary">
-          <div className="max-w-5xl mx-auto px-6 py-16 sm:py-20">
-            <h1 className="text-3xl sm:text-4xl font-heading font-bold text-center mb-4 text-foreground">
-              Reference Documentation
-            </h1>
-            <p className="text-base sm:text-lg text-foreground-secondary text-center max-w-2xl mx-auto">
-              Explore the complete API reference for the LangChain ecosystem across Python,
-              TypeScript, Java, and Go.
-            </p>
-          </div>
-        </div>
+        {/* Header */}
+        <Header showProjectTabs={false} />
 
         {/* Projects Grid */}
-        <div className="max-w-5xl mx-auto px-6 py-12">
+        <div className="max-w-5xl mx-auto px-6 pt-header mt-8 pb-12">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => (
               <Link

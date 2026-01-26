@@ -58,10 +58,12 @@ export const DEFAULT_ADMONITION_ICON = ADMONITION_ICON_SVGS.pin;
 
 /**
  * Unique markers for admonition boundaries.
- * These use Unicode private use area characters to ensure uniqueness.
+ * We use HTML comments which pass through markdown processing unchanged
+ * when allowDangerousHtml is enabled (which it is in our unified pipeline).
+ * Note: The markers must be on their own lines to avoid being wrapped in <p> tags.
  */
-export const ADMONITION_START_MARKER = "\uE000ADMON_START\uE001";
-export const ADMONITION_END_MARKER = "\uE000ADMON_END\uE001";
+export const ADMONITION_START_MARKER = "<!--ADMON:";
+export const ADMONITION_END_MARKER = "<!--/ADMON-->";
 
 /**
  * Parse an admonition line and extract type, optional title, and inline content.
@@ -206,11 +208,10 @@ export function convertAdmonitions(content: string): string {
       });
       const encodedMetadata = Buffer.from(metadata).toString("base64");
 
-      // Use markers that will be processed AFTER markdown parsing
-      // The markers are on their own lines and will become <p> tags
-      // We use a format that's unlikely to appear in normal content
+      // Use HTML comment markers that will be processed AFTER markdown parsing
+      // HTML comments pass through the markdown pipeline unchanged
       result.push("");
-      result.push(`${ADMONITION_START_MARKER}${encodedMetadata}${ADMONITION_START_MARKER}`);
+      result.push(`${ADMONITION_START_MARKER}${encodedMetadata}-->`);
       result.push("");
       result.push(admonitionContent);
       result.push("");
@@ -239,20 +240,20 @@ function escapeRegExp(str: string): string {
  * Uses a stack-based algorithm to correctly handle nested admonitions.
  */
 export function postProcessAdmonitions(html: string): string {
-  // The markers may be wrapped in <p> tags by the markdown parser
-  // First, find all start and end markers with their positions
+  // HTML comment markers should pass through the markdown pipeline unchanged
+  // They won't be wrapped in <p> tags since they're valid HTML
 
   const startMarkerEscaped = escapeRegExp(ADMONITION_START_MARKER);
   const endMarkerEscaped = escapeRegExp(ADMONITION_END_MARKER);
 
-  // Regex to find start markers (possibly wrapped in <p> tags)
+  // Regex to find start markers: <!--ADMON:base64data-->
   const startRegex = new RegExp(
-    `(?:<p[^>]*>)?${startMarkerEscaped}([A-Za-z0-9+/=]+)${startMarkerEscaped}(?:</p>)?`,
+    `${startMarkerEscaped}([A-Za-z0-9+/=]+)-->`,
     "g",
   );
 
-  // Regex to find end markers (possibly wrapped in <p> tags)
-  const endRegex = new RegExp(`(?:<p[^>]*>)?${endMarkerEscaped}(?:</p>)?`, "g");
+  // Regex to find end markers: <!--/ADMON-->
+  const endRegex = new RegExp(endMarkerEscaped, "g");
 
   // Find all markers and their positions
   interface MarkerInfo {
@@ -306,9 +307,10 @@ export function postProcessAdmonitions(html: string): string {
   // Sort pairs by start position descending (process from end to start to preserve positions)
   pairs.sort((a, b) => b.startMarker.start - a.startMarker.start);
 
-  // Replace each pair
+  // Replace each pair, updating positions of remaining pairs after each replacement
   let result = html;
-  for (const pair of pairs) {
+  for (let i = 0; i < pairs.length; i++) {
+    const pair = pairs[i];
     const { startMarker, endMarker } = pair;
 
     try {
@@ -321,12 +323,50 @@ export function postProcessAdmonitions(html: string): string {
       // Build the callout HTML
       const calloutHtml = `<div class="callout" data-callout-type="${type}"><div class="callout-icon">${icon}</div><div class="callout-content"><div class="callout-title">${title}</div>${content}</div></div>`;
 
+      // Calculate the change in string length
+      const originalLength = endMarker.end - startMarker.start;
+      const newLength = calloutHtml.length;
+      const delta = newLength - originalLength;
+
       // Replace the entire range from start marker to end marker
       result = result.slice(0, startMarker.start) + calloutHtml + result.slice(endMarker.end);
+
+      // Update positions of remaining pairs that are affected by this replacement
+      // Only positions AFTER endMarker.end need adjustment
+      for (let j = i + 1; j < pairs.length; j++) {
+        const otherPair = pairs[j];
+        // Since pairs are sorted by start position descending, subsequent pairs have smaller start positions
+        // But their END positions might be after the current replacement region
+        if (otherPair.endMarker.start >= endMarker.end) {
+          otherPair.endMarker.start += delta;
+          otherPair.endMarker.end += delta;
+        }
+        if (otherPair.startMarker.start >= endMarker.end) {
+          otherPair.startMarker.start += delta;
+          otherPair.startMarker.end += delta;
+        }
+      }
     } catch {
       // If decoding fails, just remove the markers
       const content = result.slice(startMarker.end, endMarker.start);
+      const originalLength = endMarker.end - startMarker.start;
+      const newLength = content.length;
+      const delta = newLength - originalLength;
+
       result = result.slice(0, startMarker.start) + content + result.slice(endMarker.end);
+
+      // Update positions of remaining pairs
+      for (let j = i + 1; j < pairs.length; j++) {
+        const otherPair = pairs[j];
+        if (otherPair.endMarker.start >= endMarker.end) {
+          otherPair.endMarker.start += delta;
+          otherPair.endMarker.end += delta;
+        }
+        if (otherPair.startMarker.start >= endMarker.end) {
+          otherPair.startMarker.start += delta;
+          otherPair.startMarker.end += delta;
+        }
+      }
     }
   }
 

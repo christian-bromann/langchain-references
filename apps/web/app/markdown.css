@@ -337,6 +337,7 @@
 
 /* Callout content */
 .markdown-content .callout-content {
+  display: block; /* Ensure nested callouts stack vertically */
   min-width: 0;
   width: 100%;
   font-size: 0.875rem;
@@ -352,6 +353,12 @@
 .markdown-content .callout-title {
   font-weight: 600;
   margin-bottom: 0.25rem;
+}
+
+/* Ensure nested callouts inside callout-content maintain proper layout */
+.markdown-content .callout-content > .callout {
+  flex-shrink: 0;
+  width: 100%;
 }
 
 /* Consistent spacing between consecutive callouts */

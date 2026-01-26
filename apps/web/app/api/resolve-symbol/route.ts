@@ -151,7 +151,9 @@ async function getSearchIndex(language: Language): Promise<MiniSearch<SearchReco
     );
 
     for (const pkg of packages) {
-      const result = await getSymbols(buildId, pkg.packageId);
+      // Each package has its own buildId in the manifest (package-level architecture)
+      const pkgBuildId = (pkg as { buildId?: string }).buildId || buildId;
+      const result = await getSymbols(pkgBuildId, pkg.packageId);
       if (result?.symbols) {
         for (const symbol of result.symbols) {
           // Pass both publishedName (for URLs) and displayName (for breadcrumbs)

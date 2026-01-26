@@ -21,9 +21,11 @@ import { getEnabledProjects } from "@/lib/config/projects";
 
 interface HeaderProps {
   onMobileMenuOpen?: () => void;
+  /** Whether to show project navigation tabs. Defaults to true. */
+  showProjectTabs?: boolean;
 }
 
-export function Header({ onMobileMenuOpen }: HeaderProps) {
+export function Header({ onMobileMenuOpen, showProjectTabs = true }: HeaderProps) {
   const { theme, setTheme } = useTheme();
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
@@ -200,11 +202,13 @@ export function Header({ onMobileMenuOpen }: HeaderProps) {
           </div>
         </div>
         {/* Project Navigation Tabs */}
-        <ProjectTabs
-          projects={projects}
-          currentProject={currentProject}
-          currentLanguage={currentLanguage}
-        />
+        {showProjectTabs && (
+          <ProjectTabs
+            projects={projects}
+            currentProject={currentProject}
+            currentLanguage={currentLanguage}
+          />
+        )}
       </div>
 
       {/* Search Modal */}
