@@ -130,8 +130,40 @@ jobs:
           # Optional: enables agent-based e2e tests (tests are skipped if not set)
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
+  wdio-tests:
+    name: WebdriverIO E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Pull IR data and generate manifest
+        run: pnpm pull-ir --verbose
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          BLOB_URL: ${{ secrets.BLOB_URL }}
+
+      - name: Create .env.local
+        run: echo "BLOB_URL=http://localhost:3001" > .env.local
+
+      - name: Run WebdriverIO tests
+        run: pnpm test:e2e:wdio
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          CI: true
+          BLOB_URL: http://localhost:3001
+
   perf-tests:
     name: Performance Tests
-    needs: [lint, unit-tests, e2e-tests]
+    needs: [lint, unit-tests, e2e-tests, wdio-tests]
     if: success()
     uses: ./.github/workflows/perf-tests.yml

@@ -73,19 +73,21 @@ export default class DevServerService {
    * This runs once before any test sessions begin.
    */
   async onPrepare(): Promise<void> {
-    console.log("[DevServerService] Starting Next.js development server...");
+    console.log("[DevServerService] Starting development servers (web + IR)...");
 
     // Kill any existing process on the port from previous runs
     this.killProcessOnPort(DEV_SERVER_PORT);
+    this.killProcessOnPort(3001); // IR server port
 
-    // Get the web app directory (apps/web)
-    const webAppDir = resolve(__dirname, "../../../..");
-    console.log("[DevServerService] Working directory:", webAppDir);
+    // Get the repo root directory (6 levels up from services folder)
+    // services -> wdio -> e2e -> __tests__ -> lib -> web -> apps -> root
+    const repoRoot = resolve(__dirname, "../../../../../../..");
+    console.log("[DevServerService] Working directory:", repoRoot);
 
-    // Start the Next.js dev server
+    // Start both web and IR servers using the root pnpm dev script
     // Use detached: true to create a new process group so we can kill the entire tree
-    this.serverProcess = spawn("npm", ["run", "dev"], {
-      cwd: webAppDir,
+    this.serverProcess = spawn("pnpm", ["dev"], {
+      cwd: repoRoot,
       stdio: ["ignore", "pipe", "pipe"],
       shell: true,
       detached: true,
