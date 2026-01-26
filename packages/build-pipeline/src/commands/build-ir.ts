@@ -77,6 +77,7 @@ import {
   processSubpages,
   clearFetchCache,
   transformRelativeImageUrlsWithBase,
+  transformRelativeLinksToGitHub,
   type SubpageConfig,
   type ParsedSubpage,
 } from "../subpage-processor.js";
@@ -217,8 +218,10 @@ async function fetchPackageDescription(
       // Clean up the markdown - remove frontmatter and any MkDocs-specific syntax
       content = cleanMarkdownContent(content);
       // Transform relative image URLs to absolute GitHub raw URLs
+      // and relative file links to absolute GitHub blob URLs
       if (repoInfo) {
         content = transformRelativeImageUrlsWithBase(content, buildGitHubRawBaseUrl(repoInfo));
+        content = transformRelativeLinksToGitHub(content, repoInfo);
       }
       return content;
     } else if (response.status === 404) {
@@ -230,6 +233,7 @@ async function fetchPackageDescription(
         content = cleanMarkdownContent(content);
         if (repoInfo) {
           content = transformRelativeImageUrlsWithBase(content, buildGitHubRawBaseUrl(repoInfo));
+          content = transformRelativeLinksToGitHub(content, repoInfo);
         }
         return content;
       }
@@ -261,8 +265,10 @@ async function readReadmeFromPackage(
       console.log(`      📄 Using ${readmeName} from package`);
       content = cleanMarkdownContent(content);
       // Transform relative image URLs to absolute GitHub raw URLs
+      // and relative file links to absolute GitHub blob URLs
       if (repoInfo) {
         content = transformRelativeImageUrlsWithBase(content, buildGitHubRawBaseUrl(repoInfo));
+        content = transformRelativeLinksToGitHub(content, repoInfo);
       }
       return content;
     } catch {

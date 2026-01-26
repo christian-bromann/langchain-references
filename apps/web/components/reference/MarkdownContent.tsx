@@ -11,6 +11,7 @@ import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
 import rehypeShikiFromHighlighter from "@shikijs/rehype/core";
+import rehypeSlug from "rehype-slug";
 import { createHighlighter, type Highlighter } from "shiki";
 import rehypeStringify from "rehype-stringify";
 import { MarkdownWrapper } from "./MarkdownWrapper";
@@ -287,6 +288,7 @@ async function processMarkdown(content: string, paragraphClassName?: string): Pr
       .use(remarkParse)
       .use(remarkGfm)
       .use(remarkRehype, { allowDangerousHtml: true })
+      .use(rehypeSlug) // Add IDs to headings for anchor links
       .use(rehypeShikiFromHighlighter, highlighter, {
         themes: {
           light: "github-light",
@@ -301,6 +303,7 @@ async function processMarkdown(content: string, paragraphClassName?: string): Pr
       .use(remarkParse)
       .use(remarkGfm)
       .use(remarkRehype, { allowDangerousHtml: true })
+      .use(rehypeSlug) // Add IDs to headings for anchor links
       .use(rehypeStringify, { allowDangerousHtml: true })
       .process(processedContent);
   }

@@ -9,7 +9,10 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseSubpageMarkdown } from "../subpage-processor.js";
+import {
+  parseSubpageMarkdown,
+  transformRelativeLinksToGitHub,
+} from "../subpage-processor.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(__dirname, "fixtures", "subpages");
@@ -328,6 +331,156 @@ Some text.
 ::: package.Symbol`;
       const result = parseSubpageMarkdown(content);
       expect(result.markdownContent).toContain("<!-- This is a comment -->");
+    });
+  });
+});
+
+describe("transformRelativeLinksToGitHub", () => {
+  const repoInfo = {
+    owner: "langchain-ai",
+    name: "langsmith-java",
+    ref: "main",
+  };
+
+  describe("basic transformations", () => {
+    it("transforms relative Kotlin file link to GitHub blob URL", () => {
+      const content =
+        "[`BadRequestException`](langsmith-java-core/src/main/kotlin/com/langchain/smith/errors/BadRequestException.kt)";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      expect(result).toBe(
+        "[`BadRequestException`](https://github.com/langchain-ai/langsmith-java/blob/main/langsmith-java-core/src/main/kotlin/com/langchain/smith/errors/BadRequestException.kt)",
+      );
+    });
+
+    it("transforms relative Java file link to GitHub blob URL", () => {
+      const content = "[MyClass](src/main/java/com/example/MyClass.java)";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      expect(result).toBe(
+        "[MyClass](https://github.com/langchain-ai/langsmith-java/blob/main/src/main/java/com/example/MyClass.java)",
+      );
+    });
+
+    it("transforms relative TypeScript file link", () => {
+      const content = "[Component](src/components/Button.tsx)";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      expect(result).toBe(
+        "[Component](https://github.com/langchain-ai/langsmith-java/blob/main/src/components/Button.tsx)",
+      );
+    });
+
+    it("transforms relative Python file link", () => {
+      const content = "[module](src/lib/utils.py)";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      expect(result).toBe(
+        "[module](https://github.com/langchain-ai/langsmith-java/blob/main/src/lib/utils.py)",
+      );
+    });
+
+    it("transforms multiple links in content", () => {
+      const content = `| Error | Exception |
+| --- | --- |
+| 400 | [\`BadRequest\`](src/errors/BadRequest.kt) |
+| 404 | [\`NotFound\`](src/errors/NotFound.kt) |`;
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      expect(result).toContain(
+        "https://github.com/langchain-ai/langsmith-java/blob/main/src/errors/BadRequest.kt",
+      );
+      expect(result).toContain(
+        "https://github.com/langchain-ai/langsmith-java/blob/main/src/errors/NotFound.kt",
+      );
+    });
+  });
+
+  describe("should NOT transform", () => {
+    it("leaves absolute URLs unchanged", () => {
+      const content = "[Docs](https://docs.langchain.com/guide)";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      expect(result).toBe("[Docs](https://docs.langchain.com/guide)");
+    });
+
+    it("leaves anchor links unchanged", () => {
+      const content = "[Section](#error-handling)";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      expect(result).toBe("[Section](#error-handling)");
+    });
+
+    it("leaves mailto links unchanged", () => {
+      const content = "[Email](mailto:support@example.com)";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      expect(result).toBe("[Email](mailto:support@example.com)");
+    });
+
+    it("does NOT transform image links (those should use transformRelativeImageUrlsWithBase)", () => {
+      const content = "![Logo](assets/logo.png)";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      // Image syntax should be preserved as-is (handled by different function)
+      expect(result).toBe("![Logo](assets/logo.png)");
+    });
+
+    it("leaves non-source file links unchanged", () => {
+      const content = "[Download](releases/v1.0.0.zip)";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      // .zip is not a recognized source file extension
+      expect(result).toBe("[Download](releases/v1.0.0.zip)");
+    });
+  });
+
+  describe("packagePath handling", () => {
+    it("includes packagePath in URL when provided", () => {
+      const repoInfoWithPath = {
+        owner: "langchain-ai",
+        name: "langsmith-java",
+        ref: "v1.2.3",
+        packagePath: "packages/core",
+      };
+      const content = "[Error](src/errors/Error.kt)";
+      const result = transformRelativeLinksToGitHub(content, repoInfoWithPath);
+      expect(result).toBe(
+        "[Error](https://github.com/langchain-ai/langsmith-java/blob/v1.2.3/packages/core/src/errors/Error.kt)",
+      );
+    });
+
+    it("ignores packagePath when it is '.'", () => {
+      const repoInfoWithDotPath = {
+        owner: "langchain-ai",
+        name: "langsmith-java",
+        ref: "main",
+        packagePath: ".",
+      };
+      const content = "[Error](src/errors/Error.kt)";
+      const result = transformRelativeLinksToGitHub(content, repoInfoWithDotPath);
+      expect(result).toBe(
+        "[Error](https://github.com/langchain-ai/langsmith-java/blob/main/src/errors/Error.kt)",
+      );
+    });
+  });
+
+  describe("edge cases", () => {
+    it("handles empty content", () => {
+      const result = transformRelativeLinksToGitHub("", repoInfo);
+      expect(result).toBe("");
+    });
+
+    it("handles content with no links", () => {
+      const content = "This is plain text with no links.";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      expect(result).toBe(content);
+    });
+
+    it("removes leading ./ from paths", () => {
+      const content = "[Error](./src/errors/Error.kt)";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      expect(result).toBe(
+        "[Error](https://github.com/langchain-ai/langsmith-java/blob/main/src/errors/Error.kt)",
+      );
+    });
+
+    it("handles links with backticks in link text", () => {
+      const content = "[`com.example.MyException`](src/main/kotlin/MyException.kt)";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      expect(result).toBe(
+        "[`com.example.MyException`](https://github.com/langchain-ai/langsmith-java/blob/main/src/main/kotlin/MyException.kt)",
+      );
     });
   });
 });

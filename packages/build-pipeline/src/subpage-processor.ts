@@ -137,6 +137,101 @@ export function transformRelativeImageUrlsWithBase(content: string, baseUrl: str
 }
 
 /**
+ * Transform relative file links in markdown to absolute GitHub blob URLs.
+ *
+ * Handles markdown link syntax: [text](relative/path/to/file.ext)
+ *
+ * For example, transforms:
+ *   [BadRequestException](langsmith-java-core/src/main/kotlin/.../BadRequestException.kt)
+ * to:
+ *   [BadRequestException](https://github.com/owner/repo/blob/ref/langsmith-java-core/src/main/kotlin/.../BadRequestException.kt)
+ *
+ * @param content - Markdown content with potential relative file links
+ * @param repoInfo - Repository information (owner, name, ref, packagePath)
+ * @returns Content with absolute GitHub blob URLs for file links
+ */
+export function transformRelativeLinksToGitHub(
+  content: string,
+  repoInfo: { owner: string; name: string; ref: string; packagePath?: string },
+): string {
+  if (!content || !repoInfo) return content;
+
+  const { owner, name, ref, packagePath } = repoInfo;
+
+  // Build the base URL for GitHub blob links
+  // Use the packagePath if the links are relative to a subdirectory
+  const baseUrl = packagePath && packagePath !== "."
+    ? `https://github.com/${owner}/${name}/blob/${ref}/${packagePath}/`
+    : `https://github.com/${owner}/${name}/blob/${ref}/`;
+
+  // Common source code file extensions
+  const sourceFileExtensions = [
+    // JVM languages
+    "java", "kt", "kts", "scala", "groovy",
+    // Web/JS
+    "ts", "tsx", "js", "jsx", "mjs", "cjs",
+    // Python
+    "py", "pyx", "pxd",
+    // Go
+    "go",
+    // Rust
+    "rs",
+    // C/C++
+    "c", "cpp", "cc", "cxx", "h", "hpp", "hxx",
+    // Other
+    "rb", "php", "swift", "m", "mm",
+    // Config/data
+    "json", "yaml", "yml", "toml", "xml", "gradle",
+  ];
+
+  const extensionPattern = sourceFileExtensions.join("|");
+
+  // Match markdown links: [text](path)
+  // But NOT image links: ![text](path)
+  // Capture group 1: link text, group 2: path
+  const linkPattern = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
+
+  return content.replace(linkPattern, (match, linkText, linkPath) => {
+    const trimmedPath = linkPath.trim();
+
+    // Skip if already absolute URL
+    if (trimmedPath.startsWith("http://") || trimmedPath.startsWith("https://")) {
+      return match;
+    }
+
+    // Skip anchor links
+    if (trimmedPath.startsWith("#")) {
+      return match;
+    }
+
+    // Skip protocol links (mailto:, tel:, etc.)
+    if (/^[a-z]+:/.test(trimmedPath)) {
+      return match;
+    }
+
+    // Check if it looks like a source file path
+    const hasSourceExtension = new RegExp(`\\.(${extensionPattern})$`, "i").test(trimmedPath);
+
+    // Also include paths that look like source code directories (contain typical patterns)
+    const looksLikeSourcePath =
+      hasSourceExtension ||
+      /\/(src|lib|core|main|kotlin|java|python|go)\//i.test(trimmedPath);
+
+    if (!looksLikeSourcePath) {
+      return match;
+    }
+
+    // Remove leading ./ if present
+    const cleanPath = trimmedPath.replace(/^\.\//, "");
+
+    // Build the absolute GitHub blob URL
+    const absoluteUrl = `${baseUrl}${cleanPath}`;
+
+    return `[${linkText}](${absoluteUrl})`;
+  });
+}
+
+/**
  * Transform relative image URLs in markdown to absolute raw GitHub URLs.
  * Derives the base URL from the source URL of the markdown file.
  *
