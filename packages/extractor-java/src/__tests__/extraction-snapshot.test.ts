@@ -7,7 +7,8 @@ import url from "node:url";
 
 import { describe, it, expect, beforeAll } from "vitest";
 import { JavaExtractor, type ExtractionResult, type JavaType } from "../extractor.js";
-import { JavaTransformer, type SymbolRecord } from "../transformer.js";
+import { JavaTransformer } from "../transformer.js";
+import type { SymbolRecord, MemberReference } from "@langchain/ir-schema";
 import { createConfig } from "../config.js";
 
 const __filename = url.fileURLToPath(import.meta.url);
@@ -314,7 +315,7 @@ describe("Extraction completeness", () => {
       const simpleClass = symbols.find((s) => s.name === "SimpleClass");
       expect(simpleClass!.members).toBeDefined();
 
-      const memberKinds = simpleClass!.members!.map((m) => m.kind);
+      const memberKinds = simpleClass!.members!.map((m: MemberReference) => m.kind);
       expect(memberKinds).toContain("constructor");
       expect(memberKinds).toContain("method");
       expect(memberKinds).toContain("property");
@@ -329,9 +330,9 @@ describe("Extraction completeness", () => {
 
     it("should convert Javadoc to markdown in descriptions", () => {
       const genericClass = symbols.find((s) => s.name === "GenericClass");
-      expect(genericClass!.description).toBeDefined();
+      expect(genericClass!.docs.description).toBeDefined();
       // @param <T> should be converted
-      expect(genericClass!.description).toContain("- **T**:");
+      expect(genericClass!.docs.description).toContain("- **T**:");
     });
   });
 });

@@ -16,12 +16,15 @@ export {
   type JavaTypeParameter,
   type ExtractionResult,
 } from "./extractor.js";
-export {
-  JavaTransformer,
-  type SymbolRecord,
-  type MemberRecord,
-  type Parameter,
-  type ReturnType,
-  type SourceLocation,
-  type TypeParameter,
-} from "./transformer.js";
+export { JavaTransformer } from "./transformer.js";
+
+// Re-export IR schema types for convenience
+export type {
+  SymbolRecord,
+  SymbolKind,
+  SymbolSource,
+  SymbolParam,
+  SymbolDocs,
+  MemberReference,
+  TypeParam,
+} from "@langchain/ir-schema";
