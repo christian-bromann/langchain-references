@@ -16,6 +16,27 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 import { createAgent } from "langchain";
 import type { StructuredToolInterface } from "@langchain/core/tools";
+import { z } from "zod";
+
+const SearchResultSchema = z.object({
+  foundResults: z.boolean().describe("Whether any search results were found"),
+  resultCount: z.number().describe("The number of results found"),
+});
+
+const SymbolDocumentationSchema = z.object({
+  found: z.boolean().describe("Whether the symbol documentation was found"),
+  symbolName: z.string().describe("The name of the symbol"),
+  description: z.string().describe("A brief description of the symbol"),
+});
+
+const MultiStepResultSchema = z.object({
+  searchPerformed: z.boolean().describe("Whether the search was performed"),
+  symbolFound: z.boolean().describe("Whether a symbol was found and retrieved"),
+  symbolName: z.string().describe("The name of the symbol that was retrieved"),
+  symbolType: z
+    .string()
+    .describe("The type of the symbol (e.g., class, function, interface)"),
+});
 
 const MCP_TEST_URL = process.env.MCP_TEST_URL || "http://localhost:3000";
 
@@ -54,6 +75,7 @@ describe.skipIf(!hasApiKey)("MCP Agent Integration", () => {
       const agent = createAgent({
         model,
         tools,
+        responseFormat: SearchResultSchema,
       });
 
       const response = await agent.invoke({
@@ -61,21 +83,23 @@ describe.skipIf(!hasApiKey)("MCP Agent Integration", () => {
           {
             role: "user",
             content:
-              "Search for ChatOpenAI in the LangChain documentation. Just tell me if you found any results.",
+              "Search for ChatOpenAI in the LangChain documentation. Report the results in the required JSON format.",
           },
         ],
       });
 
-      // The response should indicate the agent found results
       const lastMessage = response.messages[response.messages.length - 1];
       expect(lastMessage.content).toBeDefined();
-      expect(lastMessage.content.toString().length).toBeGreaterThan(20);
+      const result = response.structuredResponse;
+      expect(result.foundResults).toBe(true);
+      expect(result.resultCount).toBeGreaterThan(0);
     }, 60000); // 60s timeout for LLM calls
 
     it("should fetch symbol documentation using agent", async () => {
       const agent = createAgent({
         model,
         tools,
+        responseFormat: SymbolDocumentationSchema,
       });
 
       const response = await agent.invoke({
@@ -83,27 +107,24 @@ describe.skipIf(!hasApiKey)("MCP Agent Integration", () => {
           {
             role: "user",
             content:
-              "Get the documentation for the ChatPromptTemplate class from langchain-core package. Summarize what you find in 1-2 sentences.",
+              "Get the documentation for the ChatPromptTemplate class from langchain-core package. Report your findings in the required JSON format.",
           },
         ],
       });
 
       const lastMessage = response.messages[response.messages.length - 1];
       expect(lastMessage.content).toBeDefined();
-      // Should contain some indication of the symbol being found or documented
-      const content = lastMessage.content.toString().toLowerCase();
-      expect(
-        content.includes("template") ||
-          content.includes("prompt") ||
-          content.includes("chat") ||
-          content.includes("not found"),
-      ).toBe(true);
+      const result = response.structuredResponse;
+      expect(result.found).toBe(true);
+      expect(result.symbolName.toLowerCase()).toContain("chatprompttemplate");
+      expect(result.description).toBeTruthy();
     }, 60000);
 
     it("should handle multi-step tool usage", async () => {
       const agent = createAgent({
         model,
         tools,
+        responseFormat: MultiStepResultSchema,
       });
 
       const response = await agent.invoke({
@@ -111,14 +132,19 @@ describe.skipIf(!hasApiKey)("MCP Agent Integration", () => {
           {
             role: "user",
             content:
-              "First search for 'Runnable' in the Python documentation, then get the details for one of the results. Tell me what you found.",
+              "First search for 'Runnable' in the Python documentation, then get the details for one of the results. Report your findings in the required JSON format.",
           },
         ],
       });
 
       const lastMessage = response.messages[response.messages.length - 1];
       expect(lastMessage.content).toBeDefined();
-      expect(lastMessage.content.toString().length).toBeGreaterThan(50);
+      const result = response.structuredResponse;
+      expect(result.searchPerformed).toBe(true);
+      expect(result.symbolFound).toBe(true);
+      expect(result.symbolName).toBeTruthy();
+      expect(result.symbolName.toLowerCase()).toContain("runnable");
+      expect(result.symbolType).toBeTruthy();
     }, 90000); // 90s timeout for multi-step
   });
 });
