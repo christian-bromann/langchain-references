@@ -7,18 +7,6 @@ on:
   # Triggered by CI workflow after tests pass
   workflow_call:
 
-  # Also run on relevant file changes (for direct feedback)
-  pull_request:
-    paths:
-      - "apps/web/lib/**"
-      - "apps/web/components/reference/**"
-  push:
-    branches:
-      - main
-    paths:
-      - "apps/web/lib/**"
-      - "apps/web/components/reference/**"
-
 jobs:
   perf-test:
     name: Performance Tests
