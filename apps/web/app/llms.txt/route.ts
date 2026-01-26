@@ -7,7 +7,7 @@
  * @see https://llmstxt.org/
  */
 
-import { getBuildIdForLanguage, getManifestData } from "@/lib/ir/loader";
+import { getManifestData } from "@/lib/ir/loader";
 import { getBaseUrl, getMcpServerUrl } from "@/lib/config/mcp";
 import { slugifyPackageName } from "@/lib/utils/url";
 
@@ -35,41 +35,34 @@ export async function GET(): Promise<Response> {
     "",
   ];
 
+  // Get manifest once (it's global)
+  const manifest = await getManifestData();
+
   // Get Python packages
-  const pythonBuildId = await getBuildIdForLanguage("python");
-  if (pythonBuildId) {
-    const pythonManifest = await getManifestData(pythonBuildId);
-    if (pythonManifest) {
-      const pythonPackages = pythonManifest.packages.filter((p) => p.language === "python");
+  if (manifest) {
+    const pythonPackages = manifest.packages.filter((p) => p.language === "python");
 
-      if (pythonPackages.length > 0) {
-        lines.push("### Python");
-        lines.push("");
-        for (const pkg of pythonPackages) {
-          const pkgUrl = `${baseUrl}/python/${slugifyPackageName(pkg.publishedName)}`;
-          lines.push(`- [${pkg.publishedName}](${pkgUrl}): ${pkg.stats?.total || 0} symbols`);
-        }
-        lines.push("");
+    if (pythonPackages.length > 0) {
+      lines.push("### Python");
+      lines.push("");
+      for (const pkg of pythonPackages) {
+        const pkgUrl = `${baseUrl}/python/${slugifyPackageName(pkg.publishedName)}`;
+        lines.push(`- [${pkg.publishedName}](${pkgUrl}): ${pkg.stats?.total || 0} symbols`);
       }
+      lines.push("");
     }
-  }
 
-  // Get JavaScript packages
-  const jsBuildId = await getBuildIdForLanguage("javascript");
-  if (jsBuildId) {
-    const jsManifest = await getManifestData(jsBuildId);
-    if (jsManifest) {
-      const jsPackages = jsManifest.packages.filter((p) => p.language === "typescript");
+    // Get JavaScript packages
+    const jsPackages = manifest.packages.filter((p) => p.language === "typescript");
 
-      if (jsPackages.length > 0) {
-        lines.push("### JavaScript");
-        lines.push("");
-        for (const pkg of jsPackages) {
-          const pkgUrl = `${baseUrl}/javascript/${slugifyPackageName(pkg.publishedName)}`;
-          lines.push(`- [${pkg.publishedName}](${pkgUrl}): ${pkg.stats?.total || 0} symbols`);
-        }
-        lines.push("");
+    if (jsPackages.length > 0) {
+      lines.push("### JavaScript");
+      lines.push("");
+      for (const pkg of jsPackages) {
+        const pkgUrl = `${baseUrl}/javascript/${slugifyPackageName(pkg.publishedName)}`;
+        lines.push(`- [${pkg.publishedName}](${pkgUrl}): ${pkg.stats?.total || 0} symbols`);
       }
+      lines.push("");
     }
   }
 

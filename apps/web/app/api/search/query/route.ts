@@ -142,12 +142,13 @@ async function getSearchIndex(language: Language): Promise<MiniSearch<SearchReco
   // Build records from all symbols across all projects, deduplicating by ID
   const recordsMap = new Map<string, SearchRecord>();
 
-  for (const project of projects) {
-    const buildId = await getBuildIdForLanguage(irLanguage, project.id);
-    if (!buildId) continue;
+  // Get manifest once (it's global, not per-project)
+  const manifest = await getManifestData();
+  if (!manifest) return null;
 
-    const manifest = await getManifestData(buildId);
-    if (!manifest) continue;
+  for (const project of projects) {
+    const fallbackBuildId = await getBuildIdForLanguage(irLanguage, project.id);
+    if (!fallbackBuildId) continue;
 
     // Filter packages by language
     const packages = manifest.packages.filter((p) =>
@@ -158,7 +159,7 @@ async function getSearchIndex(language: Language): Promise<MiniSearch<SearchReco
 
     for (const pkg of packages) {
       // Each package has its own buildId in the manifest (package-level architecture)
-      const pkgBuildId = (pkg as { buildId?: string }).buildId || buildId;
+      const pkgBuildId = pkg.buildId || fallbackBuildId;
       const result = await getSymbols(pkgBuildId, pkg.packageId);
 
       if (result?.symbols) {

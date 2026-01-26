@@ -911,7 +911,7 @@ async function resolveInheritedMembers(
   const processedBases = new Set<string>();
 
   // Get manifest to find all packages for cross-package inheritance
-  const manifest = await getManifestData(buildId);
+  const manifest = await getManifestData();
   const manifestPackages = manifest?.packages || [];
 
   // Limit cross-package lookups heavily to avoid a fetch storm during prerendering.

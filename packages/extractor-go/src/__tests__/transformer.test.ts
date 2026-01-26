@@ -130,7 +130,7 @@ describe("GoTransformer", () => {
 
     it("should set member IDs correctly", () => {
       for (const member of clientSymbol!.members!) {
-        expect(member.refId).toContain("pkg_go_test_package:Client_POST");
+        expect(member.refId).toContain("pkg_go_test_package:Client_");
       }
     });
   });

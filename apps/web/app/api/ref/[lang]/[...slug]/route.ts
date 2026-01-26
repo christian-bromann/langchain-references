@@ -64,7 +64,7 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
   }
 
   // Get package info from manifest
-  const manifest = await getManifestData(packageBuildId);
+  const manifest = await getManifestData();
   if (!manifest) {
     return NextResponse.json({ error: "Failed to load manifest" }, { status: 500 });
   }

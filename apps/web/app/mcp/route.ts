@@ -9,7 +9,12 @@
  */
 
 import { NextRequest } from "next/server";
-import { getBuildIdForLanguage, getManifestData, getSymbols, getSymbolData } from "@/lib/ir/loader";
+import {
+  getBuildIdForLanguage,
+  getManifestData,
+  getSymbols,
+  getSymbolData,
+} from "@/lib/ir/loader";
 import { symbolToMarkdown } from "@/lib/ir/markdown-generator";
 import { getBaseUrl } from "@/lib/config/mcp";
 import { getEnabledProjects } from "@/lib/config/projects";
@@ -345,14 +350,15 @@ async function searchSymbols(
     ? [language]
     : ["python", "javascript", "java", "go"];
 
+  // Get manifest once (it's global, not per-project)
+  const manifest = await getManifestData();
+  if (!manifest) return [];
+
   // Search across all projects
   for (const project of projects) {
     for (const lang of languages) {
-      const buildId = await getBuildIdForLanguage(lang, project.id);
-      if (!buildId) continue;
-
-      const manifest = await getManifestData(buildId);
-      if (!manifest) continue;
+      const fallbackBuildId = await getBuildIdForLanguage(lang, project.id);
+      if (!fallbackBuildId) continue;
 
       // Map URL language to symbol language
       const langMap: Record<string, string> = {
@@ -365,7 +371,9 @@ async function searchSymbols(
       const packages = manifest.packages.filter((p) => p.language === targetLang);
 
       for (const pkg of packages) {
-        const symbolsData = await getSymbols(buildId, pkg.packageId);
+        // Each package has its own buildId in the manifest (package-level architecture)
+        const pkgBuildId = pkg.buildId || fallbackBuildId;
+        const symbolsData = await getSymbols(pkgBuildId, pkg.packageId);
         if (!symbolsData?.symbols) continue;
 
         for (const symbol of symbolsData.symbols) {
@@ -471,10 +479,10 @@ async function getSymbolByName(
   const isJavaScript = packageName.startsWith("@");
   const language = isJavaScript ? "javascript" : "python";
 
-  const buildId = await getBuildIdForLanguage(language);
-  if (!buildId) return null;
+  const fallbackBuildId = await getBuildIdForLanguage(language);
+  if (!fallbackBuildId) return null;
 
-  const manifest = await getManifestData(buildId);
+  const manifest = await getManifestData();
   if (!manifest) return null;
 
   // Find the package
@@ -486,13 +494,16 @@ async function getSymbolByName(
 
   if (!pkg) return null;
 
+  // Each package has its own buildId in the manifest (package-level architecture)
+  const pkgBuildId = pkg.buildId || fallbackBuildId;
+
   // Try to find the symbol by path or name
-  const symbol = await getSymbolData(buildId, pkg.packageId, symbolName);
+  const symbol = await getSymbolData(pkgBuildId, pkg.packageId, symbolName);
 
   if (symbol) return symbol;
 
   // If not found by path, search in package symbols
-  const symbolsData = await getSymbols(buildId, pkg.packageId);
+  const symbolsData = await getSymbols(pkgBuildId, pkg.packageId);
   if (!symbolsData?.symbols) return null;
 
   // Try exact name match

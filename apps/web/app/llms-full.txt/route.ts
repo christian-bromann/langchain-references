@@ -89,24 +89,27 @@ export async function GET(): Promise<Response> {
   addLine("---");
   addLine("");
 
+  // Get manifest once (it's global)
+  const manifest = await getManifestData();
+
   // Process Python packages
   const pythonBuildId = await getBuildIdForLanguage("python");
-  if (pythonBuildId && !truncated) {
-    const pythonManifest = await getManifestData(pythonBuildId);
-    if (pythonManifest) {
-      const pythonPackages = pythonManifest.packages.filter((p) => p.language === "python");
+  if (pythonBuildId && !truncated && manifest) {
+    const pythonPackages = manifest.packages.filter((p) => p.language === "python");
 
-      if (pythonPackages.length > 0) {
-        addLine("## Python Packages");
+    if (pythonPackages.length > 0) {
+      addLine("## Python Packages");
+      addLine("");
+
+      for (const pkg of pythonPackages) {
+        if (truncated) break;
+
+        addLine(`### ${pkg.publishedName}`);
         addLine("");
 
-        for (const pkg of pythonPackages) {
-          if (truncated) break;
-
-          addLine(`### ${pkg.publishedName}`);
-          addLine("");
-
-          const symbolsData = await getSymbols(pythonBuildId, pkg.packageId);
+        // Each package has its own buildId in the manifest (package-level architecture)
+        const pkgBuildId = pkg.buildId || pythonBuildId;
+          const symbolsData = await getSymbols(pkgBuildId, pkg.packageId);
           if (symbolsData && symbolsData.symbols.length > 0) {
             // Sort symbols by kind, then by name
             const sorted = [...symbolsData.symbols].sort((a, b) => {
@@ -137,8 +140,7 @@ export async function GET(): Promise<Response> {
             }
           } else {
             addLine("_No symbols available._");
-            addLine("");
-          }
+          addLine("");
         }
       }
     }
@@ -146,22 +148,22 @@ export async function GET(): Promise<Response> {
 
   // Process JavaScript packages
   const jsBuildId = await getBuildIdForLanguage("javascript");
-  if (jsBuildId && !truncated) {
-    const jsManifest = await getManifestData(jsBuildId);
-    if (jsManifest) {
-      const jsPackages = jsManifest.packages.filter((p) => p.language === "typescript");
+  if (jsBuildId && !truncated && manifest) {
+    const jsPackages = manifest.packages.filter((p) => p.language === "typescript");
 
-      if (jsPackages.length > 0) {
-        addLine("## JavaScript Packages");
+    if (jsPackages.length > 0) {
+      addLine("## JavaScript Packages");
+      addLine("");
+
+      for (const pkg of jsPackages) {
+        if (truncated) break;
+
+        addLine(`### ${pkg.publishedName}`);
         addLine("");
 
-        for (const pkg of jsPackages) {
-          if (truncated) break;
-
-          addLine(`### ${pkg.publishedName}`);
-          addLine("");
-
-          const symbolsData = await getSymbols(jsBuildId, pkg.packageId);
+        // Each package has its own buildId in the manifest (package-level architecture)
+        const pkgBuildId = pkg.buildId || jsBuildId;
+          const symbolsData = await getSymbols(pkgBuildId, pkg.packageId);
           if (symbolsData && symbolsData.symbols.length > 0) {
             // Sort symbols by kind, then by name
             const sorted = [...symbolsData.symbols].sort((a, b) => {
@@ -192,8 +194,7 @@ export async function GET(): Promise<Response> {
             }
           } else {
             addLine("_No symbols available._");
-            addLine("");
-          }
+          addLine("");
         }
       }
     }

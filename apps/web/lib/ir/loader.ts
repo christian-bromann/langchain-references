@@ -90,7 +90,7 @@ type ChangelogShard = Record<string, SymbolChangelogEntry[]>;
 /**
  * Cache for manifest data (in-memory for the request lifecycle)
  */
-const manifestCache = new Map<string, Manifest>();
+const manifestCache = new Map<string, ExtendedManifest>();
 const routingCache = new Map<string, RoutingMap>();
 const symbolShardCache = new Map<string, SymbolRecord[]>();
 const pointerCache = new Map<string, unknown>();
@@ -571,8 +571,9 @@ const packageInfoCacheV2 = new Map<string, Package>();
 
 /**
  * Extended package info that includes the description and buildId fields.
+ * Used when loading packages from the manifest, which includes per-package buildIds.
  */
-interface ExtendedPackageInfo extends Package {
+export interface ExtendedPackageInfo extends Package {
   description?: string;
   /** Build ID for this package (package-level architecture) */
   buildId?: string;
@@ -582,6 +583,14 @@ interface ExtendedPackageInfo extends Package {
   subpages?: { slug: string; title: string }[];
   /** Export paths extracted from package.json exports (for JS/TS packages) */
   exportPaths?: { slug: string; title: string }[];
+}
+
+/**
+ * Extended manifest with packages that include per-package buildIds.
+ * This is the actual shape returned by getManifestData().
+ */
+export interface ExtendedManifest extends Omit<Manifest, "packages"> {
+  packages: ExtendedPackageInfo[];
 }
 
 /**
@@ -780,8 +789,8 @@ async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | nul
         // Log detailed failure info
         console.error(
           `[blob] ✗ ${path} FAILED after ${attempt + 1} attempts, phase=${phase}, elapsed=${elapsed}ms, ` +
-            `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
-            `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`,
+          `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
+          `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`,
         );
         break;
       }
@@ -793,7 +802,7 @@ async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | nul
 
       console.warn(
         `[blob] ⟳ ${path} retry ${attempt + 1}/${maxRetries} in ${Math.round(delay)}ms, ` +
-          `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`,
+        `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`,
       );
 
       await sleep(delay);
@@ -803,7 +812,7 @@ async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | nul
   failedBlobFetches++;
   console.error(
     `[blob] ✗ ${path} EXHAUSTED after ${maxRetries} attempts ` +
-      `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
+    `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
     lastError,
   );
   return null;
@@ -818,8 +827,8 @@ async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | nul
  *
  * This eliminates the need to fetch 20+ individual index files at runtime.
  */
-async function fetchGlobalManifest(): Promise<Manifest | null> {
-  const manifestData = await fetchBlobJson<Manifest>(`${POINTERS_PATH}/manifest.json`);
+async function fetchGlobalManifest(): Promise<ExtendedManifest | null> {
+  const manifestData = await fetchBlobJson<ExtendedManifest>(`${POINTERS_PATH}/manifest.json`);
 
   if (!manifestData?.packages) {
     console.error("[loader] No global manifest found at pointers/manifest.json");
@@ -863,7 +872,7 @@ export function normalizePackageId(pkgName: string, language: Language): string 
 let manifestFetchPromise: Promise<Manifest | null> | null = null;
 
 /**
- * Get the manifest for a build
+ * Get the manifest containing all packages across all projects.
  *
  * With package-level architecture, we build a synthetic manifest
  * from the package indexes instead of fetching a monolithic manifest file.
@@ -871,7 +880,7 @@ let manifestFetchPromise: Promise<Manifest | null> | null = null;
  * OPTIMIZATION: Uses promise-based deduplication to ensure only one fetch
  * happens even when multiple parallel calls occur (e.g., sidebar loading).
  */
-export async function getManifest(_buildId: string): Promise<Manifest | null> {
+export async function getManifestData(): Promise<ExtendedManifest | null> {
   // Use a single cache key since manifest is now built from all packages
   const cacheKey = "all-packages";
 
@@ -1330,10 +1339,10 @@ export async function getSymbolByQualifiedName(
 
 /**
  * Get package info from manifest (unified - works in prod and dev)
+ * @deprecated buildId parameter is no longer used - manifest is global
  */
-export async function getPackageInfo(buildId: string, packageId: string): Promise<Package | null> {
-  // Use unified getManifestData to support both blob and local
-  const manifest = await getManifestData(buildId);
+export async function getPackageInfo(_buildId: string, packageId: string): Promise<Package | null> {
+  const manifest = await getManifestData();
 
   if (!manifest) {
     return null;
@@ -1344,13 +1353,13 @@ export async function getPackageInfo(buildId: string, packageId: string): Promis
 
 /**
  * Get all packages for a language (unified - works in prod and dev)
+ * @deprecated buildId parameter is no longer used - manifest is global
  */
 export async function getPackagesForLanguage(
-  buildId: string,
+  _buildId: string,
   language: Language,
 ): Promise<Package[]> {
-  // Use unified getManifestData to support both blob and local
-  const manifest = await getManifestData(buildId);
+  const manifest = await getManifestData();
 
   if (!manifest) {
     return [];
@@ -1385,18 +1394,6 @@ export async function getBuildIdForLanguage(
   // Fallback to old-style project pointer
   const buildId = await getLatestBuildIdForLanguage(language, project);
   return buildId;
-}
-
-/**
- * Get the manifest for a build.
- * Fetches the manifest from blob storage.
- */
-export async function getManifestData(
-  buildId: string,
-  _language?: Language,
-  _project?: string,
-): Promise<Manifest | null> {
-  return getManifest(buildId);
 }
 
 /**
@@ -1843,7 +1840,7 @@ export async function getStaticParamsForLanguage(
     return [];
   }
 
-  const manifest = await getManifestData(buildId);
+  const manifest = await getManifestData();
   if (!manifest) {
     return [];
   }

@@ -246,7 +246,7 @@ async function loadSidebarPackagesForProject(
     return [];
   }
 
-  const manifest = await getManifestData(buildId);
+  const manifest = await getManifestData();
   if (!manifest) {
     return [];
   }

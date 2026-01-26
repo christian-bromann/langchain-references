@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   },
 };
 import { cn } from "@/lib/utils/cn";
-import { getBuildIdForLanguage, getManifestData } from "@/lib/ir/loader";
+import { getManifestData } from "@/lib/ir/loader";
 import type { Package } from "@/lib/ir/types";
 
 /**
@@ -57,8 +57,7 @@ function getPackageSlug(pkg: Package): string {
 }
 
 export default async function JavaIndexPage() {
-  const buildId = await getBuildIdForLanguage("java");
-  const manifest = buildId ? await getManifestData(buildId) : null;
+  const manifest = await getManifestData();
   const packages = manifest?.packages.filter((p) => p.language === "java") ?? [];
 
   return (
