@@ -9,12 +9,7 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  getBuildIdForLanguage,
-  getManifestData,
-  getSymbols,
-  getSymbolData,
-} from "@/lib/ir/loader";
+import { getBuildIdForLanguage, getManifestData, getSymbols, getSymbolData } from "@/lib/ir/loader";
 import { symbolToMarkdown } from "@/lib/ir/markdown-generator";
 import { getBaseUrl } from "@/lib/config/mcp";
 import { getEnabledProjects } from "@/lib/config/projects";

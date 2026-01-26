@@ -789,8 +789,8 @@ async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | nul
         // Log detailed failure info
         console.error(
           `[blob] ✗ ${path} FAILED after ${attempt + 1} attempts, phase=${phase}, elapsed=${elapsed}ms, ` +
-          `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
-          `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`,
+            `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
+            `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`,
         );
         break;
       }
@@ -802,7 +802,7 @@ async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | nul
 
       console.warn(
         `[blob] ⟳ ${path} retry ${attempt + 1}/${maxRetries} in ${Math.round(delay)}ms, ` +
-        `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`,
+          `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`,
       );
 
       await sleep(delay);
@@ -812,7 +812,7 @@ async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | nul
   failedBlobFetches++;
   console.error(
     `[blob] ✗ ${path} EXHAUSTED after ${maxRetries} attempts ` +
-    `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
+      `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
     lastError,
   );
   return null;

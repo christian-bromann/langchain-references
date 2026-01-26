@@ -109,37 +109,37 @@ export async function GET(): Promise<Response> {
 
         // Each package has its own buildId in the manifest (package-level architecture)
         const pkgBuildId = pkg.buildId || pythonBuildId;
-          const symbolsData = await getSymbols(pkgBuildId, pkg.packageId);
-          if (symbolsData && symbolsData.symbols.length > 0) {
-            // Sort symbols by kind, then by name
-            const sorted = [...symbolsData.symbols].sort((a, b) => {
-              if (a.kind !== b.kind) return (a.kind || "").localeCompare(b.kind || "");
-              return a.name.localeCompare(b.name);
-            });
+        const symbolsData = await getSymbols(pkgBuildId, pkg.packageId);
+        if (symbolsData && symbolsData.symbols.length > 0) {
+          // Sort symbols by kind, then by name
+          const sorted = [...symbolsData.symbols].sort((a, b) => {
+            if (a.kind !== b.kind) return (a.kind || "").localeCompare(b.kind || "");
+            return a.name.localeCompare(b.name);
+          });
 
-            // Group by kind
-            const byKind = new Map<string, SymbolRecord[]>();
-            for (const sym of sorted) {
-              const kind = sym.kind || "other";
-              if (!byKind.has(kind)) byKind.set(kind, []);
-              byKind.get(kind)!.push(sym);
-            }
+          // Group by kind
+          const byKind = new Map<string, SymbolRecord[]>();
+          for (const sym of sorted) {
+            const kind = sym.kind || "other";
+            if (!byKind.has(kind)) byKind.set(kind, []);
+            byKind.get(kind)!.push(sym);
+          }
 
-            for (const [kind, syms] of byKind) {
-              if (truncated) break;
+          for (const [kind, syms] of byKind) {
+            if (truncated) break;
 
-              addLine(`#### ${kind.charAt(0).toUpperCase() + kind.slice(1)}s`);
-              addLine("");
+            addLine(`#### ${kind.charAt(0).toUpperCase() + kind.slice(1)}s`);
+            addLine("");
 
-              for (const sym of syms) {
-                if (!addLine(formatSymbol(sym, pkg.publishedName, "python", baseUrl))) {
-                  break;
-                }
+            for (const sym of syms) {
+              if (!addLine(formatSymbol(sym, pkg.publishedName, "python", baseUrl))) {
+                break;
               }
-              addLine("");
             }
-          } else {
-            addLine("_No symbols available._");
+            addLine("");
+          }
+        } else {
+          addLine("_No symbols available._");
           addLine("");
         }
       }
@@ -163,37 +163,37 @@ export async function GET(): Promise<Response> {
 
         // Each package has its own buildId in the manifest (package-level architecture)
         const pkgBuildId = pkg.buildId || jsBuildId;
-          const symbolsData = await getSymbols(pkgBuildId, pkg.packageId);
-          if (symbolsData && symbolsData.symbols.length > 0) {
-            // Sort symbols by kind, then by name
-            const sorted = [...symbolsData.symbols].sort((a, b) => {
-              if (a.kind !== b.kind) return (a.kind || "").localeCompare(b.kind || "");
-              return a.name.localeCompare(b.name);
-            });
+        const symbolsData = await getSymbols(pkgBuildId, pkg.packageId);
+        if (symbolsData && symbolsData.symbols.length > 0) {
+          // Sort symbols by kind, then by name
+          const sorted = [...symbolsData.symbols].sort((a, b) => {
+            if (a.kind !== b.kind) return (a.kind || "").localeCompare(b.kind || "");
+            return a.name.localeCompare(b.name);
+          });
 
-            // Group by kind
-            const byKind = new Map<string, SymbolRecord[]>();
-            for (const sym of sorted) {
-              const kind = sym.kind || "other";
-              if (!byKind.has(kind)) byKind.set(kind, []);
-              byKind.get(kind)!.push(sym);
-            }
+          // Group by kind
+          const byKind = new Map<string, SymbolRecord[]>();
+          for (const sym of sorted) {
+            const kind = sym.kind || "other";
+            if (!byKind.has(kind)) byKind.set(kind, []);
+            byKind.get(kind)!.push(sym);
+          }
 
-            for (const [kind, syms] of byKind) {
-              if (truncated) break;
+          for (const [kind, syms] of byKind) {
+            if (truncated) break;
 
-              addLine(`#### ${kind.charAt(0).toUpperCase() + kind.slice(1)}s`);
-              addLine("");
+            addLine(`#### ${kind.charAt(0).toUpperCase() + kind.slice(1)}s`);
+            addLine("");
 
-              for (const sym of syms) {
-                if (!addLine(formatSymbol(sym, pkg.publishedName, "javascript", baseUrl))) {
-                  break;
-                }
+            for (const sym of syms) {
+              if (!addLine(formatSymbol(sym, pkg.publishedName, "javascript", baseUrl))) {
+                break;
               }
-              addLine("");
             }
-          } else {
-            addLine("_No symbols available._");
+            addLine("");
+          }
+        } else {
+          addLine("_No symbols available._");
           addLine("");
         }
       }
