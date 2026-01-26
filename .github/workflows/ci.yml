@@ -78,21 +78,38 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Pull IR data
+        run: pnpm pull-ir
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          BLOB_URL: ${{ secrets.BLOB_URL }}
+
       - name: Start server and run e2e tests
         run: |
           # Start the dev server (includes static IR server) in the background
           pnpm dev &
           SERVER_PID=$!
 
-          # Wait for server to be ready
-          echo "Waiting for server to start..."
-          for i in {1..30}; do
+          # Wait for both servers to be ready
+          echo "Waiting for servers to start..."
+          for i in {1..60}; do
+            WEB_READY=false
+            IR_READY=false
+            
             if curl -s http://localhost:3000 > /dev/null 2>&1; then
-              echo "Server is ready!"
+              WEB_READY=true
+            fi
+            if curl -s http://localhost:3001 > /dev/null 2>&1; then
+              IR_READY=true
+            fi
+            
+            if [ "$WEB_READY" = true ] && [ "$IR_READY" = true ]; then
+              echo "Both servers are ready!"
               break
             fi
-            if [ $i -eq 30 ]; then
-              echo "Server failed to start"
+            
+            if [ $i -eq 60 ]; then
+              echo "Servers failed to start (web: $WEB_READY, ir: $IR_READY)"
               exit 1
             fi
             sleep 1
@@ -106,6 +123,7 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: 1
           MCP_TEST_URL: http://localhost:3000
+          BLOB_URL: http://localhost:3001
           # Optional: enables agent-based e2e tests (tests are skipped if not set)
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
