@@ -24,6 +24,16 @@ export default defineConfig(({ mode }) => {
     return ["lib/**/*.test.ts"];
   };
 
+  // Exclude performance and e2e tests from default run
+  // (they have dedicated test modes and CI workflows)
+  const getExclude = () => {
+    if (isPerf || isE2E) return [];
+    return [
+      "lib/__tests__/performance/**/*.perf.test.ts",
+      "lib/__tests__/e2e/**/*.e2e.test.ts",
+    ];
+  };
+
   const getTimeout = () => {
     if (isPerf) return 30000;
     if (isE2E) return 120000; // 2 minute timeout for LLM-based tests
@@ -35,6 +45,7 @@ export default defineConfig(({ mode }) => {
       globals: true,
       environment: "node",
       include: getInclude(),
+      exclude: getExclude(),
       testTimeout: getTimeout(),
       pool: isPerf ? "forks" : "threads",
       reporters: isPerf || isE2E ? ["verbose"] : ["default"],
