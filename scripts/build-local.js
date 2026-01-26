@@ -73,17 +73,22 @@ for (const pkg of packages) {
     continue;
   }
 
-  // Find the buildId (subdirectory name)
+  // Find the buildId (subdirectory name) - use the newest one by modification time
   const buildIds = fs
     .readdirSync(pkgOutputDir)
-    .filter((f) => fs.statSync(path.join(pkgOutputDir, f)).isDirectory());
+    .filter((f) => fs.statSync(path.join(pkgOutputDir, f)).isDirectory())
+    .sort((a, b) => {
+      const aTime = fs.statSync(path.join(pkgOutputDir, a)).mtimeMs;
+      const bTime = fs.statSync(path.join(pkgOutputDir, b)).mtimeMs;
+      return bTime - aTime; // Newest first
+    });
 
   if (buildIds.length === 0) {
     console.log(`   ⚠️  No build found for ${pkgName}, skipping`);
     continue;
   }
 
-  const buildId = buildIds[0]; // Use the first/only build
+  const buildId = buildIds[0]; // Use the newest build
   const buildDir = path.join(pkgOutputDir, buildId);
   const symbolsPath = path.join(buildDir, "symbols.json");
 

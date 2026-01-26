@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
 import {
   buildPackageUrl,
+  buildSymbolUrl,
+  extractPackageFromQualifiedName,
   getKindColor,
   getKindLabel,
   slugifyPackageName,
@@ -272,6 +274,8 @@ interface DisplaySymbol {
  */
 interface InheritedMemberGroup {
   baseName: string;
+  /** Full qualified name of the base class (e.g., langchain_core.messages.ai.AIMessage) */
+  baseQualifiedName?: string;
   basePackageId?: string;
   basePackageName?: string;
   members: DisplayMember[];
@@ -1035,6 +1039,7 @@ async function resolveInheritedMembers(
     basePackageId: string,
     basePackageName: string,
     simpleBaseName: string,
+    baseQualifiedName: string,
   ): Promise<void> {
     if (!baseSymbol.members || baseSymbol.members.length === 0) return;
 
@@ -1070,6 +1075,10 @@ async function resolveInheritedMembers(
 
       // Skip private members
       if (member.visibility === "private") continue;
+
+      // Skip members with placeholder-like names (containing brackets)
+      // These are likely unresolved placeholders in the IR data
+      if (/[\[\]<>]/.test(member.name)) continue;
 
       // Use refId if available (MemberReference format), fall back to id (ExtractorMember format)
       // This handles both TypeScript/Python (refId) and Java/Go (id) member formats
@@ -1113,6 +1122,7 @@ async function resolveInheritedMembers(
     if (inheritedMembers.length > 0) {
       inheritedGroups.push({
         baseName: simpleBaseName,
+        baseQualifiedName,
         basePackageId,
         basePackageName,
         members: inheritedMembers,
@@ -1150,6 +1160,7 @@ async function resolveInheritedMembers(
         found.packageId,
         found.packageName,
         simpleBaseName,
+        found.symbol.qualifiedName,
       );
 
       // Add parent's bases to the processing queue (recursive inheritance)
@@ -2206,7 +2217,11 @@ function InheritedMembersSection({
               <span>Inherited from</span>
               {group.basePackageName && group.basePackageName !== packageName ? (
                 <Link
-                  href={`/${language}/${slugifyPackageName(group.basePackageName)}/${group.baseName}`}
+                  href={
+                    group.baseQualifiedName
+                      ? buildSymbolUrl(language, group.basePackageName, group.baseQualifiedName)
+                      : `/${language}/${slugifyPackageName(group.basePackageName)}/${group.baseName}`
+                  }
                   className="font-mono text-primary hover:text-primary/80 underline decoration-dashed underline-offset-2"
                 >
                   {group.baseName}
@@ -2234,6 +2249,7 @@ function InheritedMembersSection({
                         language={language}
                         basePackageName={group.basePackageName || packageName}
                         baseClassName={group.baseName}
+                        baseQualifiedName={group.baseQualifiedName}
                       />
                     ))}
                   </div>
@@ -2296,24 +2312,47 @@ function InheritedMemberRow({
   language,
   basePackageName,
   baseClassName,
+  baseQualifiedName,
   index,
 }: {
   member: DisplayMember;
   language: UrlLanguage;
   basePackageName: string;
   baseClassName: string;
+  baseQualifiedName?: string;
   index: number;
 }) {
   const isMethodOrFunction = member.kind === "method" || member.kind === "function";
 
-  // Link to the base class's member page
-  const langPath = language;
-  const packageSlug = slugifyPackageName(basePackageName);
-  const symbolPath = `${baseClassName}.${member.name}`;
-  // Use slugifySymbolPath to properly strip package prefix for Python
-  const hasPackagePrefix = language === "python" && symbolPath.includes("_");
-  const urlPath = slugifySymbolPath(symbolPath, hasPackagePrefix);
-  const href = `/${langPath}/${packageSlug}/${urlPath}`;
+  // Build the URL using the member's qualified name if available,
+  // otherwise construct from base class qualified name
+  let href: string;
+  if (member.qualifiedName) {
+    // Use the member's actual qualified name for the URL
+    const memberPackage = extractPackageFromQualifiedName(
+      member.qualifiedName,
+      language,
+      basePackageName,
+    );
+    href = buildSymbolUrl(language, memberPackage, member.qualifiedName);
+  } else if (baseQualifiedName) {
+    // Construct qualified name from base class qualified name + member name
+    const memberQualifiedName = `${baseQualifiedName}.${member.name}`;
+    const memberPackage = extractPackageFromQualifiedName(
+      memberQualifiedName,
+      language,
+      basePackageName,
+    );
+    href = buildSymbolUrl(language, memberPackage, memberQualifiedName);
+  } else {
+    // Fallback: construct URL from base class name (less accurate but works for same-package)
+    const langPath = language;
+    const packageSlug = slugifyPackageName(basePackageName);
+    const symbolPath = `${baseClassName}.${member.name}`;
+    const hasPackagePrefix = language === "python" && symbolPath.includes("_");
+    const urlPath = slugifySymbolPath(symbolPath, hasPackagePrefix);
+    href = `/${langPath}/${packageSlug}/${urlPath}`;
+  }
 
   return (
     <Link

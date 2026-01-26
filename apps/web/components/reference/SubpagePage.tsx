@@ -11,6 +11,7 @@ import { Box, Code, Folder, ChevronRight, FileType, BookOpen } from "lucide-reac
 import { cn } from "@/lib/utils/cn";
 import {
   buildSymbolUrl,
+  extractPackageFromQualifiedName,
   getKindColor,
   getKindLabel,
   slugifyPackageName,
@@ -70,6 +71,80 @@ function toDisplaySymbol(entry: CatalogEntry): DisplaySymbol {
     summaryHtml: entry.summaryHtml,
     signature: entry.signature,
   };
+}
+
+/**
+ * Transform anchor links in markdown content to proper symbol page URLs.
+ *
+ * Uses catalog entries to resolve the actual qualified names, fixing cases where
+ * the markdown anchor uses a shortened path (e.g., `#langchain.agents.middleware.SummarizationMiddleware`)
+ * but the actual symbol is at a deeper path (e.g., `langchain.agents.middleware.summarization.SummarizationMiddleware`).
+ *
+ * @param content - Raw markdown content with anchor links
+ * @param language - Current language (python, javascript, etc.)
+ * @param packageName - Current package name
+ * @param catalogEntries - Catalog entries for symbol lookup
+ * @param crossPackageCatalogs - Cross-package catalog entries for fallback lookup
+ * @returns Markdown content with transformed links
+ */
+function transformAnchorLinksToSymbolUrls(
+  content: string,
+  language: UrlLanguage,
+  packageName: string,
+  catalogEntries: CatalogEntry[],
+  crossPackageCatalogs: CatalogEntry[] = [],
+): string {
+  if (!content) return content;
+
+  // Build a lookup map from symbol names to catalog entries for fast resolution
+  // This allows us to find the actual qualified name when the anchor uses a shortened path
+  const symbolByName = new Map<string, CatalogEntry>();
+  const allCatalogs = [...catalogEntries, ...crossPackageCatalogs];
+
+  for (const entry of allCatalogs) {
+    // Index by simple name (prefer entries from primary catalog)
+    if (!symbolByName.has(entry.name) || catalogEntries.includes(entry)) {
+      symbolByName.set(entry.name, entry);
+    }
+  }
+
+  // Match markdown links with anchor refs that look like qualified names
+  // Pattern: [text](#qualified.name.Symbol) or [`text`](#qualified.name.Symbol)
+  const anchorLinkPattern = /\[([^\]]+)\]\(#([a-zA-Z_][a-zA-Z0-9_.]*)\)/g;
+
+  return content.replace(anchorLinkPattern, (match, linkText, anchorQualifiedName) => {
+    // Only transform if it looks like a Python qualified name (has dots)
+    if (!anchorQualifiedName.includes(".")) {
+      return match; // Keep as-is for simple anchors
+    }
+
+    // Extract the symbol name from the anchor (last part after the last dot)
+    const symbolName = anchorQualifiedName.split(".").pop();
+    if (!symbolName) {
+      return match;
+    }
+
+    // Try to find the symbol in the catalog to get the actual qualified name
+    const catalogEntry = symbolByName.get(symbolName);
+
+    let actualQualifiedName: string;
+    let actualPackage: string;
+
+    if (catalogEntry) {
+      // Use the actual qualified name from the catalog
+      actualQualifiedName = catalogEntry.qualifiedName;
+      actualPackage = extractPackageFromQualifiedName(actualQualifiedName, language, packageName);
+    } else {
+      // Fall back to the anchor's qualified name if not found in catalog
+      actualQualifiedName = anchorQualifiedName;
+      actualPackage = extractPackageFromQualifiedName(anchorQualifiedName, language, packageName);
+    }
+
+    // Build the symbol URL using the resolved qualified name
+    const symbolUrl = buildSymbolUrl(language, actualPackage, actualQualifiedName);
+
+    return `[${linkText}](${symbolUrl})`;
+  });
 }
 
 /**
@@ -302,7 +377,15 @@ export async function SubpagePage({
         {subpageData.markdownContent && (
           <section id="section-overview">
             <div className="prose prose-slate dark:prose-invert max-w-none">
-              <MarkdownContent>{subpageData.markdownContent}</MarkdownContent>
+              <MarkdownContent>
+                {transformAnchorLinksToSymbolUrls(
+                  subpageData.markdownContent,
+                  language,
+                  packageName,
+                  catalogEntries,
+                  crossPackageCatalogs,
+                )}
+              </MarkdownContent>
             </div>
           </section>
         )}
@@ -443,7 +526,10 @@ async function SymbolCard({
   language: UrlLanguage;
   packageName: string;
 }) {
-  const href = buildSymbolUrl(language, packageName, symbol.qualifiedName);
+  // Extract the actual package from the qualified name for cross-package symbols
+  // e.g., if viewing langchain but symbol is from langchain_core, use langchain_core
+  const actualPackage = extractPackageFromQualifiedName(symbol.qualifiedName, language, packageName);
+  const href = buildSymbolUrl(language, actualPackage, symbol.qualifiedName);
 
   return (
     <Link

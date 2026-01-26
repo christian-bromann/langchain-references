@@ -94,6 +94,16 @@ export function packageNameToId(packageName: string, language: UrlLanguage): str
 }
 
 /**
+ * Sanitize a URL path segment to remove characters that could cause issues
+ * with Next.js routing (brackets are interpreted as dynamic route segments).
+ */
+function sanitizeUrlSegment(segment: string): string {
+  // Remove brackets that Next.js interprets as dynamic route segments
+  // Also remove angle brackets from generics
+  return segment.replace(/[[\]<>]/g, "");
+}
+
+/**
  * Slugify a symbol path for URLs
  * @example "langchain_core.messages.BaseMessage" -> "messages/BaseMessage"
  * @example "ChatDeepSeekCallOptions" -> "ChatDeepSeekCallOptions"
@@ -103,15 +113,15 @@ export function slugifySymbolPath(symbolPath: string, hasPackagePrefix = true): 
 
   // If only one part, it's just the symbol name (no package prefix)
   if (parts.length === 1) {
-    return parts[0];
+    return sanitizeUrlSegment(parts[0]);
   }
 
   // Skip the package name (first part) if it has a package prefix
   if (hasPackagePrefix) {
-    return parts.slice(1).join("/");
+    return parts.slice(1).map(sanitizeUrlSegment).join("/");
   }
 
-  return parts.join("/");
+  return parts.map(sanitizeUrlSegment).join("/");
 }
 
 /**
@@ -316,6 +326,41 @@ export function getKindLabel(kind: SymbolKind): string {
   };
 
   return labelMap[kind] || kind;
+}
+
+/**
+ * Extract the package name from a qualified symbol name.
+ * For Python: "langchain_core.messages.ai.AIMessage" -> "langchain_core"
+ * For JS: "@langchain/core" symbols typically don't include the package in qualifiedName
+ *
+ * This is useful when displaying symbols from cross-package catalogs, where the
+ * qualifiedName may reference a different package than the current page's package.
+ *
+ * @param qualifiedName - The fully qualified symbol name (e.g., "langchain_core.messages.AIMessage")
+ * @param language - The URL language (python, javascript, etc.)
+ * @param fallbackPackage - Package name to use if extraction fails
+ * @returns The extracted package name or the fallback
+ */
+export function extractPackageFromQualifiedName(
+  qualifiedName: string,
+  language: UrlLanguage,
+  fallbackPackage: string,
+): string {
+  if (language === "python") {
+    // Python qualified names start with the package name (e.g., "langchain_core.messages.AIMessage")
+    const firstPart = qualifiedName.split(".")[0];
+    // Only use it if it looks like a Python package (has underscore or is a known pattern)
+    if (
+      firstPart &&
+      (firstPart.includes("_") ||
+        firstPart === "langchain" ||
+        firstPart === "langgraph" ||
+        firstPart === "langsmith")
+    ) {
+      return firstPart;
+    }
+  }
+  return fallbackPackage;
 }
 
 /**

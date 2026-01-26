@@ -12,7 +12,13 @@ import { notFound } from "next/navigation";
 import { Box, Code, Folder, ChevronRight, FileType, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
-import { buildSymbolUrl, getKindColor, getKindLabel, slugifyPackageName } from "@/lib/utils/url";
+import {
+  buildSymbolUrl,
+  extractPackageFromQualifiedName,
+  getKindColor,
+  getKindLabel,
+  slugifyPackageName,
+} from "@/lib/utils/url";
 import {
   getPackageBuildId,
   getCatalogEntries,
@@ -363,7 +369,9 @@ async function SymbolCard({
   language: UrlLanguage;
   packageName: string;
 }) {
-  const href = buildSymbolUrl(language, packageName, symbol.qualifiedName);
+  // Extract the actual package from the qualified name for cross-package symbols
+  const actualPackage = extractPackageFromQualifiedName(symbol.qualifiedName, language, packageName);
+  const href = buildSymbolUrl(language, actualPackage, symbol.qualifiedName);
 
   return (
     <Link
