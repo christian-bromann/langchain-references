@@ -12,7 +12,39 @@
         "tagPattern": "deepagents==*",
         "maxVersions": 10
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        {
+          "slug": "agent",
+          "title": "Agent",
+          "source": "docs/deepagents/python/agent.md"
+        },
+        {
+          "slug": "middleware",
+          "title": "Middleware",
+          "source": "docs/deepagents/python/middleware.md"
+        },
+        {
+          "slug": "backends",
+          "title": "Backends",
+          "source": "docs/deepagents/python/backends.md"
+        },
+        {
+          "slug": "subagents",
+          "title": "Subagents",
+          "source": "docs/deepagents/python/subagents.md"
+        },
+        {
+          "slug": "config",
+          "title": "Configuration",
+          "source": "docs/deepagents/python/config.md"
+        },
+        {
+          "slug": "mcp",
+          "title": "MCP Integration",
+          "source": "docs/deepagents/python/mcp.md"
+        }
+      ]
     },
     {
       "name": "deepagents_cli",
