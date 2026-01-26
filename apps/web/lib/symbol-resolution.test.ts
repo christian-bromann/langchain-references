@@ -268,7 +268,7 @@ describe("bidirectional mapping consistency", () => {
     const jsToPython = SYMBOL_MAPPINGS.jsToPython;
     const pythonToJs = SYMBOL_MAPPINGS.pythonToJs;
 
-    for (const [jsPath, pyPath] of Object.entries(jsToPython)) {
+    for (const pyPath of Object.values(jsToPython)) {
       // Check that the Python path maps back to SOME JavaScript path
       // (not necessarily the same one, as there may be multiple JS paths mapping to one Python)
       const inverse = pythonToJs[pyPath];
