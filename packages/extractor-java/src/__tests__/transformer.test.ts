@@ -211,7 +211,7 @@ describe("JavaTransformer", () => {
 
     it("should set member IDs correctly", () => {
       for (const member of simpleClassSymbol!.members!) {
-        expect(member.refId).toContain("SimpleClass.");
+        expect(member.refId).toContain("SimpleClass_");
       }
     });
   });
@@ -233,7 +233,7 @@ describe("JavaTransformer", () => {
     });
 
     it("should have refId for the method symbol", () => {
-      expect(getCountMember!.refId).toContain("SimpleClass.getCount");
+      expect(getCountMember!.refId).toContain("SimpleClass_getCount");
     });
 
     it("should set visibility", () => {

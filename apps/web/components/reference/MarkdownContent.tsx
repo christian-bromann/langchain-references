@@ -203,7 +203,6 @@ function dedentPrecedingContent(lines: string[], indent: number): string[] {
   if (indent === 0) return lines;
 
   const result: string[] = [];
-  let foundSectionHeader = false;
 
   // Process lines in reverse to find where the indented section starts
   for (let i = lines.length - 1; i >= 0; i--) {
