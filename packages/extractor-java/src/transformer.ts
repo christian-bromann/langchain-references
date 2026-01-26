@@ -119,10 +119,12 @@ export class JavaTransformer {
       },
       signature: this.buildTypeSignature(type),
       docs: this.buildDocs(type.javadoc),
-      typeParams: type.typeParameters.map((tp): TypeParam => ({
-        name: tp.name,
-        constraint: tp.bounds,
-      })),
+      typeParams: type.typeParameters.map(
+        (tp): TypeParam => ({
+          name: tp.name,
+          constraint: tp.bounds,
+        }),
+      ),
       members,
       source: this.buildSourceLocation(type.sourceFile, type.startLine),
       urls: {

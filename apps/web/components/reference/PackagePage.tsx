@@ -208,7 +208,9 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               <Box className="h-6 w-6" />
             </div>
-            <h1 className="text-3xl font-heading font-bold text-foreground">{getDisplayPackageName(packageName, language)}</h1>
+            <h1 className="text-3xl font-heading font-bold text-foreground">
+              {getDisplayPackageName(packageName, language)}
+            </h1>
           </div>
           {!description && (
             <p className="mt-3 text-foreground-secondary text-lg">
@@ -371,7 +373,11 @@ async function SymbolCard({
   packageName: string;
 }) {
   // Extract the actual package from the qualified name for cross-package symbols
-  const actualPackage = extractPackageFromQualifiedName(symbol.qualifiedName, language, packageName);
+  const actualPackage = extractPackageFromQualifiedName(
+    symbol.qualifiedName,
+    language,
+    packageName,
+  );
   const href = buildSymbolUrl(language, actualPackage, symbol.qualifiedName);
 
   return (

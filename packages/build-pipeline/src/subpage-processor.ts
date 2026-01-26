@@ -101,22 +101,19 @@ export function transformRelativeImageUrlsWithBase(content: string, baseUrl: str
 
   // Transform markdown image syntax: ![alt](path)
   // Match ![any text](path) where path doesn't start with http
-  result = result.replace(
-    /!\[([^\]]*)\]\(([^)]+)\)/g,
-    (match, alt, imagePath) => {
-      const trimmedPath = imagePath.trim();
-      // Only transform if it looks like a relative path to an image
-      if (
-        !trimmedPath.startsWith("http") &&
-        !trimmedPath.startsWith("data:") &&
-        !trimmedPath.startsWith("#") &&
-        /\.(png|jpg|jpeg|gif|svg|webp|avif)(\?.*)?$/i.test(trimmedPath)
-      ) {
-        return `![${alt}](${resolveUrl(trimmedPath)})`;
-      }
-      return match;
-    },
-  );
+  result = result.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, imagePath) => {
+    const trimmedPath = imagePath.trim();
+    // Only transform if it looks like a relative path to an image
+    if (
+      !trimmedPath.startsWith("http") &&
+      !trimmedPath.startsWith("data:") &&
+      !trimmedPath.startsWith("#") &&
+      /\.(png|jpg|jpeg|gif|svg|webp|avif)(\?.*)?$/i.test(trimmedPath)
+    ) {
+      return `![${alt}](${resolveUrl(trimmedPath)})`;
+    }
+    return match;
+  });
 
   // Transform HTML img src attributes: <img src="path" /> or <img src='path' />
   result = result.replace(

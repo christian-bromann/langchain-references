@@ -441,10 +441,7 @@ export async function getProjectPackageIndex(
 /**
  * Fetch a package.json file from blob storage.
  */
-async function fetchPackageJson(
-  packageId: string,
-  buildId: string,
-): Promise<Package | null> {
+async function fetchPackageJson(packageId: string, buildId: string): Promise<Package | null> {
   const baseUrl = getBlobBaseUrl();
   if (!baseUrl) return null;
 

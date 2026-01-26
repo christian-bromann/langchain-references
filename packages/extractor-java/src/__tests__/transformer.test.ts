@@ -245,9 +245,7 @@ describe("JavaTransformer", () => {
     let combineSymbol: SymbolRecord | undefined;
 
     beforeAll(() => {
-      combineSymbol = symbols.find(
-        (s) => s.kind === "method" && s.name === "combine",
-      );
+      combineSymbol = symbols.find((s) => s.kind === "method" && s.name === "combine");
     });
 
     it("should capture the method docstring in docs.summary", () => {
@@ -288,9 +286,7 @@ describe("JavaTransformer", () => {
 
     beforeAll(() => {
       const simpleClassSymbol = symbols.find((s) => s.name === "SimpleClass");
-      constructorMember = simpleClassSymbol?.members?.find(
-        (m) => m.kind === "constructor",
-      );
+      constructorMember = simpleClassSymbol?.members?.find((m) => m.kind === "constructor");
     });
 
     it("should transform constructor reference", () => {

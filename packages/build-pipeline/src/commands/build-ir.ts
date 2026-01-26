@@ -2115,20 +2115,14 @@ async function buildConfig(
         );
 
         // Generate and write single lookup file
-        const lookupIndex = generateLookupIndex(
-          pkgInfo.packageId,
-          symbolsData.symbols,
-        );
+        const lookupIndex = generateLookupIndex(pkgInfo.packageId, symbolsData.symbols);
         await fs.writeFile(
           path.join(pkgInfo.outputDir, "lookup.json"),
           JSON.stringify(lookupIndex, null, 2),
         );
 
         // Generate and write single catalog file (with pre-rendered HTML summaries)
-        const catalogEntries = await generateCatalog(
-          pkgInfo.packageId,
-          symbolsData.symbols,
-        );
+        const catalogEntries = await generateCatalog(pkgInfo.packageId, symbolsData.symbols);
         await fs.writeFile(
           path.join(pkgInfo.outputDir, "catalog.json"),
           JSON.stringify(catalogEntries, null, 2),

@@ -136,18 +136,13 @@ export async function renderMarkdown(content: string): Promise<string> {
  * @param concurrency - Maximum concurrent renders (default: 10)
  * @returns Array of HTML strings (same order as input)
  */
-export async function renderMarkdownBatch(
-  contents: string[],
-  concurrency = 10,
-): Promise<string[]> {
+export async function renderMarkdownBatch(contents: string[], concurrency = 10): Promise<string[]> {
   const results: string[] = Array.from({ length: contents.length });
 
   // Process in batches to control concurrency
   for (let i = 0; i < contents.length; i += concurrency) {
     const batch = contents.slice(i, i + concurrency);
-    const batchResults = await Promise.all(
-      batch.map((content) => renderMarkdown(content)),
-    );
+    const batchResults = await Promise.all(batch.map((content) => renderMarkdown(content)));
 
     for (let j = 0; j < batchResults.length; j++) {
       results[i + j] = batchResults[j];

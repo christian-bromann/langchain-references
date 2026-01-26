@@ -194,11 +194,7 @@ async function main(): Promise<void> {
 
         // Generate global manifest after updating all indexes
         if (successCount > 0 && options.all) {
-          await generateGlobalManifest(
-            PROJECTS,
-            OUTPUT_LANGUAGES,
-            options.dryRun ?? false,
-          );
+          await generateGlobalManifest(PROJECTS, OUTPUT_LANGUAGES, options.dryRun ?? false);
         }
 
         if (failCount > 0) {

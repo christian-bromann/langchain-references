@@ -701,14 +701,15 @@ async function fetchBlobJson<T>(path: string): Promise<T | null> {
   const fetchStart = Date.now();
   const url = getBlobUrl(path);
   if (!url) return null;
-  console.log(`[fetch] START: ${path} (queue=${blobFetchWaiters.length}, active=${activeBlobFetches})`);
+  console.log(
+    `[fetch] START: ${path} (queue=${blobFetchWaiters.length}, active=${activeBlobFetches})`,
+  );
   const result = await fetchBlobJsonInner<T>(path, url);
   console.log(`[fetch] END: ${path} took ${Date.now() - fetchStart}ms`);
   return result;
 }
 
 async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | null> {
-
   // Use no-store for large files (symbols.json) to avoid Next.js cache issues
   // Use time-based revalidation for smaller files (manifests, routing maps, catalogs)
   // This prevents 404s from being cached indefinitely when new data is added
@@ -779,8 +780,8 @@ async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | nul
         // Log detailed failure info
         console.error(
           `[blob] ✗ ${path} FAILED after ${attempt + 1} attempts, phase=${phase}, elapsed=${elapsed}ms, ` +
-          `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
-          `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`,
+            `code=${causeCode}, syscall=${causeSyscall}, errno=${causeErrno}, ` +
+            `activeFetches=${activeBlobFetches}, waiters=${blobFetchWaiters.length}`,
         );
         break;
       }
@@ -792,7 +793,7 @@ async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | nul
 
       console.warn(
         `[blob] ⟳ ${path} retry ${attempt + 1}/${maxRetries} in ${Math.round(delay)}ms, ` +
-        `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`,
+          `phase=${phase}, code=${causeCode}, elapsed=${elapsed}ms`,
       );
 
       await sleep(delay);
@@ -802,7 +803,7 @@ async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | nul
   failedBlobFetches++;
   console.error(
     `[blob] ✗ ${path} EXHAUSTED after ${maxRetries} attempts ` +
-    `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
+      `(total=${totalBlobFetches}, failed=${failedBlobFetches})`,
     lastError,
   );
   return null;
@@ -1113,7 +1114,10 @@ const packageSymbolsCache = new Map<string, { symbols: SymbolRecord[]; total: nu
  * In-flight promise cache for symbol fetches.
  * This prevents multiple concurrent calls from all fetching the same symbols.json.
  */
-const symbolsFetchPromises = new Map<string, Promise<{ symbols: SymbolRecord[]; total: number } | null>>();
+const symbolsFetchPromises = new Map<
+  string,
+  Promise<{ symbols: SymbolRecord[]; total: number } | null>
+>();
 
 /**
  * Get all symbols for a package (paginated)
@@ -1999,10 +2003,7 @@ async function fetchCrossProjectPackagesData(language: Language): Promise<CrossP
           const packageId = normalizePackageId(packageName, language);
 
           // Module prefix for import resolution
-          const modulePrefix = packageName
-            .replace(/-/g, "_")
-            .replace(/^@/, "")
-            .replace(/\//g, "_");
+          const modulePrefix = packageName.replace(/-/g, "_").replace(/^@/, "").replace(/\//g, "_");
           allPackages.push({ buildId: pkg.buildId, packageId, packageName, modulePrefix });
         }
       }),

@@ -247,10 +247,7 @@ export function postProcessAdmonitions(html: string): string {
   const endMarkerEscaped = escapeRegExp(ADMONITION_END_MARKER);
 
   // Regex to find start markers: <!--ADMON:base64data-->
-  const startRegex = new RegExp(
-    `${startMarkerEscaped}([A-Za-z0-9+/=]+)-->`,
-    "g",
-  );
+  const startRegex = new RegExp(`${startMarkerEscaped}([A-Za-z0-9+/=]+)-->`, "g");
 
   // Regex to find end markers: <!--/ADMON-->
   const endRegex = new RegExp(endMarkerEscaped, "g");

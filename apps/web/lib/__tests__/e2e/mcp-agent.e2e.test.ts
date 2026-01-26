@@ -94,9 +94,9 @@ describe.skipIf(!hasApiKey)("MCP Agent Integration", () => {
       const content = lastMessage.content.toString().toLowerCase();
       expect(
         content.includes("template") ||
-        content.includes("prompt") ||
-        content.includes("chat") ||
-        content.includes("not found")
+          content.includes("prompt") ||
+          content.includes("chat") ||
+          content.includes("not found"),
       ).toBe(true);
     }, 60000);
 

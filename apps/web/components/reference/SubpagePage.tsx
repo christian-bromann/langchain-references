@@ -529,7 +529,11 @@ async function SymbolCard({
 }) {
   // Extract the actual package from the qualified name for cross-package symbols
   // e.g., if viewing langchain but symbol is from langchain_core, use langchain_core
-  const actualPackage = extractPackageFromQualifiedName(symbol.qualifiedName, language, packageName);
+  const actualPackage = extractPackageFromQualifiedName(
+    symbol.qualifiedName,
+    language,
+    packageName,
+  );
   const href = buildSymbolUrl(language, actualPackage, symbol.qualifiedName);
 
   return (

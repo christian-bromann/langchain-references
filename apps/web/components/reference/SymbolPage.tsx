@@ -1233,7 +1233,7 @@ export async function SymbolPage({
     // Main symbol lookup (routing map + individual symbol files; falls back as needed)
     log(`findSymbolOptimized START`);
     const irSymbol = await findSymbolOptimized(buildId, packageId, symbolPath);
-    log(`findSymbolOptimized END: ${irSymbol ? 'found' : 'not found'}`);
+    log(`findSymbolOptimized END: ${irSymbol ? "found" : "not found"}`);
 
     // If the symbol isn't found, it may be an "alias" member that was included in a parent
     // module/class's member list but wasn't emitted as a full SymbolRecord in the IR.
@@ -1601,9 +1601,7 @@ export async function SymbolPage({
           )}
 
           {/* Description */}
-          {symbol.docs?.description && (
-            <MarkdownContent>{symbol.docs.description}</MarkdownContent>
-          )}
+          {symbol.docs?.description && <MarkdownContent>{symbol.docs.description}</MarkdownContent>}
 
           {/* Sections (parameters, examples, etc.) */}
           {symbol.docs?.sections?.map((section, i) => (
@@ -2232,7 +2230,9 @@ function InheritedMembersSection({
                 <code className="font-mono text-foreground">{group.baseName}</code>
               )}
               {group.basePackageName && group.basePackageName !== packageName && (
-                <span className="text-sm text-foreground-muted">({getDisplayPackageName(group.basePackageName, language)})</span>
+                <span className="text-sm text-foreground-muted">
+                  ({getDisplayPackageName(group.basePackageName, language)})
+                </span>
               )}
             </h2>
 

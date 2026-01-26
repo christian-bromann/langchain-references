@@ -43,10 +43,7 @@ export function slugifyPackageName(packageName: string): string {
  * @example "langchain_huggingface" with language "python" -> "langchain-huggingface"
  * @example "@langchain/core" with language "javascript" -> "@langchain/core"
  */
-export function getDisplayPackageName(
-  packageName: string,
-  language: UrlLanguage,
-): string {
+export function getDisplayPackageName(packageName: string, language: UrlLanguage): string {
   if (language === "javascript" || language === "typescript") {
     // JavaScript packages already use the correct display format
     return packageName;

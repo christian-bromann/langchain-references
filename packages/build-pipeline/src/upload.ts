@@ -333,10 +333,7 @@ export interface LookupIndex {
  * Contains qualifiedName -> { id, kind, name } mappings for all symbols.
  * This replaces the previous sharded approach which created 200+ small files.
  */
-export function generateLookupIndex(
-  packageId: string,
-  symbols: SymbolRecord[],
-): LookupIndex {
+export function generateLookupIndex(packageId: string, symbols: SymbolRecord[]): LookupIndex {
   const symbolsMap: Record<string, SymbolLookupEntry> = {};
   const knownSymbols: string[] = [];
   const linkableKinds = ["class", "interface", "typeAlias", "enum"];
@@ -430,9 +427,7 @@ export async function generateCatalog(
     const BATCH_SIZE = 20;
     for (let i = 0; i < entriesToRender.length; i += BATCH_SIZE) {
       const batch = entriesToRender.slice(i, i + BATCH_SIZE);
-      const htmlResults = await Promise.all(
-        batch.map(({ summary }) => renderMarkdown(summary)),
-      );
+      const htmlResults = await Promise.all(batch.map(({ summary }) => renderMarkdown(summary)));
 
       // Store results back in entries
       for (let j = 0; j < batch.length; j++) {
@@ -481,9 +476,7 @@ export async function preRenderSymbolDocs(
   const BATCH_SIZE = 20;
   for (let i = 0; i < toRender.length; i += BATCH_SIZE) {
     const batch = toRender.slice(i, i + BATCH_SIZE);
-    const htmlResults = await Promise.all(
-      batch.map(({ content }) => renderMarkdown(content)),
-    );
+    const htmlResults = await Promise.all(batch.map(({ content }) => renderMarkdown(content)));
 
     // Store results back in symbols
     for (let j = 0; j < batch.length; j++) {
