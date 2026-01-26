@@ -2,3 +2,6 @@
 
 # Generated service worker (built from sw.template.js)
 public/sw.js
+
+# WebdriverIO test screenshots
+screenshots/

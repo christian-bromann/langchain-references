@@ -98,19 +98,19 @@ jobs:
           for i in {1..60}; do
             WEB_READY=false
             IR_READY=false
-            
+
             if curl -s http://localhost:3000 > /dev/null 2>&1; then
               WEB_READY=true
             fi
             if curl -s http://localhost:3001 > /dev/null 2>&1; then
               IR_READY=true
             fi
-            
+
             if [ "$WEB_READY" = true ] && [ "$IR_READY" = true ]; then
               echo "Both servers are ready!"
               break
             fi
-            
+
             if [ $i -eq 60 ]; then
               echo "Servers failed to start (web: $WEB_READY, ir: $IR_READY)"
               exit 1

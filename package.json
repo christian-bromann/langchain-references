@@ -30,6 +30,8 @@
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "test": "turbo test",
+    "test:e2e": "pnpm --filter @langchain/reference-web test:e2e",
+    "test:e2e:wdio": "pnpm --filter @langchain/reference-web test:e2e:wdio",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean && rm -rf node_modules",
     "prepare": "husky"
