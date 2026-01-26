@@ -7,22 +7,22 @@ The LangSmith Java SDK provides both synchronous and asynchronous clients for in
 ### Synchronous Client
 
 ::: com.langchain.smith.client.okhttp.LangsmithOkHttpClient
-  options:
-    show_if_no_docstring: true
+options:
+show_if_no_docstring: true
 
 ::: com.langchain.smith.client.LangsmithClient
-  options:
-    show_if_no_docstring: true
+options:
+show_if_no_docstring: true
 
 ### Asynchronous Client
 
 ::: com.langchain.smith.client.okhttp.LangsmithOkHttpClientAsync
-  options:
-    show_if_no_docstring: true
+options:
+show_if_no_docstring: true
 
 ::: com.langchain.smith.client.LangsmithClientAsync
-  options:
-    show_if_no_docstring: true
+options:
+show_if_no_docstring: true
 
 ## Configuration
 
@@ -39,13 +39,13 @@ Configure the client using environment variables or programmatic options:
 ## Client Options
 
 ::: com.langchain.smith.core.ClientOptions
-  options:
-    show_if_no_docstring: true
+options:
+show_if_no_docstring: true
 
 ::: com.langchain.smith.core.RequestOptions
-  options:
-    show_if_no_docstring: true
+options:
+show_if_no_docstring: true
 
 ::: com.langchain.smith.core.Timeout
-  options:
-    show_if_no_docstring: true
+options:
+show_if_no_docstring: true

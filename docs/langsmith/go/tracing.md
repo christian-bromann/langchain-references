@@ -7,8 +7,8 @@ LangSmith Go supports OpenTelemetry for distributed tracing. This allows you to 
 The tracer provides OpenTelemetry integration for sending spans to LangSmith.
 
 ::: langsmith.Tracer
-  options:
-    show_if_no_docstring: true
+options:
+show_if_no_docstring: true
 
 ## Configuration
 

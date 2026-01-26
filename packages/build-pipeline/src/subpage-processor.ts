@@ -173,24 +173,76 @@ export function transformRelativeLinksToGitHub(
   // This is a broad list to catch most file types
   const fileExtensions = [
     // Source code
-    "java", "kt", "kts", "scala", "groovy", "go", "rs", "py", "pyx", "pxd",
-    "ts", "tsx", "js", "jsx", "mjs", "cjs", "rb", "php", "swift", "m", "mm",
-    "c", "cpp", "cc", "cxx", "h", "hpp", "hxx", "cs", "fs", "vb",
+    "java",
+    "kt",
+    "kts",
+    "scala",
+    "groovy",
+    "go",
+    "rs",
+    "py",
+    "pyx",
+    "pxd",
+    "ts",
+    "tsx",
+    "js",
+    "jsx",
+    "mjs",
+    "cjs",
+    "rb",
+    "php",
+    "swift",
+    "m",
+    "mm",
+    "c",
+    "cpp",
+    "cc",
+    "cxx",
+    "h",
+    "hpp",
+    "hxx",
+    "cs",
+    "fs",
+    "vb",
     // Config/data
-    "json", "yaml", "yml", "toml", "xml", "gradle", "properties", "ini", "cfg",
+    "json",
+    "yaml",
+    "yml",
+    "toml",
+    "xml",
+    "gradle",
+    "properties",
+    "ini",
+    "cfg",
     // Documentation
-    "md", "mdx", "rst", "txt", "adoc",
+    "md",
+    "mdx",
+    "rst",
+    "txt",
+    "adoc",
     // Other
-    "html", "css", "scss", "sass", "less", "sql", "sh", "bash", "zsh", "ps1",
-    "dockerfile", "makefile", "mod", "sum",
+    "html",
+    "css",
+    "scss",
+    "sass",
+    "less",
+    "sql",
+    "sh",
+    "bash",
+    "zsh",
+    "ps1",
+    "dockerfile",
+    "makefile",
+    "mod",
+    "sum",
   ];
 
   // Patterns that should NOT be transformed (external/special links)
   const skipPatterns = [
-    /^https?:\/\//i,      // Already absolute URLs
-    /^#/,                  // Anchor links
-    /^[a-z]+:/i,          // Protocol links (mailto:, tel:, etc.)
-    /^\//,                // Absolute paths (likely to another site section)
+    /^https?:\/\//i, // Already absolute URLs
+    /^#/, // Anchor links
+    /^[a-z]+:/i, // Protocol links (mailto:, tel:, etc.)
+    /^\//, // Absolute paths (likely to another site section)
   ];
 
   // Match markdown links: [text](path)

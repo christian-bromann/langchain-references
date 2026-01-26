@@ -9,22 +9,22 @@ Automatically iterate through all results across multiple pages.
 ### Synchronous
 
 ::: com.langchain.smith.core.AutoPager
-  options:
-    show_if_no_docstring: true
+options:
+show_if_no_docstring: true
 
 ::: com.langchain.smith.core.Page
-  options:
-    show_if_no_docstring: true
+options:
+show_if_no_docstring: true
 
 ### Asynchronous
 
 ::: com.langchain.smith.core.AutoPagerAsync
-  options:
-    show_if_no_docstring: true
+options:
+show_if_no_docstring: true
 
 ::: com.langchain.smith.core.PageAsync
-  options:
-    show_if_no_docstring: true
+options:
+show_if_no_docstring: true
 
 ## Usage Examples
 
