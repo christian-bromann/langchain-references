@@ -24,15 +24,17 @@ export default defineConfig(({ mode }) => {
     return ["lib/**/*.test.ts"];
   };
 
-  // Exclude performance and e2e tests from default run
+  // Exclude performance, e2e, and wdio tests from default run
   // (they have dedicated test modes and CI workflows)
   const getExclude = () => {
-    const exclude = ["lib/__tests__/wdio/**/*"];
+    // Always exclude WebdriverIO tests - they must be run via `wdio` command, not vitest
+    const wdioExclude = ["lib/__tests__/e2e/wdio/**/*"];
+
     if (isPerf || isE2E) {
-      return exclude;
+      return wdioExclude;
     }
     return [
-      ...exclude,
+      ...wdioExclude,
       "lib/__tests__/performance/**/*.perf.test.ts",
       "lib/__tests__/e2e/**/*.e2e.test.ts",
     ];
