@@ -245,8 +245,8 @@ function parseMembersFromOptions(lines: string[], startIndex: number): string[] 
     const line = lines[i];
     const trimmed = line.trim();
 
-    // Stop if we hit another ::: directive or non-indented content
-    if (trimmed.startsWith(":::") || (trimmed && !line.startsWith(" ") && !line.startsWith("\t"))) {
+    // Stop if we hit another ::: directive
+    if (trimmed.startsWith(":::")) {
       break;
     }
 
@@ -255,11 +255,28 @@ function parseMembersFromOptions(lines: string[], startIndex: number): string[] 
       continue;
     }
 
+    // Stop if we hit content that doesn't look like YAML options
+    // Options are either "key: value" or "- item" list items
+    if (!trimmed.includes(":") && !trimmed.startsWith("-")) {
+      break;
+    }
+
     // Check for start of members: list
     if (trimmed === "members:" || trimmed.startsWith("members:")) {
       inMembersList = true;
       // Calculate the indentation of the members: line to track the list
       membersIndent = line.length - line.trimStart().length;
+
+      // Check for inline members on the same line: "members: - A - B - C"
+      const afterMembers = trimmed.slice(8).trim(); // "members:".length === 8
+      if (afterMembers) {
+        // Parse inline members separated by " - "
+        const inlineMembers = afterMembers
+          .split(/\s+-\s+/)
+          .map((m) => m.replace(/^-\s*/, "").trim())
+          .filter((m) => m && !m.startsWith("#"));
+        allMembers.push(...inlineMembers);
+      }
       continue;
     }
 

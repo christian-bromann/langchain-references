@@ -588,12 +588,118 @@ async function main() {
 
   if (totalPackages > 0) {
     console.log(`\n✅ IR data downloaded to ${outputDir}`);
+
+    // Generate global manifest from local data
+    await generateLocalManifest(outputDir, results, opts.verbose);
+
     console.log("   You can now run: pnpm --filter @langchain/reference-web dev");
   }
 
   if (totalFailed > 0 && totalSuccess === 0) {
     process.exit(1);
   }
+}
+
+/**
+ * Generate a global manifest from locally downloaded data.
+ * This creates pointers/manifest.json that the web app loader expects.
+ */
+async function generateLocalManifest(
+  outputDir: string,
+  results: PullResult[],
+  verbose: boolean,
+): Promise<void> {
+  console.log("\n📦 Generating global manifest from local data...");
+
+  const packages: Array<{
+    packageId: string;
+    publishedName: string;
+    displayName: string;
+    version: string;
+    language: string;
+    project: string;
+    buildId: string;
+  }> = [];
+
+  // Collect packages from successful pulls
+  for (const result of results) {
+    if (!result.success) continue;
+
+    const { project, language } = result;
+    const indexPath = path.join(outputDir, "pointers", `index-${project}-${language}.json`);
+
+    try {
+      const indexContent = await fs.readFile(indexPath, "utf-8");
+      const index = JSON.parse(indexContent) as {
+        packages: Record<string, { buildId: string; version: string }>;
+      };
+
+      for (const [packageName, pkgInfo] of Object.entries(index.packages)) {
+        const packageId = normalizePackageId(packageName, language);
+
+        // Try to read the local package.json for additional metadata
+        const packageJsonPath = path.join(
+          outputDir,
+          "ir",
+          "packages",
+          packageId,
+          pkgInfo.buildId,
+          "package.json",
+        );
+
+        let displayName = packageName;
+        let pkgLanguage = language === "javascript" ? "typescript" : language;
+
+        try {
+          const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
+          const packageJson = JSON.parse(packageJsonContent);
+          displayName = packageJson.displayName || packageName;
+          pkgLanguage = packageJson.language || pkgLanguage;
+        } catch {
+          // Use defaults if package.json not found
+        }
+
+        packages.push({
+          packageId,
+          publishedName: packageName,
+          displayName,
+          version: pkgInfo.version,
+          language: pkgLanguage,
+          project,
+          buildId: pkgInfo.buildId,
+        });
+      }
+    } catch (error) {
+      if (verbose) {
+        console.log(`   ⚠️  Could not read index for ${project}-${language}: ${error}`);
+      }
+    }
+  }
+
+  if (packages.length === 0) {
+    console.log("   ⚠️  No packages found for manifest");
+    return;
+  }
+
+  // Create the manifest
+  const manifest = {
+    irVersion: "1.0",
+    project: "all-packages",
+    build: {
+      buildId: packages[0]?.buildId ?? "",
+      createdAt: new Date().toISOString(),
+      baseUrl: "",
+    },
+    sources: [],
+    packages,
+  };
+
+  // Write the manifest
+  const manifestPath = path.join(outputDir, "pointers", "manifest.json");
+  await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2), "utf-8");
+
+  console.log(`   ✓ Generated manifest with ${packages.length} packages`);
+  console.log(`   ✓ Wrote ${manifestPath}`);
 }
 
 main().catch((error) => {

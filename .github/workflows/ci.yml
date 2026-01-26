@@ -78,15 +78,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Pull IR data
-        run: pnpm pull-ir
+      - name: Pull IR data and generate manifest
+        run: pnpm pull-ir --verbose
         env:
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
-          BLOB_URL: ${{ secrets.BLOB_URL }}
-
-      - name: Generate indexes
-        run: pnpm update-indexes --all
-        env:
           BLOB_URL: ${{ secrets.BLOB_URL }}
 
       - name: Start server and run e2e tests
