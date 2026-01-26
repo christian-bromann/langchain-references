@@ -15,6 +15,4 @@ export {
   type GoParameter,
   type ExtractionResult,
 } from "./extractor.js";
-export {
-  GoTransformer,
-} from "./transformer.js";
+export { GoTransformer } from "./transformer.js";
