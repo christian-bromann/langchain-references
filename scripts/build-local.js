@@ -101,13 +101,23 @@ for (const pkg of packages) {
   const irPkgDir = path.join(irOutputBase, "ir", "packages", packageId, buildId);
   fs.mkdirSync(irPkgDir, { recursive: true });
 
-  // Copy all files from build dir
+  // Copy all files and directories from build dir
+  function copyRecursive(src, dest) {
+    const stat = fs.statSync(src);
+    if (stat.isDirectory()) {
+      fs.mkdirSync(dest, { recursive: true });
+      for (const child of fs.readdirSync(src)) {
+        copyRecursive(path.join(src, child), path.join(dest, child));
+      }
+    } else {
+      fs.copyFileSync(src, dest);
+    }
+  }
+
   for (const file of fs.readdirSync(buildDir)) {
     const src = path.join(buildDir, file);
     const dest = path.join(irPkgDir, file);
-    if (fs.statSync(src).isFile()) {
-      fs.copyFileSync(src, dest);
-    }
+    copyRecursive(src, dest);
   }
   console.log(`   ✓ Copied to ir/packages/`);
 

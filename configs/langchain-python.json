@@ -136,6 +136,28 @@
       ]
     },
     {
+      "name": "langchain_text_splitters",
+      "path": "libs/text-splitters",
+      "displayName": "Text Splitters",
+      "index": 3,
+      "versioning": {
+        "tagPattern": "langchain-text-splitters==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "readme"
+    },
+    {
+      "name": "langchain_tests",
+      "path": "libs/standard-tests",
+      "displayName": "Standard Tests",
+      "index": 4,
+      "versioning": {
+        "tagPattern": "langchain-standard-tests==*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "readme"
+    },
+    {
       "name": "langchain_classic",
       "path": "libs/langchain",
       "displayName": "LangChain Classic",
@@ -217,28 +239,6 @@
           "source": "https://raw.githubusercontent.com/langchain-ai/docs/main/reference/python/docs/langchain_classic/storage.md"
         }
       ]
-    },
-    {
-      "name": "langchain_text_splitters",
-      "path": "libs/text-splitters",
-      "displayName": "Text Splitters",
-      "index": 3,
-      "versioning": {
-        "tagPattern": "langchain-text-splitters==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "readme"
-    },
-    {
-      "name": "langchain_tests",
-      "path": "libs/standard-tests",
-      "displayName": "Standard Tests",
-      "index": 4,
-      "versioning": {
-        "tagPattern": "langchain-standard-tests==*",
-        "maxVersions": 10
-      },
-      "descriptionSource": "readme"
     }
   ]
 }

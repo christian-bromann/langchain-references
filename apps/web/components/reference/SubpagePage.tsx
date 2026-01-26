@@ -20,8 +20,10 @@ import {
   getBuildIdForPackageId,
   getSubpageData,
   getCatalogEntries,
+  getProjectPackageIndex,
   type CatalogEntry,
 } from "@/lib/ir/loader";
+import { getProjectForPackage } from "@/lib/config/projects";
 import { PackageTableOfContents, type PackageTOCSection } from "./PackageTableOfContents";
 import { MarkdownContent } from "./MarkdownContent";
 import { subpageToMarkdown } from "@/lib/ir/markdown-generator";
@@ -73,27 +75,59 @@ function toDisplaySymbol(entry: CatalogEntry): DisplaySymbol {
 /**
  * Resolve symbol references to catalog entries.
  * Tries exact match, suffix match, and name-only match.
+ *
+ * For symbols not found in the primary catalog, falls back to cross-package catalogs.
+ * This handles cases where symbols are re-exported (aliased) from other packages,
+ * e.g., langchain.messages.AIMessage -> langchain_core.messages.AIMessage
  */
-function resolveSymbolRefs(symbolRefs: string[], catalogEntries: CatalogEntry[]): CatalogEntry[] {
+function resolveSymbolRefs(
+  symbolRefs: string[],
+  catalogEntries: CatalogEntry[],
+  crossPackageCatalogs: CatalogEntry[] = [],
+): CatalogEntry[] {
   const resolved: CatalogEntry[] = [];
   const seenIds = new Set<string>();
 
   for (const ref of symbolRefs) {
-    // Try exact qualified name match
+    // Try exact qualified name match in primary catalog
     let match = catalogEntries.find((e) => e.qualifiedName === ref);
 
-    // Try suffix match (e.g., "agents.SummarizationMiddleware" matches "langchain.agents.middleware.SummarizationMiddleware")
+    // Try suffix match in primary catalog
     if (!match) {
       match = catalogEntries.find(
         (e) => e.qualifiedName.endsWith(`.${ref}`) || e.qualifiedName.endsWith(ref),
       );
     }
 
-    // Try name-only match (last segment)
+    // Try name-only match in primary catalog
     if (!match) {
       const namePart = ref.split(".").pop();
       if (namePart) {
         match = catalogEntries.find((e) => e.name === namePart);
+      }
+    }
+
+    // If not found in primary catalog, try cross-package catalogs
+    // This handles re-exports (aliases) like langchain.messages.AIMessage
+    if (!match && crossPackageCatalogs.length > 0) {
+      const namePart = ref.split(".").pop();
+      if (namePart) {
+        // For re-exports, look for exact name match in related packages
+        // Prioritize entries that contain similar module path parts
+        const refParts = ref.split(".");
+        const modulePart = refParts.length > 2 ? refParts[refParts.length - 2] : null;
+
+        if (modulePart) {
+          // First try to find a match with the same module name (e.g., "messages")
+          match = crossPackageCatalogs.find(
+            (e) => e.name === namePart && e.qualifiedName.includes(`.${modulePart}.`),
+          );
+        }
+
+        // Fall back to simple name match
+        if (!match) {
+          match = crossPackageCatalogs.find((e) => e.name === namePart);
+        }
       }
     }
 
@@ -129,8 +163,42 @@ export async function SubpagePage({
     notFound();
   }
 
-  // Resolve symbol references to catalog entries
-  const resolvedEntries = resolveSymbolRefs(subpageData.symbolRefs, catalogEntries);
+  // Get cross-package catalogs for resolving re-exported symbols
+  // This handles cases like langchain.messages.AIMessage -> langchain_core.messages.AIMessage
+  const crossPackageCatalogs: CatalogEntry[] = [];
+
+  // Get the project for this package to find related packages
+  const project = getProjectForPackage(packageName);
+  const projectLanguage = language === "javascript" ? "javascript" : "python";
+
+  try {
+    const packageIndex = await getProjectPackageIndex(project.id, projectLanguage);
+    if (packageIndex?.packages) {
+      // Load catalogs from other packages in the same project
+      const otherPackagePromises = Object.entries(packageIndex.packages)
+        .filter(([pkgName]) => pkgName !== packageName)
+        .map(async ([pkgName, pkgInfo]) => {
+          const pkgId = `pkg_${projectLanguage === "python" ? "py" : "js"}_${pkgName}`;
+          try {
+            return await getCatalogEntries(pkgInfo.buildId, pkgId);
+          } catch {
+            return [];
+          }
+        });
+
+      const otherCatalogs = await Promise.all(otherPackagePromises);
+      crossPackageCatalogs.push(...otherCatalogs.flat());
+    }
+  } catch {
+    // Cross-package resolution is best-effort; continue without it
+  }
+
+  // Resolve symbol references to catalog entries (with cross-package fallback)
+  const resolvedEntries = resolveSymbolRefs(
+    subpageData.symbolRefs,
+    catalogEntries,
+    crossPackageCatalogs,
+  );
   const symbols: DisplaySymbol[] = resolvedEntries.map(toDisplaySymbol);
 
   // Group symbols by kind

@@ -354,7 +354,9 @@ async function fetchPointer<T>(pointerName: string): Promise<T | null> {
           // Use time-based revalidation instead of force-cache
           // This prevents 404s from being cached indefinitely when new projects are added
           // 60 seconds is short enough to detect new builds quickly during deployments
-          next: { revalidate: 60 },
+          // In development, disable cache to pick up local changes immediately
+          cache: process.env.NODE_ENV === "development" ? "no-store" : "default",
+          next: process.env.NODE_ENV === "development" ? undefined : { revalidate: 60 },
         }),
       );
 

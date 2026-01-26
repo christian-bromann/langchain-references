@@ -657,6 +657,13 @@ class PythonExtractor:
                     annotation_str = str(member.annotation)
                     if annotation_str and not self._is_invalid_repr(annotation_str):
                         member_info["type"] = annotation_str
+                # Capture target_path for alias members (re-exports)
+                # This allows subpages to resolve symbols that are re-exported from other packages
+                is_alias = getattr(member, "is_alias", False)
+                if is_alias:
+                    target_path = getattr(member, "target_path", None)
+                    if target_path:
+                        member_info["target"] = target_path
                 members.append(member_info)
         return members
 

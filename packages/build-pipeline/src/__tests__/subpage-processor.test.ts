@@ -33,9 +33,9 @@ describe("parseSubpageMarkdown", () => {
       const content = loadFixture("with-tables.md");
       const result = parseSubpageMarkdown(content);
       expect(result).toMatchSnapshot();
-      // Verify table is preserved in markdown content
-      expect(result.markdownContent).toContain("| CLASS |");
-      expect(result.markdownContent).toContain("| `ClassA` |");
+      // Verify table is preserved in markdown content (check for table structure, not exact formatting)
+      expect(result.markdownContent).toContain("| CLASS");
+      expect(result.markdownContent).toContain("| `ClassA`");
     });
 
     it("parses with-admonitions.md correctly, preserving MkDocs syntax", () => {
@@ -118,10 +118,10 @@ describe("parseSubpageMarkdown", () => {
       const content = loadFixture("complex.md");
       const result = parseSubpageMarkdown(content);
       expect(result).toMatchSnapshot();
-      // Verify tables are in markdown content
-      expect(result.markdownContent).toContain("| CLASS | DESCRIPTION |");
-      expect(result.markdownContent).toContain("| DECORATOR | DESCRIPTION |");
-      expect(result.markdownContent).toContain("| TYPE | DESCRIPTION |");
+      // Verify tables are in markdown content (check for table structure, not exact formatting)
+      expect(result.markdownContent).toContain("| CLASS");
+      expect(result.markdownContent).toContain("| DECORATOR");
+      expect(result.markdownContent).toContain("| TYPE");
       // Verify all symbols are extracted
       expect(result.symbolRefs).toContain("langchain.agents.middleware.SummarizationMiddleware");
       expect(result.symbolRefs).toContain("langchain.agents.middleware.HumanInTheLoopMiddleware");
@@ -264,6 +264,70 @@ Content with trailing spaces.
       const result = parseSubpageMarkdown(content);
       // Trailing whitespace/newlines should be trimmed
       expect(result.markdownContent.endsWith("spaces.")).toBe(true);
+    });
+  });
+
+  describe("include processing", () => {
+    it("replaces langchain-classic-warning.md include with admonition", () => {
+      const content = `--8<-- "langchain-classic-warning.md"
+
+::: package.Symbol`;
+      const result = parseSubpageMarkdown(content);
+      expect(result.markdownContent).toContain('!!! danger "langchain-classic documentation"');
+      expect(result.markdownContent).toContain("langchain-classic");
+      expect(result.symbolRefs).toEqual(["package.Symbol"]);
+    });
+
+    it("replaces wip.md include with admonition", () => {
+      const content = `--8<-- "wip.md"
+
+::: package.Symbol`;
+      const result = parseSubpageMarkdown(content);
+      expect(result.markdownContent).toContain('!!! warning "Work in progress"');
+      expect(result.symbolRefs).toEqual(["package.Symbol"]);
+    });
+
+    it("handles multiple includes", () => {
+      const content = `--8<-- "langchain-classic-warning.md"
+
+--8<-- "wip.md"
+
+::: package.Symbol`;
+      const result = parseSubpageMarkdown(content);
+      expect(result.markdownContent).toContain('!!! danger "langchain-classic documentation"');
+      expect(result.markdownContent).toContain('!!! warning "Work in progress"');
+      expect(result.symbolRefs).toEqual(["package.Symbol"]);
+    });
+
+    it("handles single-quoted includes", () => {
+      const content = `--8<-- 'wip.md'
+
+::: package.Symbol`;
+      const result = parseSubpageMarkdown(content);
+      expect(result.markdownContent).toContain('!!! warning "Work in progress"');
+    });
+
+    it("removes unknown includes silently", () => {
+      const content = `--8<-- "unknown-file.md"
+
+Some text.
+
+::: package.Symbol`;
+      const result = parseSubpageMarkdown(content);
+      // Unknown include should be removed
+      expect(result.markdownContent).not.toContain("--8<--");
+      expect(result.markdownContent).toContain("Some text.");
+      expect(result.symbolRefs).toEqual(["package.Symbol"]);
+    });
+
+    it("preserves HTML comments (they are invisible in output)", () => {
+      const content = `--8<-- "wip.md"
+
+<!-- This is a comment -->
+
+::: package.Symbol`;
+      const result = parseSubpageMarkdown(content);
+      expect(result.markdownContent).toContain("<!-- This is a comment -->");
     });
   });
 });

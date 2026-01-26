@@ -49,6 +49,72 @@ export interface ParsedSubpage {
 const fetchCache = new Map<string, string | null>();
 
 /**
+ * Known include files and their replacement admonitions.
+ * These replace the MkDocs --8<-- "filename.md" include syntax.
+ */
+const INCLUDE_REPLACEMENTS: Record<string, string> = {
+  "langchain-classic-warning.md": `!!! danger "langchain-classic documentation"
+
+    These docs cover the \`langchain-classic\` package. This package will be maintained for security vulnerabilities [until December 2026](https://docs.langchain.com/oss/python/release-policy). Users are encouraged to migrate to the [\`langchain\`](https://pypi.org/project/langchain/) package for the latest features and improvements. [See docs for \`langchain\`](https://reference.langchain.com/python/langchain/langchain)`,
+
+  "wip.md": `!!! warning "Work in progress"
+
+    This page is a work in progress, and we appreciate your patience as we continue to expand and improve the content.`,
+};
+
+/**
+ * Process MkDocs include syntax (--8<-- "filename.md") and replace with content.
+ * 
+ * @param content - Raw markdown content with potential includes
+ * @returns Content with includes replaced
+ */
+function processIncludes(content: string): string {
+  // Match --8<-- "filename.md" or --8<-- 'filename.md' patterns
+  const includePattern = /--8<--\s*["']([^"']+)["']/g;
+
+  return content.replace(includePattern, (match, filename) => {
+    const replacement = INCLUDE_REPLACEMENTS[filename];
+    if (replacement) {
+      return replacement;
+    }
+    // If we don't have a replacement, remove the include line
+    // (it would just show as raw text otherwise)
+    console.warn(`[subpage-processor] Unknown include file: ${filename}`);
+    return "";
+  });
+}
+
+/**
+ * Strip YAML frontmatter from markdown content.
+ *
+ * Frontmatter is content between --- delimiters at the very start of the file:
+ * ---
+ * title: My Page
+ * ---
+ *
+ * @param content - Raw markdown content
+ * @returns Content with frontmatter removed
+ */
+function stripFrontmatter(content: string): string {
+  // Check if content starts with ---
+  if (!content.startsWith("---")) {
+    return content;
+  }
+
+  // Find the closing ---
+  const endIndex = content.indexOf("\n---", 3);
+  if (endIndex === -1) {
+    // No closing delimiter found, return as-is
+    return content;
+  }
+
+  // Return everything after the closing --- and its newline
+  const afterFrontmatter = content.slice(endIndex + 4);
+  // Trim leading newlines but preserve the rest
+  return afterFrontmatter.replace(/^\n+/, "");
+}
+
+/**
  * Parse the `members` list from a YAML-like options block.
  *
  * Handles the MkDocs mkdocstrings format where members are listed as:
@@ -139,7 +205,13 @@ export function parseSubpageMarkdown(content: string): {
   markdownContent: string;
   symbolRefs: string[];
 } {
-  const lines = content.split("\n");
+  // Process includes first (--8<-- "filename.md" syntax)
+  const processedContent = processIncludes(content);
+
+  // Strip YAML frontmatter (content between --- delimiters at the start)
+  const contentWithoutFrontmatter = stripFrontmatter(processedContent);
+
+  const lines = contentWithoutFrontmatter.split("\n");
   const markdownLines: string[] = [];
   const symbolRefs: string[] = [];
   let foundFirstDirective = false;

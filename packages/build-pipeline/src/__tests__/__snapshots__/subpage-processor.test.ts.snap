@@ -20,11 +20,11 @@ A brief overview of the topic.",
 exports[`parseSubpageMarkdown > basic parsing > parses with-admonitions.md correctly, preserving MkDocs syntax 1`] = `
 {
   "markdownContent": "!!! note "Reference docs"
-    This page contains **reference documentation** for Middleware.
-    See [the docs](https://docs.example.com) for tutorials.
+This page contains **reference documentation** for Middleware.
+See [the docs](https://docs.example.com) for tutorials.
 
 !!! warning
-    Some classes are deprecated.
+Some classes are deprecated.
 
 ## Middleware
 
@@ -44,8 +44,8 @@ Reference documentation for classes.
 
 ## Available Classes
 
-| CLASS | DESCRIPTION |
-| ----- | ----------- |
+| CLASS    | DESCRIPTION            |
+| -------- | ---------------------- |
 | \`ClassA\` | Description for ClassA |
 | \`ClassB\` | Description for ClassB |
 | \`ClassC\` | Description for ClassC |",
@@ -60,35 +60,35 @@ Reference documentation for classes.
 exports[`parseSubpageMarkdown > complex real-world example > parses complex.md correctly 1`] = `
 {
   "markdownContent": "!!! note "Reference docs"
-    This page contains **reference documentation** for Middleware.
-    See [the docs](https://docs.langchain.com/oss/python/langchain/middleware) for conceptual guides, tutorials, and examples on using Middleware.
+This page contains **reference documentation** for Middleware.
+See [the docs](https://docs.langchain.com/oss/python/langchain/middleware) for conceptual guides, tutorials, and examples on using Middleware.
 
 ## Middleware classes
 
 LangChain provides prebuilt middleware for common agent use cases:
 
-| CLASS | DESCRIPTION |
-| ----- | ----------- |
-| [\`SummarizationMiddleware\`](#langchain.agents.middleware.SummarizationMiddleware) | Automatically summarize conversation history when approaching token limits |
-| [\`HumanInTheLoopMiddleware\`](#langchain.agents.middleware.HumanInTheLoopMiddleware) | Pause execution for human approval of tool calls |
-| [\`ModelCallLimitMiddleware\`](#langchain.agents.middleware.ModelCallLimitMiddleware) | Limit the number of model calls to prevent excessive costs |
+| CLASS                                                                               | DESCRIPTION                                                                |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [\`SummarizationMiddleware\`](#langchain.agents.middleware.SummarizationMiddleware)   | Automatically summarize conversation history when approaching token limits |
+| [\`HumanInTheLoopMiddleware\`](#langchain.agents.middleware.HumanInTheLoopMiddleware) | Pause execution for human approval of tool calls                           |
+| [\`ModelCallLimitMiddleware\`](#langchain.agents.middleware.ModelCallLimitMiddleware) | Limit the number of model calls to prevent excessive costs                 |
 
 ## Decorators
 
 Create custom middleware using these decorators:
 
-| DECORATOR | DESCRIPTION |
-| --------- | ----------- |
+| DECORATOR                                                    | DESCRIPTION                                 |
+| ------------------------------------------------------------ | ------------------------------------------- |
 | [\`@before_agent\`](#langchain.agents.middleware.before_agent) | Execute logic before agent execution starts |
-| [\`@before_model\`](#langchain.agents.middleware.before_model) | Execute logic before each model call |
+| [\`@before_model\`](#langchain.agents.middleware.before_model) | Execute logic before each model call        |
 
 ## Types and utilities
 
 Core types for building middleware:
 
-| TYPE | DESCRIPTION |
-| ---- | ----------- |
-| [\`AgentState\`](#langchain.agents.middleware.AgentState) | State container for agent execution |
+| TYPE                                                        | DESCRIPTION                           |
+| ----------------------------------------------------------- | ------------------------------------- |
+| [\`AgentState\`](#langchain.agents.middleware.AgentState)     | State container for agent execution   |
 | [\`ModelRequest\`](#langchain.agents.middleware.ModelRequest) | Request details passed to model calls |",
   "symbolRefs": [
     "langchain.agents.middleware.SummarizationMiddleware",
