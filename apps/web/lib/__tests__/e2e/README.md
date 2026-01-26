@@ -57,7 +57,7 @@ pnpm test:e2e:watch
 
 Browser-based tests that verify symbols can be resolved and pages render properly using headless Chrome.
 
-#### Prerequisites
+#### Link Check: Prerequisites
 
 No manual setup required! The tests use a custom WebdriverIO service that automatically:
 
@@ -78,7 +78,7 @@ DEBUG=true pnpm test:e2e:wdio
 BASE_URL=https://staging.example.com pnpm test:e2e:wdio
 ```
 
-#### Test Files
+#### Link Check: Test Files
 
 - **`wdio/symbol-resolution.wdio.test.ts`** - Symbol resolution tests:
   - Page navigation across all projects and languages

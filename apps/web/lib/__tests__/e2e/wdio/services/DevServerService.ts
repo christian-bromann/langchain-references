@@ -86,6 +86,7 @@ export default class DevServerService {
 
     // Start both web and IR servers using the root pnpm dev script
     // Use detached: true to create a new process group so we can kill the entire tree
+    // Note: Don't set PORT env var - Next.js defaults to 3000, IR server defaults to 3001
     this.serverProcess = spawn("pnpm", ["dev"], {
       cwd: repoRoot,
       stdio: ["ignore", "pipe", "pipe"],
@@ -93,7 +94,6 @@ export default class DevServerService {
       detached: true,
       env: {
         ...process.env,
-        PORT: String(DEV_SERVER_PORT),
       },
     });
 
