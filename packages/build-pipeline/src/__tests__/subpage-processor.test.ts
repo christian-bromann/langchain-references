@@ -9,10 +9,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  parseSubpageMarkdown,
-  transformRelativeLinksToGitHub,
-} from "../subpage-processor.js";
+import { parseSubpageMarkdown, transformRelativeLinksToGitHub } from "../subpage-processor.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(__dirname, "fixtures", "subpages");
@@ -260,7 +257,7 @@ Some text that shouldn't be included.
     it("trims trailing whitespace from markdown content", () => {
       const content = `# Title
 
-Content with trailing spaces.   
+Content with trailing spaces.
 
 
 ::: symbol.Name`;
@@ -391,6 +388,53 @@ describe("transformRelativeLinksToGitHub", () => {
     });
   });
 
+  describe("directory links (use /tree/ instead of /blob/)", () => {
+    it("transforms directory link with ./ prefix to GitHub tree URL", () => {
+      const content = "[**List Runs**](./examples/list_runs)";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      expect(result).toBe(
+        "[**List Runs**](https://github.com/langchain-ai/langsmith-java/tree/main/examples/list_runs)",
+      );
+    });
+
+    it("transforms directory link without ./ prefix to GitHub tree URL", () => {
+      const content = "[Examples](examples/dataset)";
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      expect(result).toBe(
+        "[Examples](https://github.com/langchain-ai/langsmith-java/tree/main/examples/dataset)",
+      );
+    });
+
+    it("transforms multiple directory links from langsmith-go README", () => {
+      const content = `- **[List Runs](./examples/list_runs)** - Query and filter runs
+- **[Dataset Management](./examples/dataset)** - Create datasets
+- **[E2E Evaluation](./examples/e2e_eval)** - Run experiments`;
+      const result = transformRelativeLinksToGitHub(content, {
+        owner: "langchain-ai",
+        name: "langsmith-go",
+        ref: "main",
+      });
+      expect(result).toContain(
+        "https://github.com/langchain-ai/langsmith-go/tree/main/examples/list_runs",
+      );
+      expect(result).toContain(
+        "https://github.com/langchain-ai/langsmith-go/tree/main/examples/dataset",
+      );
+      expect(result).toContain(
+        "https://github.com/langchain-ai/langsmith-go/tree/main/examples/e2e_eval",
+      );
+    });
+
+    it("uses /blob/ for files and /tree/ for directories in same content", () => {
+      const content = `See [examples](./examples) and [api.md](api.md)`;
+      const result = transformRelativeLinksToGitHub(content, repoInfo);
+      // examples is a directory -> /tree/
+      expect(result).toContain("/tree/main/examples");
+      // api.md is a file -> /blob/
+      expect(result).toContain("/blob/main/api.md");
+    });
+  });
+
   describe("should NOT transform", () => {
     it("leaves absolute URLs unchanged", () => {
       const content = "[Docs](https://docs.langchain.com/guide)";
@@ -417,11 +461,11 @@ describe("transformRelativeLinksToGitHub", () => {
       expect(result).toBe("![Logo](assets/logo.png)");
     });
 
-    it("leaves non-source file links unchanged", () => {
-      const content = "[Download](releases/v1.0.0.zip)";
+    it("leaves absolute path links unchanged", () => {
+      const content = "[Home](/home)";
       const result = transformRelativeLinksToGitHub(content, repoInfo);
-      // .zip is not a recognized source file extension
-      expect(result).toBe("[Download](releases/v1.0.0.zip)");
+      // Absolute paths starting with / are likely site-relative, not repo-relative
+      expect(result).toBe("[Home](/home)");
     });
   });
 

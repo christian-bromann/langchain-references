@@ -137,18 +137,23 @@ export function transformRelativeImageUrlsWithBase(content: string, baseUrl: str
 }
 
 /**
- * Transform relative file links in markdown to absolute GitHub blob URLs.
+ * Transform relative file and directory links in markdown to absolute GitHub URLs.
  *
- * Handles markdown link syntax: [text](relative/path/to/file.ext)
+ * Handles markdown link syntax: [text](relative/path/to/file.ext) or [text](./directory)
  *
  * For example, transforms:
  *   [BadRequestException](langsmith-java-core/src/main/kotlin/.../BadRequestException.kt)
  * to:
  *   [BadRequestException](https://github.com/owner/repo/blob/ref/langsmith-java-core/src/main/kotlin/.../BadRequestException.kt)
  *
- * @param content - Markdown content with potential relative file links
+ * And directory links like:
+ *   [Examples](./examples/list_runs)
+ * to:
+ *   [Examples](https://github.com/owner/repo/tree/ref/examples/list_runs)
+ *
+ * @param content - Markdown content with potential relative file/directory links
  * @param repoInfo - Repository information (owner, name, ref, packagePath)
- * @returns Content with absolute GitHub blob URLs for file links
+ * @returns Content with absolute GitHub URLs for relative links
  */
 export function transformRelativeLinksToGitHub(
   content: string,
@@ -158,33 +163,33 @@ export function transformRelativeLinksToGitHub(
 
   const { owner, name, ref, packagePath } = repoInfo;
 
-  // Build the base URL for GitHub blob links
-  // Use the packagePath if the links are relative to a subdirectory
-  const baseUrl = packagePath && packagePath !== "."
-    ? `https://github.com/${owner}/${name}/blob/${ref}/${packagePath}/`
-    : `https://github.com/${owner}/${name}/blob/${ref}/`;
+  // Base URL parts for building GitHub links
+  const repoBase = `https://github.com/${owner}/${name}`;
+  const pathPrefix = packagePath && packagePath !== "." ? `${packagePath}/` : "";
 
-  // Common source code file extensions
-  const sourceFileExtensions = [
-    // JVM languages
-    "java", "kt", "kts", "scala", "groovy",
-    // Web/JS
-    "ts", "tsx", "js", "jsx", "mjs", "cjs",
-    // Python
-    "py", "pyx", "pxd",
-    // Go
-    "go",
-    // Rust
-    "rs",
-    // C/C++
-    "c", "cpp", "cc", "cxx", "h", "hpp", "hxx",
-    // Other
-    "rb", "php", "swift", "m", "mm",
+  // File extensions that indicate a file (not a directory)
+  // This is a broad list to catch most file types
+  const fileExtensions = [
+    // Source code
+    "java", "kt", "kts", "scala", "groovy", "go", "rs", "py", "pyx", "pxd",
+    "ts", "tsx", "js", "jsx", "mjs", "cjs", "rb", "php", "swift", "m", "mm",
+    "c", "cpp", "cc", "cxx", "h", "hpp", "hxx", "cs", "fs", "vb",
     // Config/data
-    "json", "yaml", "yml", "toml", "xml", "gradle",
+    "json", "yaml", "yml", "toml", "xml", "gradle", "properties", "ini", "cfg",
+    // Documentation
+    "md", "mdx", "rst", "txt", "adoc",
+    // Other
+    "html", "css", "scss", "sass", "less", "sql", "sh", "bash", "zsh", "ps1",
+    "dockerfile", "makefile", "mod", "sum",
   ];
 
-  const extensionPattern = sourceFileExtensions.join("|");
+  // Patterns that should NOT be transformed (external/special links)
+  const skipPatterns = [
+    /^https?:\/\//i,      // Already absolute URLs
+    /^#/,                  // Anchor links
+    /^[a-z]+:/i,          // Protocol links (mailto:, tel:, etc.)
+    /^\//,                // Absolute paths (likely to another site section)
+  ];
 
   // Match markdown links: [text](path)
   // But NOT image links: ![text](path)
@@ -194,38 +199,31 @@ export function transformRelativeLinksToGitHub(
   return content.replace(linkPattern, (match, linkText, linkPath) => {
     const trimmedPath = linkPath.trim();
 
-    // Skip if already absolute URL
-    if (trimmedPath.startsWith("http://") || trimmedPath.startsWith("https://")) {
-      return match;
-    }
-
-    // Skip anchor links
-    if (trimmedPath.startsWith("#")) {
-      return match;
-    }
-
-    // Skip protocol links (mailto:, tel:, etc.)
-    if (/^[a-z]+:/.test(trimmedPath)) {
-      return match;
-    }
-
-    // Check if it looks like a source file path
-    const hasSourceExtension = new RegExp(`\\.(${extensionPattern})$`, "i").test(trimmedPath);
-
-    // Also include paths that look like source code directories (contain typical patterns)
-    const looksLikeSourcePath =
-      hasSourceExtension ||
-      /\/(src|lib|core|main|kotlin|java|python|go)\//i.test(trimmedPath);
-
-    if (!looksLikeSourcePath) {
-      return match;
+    // Check if this link should be skipped
+    for (const pattern of skipPatterns) {
+      if (pattern.test(trimmedPath)) {
+        return match;
+      }
     }
 
     // Remove leading ./ if present
     const cleanPath = trimmedPath.replace(/^\.\//, "");
 
-    // Build the absolute GitHub blob URL
-    const absoluteUrl = `${baseUrl}${cleanPath}`;
+    // Skip empty paths
+    if (!cleanPath) {
+      return match;
+    }
+
+    // Determine if this is a file or directory
+    // Check if the path has a file extension
+    const lastSegment = cleanPath.split("/").pop() || "";
+    const hasExtension = fileExtensions.some((ext) =>
+      lastSegment.toLowerCase().endsWith(`.${ext}`),
+    );
+
+    // Use /blob/ for files, /tree/ for directories
+    const urlType = hasExtension ? "blob" : "tree";
+    const absoluteUrl = `${repoBase}/${urlType}/${ref}/${pathPrefix}${cleanPath}`;
 
     return `[${linkText}](${absoluteUrl})`;
   });

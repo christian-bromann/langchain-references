@@ -14,8 +14,8 @@ import { getBuiltinTypeDocUrl } from "@/lib/constants/builtin-types";
 interface SignatureBlockProps {
   /** The signature string to render */
   signature: string;
-  /** Programming language for styling */
-  language: "python" | "typescript" | "javascript";
+  /** Programming language for styling and URL generation */
+  language: "python" | "typescript" | "javascript" | "go" | "java";
   /** Type references that can be linked (includes qualifiedName for cross-project linking) */
   typeRefs?: TypeReference[];
   /** Map of symbol names to their URL paths in the current package */
@@ -124,13 +124,21 @@ const PYTHON_KEYWORDS = new Set([
  */
 function tokenizeSignature(
   signature: string,
-  language: "python" | "typescript" | "javascript",
+  language: "python" | "typescript" | "javascript" | "go" | "java",
   knownSymbols: Map<string, string>,
   packageName: string,
   typeUrlMap?: Map<string, string>,
 ): Token[] {
   const tokens: Token[] = [];
-  const langPath = language === "python" ? "python" : "javascript";
+  // Map language to URL path segment (typescript maps to javascript for URL paths)
+  const langPathMap: Record<string, string> = {
+    python: "python",
+    javascript: "javascript",
+    typescript: "javascript",
+    go: "go",
+    java: "java",
+  };
+  const langPath = langPathMap[language] || language;
   const pkgSlug = slugifyPackageName(packageName);
 
   // Regex patterns for different token types

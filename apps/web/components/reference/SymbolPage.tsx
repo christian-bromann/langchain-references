@@ -1566,7 +1566,7 @@ export async function SymbolPage({
             ) : (
               <SignatureBlock
                 signature={formatSignature(symbol.signature)}
-                language={language === "python" ? "python" : "typescript"}
+                language={language}
                 typeRefs={symbol.typeRefs}
                 knownSymbols={knownSymbols}
                 packageName={packageName}
