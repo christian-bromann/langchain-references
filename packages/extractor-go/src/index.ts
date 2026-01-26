@@ -17,10 +17,4 @@ export {
 } from "./extractor.js";
 export {
   GoTransformer,
-  type SymbolRecord,
-  type MemberRecord,
-  type Parameter,
-  type ReturnType,
-  type SourceLocation,
-  type TypeParameter,
 } from "./transformer.js";
