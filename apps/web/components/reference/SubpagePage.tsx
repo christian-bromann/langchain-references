@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils/cn";
 import {
   buildSymbolUrl,
   extractPackageFromQualifiedName,
+  getDisplayPackageName,
   getKindColor,
   getKindLabel,
   slugifyPackageName,
@@ -354,7 +355,7 @@ export async function SubpagePage({
             href={`/${languagePath}/${packageSlug}`}
             className="hover:text-foreground transition-colors"
           >
-            {packageName}
+            {getDisplayPackageName(packageName, language)}
           </Link>
           <ChevronRight className="h-4 w-4" />
           <span className="text-foreground">{subpageData.title}</span>
@@ -369,7 +370,7 @@ export async function SubpagePage({
             <h1 className="text-3xl font-heading font-bold text-foreground">{subpageData.title}</h1>
           </div>
           <p className="mt-3 text-foreground-secondary text-lg">
-            {packageName} &rarr; {subpageData.title}
+            {getDisplayPackageName(packageName, language)} &rarr; {subpageData.title}
           </p>
         </div>
 

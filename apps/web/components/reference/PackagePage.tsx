@@ -15,6 +15,7 @@ import type { UrlLanguage } from "@/lib/utils/url";
 import {
   buildSymbolUrl,
   extractPackageFromQualifiedName,
+  getDisplayPackageName,
   getKindColor,
   getKindLabel,
   slugifyPackageName,
@@ -198,7 +199,7 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
             {LANGUAGE_CONFIG[symbolLanguage].name}
           </Link>
           <ChevronRight className="h-4 w-4" />
-          <span className="text-foreground">{packageName}</span>
+          <span className="text-foreground">{getDisplayPackageName(packageName, language)}</span>
         </nav>
 
         {/* Page header */}
@@ -207,11 +208,11 @@ export async function PackagePage({ language, packageId, packageName }: PackageP
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               <Box className="h-6 w-6" />
             </div>
-            <h1 className="text-3xl font-heading font-bold text-foreground">{packageName}</h1>
+            <h1 className="text-3xl font-heading font-bold text-foreground">{getDisplayPackageName(packageName, language)}</h1>
           </div>
           {!description && (
             <p className="mt-3 text-foreground-secondary text-lg">
-              API reference for the {packageName} package.
+              API reference for the {getDisplayPackageName(packageName, language)} package.
             </p>
           )}
         </div>

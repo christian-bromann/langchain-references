@@ -23,6 +23,7 @@ import {
   buildPackageUrl,
   buildSymbolUrl,
   extractPackageFromQualifiedName,
+  getDisplayPackageName,
   getKindColor,
   getKindLabel,
   slugifyPackageName,
@@ -1390,7 +1391,7 @@ export async function SymbolPage({
             href={buildPackageUrl(language, packageName)}
             className="hover:text-foreground transition-colors"
           >
-            {packageName}
+            {getDisplayPackageName(packageName, language)}
           </Link>
           <ChevronRight className="h-4 w-4" />
           <span className="text-foreground">{symbolPath}</span>
@@ -1400,7 +1401,7 @@ export async function SymbolPage({
           <h1 className="text-2xl font-heading font-bold text-foreground mb-2">Symbol Not Found</h1>
           <p className="text-foreground-secondary">
             The symbol <code className="font-mono">{symbolPath}</code> was not found in{" "}
-            {packageName}.
+            {getDisplayPackageName(packageName, language)}.
           </p>
         </div>
       </div>
@@ -1456,9 +1457,10 @@ export async function SymbolPage({
 
   // Build breadcrumb items for structured data
   const urlLangLabel = LANGUAGE_CONFIG[language].name;
+  const displayPackageName = getDisplayPackageName(packageName, language);
   const breadcrumbItems = [
     { name: urlLangLabel, url: `/${language}` },
-    { name: packageName, url: buildPackageUrl(language, packageName) },
+    { name: displayPackageName, url: buildPackageUrl(language, packageName) },
     { name: symbol.name, url: `/${language}/${slugifyPackageName(packageName)}/${symbolPath}` },
   ];
 
@@ -1466,15 +1468,15 @@ export async function SymbolPage({
     <>
       {/* Structured Data */}
       <TechArticleJsonLd
-        title={`${symbol.name} - ${packageName}`}
+        title={`${symbol.name} - ${displayPackageName}`}
         description={
           symbol.docs.summary ||
           symbol.docs.description ||
-          `API reference for ${symbol.name} in ${packageName}`
+          `API reference for ${symbol.name} in ${displayPackageName}`
         }
         url={`/${language}/${slugifyPackageName(packageName)}/${symbolPath}`}
         language={language}
-        packageName={packageName}
+        packageName={displayPackageName}
       />
       <BreadcrumbJsonLd items={breadcrumbItems} />
 
@@ -1491,7 +1493,7 @@ export async function SymbolPage({
               href={buildPackageUrl(language, packageName)}
               className="hover:text-foreground transition-colors"
             >
-              {packageName}
+              {displayPackageName}
             </Link>
             {symbolPath.split(".").map((part, i, arr) => {
               // Build cumulative path up to this part
@@ -2230,7 +2232,7 @@ function InheritedMembersSection({
                 <code className="font-mono text-foreground">{group.baseName}</code>
               )}
               {group.basePackageName && group.basePackageName !== packageName && (
-                <span className="text-sm text-foreground-muted">({group.basePackageName})</span>
+                <span className="text-sm text-foreground-muted">({getDisplayPackageName(group.basePackageName, language)})</span>
               )}
             </h2>
 
