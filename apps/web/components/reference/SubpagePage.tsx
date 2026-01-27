@@ -363,16 +363,11 @@ export async function SubpagePage({
         </nav>
 
         {/* Page header */}
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <BookOpen className="h-6 w-6" />
-            </div>
-            <h1 className="text-3xl font-heading font-bold text-foreground">{subpageData.title}</h1>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary/10 text-primary">
+            <BookOpen className="h-6 w-6" />
           </div>
-          <p className="mt-3 text-foreground-secondary text-lg">
-            {getDisplayPackageName(packageName, language)} &rarr; {subpageData.title}
-          </p>
+          <h1 className="text-3xl font-heading font-bold text-foreground">{subpageData.title}</h1>
         </div>
 
         {/* Markdown content (overview section) */}
