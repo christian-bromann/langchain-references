@@ -9,6 +9,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Box, Code, Folder, ChevronRight, FileType, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { stripAnchors } from "@/lib/utils/html";
 import {
   buildSymbolUrl,
   extractPackageFromQualifiedName,
@@ -560,7 +561,7 @@ async function SymbolCard({
           <div className="mt-1 [&_code]:text-xs">
             <div
               className="text-sm text-foreground-secondary line-clamp-2 m-0 [&_p]:m-0"
-              dangerouslySetInnerHTML={{ __html: symbol.summaryHtml }}
+              dangerouslySetInnerHTML={{ __html: stripAnchors(symbol.summaryHtml) }}
             />
           </div>
         )}

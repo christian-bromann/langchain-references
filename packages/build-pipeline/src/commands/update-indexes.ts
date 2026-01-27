@@ -12,6 +12,7 @@
  * Usage:
  *   update-indexes --project langchain --language python
  *   update-indexes --all
+ *   update-indexes --all --local   # Local mode: reads/writes only local files
  *
  * Example:
  *   # Update index for langchain Python packages
@@ -19,9 +20,13 @@
  *
  *   # Update all project indexes
  *   pnpm update-indexes --all
+ *
+ *   # Update all indexes from local ir-output (no blob storage needed)
+ *   pnpm update-indexes --all --local
  */
 
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import path from "node:path";
 import url from "node:url";
 
@@ -29,6 +34,10 @@ import { Command } from "commander";
 import type { Language, SymbolLanguage } from "@langchain/ir-schema";
 import { regenerateProjectPackageIndex, generateGlobalManifest } from "../pointers.js";
 import { PROJECTS, OUTPUT_LANGUAGES } from "../constants.js";
+
+/** Local output directory for IR data */
+const IR_OUTPUT_DIR = "ir-output";
+const POINTERS_PATH = "pointers";
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
@@ -95,6 +104,216 @@ async function loadPackageInfoFromConfig(
   }
 }
 
+/**
+ * Normalize a package name to a packageId.
+ */
+function normalizePackageId(packageName: string, language: Language): string {
+  const prefix =
+    language === "python"
+      ? "pkg_py_"
+      : language === "java"
+        ? "pkg_java_"
+        : language === "go"
+          ? "pkg_go_"
+          : "pkg_js_";
+  const normalized = packageName
+    .replace(/^@/, "")
+    .replace(/\//g, "_")
+    .replace(/-/g, "_")
+    .replace(/\./g, "_")
+    .toLowerCase();
+  return `${prefix}${normalized}`;
+}
+
+/**
+ * Get the latest build directory for a package from local ir-output.
+ * Returns the build with the most recently modified package.json.
+ */
+function getLatestLocalBuild(packageId: string): string | null {
+  const pkgPath = path.join(process.cwd(), IR_OUTPUT_DIR, "ir", "packages", packageId);
+
+  if (!fsSync.existsSync(pkgPath)) {
+    return null;
+  }
+
+  const builds = fsSync.readdirSync(pkgPath).filter((b) => {
+    const buildPath = path.join(pkgPath, b);
+    const pkgJsonPath = path.join(buildPath, "package.json");
+    return fsSync.statSync(buildPath).isDirectory() && fsSync.existsSync(pkgJsonPath);
+  });
+
+  if (builds.length === 0) {
+    return null;
+  }
+
+  // Sort by mtime descending to get latest
+  builds.sort((a, b) => {
+    const aTime = fsSync.statSync(path.join(pkgPath, a, "package.json")).mtimeMs;
+    const bTime = fsSync.statSync(path.join(pkgPath, b, "package.json")).mtimeMs;
+    return bTime - aTime;
+  });
+
+  return builds[0];
+}
+
+/**
+ * Read package.json from local ir-output for a specific package.
+ */
+async function readLocalPackageJson(
+  packageId: string,
+  buildId: string,
+): Promise<Record<string, unknown> | null> {
+  const pkgJsonPath = path.join(
+    process.cwd(),
+    IR_OUTPUT_DIR,
+    "ir",
+    "packages",
+    packageId,
+    buildId,
+    "package.json",
+  );
+
+  try {
+    const content = await fs.readFile(pkgJsonPath, "utf-8");
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Generate project package index from local ir-output files.
+ * This is the local-only version that doesn't require blob storage.
+ */
+async function generateLocalProjectIndex(
+  language: Language,
+  packageNames: string[],
+): Promise<{ packages: Record<string, { buildId: string; version: string }> }> {
+  const packages: Record<string, { buildId: string; version: string }> = {};
+
+  for (const packageName of packageNames) {
+    const packageId = normalizePackageId(packageName, language);
+    const buildId = getLatestLocalBuild(packageId);
+
+    if (!buildId) {
+      console.log(`   ⚠️  No local build found for ${packageName}`);
+      continue;
+    }
+
+    const pkgJson = await readLocalPackageJson(packageId, buildId);
+    if (!pkgJson) {
+      console.log(`   ⚠️  Could not read package.json for ${packageName}`);
+      continue;
+    }
+
+    packages[packageName] = {
+      buildId,
+      version: (pkgJson.version as string) || "0.0.0",
+    };
+  }
+
+  return { packages };
+}
+
+/**
+ * Write project index to local ir-output/pointers directory.
+ */
+async function writeLocalProjectIndex(
+  project: string,
+  language: Language,
+  packages: Record<string, { buildId: string; version: string }>,
+  packageOrder?: string[],
+): Promise<void> {
+  const indexPath = path.join(
+    process.cwd(),
+    IR_OUTPUT_DIR,
+    POINTERS_PATH,
+    `index-${project}-${language}.json`,
+  );
+
+  const index = {
+    project,
+    language,
+    updatedAt: new Date().toISOString(),
+    packages,
+    ...(packageOrder ? { packageOrder } : {}),
+  };
+
+  await fs.mkdir(path.dirname(indexPath), { recursive: true });
+  await fs.writeFile(indexPath, JSON.stringify(index, null, 2));
+  console.log(`   ✓ Wrote ${indexPath} (${Object.keys(packages).length} packages)`);
+}
+
+/**
+ * Generate global manifest from local ir-output files.
+ * Reads all package.json files from local builds and creates a unified manifest.
+ */
+async function generateLocalManifest(): Promise<void> {
+  console.log(`\n📦 Generating local manifest from ir-output`);
+
+  const packagesDir = path.join(process.cwd(), IR_OUTPUT_DIR, "ir", "packages");
+  const manifestPath = path.join(process.cwd(), IR_OUTPUT_DIR, POINTERS_PATH, "manifest.json");
+
+  // Read existing manifest for base structure
+  let manifest: Record<string, unknown>;
+  try {
+    const existing = await fs.readFile(manifestPath, "utf-8");
+    manifest = JSON.parse(existing);
+  } catch {
+    manifest = {
+      irVersion: "1.0",
+      project: "all-packages",
+      build: {
+        buildId: "",
+        createdAt: new Date().toISOString(),
+        baseUrl: "",
+      },
+      sources: [],
+      packages: [],
+    };
+  }
+
+  // Scan all package directories
+  const updatedPackages: Record<string, unknown>[] = [];
+  let packageDirs: string[];
+
+  try {
+    packageDirs = await fs.readdir(packagesDir);
+  } catch {
+    console.error(`   ❌ Could not read packages directory: ${packagesDir}`);
+    return;
+  }
+
+  for (const pkgDir of packageDirs) {
+    const pkgPath = path.join(packagesDir, pkgDir);
+    const stat = await fs.stat(pkgPath);
+    if (!stat.isDirectory()) continue;
+
+    const buildId = getLatestLocalBuild(pkgDir);
+    if (!buildId) continue;
+
+    const pkgJson = await readLocalPackageJson(pkgDir, buildId);
+    if (pkgJson) {
+      updatedPackages.push(pkgJson);
+    }
+  }
+
+  manifest.packages = updatedPackages;
+
+  await fs.mkdir(path.dirname(manifestPath), { recursive: true });
+  await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+
+  // Count packages with subpages
+  const withSubpages = updatedPackages.filter(
+    (p) => Array.isArray(p.subpages) && (p.subpages as unknown[]).length > 0,
+  );
+
+  console.log(`   ✅ Wrote ${manifestPath}`);
+  console.log(
+    `   📊 ${updatedPackages.length} packages total, ${withSubpages.length} with subpages`,
+  );
+}
+
 async function main(): Promise<void> {
   const program = new Command();
 
@@ -105,12 +324,23 @@ async function main(): Promise<void> {
     .option("--language <lang>", `Language to update (${OUTPUT_LANGUAGES.join(", ")})`)
     .option("--all", "Update indexes for all project/language combinations")
     .option("--dry-run", "Print what would be updated without making changes")
+    .option("--local", "Local mode: read/write only local ir-output files (no blob storage)")
     .action(
-      async (options: { project?: string; language?: string; all?: boolean; dryRun?: boolean }) => {
+      async (options: {
+        project?: string;
+        language?: string;
+        all?: boolean;
+        dryRun?: boolean;
+        local?: boolean;
+      }) => {
         console.log(`\n🔄 Regenerating project package indexes`);
 
         if (options.dryRun) {
           console.log("   (dry-run mode - no actual updates)\n");
+        }
+
+        if (options.local) {
+          console.log("   (local mode - reading/writing only local files)\n");
         }
 
         // Determine which project/language combinations to update
@@ -175,13 +405,24 @@ async function main(): Promise<void> {
           console.log(`   Found ${packageNames.length} packages in config`);
 
           try {
-            await regenerateProjectPackageIndex(
-              project,
-              language,
-              packageNames,
-              options.dryRun ?? false,
-              packageOrder,
-            );
+            if (options.local) {
+              // Local mode: read from local files, write to local files only
+              if (!options.dryRun) {
+                const { packages } = await generateLocalProjectIndex(language, packageNames);
+                await writeLocalProjectIndex(project, language, packages, packageOrder);
+              } else {
+                console.log(`   [dry-run] Would generate local index for ${project}-${language}`);
+              }
+            } else {
+              // Standard mode: use blob storage
+              await regenerateProjectPackageIndex(
+                project,
+                language,
+                packageNames,
+                options.dryRun ?? false,
+                packageOrder,
+              );
+            }
             successCount++;
           } catch (error) {
             console.error(`   ❌ Failed to update index: ${error}`);
@@ -194,7 +435,17 @@ async function main(): Promise<void> {
 
         // Generate global manifest after updating all indexes
         if (successCount > 0 && options.all) {
-          await generateGlobalManifest(PROJECTS, OUTPUT_LANGUAGES, options.dryRun ?? false);
+          if (options.local) {
+            // Local mode: generate manifest from local files
+            if (!options.dryRun) {
+              await generateLocalManifest();
+            } else {
+              console.log(`\n[dry-run] Would generate local manifest`);
+            }
+          } else {
+            // Standard mode: use blob storage
+            await generateGlobalManifest(PROJECTS, OUTPUT_LANGUAGES, options.dryRun ?? false);
+          }
         }
 
         if (failCount > 0) {
