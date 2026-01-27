@@ -1,1 +1,14 @@
-[]
+{
+  "project": "langsmith",
+  "language": "go",
+  "repo": "langchain-ai/langsmith-go",
+  "lastSynced": "2026-01-27T00:10:39.483Z",
+  "packages": [
+    {
+      "packageName": "langsmith",
+      "tagPattern": "v*",
+      "versions": [],
+      "lastUpdated": "2026-01-27T00:10:39.483Z"
+    }
+  ]
+}

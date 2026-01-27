@@ -1,1 +1,21 @@
-[]
+{
+  "project": "langsmith",
+  "language": "java",
+  "repo": "langchain-ai/langsmith-java",
+  "lastSynced": "2026-01-27T00:10:40.468Z",
+  "packages": [
+    {
+      "packageName": "langsmith",
+      "tagPattern": "v*",
+      "versions": [
+        {
+          "version": "0.1.0",
+          "sha": "a0975b8cca3f944a3314ab7ca00f0f4bcfde7298",
+          "tag": "v0.1.0",
+          "releaseDate": "2025-11-05T21:01:53Z"
+        }
+      ],
+      "lastUpdated": "2026-01-27T00:10:40.468Z"
+    }
+  ]
+}

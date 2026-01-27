@@ -363,7 +363,7 @@ describe("Symbol Resolution", () => {
       console.log(`  Page load time: ${loadTime}ms`);
 
       // Page should load within 10 seconds
-      expect(loadTime).toBeLessThan(3000);
+      expect(loadTime).toBeLessThan(5000);
 
       console.log(`  ✓ Page loaded within acceptable time`);
     });

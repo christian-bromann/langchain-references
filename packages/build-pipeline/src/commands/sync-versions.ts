@@ -784,7 +784,7 @@ async function main() {
 
   for (const configFile of configFiles) {
     // Parse project from filename
-    const match = configFile.match(/^(\w+)-(python|typescript)\.json$/);
+    const match = configFile.match(/^(\w+)-(python|typescript|java|go)\.json$/);
     if (!match) continue;
 
     const [, project, language] = match;
