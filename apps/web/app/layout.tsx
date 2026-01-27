@@ -4,6 +4,7 @@ import { Inter, Manrope, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { NavigationProgress } from "@/components/layout/NavigationProgress";
 import { OfflineIndicator } from "@/components/layout/OfflineIndicator";
+import { DevTools } from "@/components/layout/DevTools";
 import { CacheProvider } from "@/components/cache/CacheProvider";
 import { BASE_URL } from "@/lib/config/base-url";
 import "./globals.css";
@@ -98,6 +99,7 @@ export default function RootLayout({
             </Suspense>
             {children}
             <OfflineIndicator />
+            <DevTools />
           </CacheProvider>
         </ThemeProvider>
       </body>
