@@ -2,16 +2,6 @@
 
 Deep Agents can be configured through various options to customize their behavior, model selection, and capabilities.
 
-## Agent Config
-
-::: deepagents.AgentConfig
-options:
-show_if_no_docstring: true
-
-::: deepagents.DeepAgentOptions
-options:
-show_if_no_docstring: true
-
 ## Model Configuration
 
 By default, Deep Agents use `claude-sonnet-4-5-20250929`. You can customize this by passing any LangChain model object:
@@ -57,10 +47,6 @@ const agent = createDeepAgent({
 
 Configure human-in-the-loop workflows for sensitive tool operations:
 
-::: deepagents.InterruptOnConfig
-options:
-show_if_no_docstring: true
-
 ```typescript
 const agent = createDeepAgent({
   tools: [getWeather],
@@ -71,3 +57,7 @@ const agent = createDeepAgent({
   },
 });
 ```
+
+::: deepagents.AgentConfig
+::: deepagents.DeepAgentOptions
+::: deepagents.InterruptOnConfig

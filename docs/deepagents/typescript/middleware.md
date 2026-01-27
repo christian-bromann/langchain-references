@@ -4,27 +4,11 @@ Deep Agents use a modular middleware architecture. Each core capability (plannin
 
 ## TodoList Middleware
 
-Planning is integral to solving complex problems. The `todoListMiddleware` provides a `write_todos` tool for task planning and tracking.
-
-::: deepagents/middleware.todoListMiddleware
-options:
-show_if_no_docstring: true
-
-::: deepagents/middleware.TodoListMiddlewareConfig
-options:
-show_if_no_docstring: true
+Planning is integral to solving complex problems. The [`todoListMiddleware`](#deepagents.middleware.todoListMiddleware) provides a `write_todos` tool for task planning and tracking.
 
 ## Filesystem Middleware
 
-Context engineering is one of the main challenges in building effective agents. The `FilesystemMiddleware` provides tools for reading, writing, and managing files.
-
-::: deepagents/middleware.createFilesystemMiddleware
-options:
-show_if_no_docstring: true
-
-::: deepagents/middleware.FilesystemMiddleware
-options:
-show_if_no_docstring: true
+Context engineering is one of the main challenges in building effective agents. The [`FilesystemMiddleware`](#deepagents.middleware.FilesystemMiddleware) provides tools for reading, writing, and managing files.
 
 ### Filesystem Tools
 
@@ -42,42 +26,17 @@ The middleware provides the following tools:
 
 ## SubAgent Middleware
 
-Handing off tasks to subagents is a great way to isolate context. The `SubAgentMiddleware` provides a `task` tool for spawning specialized subagents.
+Handing off tasks to subagents is a great way to isolate context. The [`SubAgentMiddleware`](#deepagents.middleware.SubAgentMiddleware) provides a `task` tool for spawning specialized subagents.
 
-::: deepagents/middleware.createSubAgentMiddleware
-options:
-show_if_no_docstring: true
-
-::: deepagents/middleware.SubAgentMiddleware
-options:
-show_if_no_docstring: true
-
-::: deepagents/middleware.SubAgentMiddlewareConfig
-options:
-show_if_no_docstring: true
-
-## Memory Middleware
-
-::: deepagents/middleware.createMemoryMiddleware
-options:
-show_if_no_docstring: true
-
-::: deepagents/middleware.MemoryMiddleware
-options:
-show_if_no_docstring: true
-
-## Summarization Middleware
-
-::: deepagents/middleware.createSummarizationMiddleware
-options:
-show_if_no_docstring: true
-
-## Skills Middleware
-
-::: deepagents/middleware.createSkillsMiddleware
-options:
-show_if_no_docstring: true
-
-::: deepagents/middleware.SkillsMiddleware
-options:
-show_if_no_docstring: true
+::: deepagents.middleware.todoListMiddleware
+::: deepagents.middleware.TodoListMiddlewareConfig
+::: deepagents.middleware.createFilesystemMiddleware
+::: deepagents.middleware.FilesystemMiddleware
+::: deepagents.middleware.createSubAgentMiddleware
+::: deepagents.middleware.SubAgentMiddleware
+::: deepagents.middleware.SubAgentMiddlewareConfig
+::: deepagents.middleware.createMemoryMiddleware
+::: deepagents.middleware.MemoryMiddleware
+::: deepagents.middleware.createSummarizationMiddleware
+::: deepagents.middleware.createSkillsMiddleware
+::: deepagents.middleware.SkillsMiddleware

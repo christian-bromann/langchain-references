@@ -2,20 +2,6 @@
 
 A main feature of Deep Agents is their ability to spawn subagents. Subagents are useful for context quarantine and specialized task handling.
 
-## SubAgent Type
-
-::: deepagents.SubAgent
-options:
-show_if_no_docstring: true
-
-## CompiledSubAgent Type
-
-For complex workflows, you can use a pre-built LangGraph graph as a subagent:
-
-::: deepagents.CompiledSubAgent
-options:
-show_if_no_docstring: true
-
 ## Using SubAgents
 
 ### Basic SubAgent Definition
@@ -58,6 +44,8 @@ agent = create_deep_agent(
 
 ### Using CompiledSubAgent
 
+For complex workflows, you can use a pre-built LangGraph graph as a subagent:
+
 ```python
 from langchain.agents import create_agent
 from deepagents import create_deep_agent, CompiledSubAgent
@@ -93,3 +81,6 @@ agent = create_deep_agent(
 | `model`         | `str \| BaseChatModel` (optional)  | Model override for the subagent                |
 | `middleware`    | `list[AgentMiddleware]` (optional) | Additional middleware for the subagent         |
 | `interrupt_on`  | `dict` (optional)                  | Human-in-the-loop configuration for tools      |
+
+::: deepagents.SubAgent
+::: deepagents.CompiledSubAgent

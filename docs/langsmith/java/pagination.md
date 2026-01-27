@@ -6,26 +6,6 @@ The LangSmith Java SDK provides convenient utilities for working with paginated 
 
 Automatically iterate through all results across multiple pages.
 
-### Synchronous
-
-::: com.langchain.smith.core.AutoPager
-options:
-show_if_no_docstring: true
-
-::: com.langchain.smith.core.Page
-options:
-show_if_no_docstring: true
-
-### Asynchronous
-
-::: com.langchain.smith.core.AutoPagerAsync
-options:
-show_if_no_docstring: true
-
-::: com.langchain.smith.core.PageAsync
-options:
-show_if_no_docstring: true
-
 ## Usage Examples
 
 ### Synchronous Auto-Pagination
@@ -81,3 +61,8 @@ while (true) {
     page = page.nextPage();
 }
 ```
+
+::: com.langchain.smith.core.AutoPager
+::: com.langchain.smith.core.Page
+::: com.langchain.smith.core.AutoPagerAsync
+::: com.langchain.smith.core.PageAsync

@@ -2,14 +2,6 @@
 
 LangSmith Go supports OpenTelemetry for distributed tracing. This allows you to automatically capture and send traces from your LLM applications.
 
-## Tracer
-
-The tracer provides OpenTelemetry integration for sending spans to LangSmith.
-
-::: langsmith.Tracer
-options:
-show_if_no_docstring: true
-
 ## Configuration
 
 Configure tracing using environment variables:
@@ -45,3 +37,5 @@ See the [otel_openai example](https://github.com/langchain-ai/langsmith-go/tree/
 ### With Anthropic
 
 See the [otel_anthropic example](https://github.com/langchain-ai/langsmith-go/tree/main/examples/otel_anthropic) for automatic tracing of Anthropic API calls.
+
+::: langsmith.Tracer

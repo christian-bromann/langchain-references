@@ -36,12 +36,5 @@ async def main():
 asyncio.run(main())
 ```
 
-## MCP Client Configuration
-
 ::: langchain_mcp_adapters.client.MultiServerMCPClient
-options:
-show_if_no_docstring: true
-
 ::: langchain_mcp_adapters.client.MCPClient
-options:
-show_if_no_docstring: true
