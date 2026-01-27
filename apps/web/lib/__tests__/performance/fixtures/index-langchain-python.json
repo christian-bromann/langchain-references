@@ -10,12 +10,12 @@
     },
     "langchain_classic": {
       "buildId": "d927d52159929b0d",
-      "version": "metadata.version(__package__)",
+      "version": "0.3.0",
       "sha": "a6e8c8387882005081716821e0b55e53ed390cbf"
     },
     "langchain_core": {
       "buildId": "f55f41c86b6ad2d3",
-      "version": "VERSION",
+      "version": "0.3.27",
       "sha": "a6e8c8387882005081716821e0b55e53ed390cbf"
     },
     "langchain_text_splitters": {

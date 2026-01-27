@@ -838,6 +838,66 @@ async function loadCachedVersions(
 }
 
 /**
+ * Validate if a string looks like a valid semantic version.
+ * Python packages using dynamic versioning like `__version__ = metadata.version(__package__)`
+ * will have the source code expression extracted instead of the actual version.
+ *
+ * @param version - The version string to validate
+ * @returns True if the version looks valid (e.g., "1.2.3"), false if it looks like source code
+ */
+function isValidVersionString(version: string): boolean {
+  if (!version || version === "unknown") {
+    return false;
+  }
+
+  // Common patterns that indicate source code rather than a version
+  const invalidPatterns = [
+    /metadata\.version/i, // metadata.version(__package__)
+    /importlib/i, // importlib.metadata.version(...)
+    /\(__\w+__\)/, // (__package__), (__name__), etc.
+    /VERSION\b/, // VERSION constant reference
+    /pkg_resources/, // pkg_resources.get_distribution(...)
+    /get_distribution/i,
+  ];
+
+  for (const pattern of invalidPatterns) {
+    if (pattern.test(version)) {
+      return false;
+    }
+  }
+
+  // A valid version should roughly match semver-like patterns
+  // e.g., "1.2.3", "0.1.0", "2.0.0-beta.1"
+  // This is a loose check - just ensure it starts with a number and has reasonable format
+  const versionPattern = /^\d+(\.\d+)*(-[\w.]+)?(\+[\w.]+)?$/;
+  return versionPattern.test(version);
+}
+
+/**
+ * Get the latest version for a package from cached versions.
+ *
+ * @param cachedVersions - The cached versions data
+ * @param packageName - The package name to look up
+ * @returns The latest version string, or null if not found
+ */
+function getLatestCachedVersion(
+  cachedVersions: CachedProjectVersions | null,
+  packageName: string,
+): string | null {
+  if (!cachedVersions?.packages) {
+    return null;
+  }
+
+  const cachedPkg = cachedVersions.packages.find((p) => p.packageName === packageName);
+  if (!cachedPkg?.versions?.length) {
+    return null;
+  }
+
+  // Versions are sorted newest first
+  return cachedPkg.versions[0].version;
+}
+
+/**
  * Get the package path for a specific version, handling pathOverrides.
  */
 function getPackagePathForVersion(pkgConfig: PackageConfig, version: string): string {
@@ -1995,6 +2055,10 @@ async function buildConfig(
 
   const [owner, repoName] = config.repo.split("/");
 
+  // Load cached versions for fallback when extracted version is invalid
+  // (e.g., Python packages with dynamic versioning like `metadata.version(__package__)`)
+  const cachedVersions = await loadCachedVersions(config.project || "langchain", config.language);
+
   // Create package info files for each package
   console.log("\n📋 Creating package info files...");
 
@@ -2010,7 +2074,27 @@ async function buildConfig(
       const symbolsContent = await fs.readFile(symbolsPath, "utf-8");
       const data = JSON.parse(symbolsContent);
       symbolCount = data.symbols?.length || 0;
-      version = data.package?.version || "unknown";
+      const extractedVersion = data.package?.version || "unknown";
+
+      // Validate the extracted version - Python packages with dynamic versioning
+      // (e.g., `__version__ = metadata.version(__package__)`) may have source code
+      // extracted instead of the actual version string
+      if (isValidVersionString(extractedVersion)) {
+        version = extractedVersion;
+      } else {
+        // Fall back to the latest cached version from git tags
+        const cachedVersion = getLatestCachedVersion(cachedVersions, pkgConfig.name);
+        if (cachedVersion) {
+          version = cachedVersion;
+          console.log(
+            `      ℹ️  ${pkgConfig.name}: Using cached version ${version} (extracted: "${extractedVersion}")`,
+          );
+        } else {
+          console.warn(
+            `      ⚠️  ${pkgConfig.name}: Invalid version "${extractedVersion}" and no cached version available`,
+          );
+        }
+      }
     } catch {
       // Ignore errors
     }

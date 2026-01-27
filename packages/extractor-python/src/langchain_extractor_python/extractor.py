@@ -781,7 +781,53 @@ class PythonExtractor:
             if hasattr(package, "members") and "__version__" in package.members:
                 version_obj = package.members["__version__"]
                 if hasattr(version_obj, "value"):
-                    return str(version_obj.value).strip("'\"")
+                    version = str(version_obj.value).strip("'\"")
+                    # Check if this looks like dynamic versioning source code
+                    # rather than an actual version string
+                    if self._is_valid_version(version):
+                        return version
         except Exception:
             pass
         return "unknown"
+
+    def _is_valid_version(self, version: str) -> bool:
+        """
+        Check if a version string looks like an actual semantic version
+        rather than dynamic versioning source code.
+
+        Python packages may use patterns like:
+        - __version__ = metadata.version(__package__)
+        - __version__ = importlib.metadata.version(__name__)
+        - __version__ = pkg_resources.get_distribution(__name__).version
+
+        These get extracted as the source code expression, not the resolved value.
+
+        Args:
+            version: The extracted version string.
+
+        Returns:
+            True if the version looks valid, False if it looks like source code.
+        """
+        import re
+
+        if not version:
+            return False
+
+        # Patterns that indicate source code rather than a version
+        invalid_patterns = [
+            r"metadata\.version",
+            r"importlib",
+            r"__\w+__",  # __package__, __name__, etc.
+            r"pkg_resources",
+            r"get_distribution",
+            r"VERSION\b",
+        ]
+
+        for pattern in invalid_patterns:
+            if re.search(pattern, version, re.IGNORECASE):
+                return False
+
+        # A valid version should match semver-like patterns
+        # e.g., "1.2.3", "0.1.0", "2.0.0-beta.1"
+        version_pattern = r"^\d+(\.\d+)*(-[\w.]+)?(\+[\w.]+)?$"
+        return bool(re.match(version_pattern, version))
