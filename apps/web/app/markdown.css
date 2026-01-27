@@ -287,6 +287,11 @@
   margin-bottom: 0.5rem;
 }
 
+.markdown-compact li {
+  font-size: 0.875rem; /* text-sm */
+  color: var(--text-secondary);
+}
+
 /* Dark mode inline code adjustment */
 .dark .markdown-content code:not(pre code) {
   background-color: var(--bg-secondary);

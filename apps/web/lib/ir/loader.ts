@@ -1492,7 +1492,7 @@ export async function getSymbolOptimized(
 /**
  * Kind prefixes used in URLs that should be stripped when looking up symbols
  */
-const KIND_PREFIXES = [
+export const KIND_PREFIXES = [
   "modules",
   "classes",
   "functions",
@@ -1501,7 +1501,7 @@ const KIND_PREFIXES = [
   "enums",
   "variables",
   "methods",
-  "propertys",
+  "properties",
   "namespaces",
 ];
 

@@ -32,6 +32,8 @@ interface VersionSwitcherProps {
   packageId: string;
   /** Current version from URL (null = latest) */
   currentVersion?: string | null;
+  /** The actual latest version number (e.g., "1.2.3") */
+  latestVersion?: string;
   /** Additional class names */
   className?: string;
 }
@@ -46,6 +48,7 @@ export function VersionSwitcher({
   language,
   packageId,
   currentVersion,
+  latestVersion,
   className,
 }: VersionSwitcherProps) {
   const router = useRouter();
@@ -137,7 +140,11 @@ export function VersionSwitcher({
         >
           <History className="h-3.5 w-3.5 text-gray-400" />
           <span className="font-mono">
-            {displayVersion === "latest" ? "latest" : `v${displayVersion}`}
+            {displayVersion === "latest"
+              ? latestVersion
+                ? `v${latestVersion} (latest)`
+                : "latest"
+              : `v${displayVersion}`}
           </span>
           <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
         </button>
@@ -172,7 +179,9 @@ export function VersionSwitcher({
               "outline-none focus:bg-gray-100 dark:focus:bg-gray-800",
             )}
           >
-            <span className="font-mono font-medium">latest</span>
+            <span className="font-mono font-medium">
+              {latestVersion ? `v${latestVersion} (latest)` : "latest"}
+            </span>
             {!currentVersion && <Check className="h-4 w-4 text-primary" />}
           </DropdownMenu.Item>
 
