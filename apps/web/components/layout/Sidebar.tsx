@@ -161,9 +161,8 @@ function SidebarDivider() {
  * Package section with group header (Mintlify style)
  *
  * Shows the package name as a clickable header. If the package has curated
- * subpages, they're listed below with an Overview link. If not, but it has
- * named sub-modules (exports), they're listed below. Otherwise, users click
- * the package name to explore its contents.
+ * subpages, they're shown in a collapsible section below with an Overview link.
+ * If the package has no subpages, clicking the header navigates directly to it.
  */
 function PackageSection({
   package: pkg,
@@ -177,9 +176,69 @@ function PackageSection({
   const hasItems = pkg.items.length > 0;
   const hasNavigation = hasSubpages || hasItems;
 
+  // Auto-expand if current path matches the package or any of its subpages
+  const [isExpanded, setIsExpanded] = useState(isPackageActive);
+
+  // If a package has subpages, show as collapsible; otherwise show as direct link
+  if (hasSubpages) {
+    return (
+      <div className="my-2">
+        {/* Collapsible header with chevron */}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={cn(
+            "sidebar-group-header flex items-center gap-2.5 pl-4 pr-3 w-full",
+            "hover:opacity-80 transition-opacity cursor-pointer",
+            hasNavigation ? "mb-1" : "mb-0",
+          )}
+          aria-expanded={isExpanded}
+          aria-label={`Toggle ${pkg.name} section`}
+        >
+          <h5
+            id="sidebar-title"
+            className={cn(
+              "font-semibold text-xs uppercase tracking-wide flex-1 text-left",
+              isPackageActive
+                ? "text-primary dark:text-primary-light"
+                : "text-gray-700 dark:text-gray-300",
+            )}
+          >
+            {pkg.name}
+          </h5>
+          <ChevronRight
+            className={cn(
+              "w-3 h-3 transition-transform duration-200",
+              "text-gray-400 dark:text-gray-500",
+              isExpanded && "rotate-90",
+            )}
+            strokeWidth={2}
+          />
+        </button>
+
+        {/* Collapsible content */}
+        {isExpanded && (
+          <ul id="sidebar-group" className="sidebar-group list-none space-y-px mt-1">
+            {/* Overview link - leads to the package page */}
+            <SubpageLink title="Overview" path={pkg.path} currentPath={currentPath} />
+            {/* Subpage links */}
+            {pkg.subpages!.map((subpage) => (
+              <SubpageLink
+                key={subpage.slug}
+                title={subpage.title}
+                path={subpage.path}
+                currentPath={currentPath}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
+  // No subpages - show as direct link
   return (
     <div className="my-2">
-      {/* Group header - clickable link to package index */}
+      {/* Direct link to package */}
       <Link
         href={pkg.path}
         className={cn(
@@ -201,25 +260,8 @@ function PackageSection({
         </h5>
       </Link>
 
-      {/* Subpages - shown if package has curated subpages */}
-      {hasSubpages && (
-        <ul id="sidebar-group" className="sidebar-group list-none space-y-px">
-          {/* Overview link */}
-          <SubpageLink title="Overview" path={pkg.path} currentPath={currentPath} />
-          {/* Subpage links */}
-          {pkg.subpages!.map((subpage) => (
-            <SubpageLink
-              key={subpage.slug}
-              title={subpage.title}
-              path={subpage.path}
-              currentPath={currentPath}
-            />
-          ))}
-        </ul>
-      )}
-
-      {/* Group items - only shown if package has named sub-modules and no subpages */}
-      {!hasSubpages && hasItems && (
+      {/* Group items - only shown if package has named sub-modules */}
+      {hasItems && (
         <ul id="sidebar-group" className="sidebar-group list-none space-y-px">
           {pkg.items.map((item, index) => (
             <NavItemLink key={`${item.path}-${index}`} item={item} currentPath={currentPath} />
@@ -250,7 +292,7 @@ function SubpageLink({
         href={path}
         className={cn(
           "group flex items-center pr-3 py-1.5 cursor-pointer gap-x-3 text-left rounded-xl w-full",
-          "-outline-offset-1 pl-4",
+          "-outline-offset-1 pl-7",
           isActive
             ? "bg-primary/10 text-primary dark:text-primary-light dark:bg-primary-light/10 font-medium"
             : "hover:bg-gray-600/5 dark:hover:bg-gray-200/5 text-gray-700 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300",

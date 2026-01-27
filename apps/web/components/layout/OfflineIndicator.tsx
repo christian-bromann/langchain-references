@@ -60,7 +60,7 @@ export function OfflineIndicator() {
   // Don't render if cache context is not available
   if (!cache) return null;
 
-  const { cacheStats, refreshStats, clearCache, hasUpdate, applyUpdate } = cache;
+  const { cacheStats, refreshStats, clearCache, hasUpdate, isLoading, applyUpdate } = cache;
 
   const handleClearCache = async () => {
     setIsClearing(true);
@@ -82,12 +82,20 @@ export function OfflineIndicator() {
             <p className="text-sm text-primary-foreground/80 mt-1">
               A new version is ready. Refresh to get the latest content.
             </p>
-            <button
-              onClick={applyUpdate}
-              className="mt-2 text-sm font-medium underline hover:no-underline"
-            >
-              Update now
-            </button>
+            {isLoading ? (
+              <p className="mt-2 text-sm text-primary-foreground/80">
+                Press{" "}
+                <kbd className="px-1.5 py-0.5 mx-0.5 rounded bg-white/20 font-mono text-xs">F5</kbd>{" "}
+                to reload
+              </p>
+            ) : (
+              <button
+                onClick={applyUpdate}
+                className="mt-2 text-sm font-medium underline hover:no-underline cursor-pointer"
+              >
+                Update now
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -446,44 +446,51 @@ function MobilePackageSection({
   const isPackageActive = currentPath === pkg.path || currentPath.startsWith(pkg.path + "/");
   const hasSubpages = pkg.subpages && pkg.subpages.length > 0;
   const hasItems = pkg.items.length > 0;
+  // Auto-expand if current path matches the package or any of its subpages
   const [isExpanded, setIsExpanded] = useState(isPackageActive);
 
-  return (
-    <div className="px-2">
-      {/* Package Header */}
-      <button
-        type="button"
-        onClick={() => setIsExpanded(!isExpanded)}
-        className={cn(
-          "w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors",
-          isPackageActive ? "bg-primary/5" : "hover:bg-gray-50 dark:hover:bg-gray-800/50",
-        )}
-      >
-        <span
+  // If package has subpages, show as collapsible; otherwise show as direct link
+  if (hasSubpages) {
+    return (
+      <div className="px-2">
+        {/* Collapsible Package Header with chevron */}
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
           className={cn(
-            "font-semibold text-sm uppercase tracking-wide",
-            isPackageActive
-              ? "text-primary dark:text-primary-light"
-              : "text-gray-700 dark:text-gray-300",
+            "w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors",
+            isPackageActive ? "bg-primary/5" : "hover:bg-gray-50 dark:hover:bg-gray-800/50",
           )}
+          aria-expanded={isExpanded}
+          aria-label={`Toggle ${pkg.name} section`}
         >
-          {pkg.name}
-        </span>
-        <ChevronRight
-          className={cn("h-4 w-4 transition-transform text-gray-400", isExpanded && "rotate-90")}
-        />
-      </button>
+          <span
+            className={cn(
+              "font-semibold text-sm uppercase tracking-wide",
+              isPackageActive
+                ? "text-primary dark:text-primary-light"
+                : "text-gray-700 dark:text-gray-300",
+            )}
+          >
+            {pkg.name}
+          </span>
+          <ChevronRight
+            className={cn(
+              "h-4 w-4 transition-transform duration-200 text-gray-400",
+              isExpanded && "rotate-90",
+            )}
+          />
+        </button>
 
-      {/* Expanded Content */}
-      {isExpanded && (
-        <div className="mt-1 space-y-0.5">
-          {/* Overview link (always shown if package has subpages or items) */}
-          {(hasSubpages || hasItems) && (
+        {/* Expanded Content */}
+        {isExpanded && (
+          <div className="mt-1 space-y-0.5">
+            {/* Overview link - leads to the package page */}
             <Link
               href={pkg.path}
               onClick={onClose}
               className={cn(
-                "block px-4 py-2 rounded-lg text-sm transition-colors ml-2",
+                "block py-2 rounded-lg text-sm transition-colors ml-4 pl-3 pr-4",
                 currentPath === pkg.path
                   ? "bg-primary/10 text-primary dark:text-primary-light font-medium"
                   : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-gray-200",
@@ -491,17 +498,15 @@ function MobilePackageSection({
             >
               Overview
             </Link>
-          )}
 
-          {/* Subpages */}
-          {hasSubpages &&
-            pkg.subpages!.map((subpage) => (
+            {/* Subpage links */}
+            {pkg.subpages!.map((subpage) => (
               <Link
                 key={subpage.slug}
                 href={subpage.path}
                 onClick={onClose}
                 className={cn(
-                  "block px-4 py-2 rounded-lg text-sm transition-colors ml-2",
+                  "block py-2 rounded-lg text-sm transition-colors ml-4 pl-3 pr-4",
                   currentPath === subpage.path
                     ? "bg-primary/10 text-primary dark:text-primary-light font-medium"
                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-gray-200",
@@ -510,18 +515,40 @@ function MobilePackageSection({
                 {subpage.title}
               </Link>
             ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
-          {/* Module/Export items (if no subpages) */}
-          {!hasSubpages &&
-            hasItems &&
-            pkg.items.map((item) => (
-              <MobileNavItem
-                key={item.path}
-                item={item}
-                currentPath={currentPath}
-                onClose={onClose}
-              />
-            ))}
+  // No subpages - show as direct link (no chevron)
+  return (
+    <div className="px-2">
+      {/* Direct link to package */}
+      <Link
+        href={pkg.path}
+        onClick={onClose}
+        className={cn(
+          "w-full flex items-center px-3 py-2.5 rounded-lg transition-colors",
+          isPackageActive
+            ? "bg-primary/5 text-primary dark:text-primary-light"
+            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50",
+        )}
+      >
+        <span className="font-semibold text-sm uppercase tracking-wide">{pkg.name}</span>
+      </Link>
+
+      {/* Module/Export items (shown below for packages with items but no subpages) */}
+      {hasItems && (
+        <div className="mt-1 space-y-0.5">
+          {pkg.items.map((item) => (
+            <MobileNavItem
+              key={item.path}
+              item={item}
+              currentPath={currentPath}
+              onClose={onClose}
+            />
+          ))}
         </div>
       )}
     </div>
