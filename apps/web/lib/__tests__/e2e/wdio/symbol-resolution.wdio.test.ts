@@ -235,20 +235,27 @@ describe("Symbol Resolution", () => {
       const mainContent = await $(SELECTORS.mainContent);
       await mainContent.waitForDisplayed({ timeout: 15000 });
 
-      // Check for description text
-      const paragraphs = await $$(SELECTORS.packageDescription);
-      let hasDescription = false;
+      // Wait for description text to appear
+      await browser.waitUntil(
+        async () => {
+          const paragraphs = await $$(SELECTORS.packageDescription);
+          const paragraphsCount = await paragraphs.length;
+          if (paragraphsCount === 0) return false;
 
-      for (const p of paragraphs) {
-        const text = await p.getText();
-        if (text && text.length > 20) {
-          hasDescription = true;
-          console.log(`  Found description: "${text.substring(0, 50)}..."`);
-          break;
-        }
-      }
-
-      expect(hasDescription).toBe(true);
+          for (const p of paragraphs) {
+            const text = await p.getText();
+            if (text && text.length > 20) {
+              console.log(`  Found description: "${text.substring(0, 50)}..."`);
+              return true;
+            }
+          }
+          return false;
+        },
+        {
+          timeout: 10000,
+          timeoutMsg: "Expected package description with at least 20 characters",
+        },
+      );
       console.log(`  ✓ Package has documentation content`);
     });
 
