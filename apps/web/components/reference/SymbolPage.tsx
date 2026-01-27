@@ -3,19 +3,18 @@
  *
  * Displays detailed documentation for a single symbol (class, function, etc.)
  *
- * STREAMING OPTIMIZATION:
- * This component uses React Suspense for progressive rendering:
- * 1. Shell (breadcrumbs + header) renders immediately
- * 2. Main content streams when symbol data loads
- * 3. Inherited members stream last (slowest due to cross-package lookups)
+ * This component loads symbol data including:
+ * - Main symbol content (signature, docs, members)
+ * - Inherited members from base classes (for classes and interfaces)
+ *
+ * Inherited members are resolved synchronously to ensure they appear in both
+ * the Table of Contents sidebar and the main content area.
  */
 
 import Link from "next/link";
-import { Suspense } from "react";
 import { ChevronRight, ExternalLink } from "lucide-react";
 import { symbolLanguageToLanguage } from "@langchain/ir-schema";
 import { getProjectForPackage } from "@/lib/config/projects";
-import { InheritedMembersSkeleton } from "./skeletons";
 
 import { cn } from "@/lib/utils/cn";
 import type { UrlLanguage } from "@/lib/utils/url";
@@ -1360,28 +1359,35 @@ export async function SymbolPage({
         log(`member symbols done (${memberResults.filter(Boolean).length} found)`);
       }
 
-      // STREAMING OPTIMIZATION: Don't await inherited members here.
-      // They will be loaded and streamed via Suspense in the render phase.
-      // This allows the main symbol content to render immediately.
-      symbol = toDisplaySymbol(irSymbol, memberSymbols, undefined);
+      // Resolve inherited members synchronously so they're available for TOC and content
+      let inheritedMembers: InheritedMemberGroup[] | undefined;
+      if (
+        (irSymbol.kind === "class" || irSymbol.kind === "interface") &&
+        irSymbol.relations?.extends &&
+        irSymbol.relations.extends.length > 0
+      ) {
+        log(`resolving inherited members from ${irSymbol.relations.extends.length} base classes`);
+        const ownMemberNames = irSymbol.members?.map((m) => m.name) || [];
+        // Pass current package symbols to avoid re-fetching them
+        const currentPackageSymbols = memberSymbols
+          ? Array.from(memberSymbols.values())
+          : undefined;
+        inheritedMembers = await resolveInheritedMembers(
+          buildId,
+          packageId,
+          irSymbol.relations.extends,
+          ownMemberNames,
+          currentPackageSymbols,
+        );
+        log(`inherited members resolved: ${inheritedMembers?.length || 0} groups`);
+      }
+
+      symbol = toDisplaySymbol(irSymbol, memberSymbols, inheritedMembers);
     }
   }
 
-  // STREAMING: Prepare data for async inherited members resolution
-  // This will be passed to a Suspense-wrapped component
-  const inheritedMembersData =
-    buildId &&
-    irSymbolForMarkdown &&
-    (irSymbolForMarkdown.kind === "class" || irSymbolForMarkdown.kind === "interface") &&
-    irSymbolForMarkdown.relations?.extends &&
-    irSymbolForMarkdown.relations.extends.length > 0
-      ? {
-          buildId,
-          packageId,
-          baseClassNames: irSymbolForMarkdown.relations.extends,
-          ownMemberNames: irSymbolForMarkdown.members?.map((m) => m.name) || [],
-        }
-      : null;
+  // Store inherited groups for rendering (already resolved above)
+  const resolvedInheritedGroups = symbol?.inheritedMembers;
 
   log(`data loading complete, symbol=${!!symbol}`);
 
@@ -1637,18 +1643,13 @@ export async function SymbolPage({
             />
           )}
 
-          {/* Inherited members from base classes - streamed via Suspense */}
-          {inheritedMembersData && (
-            <Suspense fallback={<InheritedMembersSkeleton />}>
-              <AsyncInheritedMembers
-                buildId={inheritedMembersData.buildId}
-                packageId={inheritedMembersData.packageId}
-                baseClassNames={inheritedMembersData.baseClassNames}
-                ownMemberNames={inheritedMembersData.ownMemberNames}
-                language={language}
-                packageName={packageName}
-              />
-            </Suspense>
+          {/* Inherited members from base classes */}
+          {resolvedInheritedGroups && resolvedInheritedGroups.length > 0 && (
+            <InheritedMembersSection
+              inheritedGroups={resolvedInheritedGroups}
+              language={language}
+              packageName={packageName}
+            />
           )}
 
           {/* Source link */}
@@ -2323,47 +2324,6 @@ function InheritedMembersSection({
         );
       })}
     </div>
-  );
-}
-
-/**
- * Async component for streaming inherited members via Suspense.
- * This loads inherited member data asynchronously and renders when ready.
- */
-async function AsyncInheritedMembers({
-  buildId,
-  packageId,
-  baseClassNames,
-  ownMemberNames,
-  language,
-  packageName,
-}: {
-  buildId: string;
-  packageId: string;
-  baseClassNames: string[];
-  ownMemberNames: string[];
-  language: UrlLanguage;
-  packageName: string;
-}) {
-  // Resolve inherited members (this is the slow operation)
-  const inheritedGroups = await resolveInheritedMembers(
-    buildId,
-    packageId,
-    baseClassNames,
-    ownMemberNames,
-  );
-
-  // If no inherited members found, render nothing
-  if (!inheritedGroups || inheritedGroups.length === 0) {
-    return null;
-  }
-
-  return (
-    <InheritedMembersSection
-      inheritedGroups={inheritedGroups}
-      language={language}
-      packageName={packageName}
-    />
   );
 }
 

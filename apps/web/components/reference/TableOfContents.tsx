@@ -9,7 +9,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, List, X } from "lucide-react";
+import { ChevronDown, ChevronRight, List, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { CopyPageButton } from "./CopyPageButton";
 import { PageContextMenu } from "./PageContextMenu";
@@ -254,12 +254,11 @@ function CollapsibleSectionWithCallback({
         className="flex items-center gap-1.5 w-full py-1 text-left text-sm font-medium text-foreground hover:text-primary transition-colors"
         aria-expanded={isOpen}
       >
-        <ChevronDown
-          className={cn(
-            "h-3 w-3 shrink-0 text-foreground-muted transition-transform duration-200",
-            isOpen && "rotate-180",
-          )}
-        />
+        {isOpen ? (
+          <ChevronDown className="h-3 w-3 shrink-0 text-foreground-muted" />
+        ) : (
+          <ChevronRight className="h-3 w-3 shrink-0 text-foreground-muted" />
+        )}
         <span className="truncate">{section.title}</span>
       </button>
 
@@ -310,12 +309,11 @@ function NestedCollapsibleSectionWithCallback({
         className="flex items-center gap-1.5 w-full py-0.5 text-left text-xs text-foreground-secondary hover:text-primary transition-colors"
         aria-expanded={isOpen}
       >
-        <ChevronDown
-          className={cn(
-            "h-2.5 w-2.5 shrink-0 text-foreground-muted transition-transform duration-200",
-            isOpen && "rotate-180",
-          )}
-        />
+        {isOpen ? (
+          <ChevronDown className="h-2.5 w-2.5 shrink-0 text-foreground-muted" />
+        ) : (
+          <ChevronRight className="h-2.5 w-2.5 shrink-0 text-foreground-muted" />
+        )}
         <SectionIcon title={section.title} size="small" />
         <span className="truncate">{section.title}</span>
       </button>
@@ -362,12 +360,11 @@ function InheritedGroupSectionWithCallback({
         className="flex items-center gap-1.5 w-full py-1 text-left text-xs text-foreground-secondary hover:text-primary transition-colors"
         aria-expanded={isOpen}
       >
-        <ChevronDown
-          className={cn(
-            "h-3 w-3 shrink-0 text-foreground-muted transition-transform duration-200",
-            isOpen && "rotate-180",
-          )}
-        />
+        {isOpen ? (
+          <ChevronDown className="h-3 w-3 shrink-0 text-foreground-muted" />
+        ) : (
+          <ChevronRight className="h-3 w-3 shrink-0 text-foreground-muted" />
+        )}
         <span className="truncate">
           <span className="text-foreground-muted">from </span>
           <span className="font-mono font-medium text-foreground">{group.baseName}</span>
