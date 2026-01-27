@@ -24,8 +24,9 @@ describe("SymbolPage Performance", () => {
 
       const start = performance.now();
 
+      const excludedKinds = new Set(["module", "parameter", "constructor"]);
       for (const [slug, entry] of Object.entries(routingMap.slugs)) {
-        if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
+        if (!excludedKinds.has(entry.kind)) {
           knownSymbols.set(entry.title, slug);
         }
       }
@@ -276,8 +277,9 @@ describe("SymbolPage Performance", () => {
 
       // 2. Build knownSymbols
       const knownSymbols = new Map<string, string>();
+      const excludedKinds = new Set(["module", "parameter", "constructor"]);
       for (const [slug, entry] of Object.entries(routingMap.slugs)) {
-        if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
+        if (!excludedKinds.has(entry.kind)) {
           knownSymbols.set(entry.title, slug);
         }
       }

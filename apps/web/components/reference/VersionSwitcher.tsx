@@ -83,6 +83,7 @@ export function VersionSwitcher({
       setVersions(data);
       setHasLoaded(true);
     } catch (err) {
+      // oxlint-disable-next-line no-console
       console.error("Failed to load versions:", err);
       setVersions([]);
       setHasLoaded(true);

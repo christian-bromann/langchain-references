@@ -937,11 +937,15 @@ async function fetchRoutingMap(buildId: string, packageId: string): Promise<Rout
 /**
  * Cached version of fetchRoutingMap.
  * Uses Next.js unstable_cache to persist data across function invocations.
+ * In development, bypass cache to pick up changes immediately.
  */
-const getCachedRoutingMap = unstable_cache(fetchRoutingMap, ["routing-map"], {
-  revalidate: 3600, // 1 hour
-  tags: ["routing-map"],
-});
+const getCachedRoutingMap =
+  process.env.NODE_ENV === "development"
+    ? fetchRoutingMap
+    : unstable_cache(fetchRoutingMap, ["routing-map"], {
+        revalidate: 3600, // 1 hour
+        tags: ["routing-map"],
+      });
 
 /**
  * In-flight promise cache for routing map fetches.
@@ -2028,8 +2032,11 @@ async function fetchCrossProjectPackagesData(language: Language): Promise<CrossP
           const isPython = language === "python";
 
           if (routingMap?.slugs) {
+            // Include most symbol kinds that can appear in type annotations or as default values
+            // Exclude: module (not referenced in types), parameter (no pages), constructor (called, not typed)
+            const excludedKinds = new Set(["module", "parameter", "constructor"]);
             for (const [slug, entry] of Object.entries(routingMap.slugs)) {
-              if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
+              if (!excludedKinds.has(entry.kind)) {
                 // Map symbol name to its URL path (slug)
                 knownSymbols.push([entry.title, slug]);
 

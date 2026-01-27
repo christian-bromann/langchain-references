@@ -20,6 +20,7 @@ export default class DevServerService {
   private serverProcess: ChildProcess | null = null;
   private outputBuffer: string[] = [];
   private errorBuffer: string[] = [];
+  private serverAlreadyRunning = false;
 
   /**
    * Add output to a circular buffer, keeping only the last N lines.
@@ -30,6 +31,21 @@ export default class DevServerService {
     // Keep only the last N lines
     while (buffer.length > MAX_OUTPUT_BUFFER_LINES) {
       buffer.shift();
+    }
+  }
+
+  /**
+   * Check if the dev server is already running and healthy.
+   * This prevents killing a server started by a parallel test run.
+   */
+  private async isServerHealthy(): Promise<boolean> {
+    try {
+      const response = await fetch(`${DEV_SERVER_URL}/api/prewarm`, {
+        signal: AbortSignal.timeout(2000),
+      });
+      return response.ok;
+    } catch {
+      return false;
     }
   }
 
@@ -73,9 +89,20 @@ export default class DevServerService {
    * This runs once before any test sessions begin.
    */
   async onPrepare(): Promise<void> {
+    console.log("[DevServerService] Checking if dev server is already running...");
+
+    // First, check if a healthy dev server is already running (from parallel test run)
+    if (await this.isServerHealthy()) {
+      console.log(
+        `[DevServerService] Dev server already running at ${DEV_SERVER_URL}, reusing existing instance`,
+      );
+      this.serverAlreadyRunning = true;
+      return;
+    }
+
     console.log("[DevServerService] Starting development servers (web + IR)...");
 
-    // Kill any existing process on the port from previous runs
+    // Kill any existing process on the port from previous runs (unhealthy/stale processes)
     this.killProcessOnPort(DEV_SERVER_PORT);
     this.killProcessOnPort(3001); // IR server port
 
@@ -202,6 +229,14 @@ export default class DevServerService {
    * Stop the dev server after all tests complete.
    */
   async onComplete(): Promise<void> {
+    // Don't kill the server if we didn't start it (reused from parallel run)
+    if (this.serverAlreadyRunning) {
+      console.log(
+        "[DevServerService] Server was already running before tests, leaving it running for other test runs",
+      );
+      return;
+    }
+
     if (this.serverProcess && this.serverProcess.pid) {
       console.log("[DevServerService] Stopping dev server...");
 

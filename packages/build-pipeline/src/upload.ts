@@ -248,16 +248,28 @@ export function generateRoutingMap(
 
   for (const symbol of symbols) {
     // Only include routable symbol kinds
+    // Include variable, attribute, and alias for Python type aliases (e.g., ContextSize, TokenCounter)
     if (
-      !["class", "function", "interface", "module", "typeAlias", "enum", "method"].includes(
-        symbol.kind,
-      )
+      ![
+        "class",
+        "function",
+        "interface",
+        "module",
+        "typeAlias",
+        "enum",
+        "method",
+        "variable",
+        "attribute",
+        "alias",
+      ].includes(symbol.kind)
     ) {
       continue;
     }
 
     // Only include public symbols
-    if (symbol.tags?.visibility !== "public") {
+    // Treat undefined visibility as public (Python convention: public unless prefixed with _)
+    const visibility = symbol.tags?.visibility;
+    if (visibility && visibility !== "public") {
       continue;
     }
 
@@ -287,14 +299,17 @@ function mapKindToPageType(kind: string): RoutingMap["slugs"][string]["pageType"
     case "class":
       return "class";
     case "function":
+    case "method":
       return "function";
     case "interface":
       return "interface";
     case "typeAlias":
+    case "alias":
       return "type";
     case "enum":
       return "enum";
     case "variable":
+    case "attribute":
       return "variable";
     default:
       return "module";

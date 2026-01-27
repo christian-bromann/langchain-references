@@ -1203,9 +1203,12 @@ export async function SymbolPage({
 
     // Build knownSymbols map for local type linking
     // This iterates over routing map entries but is just CPU work (no I/O), so it's fast
+    // Include most symbol kinds that can appear in type annotations or as default values
+    // Exclude: module (not referenced in types), parameter (no pages), constructor (called, not typed)
+    const excludedKinds = new Set(["module", "parameter", "constructor"]);
     if (routingMap?.slugs) {
       for (const [slug, entry] of Object.entries(routingMap.slugs)) {
-        if (["class", "interface", "typeAlias", "enum"].includes(entry.kind)) {
+        if (!excludedKinds.has(entry.kind)) {
           // Map symbol name to its URL path (slug)
           knownSymbols.set(entry.title, slug);
         }
@@ -1557,6 +1560,7 @@ export async function SymbolPage({
                 knownSymbols={knownSymbols}
                 packageName={packageName}
                 typeUrlMap={typeUrlMap}
+                currentSymbolName={symbol.name}
                 className="rounded-lg"
               />
             ))}

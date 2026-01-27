@@ -24,6 +24,8 @@ interface SignatureBlockProps {
   packageName: string;
   /** Map of type names to their resolved URLs (for cross-project linking) */
   typeUrlMap?: Map<string, string>;
+  /** Current symbol name to exclude from linking (avoids self-referential links) */
+  currentSymbolName?: string;
   /** Additional CSS classes */
   className?: string;
 }
@@ -121,6 +123,7 @@ const PYTHON_KEYWORDS = new Set([
 
 /**
  * Tokenize a signature string for rendering with syntax highlighting and links.
+ * Uses context tracking to distinguish parameter names (before :) from types (after :).
  */
 function tokenizeSignature(
   signature: string,
@@ -128,6 +131,7 @@ function tokenizeSignature(
   knownSymbols: Map<string, string>,
   packageName: string,
   typeUrlMap?: Map<string, string>,
+  currentSymbolName?: string,
 ): Token[] {
   const tokens: Token[] = [];
   // Map language to URL path segment (typescript maps to javascript for URL paths)
@@ -141,6 +145,13 @@ function tokenizeSignature(
   const langPath = langPathMap[language] || language;
   const pkgSlug = slugifyPackageName(packageName);
 
+  // Context tracking: are we in a type position or parameter name position?
+  // After '(' or ',' or newline: expect parameter name
+  // After ':': expect type
+  // After '=' in default value: values, not types (but could be type references)
+  let inTypePosition = false;
+  let afterEquals = false;
+
   // Regex patterns for different token types
   // Match: identifiers, operators, punctuation (including angle brackets for generics, dots for member access), strings, numbers
   const tokenPattern =
@@ -153,6 +164,11 @@ function tokenizeSignature(
 
     if (whitespace) {
       tokens.push({ type: "plain", value: whitespace });
+      // Newlines reset to parameter position (for multi-line signatures)
+      if (whitespace.includes("\n")) {
+        inTypePosition = false;
+        afterEquals = false;
+      }
     } else if (stringLit) {
       tokens.push({ type: "string", value: stringLit });
     } else if (numberLit) {
@@ -165,16 +181,45 @@ function tokenizeSignature(
       } else {
         tokens.push({ type: "punctuation", value: operator });
       }
+
+      // Update context based on operator
+      if (operator === ":") {
+        inTypePosition = true;
+        afterEquals = false;
+      } else if (operator === "=" && !afterEquals) {
+        // After = we're in default value position
+        afterEquals = true;
+        inTypePosition = false;
+      } else if (operator === "," || operator === "(") {
+        // After comma or opening paren, next identifier is a parameter name
+        inTypePosition = false;
+        afterEquals = false;
+      }
     } else if (identifier) {
       // Check if it's a keyword
       if (PYTHON_KEYWORDS.has(identifier)) {
         tokens.push({ type: "keyword", value: identifier });
       }
-      // Check if we have a pre-computed URL for this type (cross-project linking)
-      else if (typeUrlMap?.has(identifier)) {
-        tokens.push({ type: "type-link", value: identifier, href: typeUrlMap.get(identifier)! });
+      // Skip linking if this is the current symbol (avoid self-referential links)
+      else if (currentSymbolName && identifier === currentSymbolName) {
+        // Render as a type without a link
+        if (/^[A-Z]/.test(identifier)) {
+          tokens.push({ type: "type", value: identifier });
+        } else {
+          tokens.push({ type: "parameter", value: identifier });
+        }
       }
-      // Check if it's a known symbol in the current package
+      // If we're NOT in a type position, this is a parameter name - don't link it
+      else if (!inTypePosition && !afterEquals) {
+        tokens.push({ type: "parameter", value: identifier });
+      }
+      // Check if it's a built-in type with external documentation FIRST
+      // This prevents common names like 'list', 'int', 'str' from matching random cross-project symbols
+      else if (getBuiltinTypeDocUrl(identifier, language)) {
+        const builtinUrl = getBuiltinTypeDocUrl(identifier, language)!;
+        tokens.push({ type: "type-external", value: identifier, href: builtinUrl });
+      }
+      // Check if it's a known symbol in the current package (local takes precedence)
       else if (knownSymbols.has(identifier)) {
         const symbolPath = knownSymbols.get(identifier)!;
         // Use slugifySymbolPath to properly strip package prefix for Python
@@ -183,14 +228,15 @@ function tokenizeSignature(
         const href = `/${langPath}/${pkgSlug}/${urlPath}`;
         tokens.push({ type: "type-link", value: identifier, href });
       }
-      // Check if it's a built-in type with external documentation
+      // Check if we have a pre-computed URL for this type (cross-project linking)
+      // This is checked AFTER builtins and local symbols
+      else if (typeUrlMap?.has(identifier)) {
+        tokens.push({ type: "type-link", value: identifier, href: typeUrlMap.get(identifier)! });
+      }
+      // Fallback for unknown identifiers
       else {
-        const builtinUrl = getBuiltinTypeDocUrl(identifier, language);
-        if (builtinUrl) {
-          tokens.push({ type: "type-external", value: identifier, href: builtinUrl });
-        }
         // Check if it looks like a type (PascalCase)
-        else if (/^[A-Z]/.test(identifier)) {
+        if (/^[A-Z]/.test(identifier)) {
           tokens.push({ type: "type", value: identifier });
         }
         // Otherwise it's a parameter or plain identifier
@@ -273,9 +319,17 @@ export function SignatureBlock({
   knownSymbols,
   packageName,
   typeUrlMap,
+  currentSymbolName,
   className,
 }: SignatureBlockProps) {
-  const tokens = tokenizeSignature(signature, language, knownSymbols, packageName, typeUrlMap);
+  const tokens = tokenizeSignature(
+    signature,
+    language,
+    knownSymbols,
+    packageName,
+    typeUrlMap,
+    currentSymbolName,
+  );
 
   return (
     <div className={`relative group ${className || ""}`}>
