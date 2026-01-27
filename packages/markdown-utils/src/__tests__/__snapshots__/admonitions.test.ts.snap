@@ -1,0 +1,39 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`integration: full pipeline snapshot > should correctly process init_chat_model docstring example 1`] = `
+"<!--ADMON:eyJ0eXBlIjoiZXhhbXBsZSIsInRpdGxlIjoiSW5pdGlhbGl6ZSBhIG5vbi1jb25maWd1cmFibGUgbW9kZWwiLCJpY29uIjoiPHN2ZyB4bWxucz1cImh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnXCIgd2lkdGg9XCIxNlwiIGhlaWdodD1cIjE2XCIgdmlld0JveD1cIjAgMCAyNCAyNFwiIGZpbGw9XCJub25lXCIgc3Ryb2tlPVwiY3VycmVudENvbG9yXCIgc3Ryb2tlLXdpZHRoPVwiMlwiIHN0cm9rZS1saW5lY2FwPVwicm91bmRcIiBzdHJva2UtbGluZWpvaW49XCJyb3VuZFwiPjxwYXRoIGQ9XCJNMTUgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMmgxMmEyIDIgMCAwIDAgMi0yVjdaXCIvPjxwYXRoIGQ9XCJNMTQgMnY0YTIgMiAwIDAgMCAyIDJoNFwiLz48cGF0aCBkPVwiTTEwIDlIOFwiLz48cGF0aCBkPVwiTTE2IDEzSDhcIi8+PHBhdGggZD1cIk0xNiAxN0g4XCIvPjwvc3ZnPiJ9-->
+
+\`\`\`python
+# pip install langchain langchain-openai
+
+from langchain.chat_models import init_chat_model
+
+o3_mini = init_chat_model("openai:o3-mini", temperature=0)
+o3_mini.invoke("what's your name")
+\`\`\`
+
+<!--/ADMON-->
+
+<!--ADMON:eyJ0eXBlIjoiZXhhbXBsZSIsInRpdGxlIjoiUGFydGlhbGx5IGNvbmZpZ3VyYWJsZSBtb2RlbCIsImljb24iOiI8c3ZnIHhtbG5zPVwiaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmdcIiB3aWR0aD1cIjE2XCIgaGVpZ2h0PVwiMTZcIiB2aWV3Qm94PVwiMCAwIDI0IDI0XCIgZmlsbD1cIm5vbmVcIiBzdHJva2U9XCJjdXJyZW50Q29sb3JcIiBzdHJva2Utd2lkdGg9XCIyXCIgc3Ryb2tlLWxpbmVjYXA9XCJyb3VuZFwiIHN0cm9rZS1saW5lam9pbj1cInJvdW5kXCI+PHBhdGggZD1cIk0xNSAySDZhMiAyIDAgMCAwLTIgMnYxNmEyIDIgMCAwIDAgMiAyaDEyYTIgMiAwIDAgMCAyLTJWN1pcIi8+PHBhdGggZD1cIk0xNCAydjRhMiAyIDAgMCAwIDIgMmg0XCIvPjxwYXRoIGQ9XCJNMTAgOUg4XCIvPjxwYXRoIGQ9XCJNMTYgMTNIOFwiLz48cGF0aCBkPVwiTTE2IDE3SDhcIi8+PC9zdmc+In0=-->
+
+\`\`\`python
+configurable_model = init_chat_model(temperature=0)
+configurable_model.invoke("what's your name", config={"configurable": {"model": "gpt-4o"}})
+\`\`\`
+
+<!--/ADMON-->"
+`;
+
+exports[`integration: full pipeline snapshot > should handle admonition with text and code 1`] = `
+"<!--ADMON:eyJ0eXBlIjoibm90ZSIsInRpdGxlIjoiU2V0dXAgSW5zdHJ1Y3Rpb25zIiwiaWNvbiI6Ijxzdmcgd2lkdGg9XCIxNFwiIGhlaWdodD1cIjE0XCIgdmlld0JveD1cIjAgMCAxNCAxNFwiIGZpbGw9XCJjdXJyZW50Q29sb3JcIiB4bWxucz1cImh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnXCI+PHBhdGggZmlsbC1ydWxlPVwiZXZlbm9kZFwiIGNsaXAtcnVsZT1cImV2ZW5vZGRcIiBkPVwiTTcgMS4zQzEwLjE0IDEuMyAxMi43IDMuODYgMTIuNyA3QzEyLjcgMTAuMTQgMTAuMTQgMTIuNyA3IDEyLjdDNS40ODkwOCAxMi42OTc0IDQuMDQwOCAxMi4wOTYgMi45NzI0MSAxMS4wMjc2QzEuOTA0MDMgOS45NTkyIDEuMzAyNjQgOC41MTA5MiAxLjMgN0MxLjMgMy44NiAzLjg2IDEuMyA3IDEuM1pNNyAwQzMuMTQgMCAwIDMuMTQgMCA3QzAgMTAuODYgMy4xNCAxNCA3IDE0QzEwLjg2IDE0IDE0IDEwLjg2IDE0IDdDMTQgMy4xNCAxMC44NiAwIDcgMFpNOCAzSDZWOEg4VjNaTTggOUg2VjExSDhWOVpcIi8+PC9zdmc+In0=-->
+
+First, install the required packages:
+
+\`\`\`bash
+pip install langchain
+\`\`\`
+
+Then configure your API key.
+
+<!--/ADMON-->"
+`;

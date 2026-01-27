@@ -1,9 +1,11 @@
 /**
  * Markdown Utilities
  *
- * Shared utilities for markdown processing including MkDocs admonition handling.
+ * Shared utilities for markdown processing including MkDocs admonition handling
+ * and docstring dedentation.
  */
 
+// Admonition processing
 export {
   ADMONITION_ICONS,
   DEFAULT_ADMONITION_ICON,
@@ -14,3 +16,6 @@ export {
   postProcessAdmonitions,
   processMkDocsContent,
 } from "./admonitions";
+
+// Dedent utilities
+export { dedentContent, dedentPrecedingContent, normalizeFencedCodeBlocks } from "./dedent";

@@ -5,6 +5,8 @@
  * Shared between the web app's MarkdownContent and the build pipeline's markdown renderer.
  */
 
+import { dedentContent, normalizeFencedCodeBlocks } from "./dedent";
+
 /**
  * Inline SVG icons for admonitions (Mintlify style, filled icons)
  */
@@ -412,12 +414,28 @@ export function postProcessAdmonitions(html: string): string {
 /**
  * Process MkDocs Material syntax in markdown content.
  * Converts admonitions to styled HTML and handles other MkDocs-specific syntax.
+ *
+ * The processing order is important:
+ * 1. Dedent content WITHOUT normalizing fenced code blocks (preserves indentation structure)
+ * 2. Convert admonitions (uses indentation to determine content boundaries)
+ * 3. Normalize remaining fenced code blocks (moves them to column 0)
+ *
+ * @param content - Raw markdown content (potentially from a docstring)
+ * @returns Processed content with admonition markers
  */
 export function processMkDocsContent(content: string): string {
   if (!content) return content;
 
-  // Convert MkDocs admonitions to styled HTML
-  let processed = convertAdmonitions(content);
+  // Step 1: Basic dedent WITHOUT normalizing fenced code blocks.
+  // This preserves the indentation structure needed for admonition parsing.
+  let processed = dedentContent(content, false);
+
+  // Step 2: Convert MkDocs admonitions while indentation structure is intact.
+  // convertAdmonitions handles dedenting content within admonitions.
+  processed = convertAdmonitions(processed);
+
+  // Step 3: Normalize any remaining fenced code blocks that weren't inside admonitions.
+  processed = normalizeFencedCodeBlocks(processed);
 
   // Clean up multiple blank lines
   processed = processed.replace(/\n{3,}/g, "\n\n");
