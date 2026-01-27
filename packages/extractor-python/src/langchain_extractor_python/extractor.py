@@ -643,6 +643,13 @@ class PythonExtractor:
     def _get_member_info(self, obj: GriffeObject) -> List[Dict[str, Any]]:
         """Get member information including kinds and types for classes/modules."""
         members = []
+
+        # For TypedDict classes, synthesize an __init__ constructor
+        if self._is_typeddict(obj):
+            init_member = self._synthesize_typeddict_init(obj)
+            if init_member:
+                members.append(init_member)
+
         if hasattr(obj, "members"):
             for name, member in obj.members.items():
                 if name.startswith("_"):
@@ -672,6 +679,82 @@ class PythonExtractor:
         if hasattr(obj, "bases"):
             return [str(base) for base in obj.bases]
         return []
+
+    def _is_typeddict(self, obj: GriffeObject) -> bool:
+        """
+        Check if a class is a TypedDict.
+
+        Args:
+            obj: The griffe object.
+
+        Returns:
+            True if the class inherits from TypedDict.
+        """
+        bases = self._get_bases(obj)
+        return any("TypedDict" in base for base in bases)
+
+    def _synthesize_typeddict_init(self, obj: GriffeObject) -> Optional[Dict[str, Any]]:
+        """
+        Synthesize an __init__ constructor for a TypedDict class.
+
+        TypedDict classes have a constructor signature derived from their typed attributes.
+
+        Args:
+            obj: The griffe object (TypedDict class).
+
+        Returns:
+            A constructor member info dictionary, or None if no attributes found.
+        """
+        if not hasattr(obj, "members"):
+            return None
+
+        # Collect typed attributes to form constructor parameters
+        params = []
+        for name, member in obj.members.items():
+            # Skip private members and methods
+            if name.startswith("_"):
+                continue
+
+            # Get the kind of member
+            kind = self._get_kind(member)
+            if kind != "attribute":
+                continue
+
+            # Get type annotation
+            type_annotation = ""
+            if hasattr(member, "annotation") and member.annotation:
+                annotation_str = str(member.annotation)
+                if annotation_str and not self._is_invalid_repr(annotation_str):
+                    type_annotation = annotation_str
+
+            params.append({
+                "name": name,
+                "type": type_annotation,
+            })
+
+        if not params:
+            return None
+
+        # Build the signature string
+        param_strs = []
+        for p in params:
+            if p["type"]:
+                param_strs.append(f"{p['name']}: {p['type']}")
+            else:
+                param_strs.append(p["name"])
+
+        if param_strs:
+            params_str = ",\n    ".join(param_strs)
+            signature = f"__init__(\n    {params_str},\n)"
+        else:
+            signature = "__init__()"
+
+        return {
+            "name": "__init__",
+            "kind": "constructor",
+            "signature": signature,
+            "params": params,
+        }
 
     def _get_decorators(self, obj: GriffeObject) -> List[str]:
         """Get decorator names for a callable."""

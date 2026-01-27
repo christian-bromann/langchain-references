@@ -733,12 +733,15 @@ async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | nul
 
     try {
       phase = "fetch";
-      const response = await withBlobFetchLimit(() =>
-        fetch(
-          url,
-          isLargeFile ? { cache: "no-store" } : { next: { revalidate: 3600 } }, // 1 hour for small files, prevents 404s from being cached forever
-        ),
-      );
+      // In development, disable caching to pick up file changes immediately
+      // In production, use time-based revalidation for small files
+      const isDev = process.env.NODE_ENV === "development";
+      const cacheOptions = isDev
+        ? { cache: "no-store" as const }
+        : isLargeFile
+          ? { cache: "no-store" as const }
+          : { next: { revalidate: 3600 } };
+      const response = await withBlobFetchLimit(() => fetch(url, cacheOptions));
 
       if (!response.ok) {
         // Don't retry 404s or client errors

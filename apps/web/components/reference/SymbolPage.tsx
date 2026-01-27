@@ -298,6 +298,8 @@ interface DisplayMember {
   signature?: string;
   /** Fully qualified name for the member (e.g., langchain_core.messages.base.merge_content) */
   qualifiedName?: string;
+  /** Constructor parameters (for synthesized constructors like TypedDict __init__) */
+  params?: Array<{ name: string; type?: string }>;
 }
 
 interface DocSection {
@@ -400,6 +402,12 @@ function toDisplaySymbol(
       m.type ||
       (memberSymbol ? extractTypeFromSignature(memberSymbol.signature, m.kind) : undefined);
 
+    // Get signature - prefer from member reference (synthesized constructors) or symbol
+    const signature = m.signature || memberSymbol?.signature;
+
+    // Get params from member reference (for synthesized constructors like TypedDict __init__)
+    const params = m.params;
+
     return {
       name: m.name,
       kind: m.kind,
@@ -408,9 +416,11 @@ function toDisplaySymbol(
       type,
       summary: memberSymbol?.docs?.summary,
       summaryHtml: memberSymbol?.docs?.summaryHtml,
-      signature: memberSymbol?.signature,
+      signature,
       // Use the actual qualified name from the symbol record (handles re-exports correctly)
       qualifiedName: memberSymbol?.qualifiedName,
+      // Include params for synthesized constructors
+      params,
     };
   });
 
@@ -2040,8 +2050,12 @@ async function MemberCard({
   const isMethodOrFunction =
     member.kind === "method" || member.kind === "function" || member.kind === "constructor";
 
+  // Synthesized constructors (e.g., TypedDict __init__) have params but no dedicated page
+  const isSynthesizedConstructor = member.kind === "constructor" && member.params;
+
   // Check if this member kind should be linked (has a dedicated page)
-  const isLinkable = LINKABLE_MEMBER_KINDS.has(member.kind);
+  // Synthesized constructors should not be linked since they don't have dedicated pages
+  const isLinkable = LINKABLE_MEMBER_KINDS.has(member.kind) && !isSynthesizedConstructor;
 
   // Use the member's actual qualifiedName if available (handles re-exports correctly)
   // Fall back to constructing from parent path for backwards compatibility
@@ -2106,6 +2120,53 @@ async function MemberCard({
             </span>
           )}
         </div>
+
+        {/* Show signature for synthesized constructors (e.g., TypedDict __init__) */}
+        {isSynthesizedConstructor && member.signature && (
+          <div className="mt-2">
+            <pre className="font-mono text-sm bg-background-tertiary rounded p-3 overflow-x-auto">
+              <code>{member.signature}</code>
+            </pre>
+          </div>
+        )}
+
+        {/* Show parameters table for synthesized constructors */}
+        {isSynthesizedConstructor && member.params && member.params.length > 0 && (
+          <div className="mt-3">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 px-3 font-medium text-foreground-secondary">
+                    Name
+                  </th>
+                  <th className="text-left py-2 px-3 font-medium text-foreground-secondary">
+                    Type
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {member.params.map((param) => (
+                  <tr key={param.name} className="border-b border-border">
+                    <td className="py-2 px-3 font-mono text-foreground">{param.name}</td>
+                    <td className="py-2 px-3 font-mono text-foreground-secondary">
+                      {param.type ? (
+                        <TypeReferenceDisplay
+                          typeStr={param.type}
+                          knownSymbols={knownSymbols}
+                          language={language}
+                          packageName={packageName}
+                          typeUrlMap={typeUrlMap}
+                        />
+                      ) : (
+                        "unknown"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Show summary - truncate for linkable members, show full for non-linkable (attributes) */}
         {member.summary && (

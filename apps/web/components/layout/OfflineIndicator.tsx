@@ -80,7 +80,7 @@ export function OfflineIndicator() {
           <div>
             <p className="font-medium">Update available</p>
             <p className="text-sm text-primary-foreground/80 mt-1">
-              A new version is ready. Refresh to get the latest features.
+              A new version is ready. Refresh to get the latest content.
             </p>
             <button
               onClick={applyUpdate}

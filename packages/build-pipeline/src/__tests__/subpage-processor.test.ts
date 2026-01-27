@@ -184,6 +184,57 @@ describe("parseSubpageMarkdown", () => {
         "package.utils.helper_func",
       ]);
     });
+
+    it("includes snake_case function names in members list", () => {
+      // This tests the real-world scenario from langchain agents.md
+      // where members include both PascalCase classes and snake_case functions
+      const content = `::: langchain.agents
+    options:
+      summary: false
+      group_by_category: false
+      parameter_headings: true
+      members:
+        - create_agent
+        - AgentState
+        - before_model
+        - after_model
+        - wrap_model_call
+        - wrap_tool_call
+        - dynamic-prompt
+        - ModelRequest`;
+      const result = parseSubpageMarkdown(content);
+      // Should include both PascalCase classes and snake_case functions
+      expect(result.symbolRefs).toEqual([
+        "langchain.agents.create_agent",
+        "langchain.agents.AgentState",
+        "langchain.agents.before_model",
+        "langchain.agents.after_model",
+        "langchain.agents.wrap_model_call",
+        "langchain.agents.wrap_tool_call",
+        "langchain.agents.dynamic-prompt",
+        "langchain.agents.ModelRequest",
+      ]);
+    });
+
+    it("excludes dunder methods and simple method names from members list", () => {
+      // Dunder methods and simple lowercase words are used as filters, not symbols
+      const content = `::: package.SomeClass
+    options:
+      members:
+        - __init__
+        - __call__
+        - run
+        - stop
+        - MyNestedClass
+        - helper_function`;
+      const result = parseSubpageMarkdown(content);
+      // Should only include the class name and snake_case function
+      // Dunder methods (__init__, __call__) and simple words (run, stop) are excluded
+      expect(result.symbolRefs).toEqual([
+        "package.SomeClass.MyNestedClass",
+        "package.SomeClass.helper_function",
+      ]);
+    });
   });
 
   describe("qualified name extraction", () => {

@@ -1871,13 +1871,14 @@ async function buildConfig(
   let irOutputPath: string;
 
   if (isSinglePackageBuild) {
-    // Single package build: ir-output/packages/{packageId}/{buildId}/
+    // Single package build: ir-output/ir/packages/{packageId}/{buildId}/
+    // The "ir/" prefix matches the blob storage path structure used by the loader
     const pkgConfig = packagesToProcess[0];
     const packageId = normalizePackageId(pkgConfig.name, config.language);
     buildId = generatePackageBuildId(config.repo, sha, pkgConfig.name);
     console.log(`🔑 Package Build ID: ${buildId} (for ${pkgConfig.name})`);
 
-    irOutputPath = path.resolve(opts.output, "packages", packageId, buildId);
+    irOutputPath = path.resolve(opts.output, "ir", "packages", packageId, buildId);
     await fs.mkdir(irOutputPath, { recursive: true });
   } else {
     // Multi-package build: each package gets its own directory
@@ -1885,7 +1886,7 @@ async function buildConfig(
     buildId = generatePackageBuildId(config.repo, sha, "multi");
     console.log(`🔑 Multi-package build (each package will have its own build ID)`);
 
-    irOutputPath = path.resolve(opts.output, "packages");
+    irOutputPath = path.resolve(opts.output, "ir", "packages");
     await fs.mkdir(irOutputPath, { recursive: true });
   }
 

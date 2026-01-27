@@ -265,6 +265,12 @@ export interface MemberReference {
 
   /** Type annotation (for attributes/properties without their own symbol records) */
   type?: string;
+
+  /** Signature string (for synthesized constructors like TypedDict __init__) */
+  signature?: string;
+
+  /** Constructor parameters (for synthesized constructors like TypedDict __init__) */
+  params?: Array<{ name: string; type?: string }>;
 }
 
 /**

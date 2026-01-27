@@ -245,8 +245,31 @@ export function symbolToMarkdown(
       lines.push("## Constructors");
       lines.push("");
       for (const ctor of constructors) {
-        const url = buildMemberUrl(ctor.name);
-        lines.push(`- [\`${ctor.name}()\`](${url})`);
+        // For synthesized constructors (e.g., TypedDict __init__), render signature and params inline
+        if (ctor.signature || ctor.params) {
+          // Render signature
+          if (ctor.signature) {
+            lines.push("```python");
+            lines.push(ctor.signature);
+            lines.push("```");
+            lines.push("");
+          }
+
+          // Render parameters table if available
+          if (ctor.params && ctor.params.length > 0) {
+            lines.push("| Name | Type |");
+            lines.push("|------|------|");
+            for (const param of ctor.params) {
+              const paramType = escapeTableCell(param.type || "unknown");
+              lines.push(`| \`${param.name}\` | \`${paramType}\` |`);
+            }
+            lines.push("");
+          }
+        } else {
+          // Regular constructor - link to its page
+          const url = buildMemberUrl(ctor.name);
+          lines.push(`- [\`${ctor.name}()\`](${url})`);
+        }
       }
       lines.push("");
     }

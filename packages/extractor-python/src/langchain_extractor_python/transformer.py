@@ -510,6 +510,12 @@ class IRTransformer:
                     # Include type annotation for attributes if available
                     if isinstance(m, dict) and m.get("type"):
                         member_ref["type"] = m["type"]
+                    # Include signature for constructors (e.g., synthesized TypedDict __init__)
+                    if isinstance(m, dict) and m.get("signature"):
+                        member_ref["signature"] = m["signature"]
+                    # Include params for constructors
+                    if isinstance(m, dict) and m.get("params"):
+                        member_ref["params"] = m["params"]
                     ir_symbol["members"].append(member_ref)
 
             return ir_symbol

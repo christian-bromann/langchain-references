@@ -445,9 +445,39 @@ function parseMembersFromOptions(lines: string[], startIndex: number): string[] 
     }
   }
 
-  // Filter to only include symbol-like members (start with uppercase letter)
-  // Method names like __init__, run, stop are filters, not symbols to expand
-  const symbolMembers = allMembers.filter((m) => /^[A-Z]/.test(m));
+  /**
+   * Filter members to determine which are symbols to expand vs method filters.
+   *
+   * Include:
+   * - PascalCase names (class names like AgentState, ModelRequest)
+   * - snake_case names (function names like create_agent, before_model)
+   * - Names with hyphens (special aliases like dynamic-prompt)
+   *
+   * Exclude:
+   * - Dunder methods (__init__, __call__, etc.) - these are method filters
+   * - Simple lowercase words without special chars (run, stop, get) - these are method filters
+   */
+  const symbolMembers = allMembers.filter((m) => {
+    // Always include PascalCase names (class names)
+    if (/^[A-Z]/.test(m)) {
+      return true;
+    }
+    // Exclude dunder methods (__init__, __call__, etc.)
+    if (m.startsWith("__")) {
+      return false;
+    }
+    // Include snake_case function names (contain underscore but don't start with it)
+    // e.g., create_agent, before_model, wrap_tool_call
+    if (m.includes("_") && !m.startsWith("_")) {
+      return true;
+    }
+    // Include names with hyphens (special aliases like dynamic-prompt)
+    if (m.includes("-")) {
+      return true;
+    }
+    // Exclude simple lowercase words (likely method filters like run, stop, get)
+    return false;
+  });
 
   // Only return if we found symbol-like members
   // If all members are method names (lowercase), return empty to use the directive's qualified name
