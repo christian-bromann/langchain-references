@@ -1,6 +1,6 @@
 # LangChain Reference Documentation Platform
 
-A unified API reference documentation platform for LangChain Python and JavaScript/TypeScript packages. This platform extracts API documentation from source code, generates a normalized Intermediate Representation (IR), and renders a Next.js application with a consistent, beautiful UI.
+A unified API reference documentation platform for LangChain packages across Python, JavaScript/TypeScript, Go, and Java. This platform extracts API documentation from source code, generates a normalized Intermediate Representation (IR), and renders a Next.js application with a consistent, beautiful UI.
 
 [![Build IR](https://github.com/langchain-ai/langchain-reference-docs/actions/workflows/build.yml/badge.svg)](https://github.com/langchain-ai/langchain-reference-docs/actions/workflows/build.yml)
 [![Deploy](https://img.shields.io/badge/deploy-vercel-black)](https://reference.langchain.com)
@@ -9,13 +9,15 @@ A unified API reference documentation platform for LangChain Python and JavaScri
 
 This monorepo contains everything needed to build and serve unified API reference documentation for:
 
-- **Python packages**: `langchain`, `langchain-core`, `langchain-community`, and provider integrations
-- **JavaScript/TypeScript packages**: `@langchain/core`, `@langchain/openai`, `@langchain/anthropic`, and more
+- **Python packages**: `langchain`, `langchain-core`, `langgraph`, `langsmith`, `deepagents`, and 40+ provider integrations
+- **JavaScript/TypeScript packages**: `@langchain/core`, `@langchain/langgraph`, `@langchain/openai`, `@langchain/anthropic`, and more
+- **Go packages**: `langsmith-go` for LangSmith tracing and observability
+- **Java packages**: `langsmith-java` for LangSmith integration in JVM environments
 
 ### Key Features
 
-- 🔄 **Unified Interface**: Single consistent UI for both Python and TypeScript documentation
-- 📦 **Static Extraction**: Parse APIs without runtime imports using griffe (Python) and TypeDoc (TypeScript)
+- 🔄 **Unified Interface**: Single consistent UI for Python, TypeScript, Go, and Java documentation
+- 📦 **Static Extraction**: Parse APIs without runtime imports using griffe (Python), TypeDoc (TypeScript), custom Go and Java extractors
 - 🚀 **Immutable Builds**: Content-addressed builds from any Git SHA for reproducibility
 - 🔍 **Fast Search**: Client-side search with MiniSearch across all symbols
 - 🎨 **Mintlify-like Design**: Modern, clean UI matching LangChain's documentation theme
@@ -29,6 +31,8 @@ flowchart TB
         GH["GitHub<br/>Tarball<br/>Fetcher"]
         PY["Python Extractor<br/>(griffe)"]
         TS["TypeScript Extractor<br/>(TypeDoc)"]
+        GO["Go Extractor<br/>(go/ast)"]
+        JV["Java Extractor<br/>(java-parser)"]
         IR["IR Transformer"]
         MF["Manifest<br/>.json"]
         SY["Symbol Shards<br/>.json"]
@@ -36,8 +40,12 @@ flowchart TB
 
         GH --> PY
         GH --> TS
+        GH --> GO
+        GH --> JV
         PY --> IR
         TS --> IR
+        GO --> IR
+        JV --> IR
         IR --> MF
         IR --> SY
         IR --> SE
@@ -49,7 +57,7 @@ flowchart TB
     end
 
     subgraph RENDER["RENDERING LAYER"]
-        NEXT["Next.js App Router<br/><br/>/python/[...slug]/page.tsx<br/>/javascript/[...slug]/page.tsx"]
+        NEXT["Next.js App Router<br/><br/>/python/[...slug]/page.tsx<br/>/javascript/[...slug]/page.tsx<br/>/go/[...slug]/page.tsx<br/>/java/[...slug]/page.tsx"]
         EDGE["Vercel Edge<br/>reference.langchain.com"]
 
         NEXT --> EDGE
@@ -68,7 +76,9 @@ langchain-reference-docs/
 │       ├── app/                      # App Router pages
 │       │   ├── (ref)/                # Reference docs route group
 │       │   │   ├── python/           # Python package pages
-│       │   │   └── javascript/       # JavaScript package pages
+│       │   │   ├── javascript/       # JavaScript package pages
+│       │   │   ├── go/               # Go package pages
+│       │   │   └── java/             # Java package pages
 │       │   └── api/                  # API routes
 │       ├── components/               # React components
 │       │   ├── layout/               # Header, Sidebar, etc.
@@ -77,26 +87,38 @@ langchain-reference-docs/
 │       └── lib/                      # Utilities and data loading
 │
 ├── packages/
+│   ├── build-pipeline/               # Build pipeline commands and utilities
 │   ├── ir-schema/                    # Shared TypeScript types for IR
+│   ├── ir-server/                    # Local development IR server
 │   ├── extractor-python/             # Python API extractor (griffe)
-│   └── extractor-typescript/         # TypeScript API extractor (TypeDoc)
-│
-├── scripts/                          # Build pipeline scripts
-│   ├── build-ir.ts                   # Main build orchestrator
-│   ├── fetch-tarball.ts              # GitHub tarball fetcher
-│   ├── upload-ir.ts                  # Vercel Blob uploader
-│   └── update-kv.ts                  # Build pointer updater
+│   ├── extractor-typescript/         # TypeScript API extractor (TypeDoc)
+│   ├── extractor-go/                 # Go API extractor (go/ast)
+│   ├── extractor-java/               # Java API extractor (java-parser)
+│   └── markdown-utils/               # Markdown processing utilities
 │
 ├── configs/                          # Build configurations
 │   ├── langchain-python.json         # LangChain Python packages
 │   ├── langchain-typescript.json     # LangChain TypeScript packages
 │   ├── langgraph-python.json         # LangGraph Python packages
 │   ├── langgraph-typescript.json     # LangGraph TypeScript packages
+│   ├── langsmith-python.json         # LangSmith Python SDK
+│   ├── langsmith-typescript.json     # LangSmith TypeScript SDK
+│   ├── langsmith-go.json             # LangSmith Go SDK
+│   ├── langsmith-java.json           # LangSmith Java SDK
+│   ├── deepagent-python.json         # Deep Agents Python
+│   ├── deepagent-typescript.json     # Deep Agents TypeScript
+│   ├── integrations-python.json      # Python provider integrations
+│   ├── integrations-typescript.json  # TypeScript provider integrations
 │   └── *-versions.json               # Cached version/tag data
+│
+├── docs/                             # Additional documentation (subpages)
 │
 └── .github/
     └── workflows/
-        └── build.yml                 # GitHub Actions workflow
+        ├── build-ir.yml              # IR build workflow
+        ├── ci.yml                    # CI workflow
+        ├── deploy.yml                # Deployment workflow
+        └── perf-tests.yml            # Performance tests
 ```
 
 ## Legacy URL Redirects (Backwards Compatibility)
@@ -119,6 +141,8 @@ Limitations:
 - **Node.js** 24+ (see `.nvmrc`)
 - **pnpm** 10+
 - **Python** 3.11+ (for Python extractor)
+- **Go** 1.21+ (for Go extractor, optional)
+- **Java** 11+ (for Java extractor, optional)
 
 ### Installation
 
@@ -217,12 +241,19 @@ pnpm build:ir --local --config ./configs/langchain-python.json --package langcha
 # Build LangGraph Python IR
 pnpm build:ir --local --config ./configs/langgraph-python.json
 
-# Build LangSmith Go
+# Build LangSmith SDKs (all languages)
+pnpm build:ir --local --config ./configs/langsmith-python.json
+pnpm build:ir --local --config ./configs/langsmith-typescript.json
 pnpm build:ir --local --config ./configs/langsmith-go.json
-
-# Build LangSmith Java
 pnpm build:ir --local --config ./configs/langsmith-java.json
 
+# Build Deep Agents
+pnpm build:ir --local --config ./configs/deepagent-python.json
+pnpm build:ir --local --config ./configs/deepagent-typescript.json
+
+# Build Provider Integrations
+pnpm build:ir --local --config ./configs/integrations-python.json
+pnpm build:ir --local --config ./configs/integrations-typescript.json
 ```
 
 > **Note:** The `build:ir --local` command only generates `symbols.json` and `package.json`.
@@ -260,11 +291,32 @@ The Next.js application that renders the documentation. Located in `apps/web/`.
 
 **Key features:**
 
-- App Router with dynamic routes for Python and JavaScript packages
+- App Router with dynamic routes for Python, JavaScript, Go, and Java packages
 - Server-side rendering with ISR caching
 - Responsive layout with collapsible sidebar
 - Full-text search with keyboard navigation (⌘K)
 - Dark mode support
+- MCP (Model Context Protocol) server endpoint
+
+### `@langchain/build-pipeline`
+
+Build pipeline commands and utilities. Located in `packages/build-pipeline/`.
+
+**Commands:**
+
+- `build-ir` - Main IR extraction orchestrator
+- `pull-ir` - Download IR data from Vercel Blob
+- `upload-ir` - Upload IR to Vercel Blob storage
+- `sync-versions` - Sync version data from package registries
+- `update-indexes` - Update project indexes for sidebar
+- `update-pointers` - Update build pointers
+
+**Features:**
+
+- Tarball fetching from GitHub
+- Diff engine for version history
+- Changelog generation
+- Subpage processing for documentation
 
 ### `@langchain/ir-schema`
 
@@ -276,6 +328,18 @@ TypeScript types for the Intermediate Representation. Located in `packages/ir-sc
 - `SymbolRecord` - Individual symbol documentation
 - `SearchRecord` - Search index entries
 - `RoutingMap` - URL to symbol mapping
+- `Language` - Supported language types
+- `Project` - Project configuration types
+
+### `@langchain/ir-server`
+
+Local development server for serving IR data. Located in `packages/ir-server/`.
+
+**Features:**
+
+- Express server for local IR file serving
+- Enables consistent HTTP-based loading in development
+- Runs on port 3001 by default
 
 ### `extractor-python`
 
@@ -299,9 +363,44 @@ TypeScript API extractor using TypeDoc. Located in `packages/extractor-typescrip
 - JSDoc comment extraction
 - Source location tracking
 
+### `extractor-go`
+
+Go API extractor using Go's AST parser. Located in `packages/extractor-go/`.
+
+**Features:**
+
+- Static parsing using `go/ast` and `go/parser`
+- Function, type, and interface extraction
+- Go doc comment parsing
+- Source location tracking
+
+### `extractor-java`
+
+Java API extractor using java-parser. Located in `packages/extractor-java/`.
+
+**Features:**
+
+- Java and Kotlin source parsing
+- Class, interface, enum, and record extraction
+- Javadoc comment parsing
+- Annotation extraction
+- Generic type handling
+
+### `@langchain/markdown-utils`
+
+Markdown processing utilities. Located in `packages/markdown-utils/`.
+
+**Features:**
+
+- Admonition processing (note, tip, warning, etc.)
+- Text dedenting utilities
+- Markdown transformation helpers
+
 ## Documented Packages
 
-### Python (from `langchain-ai/langchain`)
+### LangChain
+
+#### Python (from `langchain-ai/langchain`)
 
 | Package                  | Import Path                |
 | ------------------------ | -------------------------- |
@@ -310,7 +409,7 @@ TypeScript API extractor using TypeDoc. Located in `packages/extractor-typescrip
 | langchain-community      | `langchain_community`      |
 | langchain-text-splitters | `langchain_text_splitters` |
 
-### JavaScript/TypeScript (from `langchain-ai/langchainjs`)
+#### JavaScript/TypeScript (from `langchain-ai/langchainjs`)
 
 | Package                 | npm Name                  |
 | ----------------------- | ------------------------- |
@@ -322,6 +421,73 @@ TypeScript API extractor using TypeDoc. Located in `packages/extractor-typescrip
 | @langchain/google-genai | `@langchain/google-genai` |
 | @langchain/aws          | `@langchain/aws`          |
 
+### LangGraph
+
+#### Python (from `langchain-ai/langgraph`)
+
+| Package       | Import Path     |
+| ------------- | --------------- |
+| langgraph     | `langgraph`     |
+| langgraph-sdk | `langgraph_sdk` |
+
+#### JavaScript/TypeScript (from `langchain-ai/langgraphjs`)
+
+| Package                  | npm Name                   |
+| ------------------------ | -------------------------- |
+| @langchain/langgraph     | `@langchain/langgraph`     |
+| @langchain/langgraph-sdk | `@langchain/langgraph-sdk` |
+
+### LangSmith
+
+#### Python (from `langchain-ai/langsmith-sdk`)
+
+| Package   | Import Path |
+| --------- | ----------- |
+| langsmith | `langsmith` |
+
+#### JavaScript/TypeScript (from `langchain-ai/langsmith-sdk`)
+
+| Package   | npm Name    |
+| --------- | ----------- |
+| langsmith | `langsmith` |
+
+#### Go (from `langchain-ai/langsmith-go`)
+
+| Package   | Import Path                            |
+| --------- | -------------------------------------- |
+| langsmith | `github.com/langchain-ai/langsmith-go` |
+
+#### Java (from `langchain-ai/langsmith-java`)
+
+| Package   | Maven Artifact |
+| --------- | -------------- |
+| langsmith | `langsmith`    |
+
+### Deep Agents
+
+#### Python (from `langchain-ai/deepagents`)
+
+| Package        | Import Path      |
+| -------------- | ---------------- |
+| deepagents     | `deepagents`     |
+| deepagents-cli | `deepagents_cli` |
+
+#### TypeScript (from `langchain-ai/deepagents`)
+
+| Package              | npm Name               |
+| -------------------- | ---------------------- |
+| @langchain/deepagent | `@langchain/deepagent` |
+
+### Provider Integrations
+
+The platform documents 40+ provider integrations for both Python and TypeScript. These include:
+
+**Python Integrations** (from various repos):
+Anthropic, OpenAI, AWS, Google GenAI, Cohere, Chroma, Pinecone, Weaviate, MongoDB, Neo4j, Redis, Postgres, Elasticsearch, HuggingFace, Mistral AI, Groq, Fireworks, Ollama, NVIDIA, IBM, Snowflake, Together, Tavily, and more.
+
+**TypeScript Integrations** (from `langchain-ai/langchainjs`):
+OpenAI, Anthropic, AWS, Google GenAI, Azure, Cloudflare, Cohere, Exa, Groq, Mistral AI, MongoDB, Nomic, Ollama, Pinecone, Qdrant, Redis, Tavily, Weaviate, and more.
+
 ## URL Structure
 
 The documentation follows a consistent URL pattern:
@@ -332,6 +498,12 @@ The documentation follows a consistent URL pattern:
 
 /javascript/{package}/                 # Package index
 /javascript/{package}/{symbolName}     # Symbol page
+
+/go/{package}/                         # Package index
+/go/{package}/{symbolName}             # Symbol page
+
+/java/{package}/                       # Package index
+/java/{package}/{symbolName}           # Symbol page
 ```
 
 Examples:
@@ -340,13 +512,17 @@ Examples:
 - `/python/langchain-core/ChatOpenAI` - ChatOpenAI class page
 - `/javascript/langchain_core/` - @langchain/core package index
 - `/javascript/langchain_openai/ChatOpenAI` - ChatOpenAI class page
+- `/go/langsmith/` - LangSmith Go package index
+- `/go/langsmith/Client` - Client type page
+- `/java/langsmith/` - LangSmith Java package index
+- `/java/langsmith/LangSmithClient` - LangSmithClient class page
 
 ## Build Pipeline
 
 The build pipeline extracts documentation from source repositories:
 
 1. **Fetch**: Download source tarball from GitHub at a specific SHA
-2. **Extract**: Run language-specific extractors (griffe/TypeDoc)
+2. **Extract**: Run language-specific extractors (griffe for Python, TypeDoc for TypeScript, go/ast for Go, java-parser for Java)
 3. **Transform**: Convert to normalized IR format
 4. **Upload**: Store in Vercel Blob (or local filesystem)
 5. **Index**: Update build pointers in Vercel Blob
@@ -362,9 +538,14 @@ pnpm build:ir --local --config ./configs/langchain-typescript.json
 
 # Build by project (all configs for a project)
 pnpm build:ir --project langchain --local
+pnpm build:ir --project langsmith --local
+pnpm build:ir --project langgraph --local
 
 # Build by language (all configs for a language)
 pnpm build:ir --language python --local
+pnpm build:ir --language typescript --local
+pnpm build:ir --language go --local
+pnpm build:ir --language java --local
 
 # Build all configurations
 pnpm build:ir --all --local
@@ -388,24 +569,46 @@ Build configs are JSON files in `configs/`:
 
 ```json
 {
-  "language": "typescript",
-  "repo": "langchain-ai/langchainjs",
+  "$schema": "./config-schema.json",
+  "project": "langsmith",
+  "language": "go",
+  "repo": "langchain-ai/langsmith-go",
   "packages": [
     {
-      "name": "@langchain/core",
-      "path": "libs/langchain-core",
-      "entryPoints": ["auto"]
+      "name": "langsmith",
+      "path": ".",
+      "displayName": "LangSmith Go",
+      "versioning": {
+        "tagPattern": "v*",
+        "maxVersions": 10
+      },
+      "descriptionSource": "readme",
+      "subpages": [
+        {
+          "slug": "client",
+          "title": "Client",
+          "source": "docs/langsmith/go/client.md"
+        }
+      ]
     }
   ]
 }
 ```
+
+**Configuration options:**
+
+- `project` - Project name (langchain, langgraph, langsmith, deepagent, integrations)
+- `language` - Language (python, typescript, go, java)
+- `repo` - GitHub repository
+- `packages` - Array of package definitions
+- `externalPackages` - Packages from external repositories (used for integrations)
 
 ## Search
 
 The platform includes full-text search powered by MiniSearch:
 
 - **Keyboard shortcut**: `⌘K` (Mac) or `Ctrl+K` (Windows/Linux)
-- **Language toggle**: Switch between Python and JavaScript results
+- **Language toggle**: Switch between Python, JavaScript, Go, and Java results
 - **Keyboard navigation**: Arrow keys to navigate, Enter to select
 - **Real-time results**: Results update as you type
 
@@ -440,7 +643,7 @@ Trigger an IR build via GitHub Actions.
 
 ```json
 {
-  "language": "typescript" | "python" | "both",
+  "language": "typescript" | "python" | "go" | "java" | "all",
   "sha": "optional-git-sha"
 }
 ```
@@ -462,7 +665,7 @@ Search symbols.
 **Query Parameters:**
 
 - `q` - Search query (required)
-- `language` - `python` or `javascript` (required)
+- `language` - `python`, `javascript`, `go`, or `java` (required)
 - `limit` - Max results (default: 20)
 - `kind` - Filter by symbol kind
 - `packageId` - Filter by package
@@ -484,5 +687,7 @@ This project is part of the LangChain ecosystem. See the [LICENSE](./LICENSE) fi
 
 - [LangChain](https://github.com/langchain-ai/langchain) - Python LLM framework
 - [LangChainJS](https://github.com/langchain-ai/langchainjs) - JavaScript/TypeScript LLM framework
+- [LangGraph](https://github.com/langchain-ai/langgraph) - Agent orchestration framework
+- [LangSmith SDK](https://github.com/langchain-ai/langsmith-sdk) - LLM observability SDK
 - [LangChain Documentation](https://docs.langchain.com) - Main documentation site
 - [LangSmith](https://smith.langchain.com) - LLM observability platform
