@@ -286,7 +286,7 @@ export class JavaTransformer {
   }
 
   /**
-   * Map Java kind to IR kind.
+   * Map Java/Kotlin kind to IR kind.
    */
   private mapKind(kind: string): SymbolKind {
     switch (kind) {
@@ -299,6 +299,9 @@ export class JavaTransformer {
         return "enum";
       case "annotation":
         return "typeAlias";
+      case "object":
+        // Kotlin objects are singleton classes
+        return "class";
       default:
         return "class";
     }

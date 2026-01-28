@@ -42,8 +42,15 @@ export interface JavaExtractorConfig {
 export const defaultConfig: Partial<JavaExtractorConfig> = {
   excludePrivate: true,
   excludePackagePrivate: true,
-  includePatterns: ["**/*.java"],
-  excludePatterns: ["**/test/**", "**/tests/**", "**/*Test.java", "**/*Tests.java"],
+  includePatterns: ["**/*.java", "**/*.kt"],
+  excludePatterns: [
+    "**/test/**",
+    "**/tests/**",
+    "**/*Test.java",
+    "**/*Tests.java",
+    "**/*Test.kt",
+    "**/*Tests.kt",
+  ],
 };
 
 /**
@@ -56,8 +63,15 @@ export function createConfig(
     ...defaultConfig,
     excludePrivate: true,
     excludePackagePrivate: true,
-    includePatterns: ["**/*.java"],
-    excludePatterns: ["**/test/**", "**/tests/**", "**/*Test.java", "**/*Tests.java"],
+    includePatterns: ["**/*.java", "**/*.kt"],
+    excludePatterns: [
+      "**/test/**",
+      "**/tests/**",
+      "**/*Test.java",
+      "**/*Tests.java",
+      "**/*Test.kt",
+      "**/*Tests.kt",
+    ],
     repo: "",
     sha: "",
     ...partial,

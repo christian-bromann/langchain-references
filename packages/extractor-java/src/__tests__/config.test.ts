@@ -31,9 +31,10 @@ describe("createConfig", () => {
 
     expect(config.excludePrivate).toBe(true);
     expect(config.excludePackagePrivate).toBe(true);
-    expect(config.includePatterns).toEqual(["**/*.java"]);
+    expect(config.includePatterns).toEqual(["**/*.java", "**/*.kt"]);
     expect(config.excludePatterns).toContain("**/test/**");
     expect(config.excludePatterns).toContain("**/*Test.java");
+    expect(config.excludePatterns).toContain("**/*Test.kt");
   });
 
   it("should override defaults with provided values", () => {
@@ -113,6 +114,7 @@ describe("defaultConfig", () => {
     expect(defaultConfig.excludePrivate).toBe(true);
     expect(defaultConfig.excludePackagePrivate).toBe(true);
     expect(defaultConfig.includePatterns).toContain("**/*.java");
+    expect(defaultConfig.includePatterns).toContain("**/*.kt");
     expect(defaultConfig.excludePatterns).toContain("**/test/**");
   });
 });

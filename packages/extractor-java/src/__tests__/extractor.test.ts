@@ -318,7 +318,7 @@ describe("JavaExtractor with excludePrivate", () => {
 });
 
 describe("JavaExtractor file discovery", () => {
-  it("should find all Java files in the directory", async () => {
+  it("should find all Java and Kotlin files in the directory", async () => {
     const config = createConfig({
       packageName: "test-package",
       packagePath: fixturesPath,
@@ -327,7 +327,7 @@ describe("JavaExtractor file discovery", () => {
     const extractor = new JavaExtractor(config);
     const result = await extractor.extract();
 
-    // Should find all fixture files
+    // Should find all fixture files (Java + Kotlin)
     expect(result.types.length).toBeGreaterThanOrEqual(6);
   });
 
@@ -344,5 +344,89 @@ describe("JavaExtractor file discovery", () => {
     // Should not include SimpleClass
     const simpleClass = result.types.find((t) => t.name === "SimpleClass");
     expect(simpleClass).toBeUndefined();
+  });
+});
+
+describe("Kotlin extraction", () => {
+  let result: ExtractionResult;
+
+  beforeAll(async () => {
+    const config = createConfig({
+      packageName: "langsmith",
+      packagePath: fixturesPath,
+      repo: "langchain-ai/langsmith-java",
+      sha: "abc123def",
+      excludePrivate: true,
+      excludePackagePrivate: false,
+    });
+
+    const extractor = new JavaExtractor(config);
+    result = await extractor.extract();
+  });
+
+  describe("Kotlin class extraction", () => {
+    it("should extract LangChainException base class", () => {
+      const exception = result.types.find((t) => t.name === "LangChainException");
+      expect(exception).toBeDefined();
+      expect(exception!.kind).toBe("class");
+      expect(exception!.isKotlin).toBe(true);
+    });
+
+    it("should extract package name from Kotlin file", () => {
+      const exception = result.types.find((t) => t.name === "LangChainException");
+      expect(exception!.packageName).toBe("com.langchain.smith.errors");
+    });
+
+    it("should extract extends clause from Kotlin (: syntax)", () => {
+      const exception = result.types.find((t) => t.name === "LangChainException");
+      expect(exception!.extends).toBe("RuntimeException");
+    });
+
+    it("should extract LangChainServiceException with extends", () => {
+      const exception = result.types.find((t) => t.name === "LangChainServiceException");
+      expect(exception).toBeDefined();
+      expect(exception!.extends).toBe("LangChainException");
+    });
+
+    it("should extract BadRequestException", () => {
+      const exception = result.types.find((t) => t.name === "BadRequestException");
+      expect(exception).toBeDefined();
+      expect(exception!.extends).toBe("LangChainServiceException");
+    });
+
+    it("should extract KDoc comments", () => {
+      const exception = result.types.find((t) => t.name === "BadRequestException");
+      expect(exception!.javadoc).toBeDefined();
+      expect(exception!.javadoc).toContain("400 Bad Request");
+    });
+
+    it("should mark Kotlin classes as public by default", () => {
+      const exception = result.types.find((t) => t.name === "LangChainException");
+      expect(exception!.modifiers).toContain("public");
+    });
+
+    it("should include open modifier for open classes", () => {
+      const exception = result.types.find((t) => t.name === "LangChainException");
+      expect(exception!.modifiers).toContain("open");
+    });
+
+    it("should extract source file path with .kt extension", () => {
+      const exception = result.types.find((t) => t.name === "LangChainException");
+      expect(exception!.sourceFile).toContain(".kt");
+    });
+  });
+
+  describe("Kotlin visibility handling", () => {
+    it("should extract all public classes from Kotlin file", () => {
+      const kotlinTypes = result.types.filter((t) => t.isKotlin);
+      expect(kotlinTypes.length).toBeGreaterThanOrEqual(5);
+
+      const typeNames = kotlinTypes.map((t) => t.name);
+      expect(typeNames).toContain("LangChainException");
+      expect(typeNames).toContain("LangChainServiceException");
+      expect(typeNames).toContain("BadRequestException");
+      expect(typeNames).toContain("UnauthorizedException");
+      expect(typeNames).toContain("PermissionDeniedException");
+    });
   });
 });

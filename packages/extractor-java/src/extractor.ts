@@ -1,7 +1,8 @@
 /**
- * Java Extractor
+ * Java/Kotlin Extractor
  *
- * Parses Java source files and extracts API documentation.
+ * Parses Java and Kotlin source files and extracts API documentation.
+ * Supports both .java and .kt files with language-specific parsing.
  */
 
 import { readFile } from "fs/promises";
@@ -11,11 +12,11 @@ import { parse, type CstNode } from "java-parser";
 import type { JavaExtractorConfig } from "./config.js";
 
 /**
- * Represents a parsed Java class, interface, enum, or record.
+ * Represents a parsed Java/Kotlin class, interface, enum, or record.
  */
 export interface JavaType {
   name: string;
-  kind: "class" | "interface" | "enum" | "record" | "annotation";
+  kind: "class" | "interface" | "enum" | "record" | "annotation" | "object";
   packageName: string;
   modifiers: string[];
   javadoc?: string;
@@ -28,6 +29,8 @@ export interface JavaType {
   innerTypes: JavaType[];
   sourceFile: string;
   startLine: number;
+  /** Whether this type was extracted from a Kotlin file */
+  isKotlin?: boolean;
 }
 
 /**
@@ -103,15 +106,18 @@ export class JavaExtractor {
   }
 
   /**
-   * Extract all Java types from the source directory.
+   * Extract all Java and Kotlin types from the source directory.
    */
   async extract(): Promise<ExtractionResult> {
-    const files = await this.findJavaFiles();
+    const files = await this.findSourceFiles();
     const types: JavaType[] = [];
 
     for (const file of files) {
       try {
-        const fileTypes = await this.extractFile(file);
+        const isKotlin = file.endsWith(".kt");
+        const fileTypes = isKotlin
+          ? await this.extractKotlinFile(file)
+          : await this.extractFile(file);
         types.push(...fileTypes);
       } catch (error) {
         console.warn(`Warning: Failed to parse ${file}: ${error}`);
@@ -128,16 +134,16 @@ export class JavaExtractor {
   }
 
   /**
-   * Find all Java files matching the patterns.
+   * Find all Java and Kotlin files matching the patterns.
    */
-  private async findJavaFiles(): Promise<string[]> {
+  private async findSourceFiles(): Promise<string[]> {
     const files = await glob(this.config.includePatterns, {
       cwd: this.config.packagePath,
       ignore: this.config.excludePatterns,
       absolute: true,
     });
 
-    return files.filter((f) => f.endsWith(".java"));
+    return files.filter((f) => f.endsWith(".java") || f.endsWith(".kt"));
   }
 
   /**
@@ -157,6 +163,376 @@ export class JavaExtractor {
     const types = this.extractTypes(cst, content, packageName, relativePath);
 
     return types;
+  }
+
+  /**
+   * Extract types from a single Kotlin file.
+   * Uses regex-based parsing since java-parser doesn't support Kotlin.
+   */
+  private async extractKotlinFile(filePath: string): Promise<JavaType[]> {
+    const content = await readFile(filePath, "utf-8");
+    const relativePath = relative(this.config.packagePath, filePath);
+
+    // Extract package name (Kotlin uses same syntax as Java but without semicolon)
+    const packageName = this.extractKotlinPackageName(content);
+
+    // Extract types using Kotlin-specific patterns
+    const types = this.extractKotlinTypes(content, packageName, relativePath);
+
+    return types;
+  }
+
+  /**
+   * Extract package name from Kotlin source.
+   * Kotlin package declarations don't require semicolons.
+   */
+  private extractKotlinPackageName(content: string): string {
+    const packageMatch = content.match(/^\s*package\s+([\w.]+)\s*$/m);
+    return packageMatch ? packageMatch[1] : "";
+  }
+
+  /**
+   * Extract types from Kotlin source using regex patterns.
+   *
+   * Handles Kotlin-specific syntax:
+   * - class, interface, enum class, sealed class, data class, object
+   * - : for inheritance (instead of extends/implements)
+   * - open, internal, sealed modifiers
+   * - Primary constructors in class declarations
+   * - KDoc comments (same as Javadoc)
+   */
+  private extractKotlinTypes(content: string, packageName: string, sourceFile: string): JavaType[] {
+    const types: JavaType[] = [];
+    const lines = content.split("\n");
+
+    // Kotlin type declaration pattern
+    // Captures:
+    // 1. Modifiers (public, private, protected, internal, open, abstract, sealed, data, final)
+    // 2. Type keyword (class, interface, enum class, object, annotation class)
+    // 3. Type name
+    // 4. Type parameters <...>
+    // 5. Primary constructor parameters (...)
+    // 6. Inheritance clause (: Parent, Interface1, Interface2)
+    const kotlinTypePattern =
+      /(?:^|\n)\s*((?:(?:public|private|protected|internal|open|abstract|sealed|data|final|actual|expect|value|inline)\s+)*)(class|interface|enum\s+class|object|annotation\s+class)\s+(\w+)(\s*<[^{(>]+>)?(\s*(?:private\s+|protected\s+|internal\s+)?constructor\s*)?(\s*\([^)]*\))?(?:\s*:\s*([^{]+?))?\s*(?:\{|$)/gm;
+
+    let match;
+    while ((match = kotlinTypePattern.exec(content)) !== null) {
+      const modifiersStr = match[1] || "";
+      let kindStr = match[2].replace(/\s+/g, " ").trim();
+      const name = match[3];
+      const typeParamsMatch = match[4] || "";
+      // match[5] is constructor visibility, match[6] is primary constructor params - skip
+      const inheritanceClause = match[7];
+
+      // Parse modifiers
+      const modifiers = this.parseKotlinModifiers(modifiersStr);
+
+      // Map Kotlin kind to Java/IR kind
+      let kind: JavaType["kind"];
+      switch (kindStr) {
+        case "class":
+        case "enum class":
+          kind = modifiers.includes("data") ? "record" : "class";
+          if (kindStr === "enum class") kind = "enum";
+          break;
+        case "interface":
+          kind = "interface";
+          break;
+        case "object":
+          kind = "object";
+          break;
+        case "annotation class":
+          kind = "annotation";
+          break;
+        default:
+          kind = "class";
+      }
+
+      // Determine visibility
+      // In Kotlin, default visibility is public
+      const isPublic =
+        modifiers.includes("public") ||
+        (!modifiers.includes("private") &&
+          !modifiers.includes("protected") &&
+          !modifiers.includes("internal"));
+      const isPrivate = modifiers.includes("private");
+      const isInternal = modifiers.includes("internal");
+
+      // Apply visibility filters
+      if (this.config.excludePrivate && isPrivate) {
+        continue;
+      }
+
+      // Treat internal as package-private equivalent
+      if (this.config.excludePackagePrivate && isInternal) {
+        continue;
+      }
+
+      // Find line number
+      const beforeMatch = content.substring(0, match.index);
+      const lineNumber = beforeMatch.split("\n").length;
+
+      // Extract KDoc (same format as Javadoc)
+      const kdoc = this.extractJavadocBefore(content, match.index);
+
+      // Parse inheritance clause (: Parent, Interface1, Interface2)
+      let extendsClause: string | undefined;
+      const implementsList: string[] = [];
+
+      if (inheritanceClause) {
+        const parts = this.splitTypeList(inheritanceClause.trim());
+        for (const part of parts) {
+          // Clean up constructor calls like "RuntimeException(message)"
+          const cleanPart = part.replace(/\([^)]*\)$/, "").trim();
+          if (!cleanPart) continue;
+
+          // In Kotlin, all items after : are in the same list
+          // First class-like item is typically the superclass, rest are interfaces
+          // But we can't always distinguish, so we put the first in extends
+          // and the rest in implements
+          if (!extendsClause && kind !== "interface") {
+            extendsClause = cleanPart;
+          } else {
+            implementsList.push(cleanPart);
+          }
+        }
+      }
+
+      // Extract type parameters
+      const typeParameters = this.extractTypeParameters(typeParamsMatch);
+
+      // Extract methods and fields from the class body
+      const typeEndIndex = this.findTypeEndIndex(content, match.index + match[0].length - 1);
+      const typeBody = content.substring(match.index + match[0].length, typeEndIndex);
+
+      const methods = this.extractKotlinMethods(typeBody, lines, lineNumber, kind === "interface");
+      const fields = this.extractKotlinProperties(typeBody, lines, lineNumber);
+
+      // Ensure public visibility is marked for catalog inclusion
+      if (isPublic && !modifiers.includes("public")) {
+        modifiers.push("public");
+      }
+
+      const javaType: JavaType = {
+        name,
+        kind,
+        packageName,
+        modifiers,
+        javadoc: kdoc,
+        extends: extendsClause,
+        implements: implementsList,
+        typeParameters,
+        methods,
+        fields,
+        constructors: [], // Kotlin primary constructors are part of the class declaration
+        innerTypes: [],
+        sourceFile,
+        startLine: lineNumber,
+        isKotlin: true,
+      };
+
+      types.push(javaType);
+    }
+
+    return types;
+  }
+
+  /**
+   * Parse Kotlin modifiers from a string.
+   */
+  private parseKotlinModifiers(str: string): string[] {
+    const validModifiers = [
+      "public",
+      "private",
+      "protected",
+      "internal",
+      "open",
+      "abstract",
+      "sealed",
+      "data",
+      "final",
+      "override",
+      "suspend",
+      "inline",
+      "value",
+      "actual",
+      "expect",
+    ];
+    const modifiers: string[] = [];
+    for (const mod of validModifiers) {
+      if (new RegExp(`\\b${mod}\\b`).test(str)) {
+        modifiers.push(mod);
+      }
+    }
+    return modifiers;
+  }
+
+  /**
+   * Extract Kotlin methods (functions) from type body.
+   */
+  private extractKotlinMethods(
+    body: string,
+    allLines: string[],
+    typeStartLine: number,
+    isInterface: boolean,
+  ): JavaMethod[] {
+    const methods: JavaMethod[] = [];
+
+    // Kotlin function pattern
+    // Captures: modifiers, fun keyword, type params, name, params, return type
+    const methodPattern =
+      /\b((?:(?:public|private|protected|internal|open|abstract|override|final|suspend|inline|operator|infix)\s+)*)fun\s+(?:<[^>]+>\s+)?(\w+)\s*\(([^)]*)\)(?:\s*:\s*([^\n{=]+))?/g;
+
+    let match;
+    while ((match = methodPattern.exec(body)) !== null) {
+      const modifiersStr = match[1] || "";
+      const name = match[2];
+      const paramsStr = match[3];
+      const returnType = match[4]?.trim() || "Unit";
+
+      const modifiers = this.parseKotlinModifiers(modifiersStr);
+
+      // Determine visibility (default is public in Kotlin)
+      const isPublic =
+        !modifiers.includes("private") &&
+        !modifiers.includes("protected") &&
+        !modifiers.includes("internal");
+
+      if (this.config.excludePrivate && modifiers.includes("private")) {
+        continue;
+      }
+
+      if (this.config.excludePackagePrivate && modifiers.includes("internal")) {
+        continue;
+      }
+
+      // For interfaces, methods are implicitly public
+      if (isInterface && !modifiers.includes("public")) {
+        modifiers.push("public");
+      } else if (isPublic && !modifiers.includes("public")) {
+        modifiers.push("public");
+      }
+
+      const beforeMatch = body.substring(0, match.index);
+      const lineOffset = beforeMatch.split("\n").length;
+
+      const kdoc = this.extractJavadocBefore(body, match.index);
+      const parameters = this.parseKotlinParameters(paramsStr);
+
+      methods.push({
+        name,
+        modifiers,
+        javadoc: kdoc,
+        returnType,
+        parameters,
+        typeParameters: [],
+        throws: [],
+        startLine: typeStartLine + lineOffset,
+      });
+    }
+
+    return methods;
+  }
+
+  /**
+   * Parse Kotlin function parameters.
+   * Format: name: Type, name2: Type2 = defaultValue
+   */
+  private parseKotlinParameters(paramsStr: string): JavaParameter[] {
+    if (!paramsStr.trim()) return [];
+
+    const params: JavaParameter[] = [];
+    const paramParts = this.splitParameters(paramsStr);
+
+    for (const part of paramParts) {
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+
+      // Match: annotations? vararg? name: Type (= default)?
+      // Kotlin format: param: Type
+      const paramMatch = trimmed.match(
+        /(?:(@\w+(?:\([^)]*\))?\s*)*)?(vararg\s+)?(\w+)\s*:\s*([\w.<>,\s[\]?]+)(?:\s*=.*)?$/,
+      );
+
+      if (paramMatch) {
+        const annotationsStr = paramMatch[1] || "";
+        const name = paramMatch[3];
+        const type = paramMatch[4].trim();
+
+        const annotations = annotationsStr.match(/@\w+/g) || [];
+
+        params.push({
+          name,
+          type,
+          annotations,
+        });
+      }
+    }
+
+    return params;
+  }
+
+  /**
+   * Extract Kotlin properties (val/var) from type body.
+   */
+  private extractKotlinProperties(
+    body: string,
+    allLines: string[],
+    typeStartLine: number,
+  ): JavaField[] {
+    const fields: JavaField[] = [];
+
+    // Kotlin property pattern
+    // Captures: modifiers, val/var, name, type
+    const propertyPattern =
+      /\b((?:(?:public|private|protected|internal|open|abstract|override|final|const|lateinit)\s+)*)(val|var)\s+(\w+)\s*:\s*([\w.<>,\s[\]?]+)/g;
+
+    let match;
+    while ((match = propertyPattern.exec(body)) !== null) {
+      const modifiersStr = match[1] || "";
+      const name = match[3];
+      const type = match[4].trim();
+
+      const modifiers = this.parseKotlinModifiers(modifiersStr);
+
+      // val is like final, var is mutable
+      if (match[2] === "val" && !modifiers.includes("final")) {
+        modifiers.push("final");
+      }
+
+      if (this.config.excludePrivate && modifiers.includes("private")) {
+        continue;
+      }
+
+      if (this.config.excludePackagePrivate && modifiers.includes("internal")) {
+        continue;
+      }
+
+      // Default is public in Kotlin
+      const isPublic =
+        !modifiers.includes("private") &&
+        !modifiers.includes("protected") &&
+        !modifiers.includes("internal");
+      if (isPublic && !modifiers.includes("public")) {
+        modifiers.push("public");
+      }
+
+      const beforeMatch = body.substring(0, match.index);
+      const lineOffset = beforeMatch.split("\n").length;
+
+      const kdoc = this.extractJavadocBefore(body, match.index);
+
+      fields.push({
+        name,
+        modifiers,
+        javadoc: kdoc,
+        type,
+        startLine: typeStartLine + lineOffset,
+      });
+    }
+
+    return fields;
   }
 
   /**
@@ -303,21 +679,29 @@ export class JavaExtractor {
   }
 
   /**
-   * Split a comma-separated type list, handling nested generics.
+   * Split a comma-separated type list, handling nested generics and parentheses.
+   * This ensures we don't split on commas inside generic parameters or constructor calls.
    */
   private splitTypeList(str: string): string[] {
     const result: string[] = [];
     let current = "";
-    let depth = 0;
+    let angleDepth = 0;
+    let parenDepth = 0;
 
     for (const char of str) {
       if (char === "<") {
-        depth++;
+        angleDepth++;
         current += char;
       } else if (char === ">") {
-        depth--;
+        angleDepth--;
         current += char;
-      } else if (char === "," && depth === 0) {
+      } else if (char === "(") {
+        parenDepth++;
+        current += char;
+      } else if (char === ")") {
+        parenDepth--;
+        current += char;
+      } else if (char === "," && angleDepth === 0 && parenDepth === 0) {
         if (current.trim()) {
           result.push(current.trim());
         }
