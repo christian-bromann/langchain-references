@@ -22,7 +22,6 @@ import {
   buildPackageUrl,
   buildSymbolUrl,
   extractPackageFromQualifiedName,
-  getDisplayPackageName,
   getKindColor,
   getKindLabel,
   slugifyPackageName,
@@ -767,7 +766,23 @@ async function findSymbolOptimized(
 
   // Add common variations
   pathVariations.push(symbolPath.replace(/\./g, "/"));
-  pathVariations.push(symbolPath.replace(/\./g, "_"));
+
+  // For Python packages, try underscores instead of dots (for module paths)
+  const isPython = packageId.startsWith("pkg_py_");
+  if (isPython) {
+    pathVariations.push(symbolPath.replace(/\./g, "_"));
+  }
+
+  // For JavaScript/TypeScript, try the module/path.SymbolName format
+  // e.g., "callbacks.base.BaseCallbackHandler" -> "callbacks/base.BaseCallbackHandler"
+  // This is the format used in JS routing maps where module paths use slashes
+  // and the final symbol name is separated by a dot
+  const parts = symbolPath.split(".");
+  if (parts.length >= 2) {
+    const modulePath = parts.slice(0, -1).join("/");
+    const symbolName = parts[parts.length - 1];
+    pathVariations.push(`${modulePath}.${symbolName}`);
+  }
 
   // Prefer the routing map + individual symbol files.
   // This avoids downloading `lookup.json` which can exceed Next.js' 2MB cache limit.
@@ -1381,7 +1396,7 @@ export async function SymbolPage({
             href={buildPackageUrl(language, packageName)}
             className="hover:text-foreground transition-colors"
           >
-            {getDisplayPackageName(packageName, language)}
+            {packageName}
           </Link>
           <ChevronRight className="h-4 w-4" />
           <span className="text-foreground">{symbolPath}</span>
@@ -1391,7 +1406,7 @@ export async function SymbolPage({
           <h1 className="text-2xl font-heading font-bold text-foreground mb-2">Symbol Not Found</h1>
           <p className="text-foreground-secondary">
             The symbol <code className="font-mono">{symbolPath}</code> was not found in{" "}
-            {getDisplayPackageName(packageName, language)}.
+            {packageName}.
           </p>
         </div>
       </div>
@@ -1445,10 +1460,9 @@ export async function SymbolPage({
 
   // Build breadcrumb items for structured data
   const urlLangLabel = LANGUAGE_CONFIG[language].name;
-  const displayPackageName = getDisplayPackageName(packageName, language);
   const breadcrumbItems = [
     { name: urlLangLabel, url: `/${language}` },
-    { name: displayPackageName, url: buildPackageUrl(language, packageName) },
+    { name: packageName, url: buildPackageUrl(language, packageName) },
     { name: symbol.name, url: `/${language}/${slugifyPackageName(packageName)}/${symbolPath}` },
   ];
 
@@ -1456,15 +1470,15 @@ export async function SymbolPage({
     <>
       {/* Structured Data */}
       <TechArticleJsonLd
-        title={`${symbol.name} - ${displayPackageName}`}
+        title={`${symbol.name} - ${packageName}`}
         description={
           symbol.docs.summary ||
           symbol.docs.description ||
-          `API reference for ${symbol.name} in ${displayPackageName}`
+          `API reference for ${symbol.name} in ${packageName}`
         }
         url={`/${language}/${slugifyPackageName(packageName)}/${symbolPath}`}
         language={language}
-        packageName={displayPackageName}
+        packageName={packageName}
       />
       <BreadcrumbJsonLd items={breadcrumbItems} />
 
@@ -1481,7 +1495,7 @@ export async function SymbolPage({
               href={buildPackageUrl(language, packageName)}
               className="hover:text-foreground transition-colors"
             >
-              {displayPackageName}
+              {packageName}
             </Link>
             {symbolPath.split(".").map((part, i, arr) => {
               // Build cumulative path up to this part
@@ -2254,9 +2268,7 @@ function InheritedMembersSection({
                 <code className="font-mono text-foreground">{group.baseName}</code>
               )}
               {group.basePackageName && group.basePackageName !== packageName && (
-                <span className="text-sm text-foreground-muted">
-                  ({getDisplayPackageName(group.basePackageName, language)})
-                </span>
+                <span className="text-sm text-foreground-muted">({group.basePackageName})</span>
               )}
             </h2>
 

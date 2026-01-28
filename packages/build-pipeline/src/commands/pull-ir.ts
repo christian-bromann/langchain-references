@@ -619,6 +619,8 @@ async function generateLocalManifest(
     language: string;
     project: string;
     buildId: string;
+    subpages?: Array<{ slug: string; title: string }>;
+    exportPaths?: Array<{ slug: string; title: string }>;
   }> = [];
 
   // Collect packages from successful pulls
@@ -649,17 +651,26 @@ async function generateLocalManifest(
 
         let displayName = packageName;
         let pkgLanguage = language === "javascript" ? "typescript" : language;
+        let subpages: Array<{ slug: string; title: string }> | undefined;
+        let exportPaths: Array<{ slug: string; title: string }> | undefined;
 
         try {
           const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
           const packageJson = JSON.parse(packageJsonContent);
           displayName = packageJson.displayName || packageName;
           pkgLanguage = packageJson.language || pkgLanguage;
+          // Include subpages and exportPaths for sidebar navigation
+          if (packageJson.subpages && Array.isArray(packageJson.subpages)) {
+            subpages = packageJson.subpages;
+          }
+          if (packageJson.exportPaths && Array.isArray(packageJson.exportPaths)) {
+            exportPaths = packageJson.exportPaths;
+          }
         } catch {
           // Use defaults if package.json not found
         }
 
-        packages.push({
+        const pkgEntry: (typeof packages)[number] = {
           packageId,
           publishedName: packageName,
           displayName,
@@ -667,7 +678,14 @@ async function generateLocalManifest(
           language: pkgLanguage,
           project,
           buildId: pkgInfo.buildId,
-        });
+        };
+        if (subpages) {
+          pkgEntry.subpages = subpages;
+        }
+        if (exportPaths) {
+          pkgEntry.exportPaths = exportPaths;
+        }
+        packages.push(pkgEntry);
       }
     } catch (error) {
       if (verbose) {

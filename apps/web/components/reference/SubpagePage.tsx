@@ -13,7 +13,6 @@ import { stripAnchors } from "@/lib/utils/html";
 import {
   buildSymbolUrl,
   extractPackageFromQualifiedName,
-  getDisplayPackageName,
   getKindColor,
   getKindLabel,
   slugifyPackageName,
@@ -356,7 +355,7 @@ export async function SubpagePage({
             href={`/${languagePath}/${packageSlug}`}
             className="hover:text-foreground transition-colors"
           >
-            {getDisplayPackageName(packageName, language)}
+            {packageName}
           </Link>
           <ChevronRight className="h-4 w-4" />
           <span className="text-foreground">{subpageData.title}</span>

@@ -1543,8 +1543,22 @@ export async function findSymbolWithVariations(
   // Try dots replaced with slashes (for TypeScript module paths like chat_models/universal)
   pathVariations.push(symbolPath.replace(/\./g, "/"));
 
-  // Try underscores instead of dots (for Python module paths)
-  pathVariations.push(symbolPath.replace(/\./g, "_"));
+  // For Python packages, try underscores instead of dots (for module paths)
+  const isPython = packageId.startsWith("pkg_py_");
+  if (isPython) {
+    pathVariations.push(symbolPath.replace(/\./g, "_"));
+  }
+
+  // For JavaScript/TypeScript, try the module/path.SymbolName format
+  // e.g., "callbacks.base.BaseCallbackHandler" -> "callbacks/base.BaseCallbackHandler"
+  // This is the format used in JS routing maps where module paths use slashes
+  // and the final symbol name is separated by a dot
+  const parts = symbolPath.split(".");
+  if (parts.length >= 2) {
+    const modulePath = parts.slice(0, -1).join("/");
+    const symbolName = parts[parts.length - 1];
+    pathVariations.push(`${modulePath}.${symbolName}`);
+  }
 
   // Prefer the routing map + individual symbol files.
   // This avoids downloading `lookup.json` which can exceed Next.js' 2MB cache limit.

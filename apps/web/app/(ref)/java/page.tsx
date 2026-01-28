@@ -6,8 +6,7 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Box, ChevronRight } from "lucide-react";
+import { PackageCard } from "@/components/reference/PackageCard";
 
 /**
  * Force static generation for optimal performance.
@@ -45,16 +44,7 @@ export const metadata: Metadata = {
     canonical: "/java",
   },
 };
-import { cn } from "@/lib/utils/cn";
 import { getManifestData } from "@/lib/ir/loader";
-import type { Package } from "@/lib/ir/types";
-
-/**
- * Get package URL slug from published name
- */
-function getPackageSlug(pkg: Package): string {
-  return pkg.publishedName.replace(/_/g, "-").toLowerCase();
-}
 
 export default async function JavaIndexPage() {
   const manifest = await getManifestData();
@@ -77,7 +67,16 @@ export default async function JavaIndexPage() {
       {/* Package list */}
       <div className="grid gap-4">
         {packages.map((pkg) => (
-          <PackageCard key={pkg.packageId} package={pkg} />
+          <PackageCard
+            key={pkg.packageId}
+            package={pkg}
+            basePath="/java"
+            statsConfig={{
+              functionsLabel: "methods",
+              showModules: false,
+              showTypes: true,
+            }}
+          />
         ))}
       </div>
 
@@ -88,43 +87,5 @@ export default async function JavaIndexPage() {
         </div>
       )}
     </div>
-  );
-}
-
-/**
- * Package card component
- */
-function PackageCard({ package: pkg }: { package: Package }) {
-  const href = `/java/${getPackageSlug(pkg)}`;
-
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "group flex items-center justify-between p-4 rounded-lg",
-        "border border-border bg-background-secondary",
-        "hover:border-primary/50 hover:bg-background transition-colors",
-      )}
-    >
-      <div className="flex items-start gap-4">
-        <div className="p-2 rounded-lg bg-primary/10 text-primary">
-          <Box className="h-5 w-5" />
-        </div>
-        <div>
-          <h2 className="font-heading font-semibold text-foreground group-hover:text-primary transition-colors">
-            {pkg.displayName}
-          </h2>
-          <p className="mt-1 text-sm text-foreground-secondary">
-            API reference for {pkg.displayName}
-          </p>
-          <div className="mt-2 flex gap-4 text-xs text-foreground-muted">
-            <span>{pkg.stats.classes || 0} classes</span>
-            <span>{pkg.stats.functions || 0} methods</span>
-            <span>{pkg.stats.types || 0} types</span>
-          </div>
-        </div>
-      </div>
-      <ChevronRight className="h-5 w-5 text-foreground-muted group-hover:text-primary transition-colors" />
-    </Link>
   );
 }

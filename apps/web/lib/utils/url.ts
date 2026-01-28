@@ -36,27 +36,6 @@ export function slugifyPackageName(packageName: string): string {
 }
 
 /**
- * Get the display name for a package.
- * For Python packages, converts underscores to hyphens to match PyPI naming.
- * For JavaScript packages, keeps the original format.
- *
- * @example "langchain_huggingface" with language "python" -> "langchain-huggingface"
- * @example "@langchain/core" with language "javascript" -> "@langchain/core"
- */
-export function getDisplayPackageName(packageName: string, language: UrlLanguage): string {
-  if (language === "javascript" || language === "typescript") {
-    // JavaScript packages already use the correct display format
-    return packageName;
-  } else if (language === "python") {
-    // Python packages use underscores internally but hyphens on PyPI
-    return packageName.replace(/_/g, "-");
-  } else {
-    // Java and Go packages use the package name as-is
-    return packageName;
-  }
-}
-
-/**
  * Convert a slug back to package name
  * @example "langchain-core" with language "javascript" -> "@langchain/core"
  * @example "langchain" with language "javascript" -> "langchain" (unscoped)
