@@ -2096,15 +2096,6 @@ async function MemberCard({
           )}
         </div>
 
-        {/* Show signature for synthesized constructors (e.g., TypedDict __init__) */}
-        {isSynthesizedConstructor && member.signature && (
-          <div className="mt-2">
-            <pre className="font-mono text-sm bg-background-tertiary rounded p-3 overflow-x-auto">
-              <code>{member.signature}</code>
-            </pre>
-          </div>
-        )}
-
         {/* Show parameters table for synthesized constructors */}
         {isSynthesizedConstructor && member.params && member.params.length > 0 && (
           <div className="mt-3">

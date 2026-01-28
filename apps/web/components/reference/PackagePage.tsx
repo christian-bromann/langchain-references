@@ -409,11 +409,6 @@ async function SymbolCard({
             />
           </div>
         )}
-        {symbol.signature && (
-          <code className="mt-2 block text-xs text-foreground-muted font-mono truncate">
-            {symbol.signature}
-          </code>
-        )}
       </div>
       <ChevronRight className="h-5 w-5 text-foreground-muted group-hover:text-primary transition-colors shrink-0 mt-1" />
     </Link>

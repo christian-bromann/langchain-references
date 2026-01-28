@@ -1,5 +1,3 @@
-# Tools
-
 ::: langchain_tavily.TavilySearch
 ::: langchain_tavily.TavilyExtract
 ::: langchain_tavily.TavilyCrawl

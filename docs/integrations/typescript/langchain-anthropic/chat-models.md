@@ -1,4 +1,2 @@
-# Chat Models
-
 ::: ChatAnthropic
 ::: ChatAnthropicMessages

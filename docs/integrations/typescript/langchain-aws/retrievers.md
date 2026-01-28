@@ -1,4 +1,2 @@
-# Retrievers
-
 ::: AmazonKnowledgeBaseRetriever
 ::: AmazonKendraRetriever

@@ -1,4 +1,2 @@
-# LLMs
-
 ::: OpenAI
 ::: AzureOpenAI

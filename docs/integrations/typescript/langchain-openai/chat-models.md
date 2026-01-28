@@ -1,5 +1,3 @@
-# Chat Models
-
 ::: ChatOpenAI
 ::: ChatOpenAICompletions
 ::: ChatOpenAIResponses

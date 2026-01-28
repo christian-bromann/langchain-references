@@ -1,4 +1,2 @@
-# Embeddings
-
 ::: OpenAIEmbeddings
 ::: AzureOpenAIEmbeddings

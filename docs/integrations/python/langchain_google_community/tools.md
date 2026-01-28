@@ -1,5 +1,3 @@
-# Tools
-
 ::: langchain_google_community.GoogleSearchResults
 ::: langchain_google_community.GoogleSearchRun
 ::: langchain_google_community.GoogleGeocodingTool

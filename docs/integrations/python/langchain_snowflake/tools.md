@@ -1,5 +1,3 @@
-# Tools
-
 ::: langchain_snowflake.SnowflakeQueryTool
 ::: langchain_snowflake.CortexSentimentTool
 ::: langchain_snowflake.CortexSummarizerTool

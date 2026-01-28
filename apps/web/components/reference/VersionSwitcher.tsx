@@ -142,7 +142,7 @@ export function VersionSwitcher({
           <History className="h-3.5 w-3.5 text-gray-400" />
           <span className="font-mono">
             {displayVersion === "latest"
-              ? latestVersion
+              ? latestVersion && latestVersion !== "unknown"
                 ? `v${latestVersion} (latest)`
                 : "latest"
               : `v${displayVersion}`}

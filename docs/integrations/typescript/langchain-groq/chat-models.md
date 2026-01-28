@@ -1,3 +1,1 @@
-# Chat Models
-
 ::: ChatGroq
