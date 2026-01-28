@@ -1864,8 +1864,16 @@ export async function getStaticParamsForLanguage(
     // Add package-level route (e.g., /javascript/langchain-core)
     params.push({ slug: [packageSlug] });
 
+    // Add subpage routes (e.g., /python/deepagents/agent, /javascript/deepagents/middleware)
+    const extPkg = pkg as ExtendedPackageInfo;
+    if (extPkg.subpages && extPkg.subpages.length > 0) {
+      for (const subpage of extPkg.subpages) {
+        params.push({ slug: [packageSlug, subpage.slug] });
+      }
+    }
+
     // Use each package's own buildId (package-level architecture)
-    const pkgBuildId = (pkg as ExtendedPackageInfo).buildId || buildId;
+    const pkgBuildId = extPkg.buildId || buildId;
 
     // Use routing map instead of full symbols (~100KB vs ~14MB)
     // Routing maps are small enough to be cached by Next.js data cache
