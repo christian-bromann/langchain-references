@@ -49,7 +49,14 @@
         "tagPattern": "langchain-chroma==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_chroma.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_chroma.md",
+      "subpages": [
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_chroma/vector-stores.md"
+        }
+      ]
     },
     {
       "name": "langchain_deepseek",
@@ -59,7 +66,14 @@
         "tagPattern": "langchain-deepseek==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_deepseek.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_deepseek.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_deepseek/chat-models.md"
+        }
+      ]
     },
     {
       "name": "langchain_exa",
@@ -69,7 +83,19 @@
         "tagPattern": "langchain-exa==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_exa.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_exa.md",
+      "subpages": [
+        {
+          "slug": "retrievers",
+          "title": "Retrievers",
+          "source": "docs/integrations/python/langchain_exa/retrievers.md"
+        },
+        {
+          "slug": "tools",
+          "title": "Tools",
+          "source": "docs/integrations/python/langchain_exa/tools.md"
+        }
+      ]
     },
     {
       "name": "langchain_fireworks",
@@ -79,7 +105,24 @@
         "tagPattern": "langchain-fireworks==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_fireworks.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_fireworks.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_fireworks/chat-models.md"
+        },
+        {
+          "slug": "llms",
+          "title": "LLMs",
+          "source": "docs/integrations/python/langchain_fireworks/llms.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/python/langchain_fireworks/embeddings.md"
+        }
+      ]
     },
     {
       "name": "langchain_groq",
@@ -89,7 +132,14 @@
         "tagPattern": "langchain-groq==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_groq.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_groq.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_groq/chat-models.md"
+        }
+      ]
     },
     {
       "name": "langchain_huggingface",
@@ -99,7 +149,24 @@
         "tagPattern": "langchain-huggingface==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_huggingface.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_huggingface.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_huggingface/chat-models.md"
+        },
+        {
+          "slug": "llms",
+          "title": "LLMs",
+          "source": "docs/integrations/python/langchain_huggingface/llms.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/python/langchain_huggingface/embeddings.md"
+        }
+      ]
     },
     {
       "name": "langchain_mistralai",
@@ -109,7 +176,19 @@
         "tagPattern": "langchain-mistralai==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_mistralai.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_mistralai.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_mistralai/chat-models.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/python/langchain_mistralai/embeddings.md"
+        }
+      ]
     },
     {
       "name": "langchain_nomic",
@@ -119,7 +198,14 @@
         "tagPattern": "langchain-nomic==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_nomic.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_nomic.md",
+      "subpages": [
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/python/langchain_nomic/embeddings.md"
+        }
+      ]
     },
     {
       "name": "langchain_ollama",
@@ -129,7 +215,24 @@
         "tagPattern": "langchain-ollama==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_ollama.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_ollama.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_ollama/chat-models.md"
+        },
+        {
+          "slug": "llms",
+          "title": "LLMs",
+          "source": "docs/integrations/python/langchain_ollama/llms.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/python/langchain_ollama/embeddings.md"
+        }
+      ]
     },
     {
       "name": "langchain_openai",
@@ -191,7 +294,24 @@
         "tagPattern": "langchain-perplexity==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_perplexity.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_perplexity.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_perplexity/chat-models.md"
+        },
+        {
+          "slug": "retrievers",
+          "title": "Retrievers",
+          "source": "docs/integrations/python/langchain_perplexity/retrievers.md"
+        },
+        {
+          "slug": "tools",
+          "title": "Tools",
+          "source": "docs/integrations/python/langchain_perplexity/tools.md"
+        }
+      ]
     },
     {
       "name": "langchain_prompty",
@@ -201,7 +321,14 @@
         "tagPattern": "langchain-prompty==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_prompty.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_prompty.md",
+      "subpages": [
+        {
+          "slug": "prompts",
+          "title": "Prompts",
+          "source": "docs/integrations/python/langchain_prompty/prompts.md"
+        }
+      ]
     },
     {
       "name": "langchain_qdrant",
@@ -211,7 +338,14 @@
         "tagPattern": "langchain-qdrant==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_qdrant.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_qdrant.md",
+      "subpages": [
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_qdrant/vector-stores.md"
+        }
+      ]
     },
     {
       "name": "langchain_xai",
@@ -221,7 +355,14 @@
         "tagPattern": "langchain-xai==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_xai.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_xai.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_xai/chat-models.md"
+        }
+      ]
     }
   ],
   "externalPackages": [
@@ -234,7 +375,29 @@
         "tagPattern": "langchain-astradb==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_astradb.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_astradb.md",
+      "subpages": [
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_astradb/vector-stores.md"
+        },
+        {
+          "slug": "document-loaders",
+          "title": "Document Loaders",
+          "source": "docs/integrations/python/langchain_astradb/document-loaders.md"
+        },
+        {
+          "slug": "chat-history",
+          "title": "Chat History",
+          "source": "docs/integrations/python/langchain_astradb/chat-history.md"
+        },
+        {
+          "slug": "key-value-stores",
+          "title": "Key-Value Stores",
+          "source": "docs/integrations/python/langchain_astradb/key-value-stores.md"
+        }
+      ]
     },
     {
       "name": "langchain_aws",
@@ -245,7 +408,29 @@
         "tagPattern": "langchain-aws==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_aws.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_aws.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_aws/chat-models.md"
+        },
+        {
+          "slug": "llms",
+          "title": "LLMs",
+          "source": "docs/integrations/python/langchain_aws/llms.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/python/langchain_aws/embeddings.md"
+        },
+        {
+          "slug": "retrievers",
+          "title": "Retrievers",
+          "source": "docs/integrations/python/langchain_aws/retrievers.md"
+        }
+      ]
     },
     {
       "name": "langchain_azure_dynamic_sessions",
@@ -256,7 +441,14 @@
         "tagPattern": "langchain-azure-dynamic-sessions==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_azure_dynamic_sessions/index.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_azure_dynamic_sessions/index.md",
+      "subpages": [
+        {
+          "slug": "tools",
+          "title": "Tools",
+          "source": "docs/integrations/python/langchain_azure_dynamic_sessions/tools.md"
+        }
+      ]
     },
     {
       "name": "langchain_cerebras",
@@ -267,7 +459,14 @@
         "tagPattern": "langchain-cerebras==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_cerebras.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_cerebras.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_cerebras/chat-models.md"
+        }
+      ]
     },
     {
       "name": "langchain_cohere",
@@ -278,7 +477,29 @@
         "tagPattern": "langchain-cohere==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_cohere.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_cohere.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_cohere/chat-models.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/python/langchain_cohere/embeddings.md"
+        },
+        {
+          "slug": "retrievers",
+          "title": "Retrievers",
+          "source": "docs/integrations/python/langchain_cohere/retrievers.md"
+        },
+        {
+          "slug": "rerankers",
+          "title": "Rerankers",
+          "source": "docs/integrations/python/langchain_cohere/rerankers.md"
+        }
+      ]
     },
     {
       "name": "langchain_ibm_db2",
@@ -289,7 +510,14 @@
         "tagPattern": "langchain-ibm-db2==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_db2.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_db2.md",
+      "subpages": [
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_ibm_db2/vector-stores.md"
+        }
+      ]
     },
     {
       "name": "langchain_elasticsearch",
@@ -300,7 +528,29 @@
         "tagPattern": "langchain-elasticsearch==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_elasticsearch.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_elasticsearch.md",
+      "subpages": [
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_elasticsearch/vector-stores.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/python/langchain_elasticsearch/embeddings.md"
+        },
+        {
+          "slug": "retrievers",
+          "title": "Retrievers",
+          "source": "docs/integrations/python/langchain_elasticsearch/retrievers.md"
+        },
+        {
+          "slug": "chat-history",
+          "title": "Chat History",
+          "source": "docs/integrations/python/langchain_elasticsearch/chat-history.md"
+        }
+      ]
     },
     {
       "name": "langchain_google_community",
@@ -311,7 +561,29 @@
         "tagPattern": "langchain-google-community==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_google_community/index.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_google_community/index.md",
+      "subpages": [
+        {
+          "slug": "document-loaders",
+          "title": "Document Loaders",
+          "source": "docs/integrations/python/langchain_google_community/document-loaders.md"
+        },
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_google_community/vector-stores.md"
+        },
+        {
+          "slug": "retrievers",
+          "title": "Retrievers",
+          "source": "docs/integrations/python/langchain_google_community/retrievers.md"
+        },
+        {
+          "slug": "tools",
+          "title": "Tools",
+          "source": "docs/integrations/python/langchain_google_community/tools.md"
+        }
+      ]
     },
     {
       "name": "langchain_google_genai",
@@ -393,7 +665,19 @@
         "tagPattern": "langchain-milvus==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_milvus.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_milvus.md",
+      "subpages": [
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_milvus/vector-stores.md"
+        },
+        {
+          "slug": "retrievers",
+          "title": "Retrievers",
+          "source": "docs/integrations/python/langchain_milvus/retrievers.md"
+        }
+      ]
     },
     {
       "name": "langchain_mongodb",
@@ -404,7 +688,24 @@
         "tagPattern": "langchain-mongodb==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_mongodb.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_mongodb.md",
+      "subpages": [
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_mongodb/vector-stores.md"
+        },
+        {
+          "slug": "chat-history",
+          "title": "Chat History",
+          "source": "docs/integrations/python/langchain_mongodb/chat-history.md"
+        },
+        {
+          "slug": "key-value-stores",
+          "title": "Key-Value Stores",
+          "source": "docs/integrations/python/langchain_mongodb/key-value-stores.md"
+        }
+      ]
     },
     {
       "name": "langchain_neo4j",
@@ -415,7 +716,24 @@
         "tagPattern": "langchain-neo4j==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_neo4j.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_neo4j.md",
+      "subpages": [
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_neo4j/vector-stores.md"
+        },
+        {
+          "slug": "chat-history",
+          "title": "Chat History",
+          "source": "docs/integrations/python/langchain_neo4j/chat-history.md"
+        },
+        {
+          "slug": "graphs",
+          "title": "Graphs",
+          "source": "docs/integrations/python/langchain_neo4j/graphs.md"
+        }
+      ]
     },
     {
       "name": "langchain_nvidia_ai_endpoints",
@@ -426,7 +744,29 @@
         "tagPattern": "langchain-nvidia-ai-endpoints==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_nvidia_ai_endpoints.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_nvidia_ai_endpoints.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_nvidia_ai_endpoints/chat-models.md"
+        },
+        {
+          "slug": "llms",
+          "title": "LLMs",
+          "source": "docs/integrations/python/langchain_nvidia_ai_endpoints/llms.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/python/langchain_nvidia_ai_endpoints/embeddings.md"
+        },
+        {
+          "slug": "rerankers",
+          "title": "Rerankers",
+          "source": "docs/integrations/python/langchain_nvidia_ai_endpoints/rerankers.md"
+        }
+      ]
     },
     {
       "name": "langchain_pinecone",
@@ -437,7 +777,24 @@
         "tagPattern": "langchain-pinecone==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_pinecone.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_pinecone.md",
+      "subpages": [
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_pinecone/vector-stores.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/python/langchain_pinecone/embeddings.md"
+        },
+        {
+          "slug": "rerankers",
+          "title": "Rerankers",
+          "source": "docs/integrations/python/langchain_pinecone/rerankers.md"
+        }
+      ]
     },
     {
       "name": "langchain_postgres",
@@ -448,7 +805,19 @@
         "tagPattern": "langchain-postgres==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_postgres.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_postgres.md",
+      "subpages": [
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_postgres/vector-stores.md"
+        },
+        {
+          "slug": "chat-history",
+          "title": "Chat History",
+          "source": "docs/integrations/python/langchain_postgres/chat-history.md"
+        }
+      ]
     },
     {
       "name": "langchain_redis",
@@ -459,7 +828,24 @@
         "tagPattern": "langchain-redis==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_redis.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_redis.md",
+      "subpages": [
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_redis/vector-stores.md"
+        },
+        {
+          "slug": "chat-history",
+          "title": "Chat History",
+          "source": "docs/integrations/python/langchain_redis/chat-history.md"
+        },
+        {
+          "slug": "caches",
+          "title": "Caches",
+          "source": "docs/integrations/python/langchain_redis/caches.md"
+        }
+      ]
     },
     {
       "name": "langchain_sema4",
@@ -470,7 +856,14 @@
         "tagPattern": "langchain-sema4==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_sema4.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_sema4.md",
+      "subpages": [
+        {
+          "slug": "tools",
+          "title": "Tools",
+          "source": "docs/integrations/python/langchain_sema4/tools.md"
+        }
+      ]
     },
     {
       "name": "langchain_snowflake",
@@ -481,7 +874,24 @@
         "tagPattern": "langchain-snowflake==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_snowflake.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_snowflake.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_snowflake/chat-models.md"
+        },
+        {
+          "slug": "retrievers",
+          "title": "Retrievers",
+          "source": "docs/integrations/python/langchain_snowflake/retrievers.md"
+        },
+        {
+          "slug": "tools",
+          "title": "Tools",
+          "source": "docs/integrations/python/langchain_snowflake/tools.md"
+        }
+      ]
     },
     {
       "name": "langchain_sqlserver",
@@ -492,7 +902,14 @@
         "tagPattern": "langchain-sqlserver==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_sqlserver.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_sqlserver.md",
+      "subpages": [
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_sqlserver/vector-stores.md"
+        }
+      ]
     },
     {
       "name": "langchain_tavily",
@@ -503,7 +920,14 @@
         "tagPattern": "langchain-tavily==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_tavily.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_tavily.md",
+      "subpages": [
+        {
+          "slug": "tools",
+          "title": "Tools",
+          "source": "docs/integrations/python/langchain_tavily/tools.md"
+        }
+      ]
     },
     {
       "name": "langchain_together",
@@ -514,7 +938,24 @@
         "tagPattern": "langchain-together==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_together.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_together.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_together/chat-models.md"
+        },
+        {
+          "slug": "llms",
+          "title": "LLMs",
+          "source": "docs/integrations/python/langchain_together/llms.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/python/langchain_together/embeddings.md"
+        }
+      ]
     },
     {
       "name": "langchain_unstructured",
@@ -525,7 +966,14 @@
         "tagPattern": "langchain-unstructured==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_unstructured.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_unstructured.md",
+      "subpages": [
+        {
+          "slug": "document-loaders",
+          "title": "Document Loaders",
+          "source": "docs/integrations/python/langchain_unstructured/document-loaders.md"
+        }
+      ]
     },
     {
       "name": "langchain_upstage",
@@ -536,7 +984,24 @@
         "tagPattern": "langchain-upstage==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_upstage.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_upstage.md",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/python/langchain_upstage/chat-models.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/python/langchain_upstage/embeddings.md"
+        },
+        {
+          "slug": "document-loaders",
+          "title": "Document Loaders",
+          "source": "docs/integrations/python/langchain_upstage/document-loaders.md"
+        }
+      ]
     },
     {
       "name": "langchain_weaviate",
@@ -547,7 +1012,14 @@
         "tagPattern": "langchain-weaviate==*",
         "maxVersions": 10
       },
-      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_weaviate.md"
+      "descriptionSource": "https://github.com/langchain-ai/docs/blob/main/reference/python/docs/integrations/langchain_weaviate.md",
+      "subpages": [
+        {
+          "slug": "vector-stores",
+          "title": "Vector Stores",
+          "source": "docs/integrations/python/langchain_weaviate/vector-stores.md"
+        }
+      ]
     },
     {
       "name": "langchain_parallel",

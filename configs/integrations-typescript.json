@@ -30,7 +30,14 @@
           "0.x": "libs/langchain-anthropic"
         }
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/typescript/langchain-anthropic/chat-models.md"
+        }
+      ]
     },
     {
       "name": "@langchain/aws",
@@ -44,7 +51,24 @@
           "0.x": "libs/langchain-aws"
         }
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/typescript/langchain-aws/chat-models.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/typescript/langchain-aws/embeddings.md"
+        },
+        {
+          "slug": "retrievers",
+          "title": "Retrievers",
+          "source": "docs/integrations/typescript/langchain-aws/retrievers.md"
+        }
+      ]
     },
     {
       "name": "@langchain/deepseek",
@@ -58,7 +82,14 @@
           "0.x": "libs/langchain-deepseek"
         }
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/typescript/langchain-deepseek/chat-models.md"
+        }
+      ]
     },
     {
       "name": "@langchain/google-genai",
@@ -72,7 +103,19 @@
           "0.x": "libs/langchain-google-genai"
         }
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/typescript/langchain-google-genai/chat-models.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/typescript/langchain-google-genai/embeddings.md"
+        }
+      ]
     },
     {
       "name": "@langchain/google-vertexai",
@@ -86,7 +129,24 @@
           "0.x": "libs/langchain-google-vertexai"
         }
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/typescript/langchain-google-vertexai/chat-models.md"
+        },
+        {
+          "slug": "llms",
+          "title": "LLMs",
+          "source": "docs/integrations/typescript/langchain-google-vertexai/llms.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/typescript/langchain-google-vertexai/embeddings.md"
+        }
+      ]
     },
     {
       "name": "@langchain/google-vertexai-web",
@@ -100,7 +160,24 @@
           "0.x": "libs/langchain-google-vertexai-web"
         }
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/typescript/langchain-google-vertexai-web/chat-models.md"
+        },
+        {
+          "slug": "llms",
+          "title": "LLMs",
+          "source": "docs/integrations/typescript/langchain-google-vertexai-web/llms.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/typescript/langchain-google-vertexai-web/embeddings.md"
+        }
+      ]
     },
     {
       "name": "@langchain/groq",
@@ -114,7 +191,14 @@
           "0.x": "libs/langchain-groq"
         }
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/typescript/langchain-groq/chat-models.md"
+        }
+      ]
     },
     {
       "name": "@langchain/openai",
@@ -128,7 +212,29 @@
           "0.x": "libs/langchain-openai"
         }
       },
-      "descriptionSource": "readme"
+      "descriptionSource": "readme",
+      "subpages": [
+        {
+          "slug": "chat-models",
+          "title": "Chat Models",
+          "source": "docs/integrations/typescript/langchain-openai/chat-models.md"
+        },
+        {
+          "slug": "llms",
+          "title": "LLMs",
+          "source": "docs/integrations/typescript/langchain-openai/llms.md"
+        },
+        {
+          "slug": "embeddings",
+          "title": "Embeddings",
+          "source": "docs/integrations/typescript/langchain-openai/embeddings.md"
+        },
+        {
+          "slug": "tools",
+          "title": "Tools",
+          "source": "docs/integrations/typescript/langchain-openai/tools.md"
+        }
+      ]
     }
   ]
 }
