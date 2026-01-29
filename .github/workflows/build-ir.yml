@@ -205,6 +205,28 @@ jobs:
         with:
           go-version: "1.21"
 
+      - name: Cache docs repository
+        id: cache-docs
+        uses: actions/cache@v4
+        with:
+          path: docs-repo
+          key: docs-repo-${{ github.run_id }}
+          restore-keys: |
+            docs-repo-
+
+      - name: Clone docs repository
+        run: |
+          if [ -d "docs-repo/.git" ]; then
+            echo "Updating existing docs repo..."
+            cd docs-repo
+            git fetch --depth 1
+            git reset --hard origin/main
+          else
+            echo "Cloning docs repo..."
+            git clone --depth 1 https://github.com/langchain-ai/docs.git docs-repo
+          fi
+          echo "Docs repo SHA: $(cd docs-repo && git rev-parse HEAD)"
+
       - name: Build and Upload IR for ${{ matrix.package }}
         id: build
         run: |
@@ -226,6 +248,8 @@ jobs:
           npx tsx packages/build-pipeline/src/commands/build-ir.ts \
             --config ./configs/${{ matrix.config }} \
             --package "${{ matrix.package }}" \
+            --docs-repo ./docs-repo \
+            --scan-related-docs \
             $FLAGS
 
           echo "compiled=true" >> $GITHUB_OUTPUT

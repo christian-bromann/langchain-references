@@ -21,14 +21,19 @@ export type {
   RoutingMap,
   SlugEntry,
   NavTree,
+  RelatedDocEntry,
+  RelatedDocEntryWithCount,
+  RelatedDocsMap,
 } from "@langchain/ir-schema";
+
+import type { SymbolRecord, Package, SymbolKind, Language } from "@langchain/ir-schema";
 
 /**
  * Resolved symbol with full data
  */
 export interface ResolvedSymbol {
-  symbol: import("@langchain/ir-schema").SymbolRecord;
-  package: import("@langchain/ir-schema").Package;
+  symbol: SymbolRecord;
+  package: Package;
   buildId: string;
 }
 
@@ -39,7 +44,7 @@ export interface NavItem {
   id: string;
   name: string;
   path: string;
-  kind: import("@langchain/ir-schema").SymbolKind;
+  kind: SymbolKind;
   children?: NavItem[];
 }
 
@@ -49,6 +54,6 @@ export interface NavItem {
 export interface PackageNav {
   packageId: string;
   packageName: string;
-  language: import("@langchain/ir-schema").Language;
+  language: Language;
   items: NavItem[];
 }

@@ -14,7 +14,15 @@
 import { unstable_cache } from "next/cache";
 import { type Language } from "@langchain/ir-schema";
 
-import type { Manifest, Package, SymbolRecord, RoutingMap } from "./types";
+import type {
+  Manifest,
+  Package,
+  SymbolRecord,
+  RoutingMap,
+  RelatedDocEntry,
+  RelatedDocsMap,
+  RelatedDocEntryWithCount,
+} from "./types";
 import { PROJECTS, getEnabledProjects } from "@/lib/config/projects";
 
 const IR_BASE_PATH = "ir";
@@ -914,17 +922,17 @@ export async function getManifestData(): Promise<ExtendedManifest | null> {
 
 /**
  * Cached synthetic manifest built from all project package indexes.
- * This is intentionally cached across invocations to avoid cold-start fan-out.
  *
- * OPTIMIZATION: TTL increased to 24 hours (from 1 hour) because manifests
- * rarely change mid-day. This reduces cold-start rebuilds significantly.
- * Manual cache busting can be triggered via the "synthetic-manifest" tag.
+ * NOTE: The manifest (4.2MB) exceeds Next.js unstable_cache's 2MB limit,
+ * so we bypass the cache entirely and fetch fresh data on each request.
+ * The fetch itself uses cache: "no-store" for large files (see fetchBlobJsonInner).
+ *
+ * In-memory caching via manifestCache (in getManifestData) still provides
+ * deduplication within a single request/render cycle.
  */
-const getCachedSyntheticManifest = unstable_cache(
-  async (): Promise<Manifest | null> => fetchGlobalManifest(),
-  ["synthetic-manifest:all-packages"],
-  { revalidate: 86400, tags: ["synthetic-manifest"] }, // 24 hours
-);
+async function getCachedSyntheticManifest(): Promise<Manifest | null> {
+  return fetchGlobalManifest();
+}
 
 /**
  * Internal function to fetch routing map.
@@ -2324,4 +2332,95 @@ export async function resolveTypeReferenceUrl(
   }
 
   return null;
+}
+
+// =============================================================================
+// RELATED DOCS LOADING
+// =============================================================================
+
+/** Cache for related docs data per package */
+const relatedDocsCache = new Map<string, Map<string, RelatedDocEntryWithCount>>();
+
+/**
+ * Fetch related docs for a package from blob storage.
+ *
+ * @param buildId - The build ID
+ * @param packageId - The package ID
+ * @returns Map of symbol names to their related docs, or null if not found
+ */
+async function fetchRelatedDocs(
+  buildId: string,
+  packageId: string,
+): Promise<Map<string, RelatedDocEntryWithCount> | null> {
+  // Check cache first
+  const cacheKey = `${packageId}:${buildId}`;
+  if (relatedDocsCache.has(cacheKey)) {
+    return relatedDocsCache.get(cacheKey)!;
+  }
+
+  const url = getBlobUrl(`${IR_BASE_PATH}/packages/${packageId}/${buildId}/related-docs.json`);
+  if (!url) return null;
+
+  try {
+    const response = await fetch(url, { next: { revalidate: 3600 } });
+    if (!response.ok) {
+      if (response.status === 404) {
+        // No related docs for this package - return empty map and cache it
+        const emptyMap = new Map<string, RelatedDocEntryWithCount>();
+        relatedDocsCache.set(cacheKey, emptyMap);
+        return emptyMap;
+      }
+      console.warn(`[loader] Failed to fetch related-docs: ${response.status}`);
+      return null;
+    }
+
+    const data: RelatedDocsMap = await response.json();
+
+    // Convert to Map for efficient lookup
+    const symbolsMap = new Map<string, RelatedDocEntryWithCount>();
+    for (const [symbolName, entries] of Object.entries(data.symbols)) {
+      symbolsMap.set(symbolName, entries);
+    }
+
+    // Cache the result
+    relatedDocsCache.set(cacheKey, symbolsMap);
+
+    return symbolsMap;
+  } catch (error) {
+    console.warn(`[loader] Error fetching related-docs:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get related documentation pages for a specific symbol.
+ *
+ * @param buildId - The build ID
+ * @param packageId - The package ID
+ * @param symbolName - The symbol name (not qualified name)
+ * @param limit - Maximum number of entries to return (default: 5, max: 20)
+ * @returns Array of related doc entries with total count, or empty result if none
+ */
+export async function getRelatedDocs(
+  buildId: string,
+  packageId: string,
+  symbolName: string,
+  limit: number = 5,
+): Promise<{ entries: RelatedDocEntry[]; totalCount: number }> {
+  const docsMap = await fetchRelatedDocs(buildId, packageId);
+  if (!docsMap) {
+    return { entries: [], totalCount: 0 };
+  }
+
+  const symbolDocs = docsMap.get(symbolName);
+  if (!symbolDocs) {
+    return { entries: [], totalCount: 0 };
+  }
+
+  // Return up to the limit, capped at 20
+  const maxLimit = Math.min(limit, 20);
+  return {
+    entries: symbolDocs.entries.slice(0, maxLimit),
+    totalCount: symbolDocs.totalCount,
+  };
 }

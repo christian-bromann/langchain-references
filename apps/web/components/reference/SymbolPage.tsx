@@ -46,6 +46,7 @@ import {
   findSymbolQualifiedNameByName,
   getIndexedRoutingMap,
   KIND_PREFIXES,
+  getRelatedDocs,
 } from "@/lib/ir/loader";
 import { CodeBlock } from "./CodeBlock";
 import { SignatureBlock } from "./SignatureBlock";
@@ -61,6 +62,7 @@ import { getBaseUrl } from "@/lib/config/mcp";
 import { VersionBadge } from "./VersionBadge";
 import { VersionHistory } from "./VersionHistory";
 import { VersionSwitcher } from "./VersionSwitcher";
+import { RelatedDocsSection } from "./RelatedDocsSection";
 import fs from "fs/promises";
 import path from "path";
 import { cleanExampleCode } from "@/lib/utils/clean-example";
@@ -1456,7 +1458,21 @@ export async function SymbolPage({
         : null;
 
   // Generate TOC data
-  const { topItems, sections, inheritedGroups } = generateTOCData(symbol);
+  const { topItems: generatedTopItems, sections, inheritedGroups } = generateTOCData(symbol);
+
+  // Fetch related docs
+  const relatedDocsResult = buildId
+    ? await getRelatedDocs(buildId, packageId, symbol.name, 20)
+    : { entries: [], totalCount: 0 };
+
+  // Add Related Documentation to TOC if there are related docs
+  const topItems = [...generatedTopItems];
+  if (relatedDocsResult.entries.length > 0) {
+    topItems.push({
+      id: "related-docs",
+      label: "Related Documentation",
+    });
+  }
 
   // Build breadcrumb items for structured data
   const urlLangLabel = LANGUAGE_CONFIG[language].name;
@@ -1653,6 +1669,15 @@ export async function SymbolPage({
                 View source on GitHub
               </a>
             </div>
+          )}
+
+          {/* Related Documentation */}
+          {relatedDocsResult.entries.length > 0 && (
+            <RelatedDocsSection
+              docs={relatedDocsResult.entries}
+              totalCount={relatedDocsResult.totalCount}
+              className="mt-6"
+            />
           )}
 
           {/* Version History */}

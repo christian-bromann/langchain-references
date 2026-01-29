@@ -82,14 +82,18 @@ import {
   type ParsedSubpage,
 } from "../subpage-processor.js";
 import { PROJECTS, CONFIG_LANGUAGES } from "../constants.js";
+import { buildRelatedDocs } from "../related-docs-builder.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** Path to the configs directory */
+const CONFIGS_DIR = path.resolve(__dirname, "../../../../configs");
 
 /**
  * Find config files matching the given project and/or language filters.
  */
 async function findConfigFiles(projectFilter?: string, languageFilter?: string): Promise<string[]> {
-  const configDir = path.resolve(__dirname, "../../../../configs");
+  const configDir = CONFIGS_DIR;
   const files = await fs.readdir(configDir);
 
   const configs: string[] = [];
@@ -1845,6 +1849,10 @@ async function buildConfig(
     verbose?: boolean;
     /** Filter to build only a specific package by name */
     packageFilter?: string;
+    /** Path to cloned docs repository for related docs scanning */
+    docsRepo?: string;
+    /** Enable related docs scanning */
+    scanRelatedDocs?: boolean;
   },
 ): Promise<{ buildId: string; success: boolean; skipped?: boolean }> {
   console.log(`\n📄 Loading config: ${configPath}`);
@@ -2255,6 +2263,34 @@ async function buildConfig(
     await cleanupExtractedRepo(fetchResult.extractedPath);
   }
 
+  // Build related docs if docs repo is provided
+  if (opts.docsRepo && opts.scanRelatedDocs) {
+    console.log("\n📚 Scanning for related documentation...");
+    const scanLanguage = config.language === "python" ? "python" : "javascript";
+
+    for (const pkgConfig of packagesToProcess) {
+      const pkgInfo = packageBuildInfo.get(pkgConfig.name);
+      if (!pkgInfo) continue;
+
+      try {
+        const result = await buildRelatedDocs({
+          docsRepoPath: opts.docsRepo,
+          packageId: pkgInfo.packageId,
+          outputDir: pkgInfo.outputDir,
+          language: scanLanguage,
+          configsDir: CONFIGS_DIR,
+        });
+        console.log(`   ✓ ${pkgConfig.name}: ${result.symbolCount} symbols with related docs`);
+      } catch (error) {
+        console.warn(`   ⚠️  ${pkgConfig.name}: Failed to build related docs: ${error}`);
+      }
+    }
+  } else if (opts.docsRepo && !opts.scanRelatedDocs) {
+    console.log(
+      "\n⏭️  Skipping related docs scan (--docs-repo provided but --scan-related-docs not set)",
+    );
+  }
+
   if (!opts.skipUpload) {
     console.log("\n☁️  Uploading to Vercel Blob...");
     // Upload each package individually (all builds are now package-level)
@@ -2349,6 +2385,8 @@ async function main() {
     .option("--with-versions", "Enable version history tracking (incremental by default)")
     .option("--full", "Force full rebuild of version history (ignore existing changelogs)")
     .option("--force", "Force build even if no new releases detected")
+    .option("--docs-repo <path>", "Path to cloned docs repository for related docs scanning")
+    .option("--scan-related-docs", "Enable related docs scanning (requires --docs-repo)")
     .option("-v, --verbose", "Enable verbose output")
     .parse();
 
@@ -2405,6 +2443,8 @@ async function main() {
       force: opts.force,
       verbose: opts.verbose,
       packageFilter: opts.package,
+      docsRepo: opts.docsRepo,
+      scanRelatedDocs: opts.scanRelatedDocs,
     });
     results.push({ config: path.basename(configPath), ...result });
   }

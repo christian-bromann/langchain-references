@@ -794,6 +794,19 @@ async function uploadPackageIR(options: UploadOptions): Promise<UploadResult> {
     // No subpages directory - skip
   }
 
+  // Upload related-docs.json if it exists
+  const relatedDocsPath = path.join(irOutputPath, "related-docs.json");
+  try {
+    const relatedDocsContent = await fs.readFile(relatedDocsPath, "utf-8");
+    uploadTasks.push({
+      blobPath: `${basePath}/related-docs.json`,
+      content: relatedDocsContent,
+    });
+    console.log(`   📚 Including related-docs.json`);
+  } catch {
+    // No related-docs file - skip
+  }
+
   console.log(`   Total upload tasks: ${uploadTasks.length}`);
 
   // Upload all files in parallel

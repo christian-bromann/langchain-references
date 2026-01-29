@@ -13,3 +13,4 @@ export * from "./routing";
 export * from "./project";
 export * from "./versioning";
 export * from "./language";
+export * from "./related-docs";
