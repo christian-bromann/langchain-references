@@ -724,7 +724,7 @@ async function fetchBlobJsonInner<T>(path: string, url: string): Promise<T | nul
   // - manifest.json: typically 4-5MB, contains all package metadata
   // Use time-based revalidation for smaller files (routing maps, catalogs)
   // This prevents 404s from being cached indefinitely when new data is added
-  const isLargeFile = path.endsWith("/symbols.json") || path.endsWith("/manifest.json");
+  const isLargeFile = path.endsWith("symbols.json") || path.endsWith("manifest.json");
   const maxRetries = isLargeFile ? 10 : MAX_RETRIES;
 
   let lastError: unknown = null;
