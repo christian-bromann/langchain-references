@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils/cn";
 import type { RelatedDocEntry } from "@/lib/ir/types";
 
 /** Base URL for the docs site */
-const DOCS_BASE_URL = "https://docs.langchain.com";
+const DOCS_BASE_URL = "docs.langchain.com";
 
 /**
  * Props for the RelatedDocsSection component.

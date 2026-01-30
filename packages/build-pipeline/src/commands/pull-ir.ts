@@ -354,6 +354,17 @@ async function pullProjectLanguage(
         }
       }
 
+      // Try to download catalog.json if it exists (used for subpage symbol resolution)
+      const catalogContent = await fetchBlobRaw(`ir/packages/${packageId}/${buildId}/catalog.json`);
+
+      if (catalogContent) {
+        await fs.writeFile(path.join(pkgDir, "catalog.json"), catalogContent, "utf-8");
+        result.filesDownloaded++;
+        if (verbose) {
+          console.log(`     ✓ catalog`);
+        }
+      }
+
       // Download sharded indices (lookup, catalog, changelog)
       const shardedDirs = ["lookup", "catalog", "changelog"] as const;
 

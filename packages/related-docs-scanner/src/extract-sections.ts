@@ -90,15 +90,16 @@ export function parsePageMetadata(content: string, filePath: string): PageMetada
  * Convert a file path to a URL path.
  *
  * Handles Mintlify routing for LangChain docs where:
- * - File: oss/langchain/agents.mdx -> URL: /oss/python/langchain/agents
- * - File: oss/langgraph/overview.mdx -> URL: /oss/python/langgraph/overview
- * - File: oss/deepagents/backends.mdx -> URL: /oss/deepagents/backends (no language prefix)
+ * - File: oss/langchain/agents.mdx -> URL: /oss/python/langchain/agents (Python) or /oss/javascript/langchain/agents (JS)
+ * - File: oss/langgraph/overview.mdx -> URL: /oss/python/langgraph/overview (Python) or /oss/javascript/langgraph/overview (JS)
+ * - File: oss/deepagents/backends.mdx -> URL: /oss/python/deepagents/backends (Python) or /oss/javascript/deepagents/backends (JS)
  * - File: oss/python/integrations/... -> URL: /oss/python/integrations/... (already has language)
  *
  * @param filePath - The file path
+ * @param language - Optional language context ("python" or "javascript") for correct URL routing
  * @returns The URL path
  */
-export function filePathToUrlPath(filePath: string): string {
+export function filePathToUrlPath(filePath: string, language?: "python" | "javascript"): string {
   let urlPath = filePath;
 
   // Remove src/ prefix if present
@@ -111,10 +112,12 @@ export function filePathToUrlPath(filePath: string): string {
   urlPath = urlPath.replace(/\/index$/, "");
 
   // Handle Mintlify routing for LangChain docs:
-  // oss/langchain/* and oss/langgraph/* get /python/ inserted after /oss/
-  // (These are the main framework docs that are language-specific)
-  if (urlPath.match(/^oss\/(langchain|langgraph)(\/|$)/)) {
-    urlPath = urlPath.replace(/^oss\//, "oss/python/");
+  // oss/langchain/*, oss/langgraph/*, and oss/deepagents/* get language prefix inserted after /oss/
+  // The language prefix is /python/ or /javascript/ depending on the import context
+  // Skip if the path already has a language prefix (e.g., oss/python/integrations/...)
+  if (urlPath.match(/^oss\/(langchain|langgraph|deepagents)(\/|$)/)) {
+    const langPrefix = language === "javascript" ? "javascript" : "python";
+    urlPath = urlPath.replace(/^oss\//, `oss/${langPrefix}/`);
   }
 
   // Ensure leading slash

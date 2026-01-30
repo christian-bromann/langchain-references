@@ -10,7 +10,7 @@ import type { SymbolMatch, RelatedDocEntry, PageMetadata } from "./types.js";
 import { extractCodeBlocks } from "./extract-blocks.js";
 import { parsePythonImports } from "./parsers/python.js";
 import { parseJavaScriptImports } from "./parsers/javascript.js";
-import { parsePageMetadata, findContainingSection } from "./extract-sections.js";
+import { parsePageMetadata, findContainingSection, filePathToUrlPath } from "./extract-sections.js";
 import { matchesPythonPackage, matchesJavaScriptPackage } from "./config-reader.js";
 
 export interface ScanOptions {
@@ -193,16 +193,20 @@ export function groupMatchesBySymbol(
     const dedupedEntries: RelatedDocEntry[] = [];
 
     for (const match of symbolMatchList) {
-      // Use just the file path for deduplication - one link per page
-      if (seenPaths.has(match.filePath)) continue;
-      seenPaths.add(match.filePath);
+      // Use file path + language for deduplication - one entry per page per language
+      const dedupKey = `${match.filePath}:${match.language}`;
+      if (seenPaths.has(dedupKey)) continue;
+      seenPaths.add(dedupKey);
 
       const metadata = pages.get(match.filePath);
       if (!metadata) continue;
 
+      // Compute URL path with language context for correct routing
+      const urlPath = filePathToUrlPath(match.filePath, match.language);
+
       // Link to the page without section anchor for cleaner URLs
       dedupedEntries.push({
-        path: metadata.urlPath,
+        path: urlPath,
         title: metadata.title,
         description: metadata.description,
         sectionAnchor: match.sectionAnchor,
