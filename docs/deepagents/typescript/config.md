@@ -58,6 +58,8 @@ const agent = createDeepAgent({
 });
 ```
 
-::: deepagents.AgentConfig
-::: deepagents.DeepAgentOptions
-::: deepagents.InterruptOnConfig
+::: config.Settings
+::: config.SettingsOptions
+::: config.createSettings
+::: config.findProjectRoot
+::: types.CreateDeepAgentParams

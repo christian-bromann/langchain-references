@@ -2,13 +2,9 @@
 
 Deep Agents use a modular middleware architecture. Each core capability (planning, filesystem, subagents) is implemented as separate middleware that can be composed and customized.
 
-## TodoList Middleware
-
-Planning is integral to solving complex problems. The [`todoListMiddleware`](#deepagents.middleware.todoListMiddleware) provides a `write_todos` tool for task planning and tracking.
-
 ## Filesystem Middleware
 
-Context engineering is one of the main challenges in building effective agents. The [`FilesystemMiddleware`](#deepagents.middleware.FilesystemMiddleware) provides tools for reading, writing, and managing files.
+Context engineering is one of the main challenges in building effective agents. The [`createFilesystemMiddleware`](#index.createFilesystemMiddleware) function provides tools for reading, writing, and managing files.
 
 ### Filesystem Tools
 
@@ -26,17 +22,17 @@ The middleware provides the following tools:
 
 ## SubAgent Middleware
 
-Handing off tasks to subagents is a great way to isolate context. The [`SubAgentMiddleware`](#deepagents.middleware.SubAgentMiddleware) provides a `task` tool for spawning specialized subagents.
+Handing off tasks to subagents is a great way to isolate context. The [`createSubAgentMiddleware`](#index.createSubAgentMiddleware) function provides a `task` tool for spawning specialized subagents.
 
-::: deepagents.middleware.todoListMiddleware
-::: deepagents.middleware.TodoListMiddlewareConfig
-::: deepagents.middleware.createFilesystemMiddleware
-::: deepagents.middleware.FilesystemMiddleware
-::: deepagents.middleware.createSubAgentMiddleware
-::: deepagents.middleware.SubAgentMiddleware
-::: deepagents.middleware.SubAgentMiddlewareConfig
-::: deepagents.middleware.createMemoryMiddleware
-::: deepagents.middleware.MemoryMiddleware
-::: deepagents.middleware.createSummarizationMiddleware
-::: deepagents.middleware.createSkillsMiddleware
-::: deepagents.middleware.SkillsMiddleware
+::: index.createFilesystemMiddleware
+::: index.FilesystemMiddlewareOptions
+::: index.createSubAgentMiddleware
+::: index.SubAgentMiddlewareOptions
+::: index.createMemoryMiddleware
+::: index.MemoryMiddlewareOptions
+::: index.createAgentMemoryMiddleware
+::: index.AgentMemoryMiddlewareOptions
+::: middleware.createSummarizationMiddleware
+::: middleware.SummarizationMiddlewareOptions
+::: index.createSkillsMiddleware
+::: index.SkillsMiddlewareOptions

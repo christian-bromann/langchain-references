@@ -341,6 +341,19 @@ async function pullProjectLanguage(
         }
       }
 
+      // Try to download related-docs.json if it exists
+      const relatedDocsContent = await fetchBlobRaw(
+        `ir/packages/${packageId}/${buildId}/related-docs.json`,
+      );
+
+      if (relatedDocsContent) {
+        await fs.writeFile(path.join(pkgDir, "related-docs.json"), relatedDocsContent, "utf-8");
+        result.filesDownloaded++;
+        if (verbose) {
+          console.log(`     ✓ related-docs`);
+        }
+      }
+
       // Download sharded indices (lookup, catalog, changelog)
       const shardedDirs = ["lookup", "catalog", "changelog"] as const;
 

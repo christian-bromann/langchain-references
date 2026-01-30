@@ -426,6 +426,56 @@ function generateTitleFromPath(slug: string): string {
 }
 
 /**
+ * Validate export paths against the routing map.
+ * Returns only export paths that have corresponding symbols in the routing map.
+ *
+ * Export paths like "jest/reporter" need to correspond to actual symbols
+ * in the routing map. This prevents broken links in the sidebar.
+ *
+ * The function checks for various qualified name formats that might exist:
+ * - Exact match: "jest/reporter", "jest.reporter"
+ * - Last segment only: "reporter" (common for re-exports)
+ *
+ * @internal Exported for testing
+ */
+export function validateExportPaths(
+  exportPaths: Array<{ slug: string; title: string }>,
+  routingMap: { slugs: Record<string, { kind: string }> },
+): Array<{ slug: string; title: string }> {
+  const validPaths: Array<{ slug: string; title: string }> = [];
+
+  for (const ep of exportPaths) {
+    const slug = ep.slug;
+
+    // Generate possible qualified name variations:
+    // - "jest/reporter" -> "jest/reporter", "jest.reporter"
+    // - "wrappers/anthropic" -> "wrappers/anthropic", "wrappers.anthropic"
+    const variations = [
+      slug, // Original: "jest/reporter"
+      slug.replace(/\//g, "."), // Dot-separated: "jest.reporter"
+    ];
+
+    // Also try just the last segment (e.g., "reporter" from "jest/reporter")
+    // This handles cases where the module is a re-export with a simpler qualified name
+    const segments = slug.split("/");
+    if (segments.length > 1) {
+      variations.push(segments[segments.length - 1]);
+    }
+
+    // Check if any variation exists in the routing map (any kind, not just module)
+    const hasSymbol = variations.some((v) => {
+      return routingMap.slugs[v] !== undefined;
+    });
+
+    if (hasSymbol) {
+      validPaths.push(ep);
+    }
+  }
+
+  return validPaths;
+}
+
+/**
  * Remove directories matching exclude patterns from the package path.
  * This prevents griffe from parsing modules that cause issues (e.g., _internal).
  */
@@ -2213,6 +2263,33 @@ async function buildConfig(
           JSON.stringify(routingMap, null, 2),
         );
 
+        // Validate and filter export paths against the routing map
+        // This ensures sidebar links only point to actual modules in the IR
+        const currentExportPaths = packageInfo.exportPaths as
+          | Array<{ slug: string; title: string }>
+          | undefined;
+        if (currentExportPaths && currentExportPaths.length > 0) {
+          const originalCount = currentExportPaths.length;
+          const validatedPaths = validateExportPaths(currentExportPaths, routingMap);
+
+          if (validatedPaths.length !== originalCount) {
+            const removedCount = originalCount - validatedPaths.length;
+            console.log(
+              `      🔍 Validated export paths: ${validatedPaths.length}/${originalCount} valid (${removedCount} filtered)`,
+            );
+
+            // Update packageInfo and rewrite package.json
+            if (validatedPaths.length > 0) {
+              packageInfo.exportPaths = validatedPaths;
+            } else {
+              delete packageInfo.exportPaths;
+            }
+
+            const packageInfoPath = path.join(pkgInfo.outputDir, "package.json");
+            await fs.writeFile(packageInfoPath, JSON.stringify(packageInfo, null, 2));
+          }
+        }
+
         // Generate and write single lookup file
         const lookupIndex = generateLookupIndex(pkgInfo.packageId, symbolsData.symbols);
         await fs.writeFile(
@@ -2482,7 +2559,15 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error("\n❌ Build failed:", error);
-  process.exit(1);
-});
+// Only run main when executed directly, not when imported for testing
+const isMainModule =
+  import.meta.url === `file://${process.argv[1]}` ||
+  process.argv[1]?.endsWith("build-ir.ts") ||
+  process.argv[1]?.endsWith("build-ir.js");
+
+if (isMainModule) {
+  main().catch((error) => {
+    console.error("\n❌ Build failed:", error);
+    process.exit(1);
+  });
+}

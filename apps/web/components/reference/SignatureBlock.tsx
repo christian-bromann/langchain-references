@@ -122,6 +122,75 @@ const PYTHON_KEYWORDS = new Set([
 ]);
 
 /**
+ * TypeScript/JavaScript keywords (not linked)
+ * These are keywords that appear in type annotations and should not be treated as types
+ */
+const TS_KEYWORDS = new Set([
+  "extends",
+  "implements",
+  "typeof",
+  "keyof",
+  "infer",
+  "readonly",
+  "new",
+  "this",
+  "void",
+  "never",
+  "unknown",
+  "any",
+  "null",
+  "undefined",
+  "true",
+  "false",
+  "const",
+  "let",
+  "var",
+  "function",
+  "class",
+  "interface",
+  "type",
+  "enum",
+  "namespace",
+  "module",
+  "declare",
+  "abstract",
+  "public",
+  "private",
+  "protected",
+  "static",
+  "async",
+  "await",
+  "return",
+  "if",
+  "else",
+  "for",
+  "while",
+  "do",
+  "switch",
+  "case",
+  "default",
+  "break",
+  "continue",
+  "throw",
+  "try",
+  "catch",
+  "finally",
+  "import",
+  "export",
+  "from",
+  "as",
+  "in",
+  "of",
+  "is",
+]);
+
+/**
+ * Keywords that indicate the next identifier should be in type position
+ * e.g., "extends T" - T is a type, "implements I" - I is a type
+ */
+const TYPE_POSITION_KEYWORDS = new Set(["extends", "implements"]);
+
+/**
  * Tokenize a signature string for rendering with syntax highlighting and links.
  * Uses context tracking to distinguish parameter names (before :) from types (after :).
  */
@@ -132,6 +201,7 @@ function tokenizeSignature(
   packageName: string,
   typeUrlMap?: Map<string, string>,
   currentSymbolName?: string,
+  typeRefs: TypeReference[] = [],
 ): Token[] {
   const tokens: Token[] = [];
   // Map language to URL path segment (typescript maps to javascript for URL paths)
@@ -144,6 +214,31 @@ function tokenizeSignature(
   };
   const langPath = langPathMap[language] || language;
   const pkgSlug = slugifyPackageName(packageName);
+
+  // Build a lookup map from typeRefs for additional type linking
+  // This catches types that might not be in knownSymbols or typeUrlMap
+  const typeRefUrlMap = new Map<string, string>();
+  if (typeRefs) {
+    for (const ref of typeRefs) {
+      // Skip if already in knownSymbols or typeUrlMap (they take precedence)
+      if (knownSymbols.has(ref.name)) continue;
+      if (typeUrlMap?.has(ref.name)) continue;
+
+      // Skip external types - they should be resolved via typeUrlMap
+      // If they're not in typeUrlMap, we can't reliably determine their URL
+      if (ref.external) continue;
+
+      // If we have a qualifiedName, compute the URL for same-package types
+      if (ref.qualifiedName) {
+        // For TypeScript: qualified names are like "module.ClassName" or "module/submodule.ClassName"
+        // For Python: qualified names include the package prefix like "langchain_core.messages.BaseMessage"
+        const hasPackagePrefix = language === "python" && ref.qualifiedName.includes("_");
+        const urlPath = slugifySymbolPath(ref.qualifiedName, hasPackagePrefix);
+        const url = `/${langPath}/${pkgSlug}/${urlPath}`;
+        typeRefUrlMap.set(ref.name, url);
+      }
+    }
+  }
 
   // Context tracking: are we in a type position or parameter name position?
   // After '(' or ',' or newline: expect parameter name
@@ -196,9 +291,14 @@ function tokenizeSignature(
         afterEquals = false;
       }
     } else if (identifier) {
-      // Check if it's a keyword
-      if (PYTHON_KEYWORDS.has(identifier)) {
+      // Check if it's a keyword (Python or TypeScript)
+      if (PYTHON_KEYWORDS.has(identifier) || TS_KEYWORDS.has(identifier)) {
         tokens.push({ type: "keyword", value: identifier });
+        // If this keyword indicates the next identifier is a type (e.g., "extends", "implements")
+        // set inTypePosition to true so the following identifier is linked
+        if (TYPE_POSITION_KEYWORDS.has(identifier)) {
+          inTypePosition = true;
+        }
       }
       // Skip linking if this is the current symbol (avoid self-referential links)
       else if (currentSymbolName && identifier === currentSymbolName) {
@@ -232,6 +332,12 @@ function tokenizeSignature(
       // This is checked AFTER builtins and local symbols
       else if (typeUrlMap?.has(identifier)) {
         tokens.push({ type: "type-link", value: identifier, href: typeUrlMap.get(identifier)! });
+      }
+      // Check if the identifier is in typeRefs (from the symbol's type reference data)
+      // This catches types that are explicitly referenced in the signature but might not be
+      // in knownSymbols or typeUrlMap (e.g., types exported from sub-modules)
+      else if (typeRefUrlMap.has(identifier)) {
+        tokens.push({ type: "type-link", value: identifier, href: typeRefUrlMap.get(identifier)! });
       }
       // Fallback for unknown identifiers
       else {
@@ -316,6 +422,7 @@ function TokenSpan({ token }: { token: Token }) {
 export function SignatureBlock({
   signature,
   language,
+  typeRefs,
   knownSymbols,
   packageName,
   typeUrlMap,
@@ -329,6 +436,7 @@ export function SignatureBlock({
     packageName,
     typeUrlMap,
     currentSymbolName,
+    typeRefs,
   );
 
   return (

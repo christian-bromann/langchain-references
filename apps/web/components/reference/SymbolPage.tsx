@@ -291,6 +291,8 @@ interface DisplayMember {
   kind: string;
   refId?: string;
   visibility?: Visibility;
+  /** Stability status (e.g., "deprecated") */
+  stability?: Stability;
   type?: string;
   /** Raw summary text for inline plain-text display */
   summary?: string;
@@ -409,11 +411,20 @@ function toDisplaySymbol(
     // Get params from member reference (for synthesized constructors like TypedDict __init__)
     const params = m.params;
 
+    // Determine member stability - check both tags.stability and docs.deprecated
+    const memberIsDeprecated =
+      memberSymbol?.tags?.stability === "deprecated" ||
+      memberSymbol?.docs?.deprecated?.isDeprecated === true;
+    const memberStability: Stability | undefined = memberIsDeprecated
+      ? "deprecated"
+      : memberSymbol?.tags?.stability;
+
     return {
       name: m.name,
       kind: m.kind,
       refId: memberId,
       visibility: m.visibility,
+      stability: memberStability,
       type,
       summary: memberSymbol?.docs?.summary,
       summaryHtml: memberSymbol?.docs?.summaryHtml,
@@ -425,6 +436,14 @@ function toDisplaySymbol(
     };
   });
 
+  // Determine stability - check both tags.stability and docs.deprecated as deprecation sources
+  // This handles cases where @deprecated JSDoc is present but stability tag wasn't set correctly
+  const isDeprecatedFromDocs = symbol.docs?.deprecated?.isDeprecated === true;
+  const stability: Stability | undefined =
+    symbol.tags?.stability === "deprecated" || isDeprecatedFromDocs
+      ? "deprecated"
+      : symbol.tags?.stability;
+
   return {
     id: symbol.id,
     kind: symbol.kind,
@@ -432,7 +451,7 @@ function toDisplaySymbol(
     qualifiedName: symbol.qualifiedName,
     signature: symbol.signature,
     visibility: symbol.tags?.visibility,
-    stability: symbol.tags?.stability,
+    stability,
     docs: {
       summary: symbol.docs?.summary || "",
       summaryHtml: symbol.docs?.summaryHtml,
@@ -1987,6 +2006,15 @@ function MembersSection({
   const remainingKinds = Object.keys(groupedMembers).filter((k) => !kindOrder.includes(k));
   const allKinds = [...orderedKinds, ...remainingKinds];
 
+  // Sort members within each group: non-deprecated first, deprecated last
+  for (const kind of allKinds) {
+    groupedMembers[kind].sort((a, b) => {
+      const aDeprecated = a.stability === "deprecated" ? 1 : 0;
+      const bDeprecated = b.stability === "deprecated" ? 1 : 0;
+      return aDeprecated - bDeprecated;
+    });
+  }
+
   const kindLabels: Record<string, string> = {
     constructor: "Constructors",
     property: "Properties",
@@ -2080,6 +2108,8 @@ async function MemberCard({
   const hasPackagePrefix = language === "python" && symbolPath.includes("_");
   const urlPath = slugifySymbolPath(symbolPath, hasPackagePrefix);
   const href = `/${langPath}/${packageSlug}/${urlPath}`;
+
+  const isDeprecated = member.stability === "deprecated";
 
   // Common content for both linked and non-linked versions
   const cardContent = (
@@ -2199,9 +2229,17 @@ async function MemberCard({
       <Link
         id={`member-${member.name}-${index}`}
         href={href}
-        className="group flex items-start gap-3 p-3 rounded-lg border border-border bg-background-secondary hover:border-primary/50 hover:bg-background transition-colors"
+        className={cn(
+          "group relative flex items-start gap-3 p-3 rounded-lg border border-border bg-background-secondary hover:border-primary/50 hover:bg-background transition-colors",
+          isDeprecated && "opacity-60",
+        )}
         style={{ cursor: "pointer" }}
       >
+        {isDeprecated && (
+          <span className="absolute top-2 right-2 px-1.5 py-0.5 text-[10px] font-medium rounded bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+            deprecated
+          </span>
+        )}
         {cardContent}
       </Link>
     );
@@ -2211,8 +2249,16 @@ async function MemberCard({
   return (
     <div
       id={`member-${member.name}-${index}`}
-      className="flex items-start gap-3 p-3 rounded-lg border border-border bg-background-secondary"
+      className={cn(
+        "relative flex items-start gap-3 p-3 rounded-lg border border-border bg-background-secondary",
+        isDeprecated && "opacity-60",
+      )}
     >
+      {isDeprecated && (
+        <span className="absolute top-2 right-2 px-1.5 py-0.5 text-[10px] font-medium rounded bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+          deprecated
+        </span>
+      )}
       {cardContent}
     </div>
   );
