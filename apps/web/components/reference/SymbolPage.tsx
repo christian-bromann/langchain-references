@@ -2324,7 +2324,7 @@ function InheritedMembersSection({
           <div key={group.baseName} className="border-t border-border pt-6">
             <h2 className="text-lg font-heading font-semibold text-foreground-secondary mb-4 flex items-center gap-2">
               <span>Inherited from</span>
-              {group.basePackageName && group.basePackageName !== packageName ? (
+              {group.basePackageName ? (
                 <Link
                   href={
                     group.baseQualifiedName
