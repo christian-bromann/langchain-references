@@ -188,20 +188,21 @@ export function groupMatchesBySymbol(
   const result = new Map<string, { entries: RelatedDocEntry[]; totalCount: number }>();
 
   for (const [symbolName, symbolMatchList] of symbolMatches) {
-    // Deduplicate by file path (a symbol might be imported multiple times in the same file)
+    // Deduplicate by file path only (one entry per page, not per section)
     const seenPaths = new Set<string>();
     const dedupedEntries: RelatedDocEntry[] = [];
 
     for (const match of symbolMatchList) {
-      const pathKey = match.filePath + (match.sectionAnchor || "");
-      if (seenPaths.has(pathKey)) continue;
-      seenPaths.add(pathKey);
+      // Use just the file path for deduplication - one link per page
+      if (seenPaths.has(match.filePath)) continue;
+      seenPaths.add(match.filePath);
 
       const metadata = pages.get(match.filePath);
       if (!metadata) continue;
 
+      // Link to the page without section anchor for cleaner URLs
       dedupedEntries.push({
-        path: metadata.urlPath + (match.sectionAnchor ? `#${match.sectionAnchor}` : ""),
+        path: metadata.urlPath,
         title: metadata.title,
         description: metadata.description,
         sectionAnchor: match.sectionAnchor,

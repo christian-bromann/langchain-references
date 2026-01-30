@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils/cn";
-import { FileText, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import type { RelatedDocEntry } from "@/lib/ir/types";
 
 /** Base URL for the docs site */
@@ -21,11 +20,14 @@ interface RelatedDocsSectionProps {
 }
 
 /**
- * A section displaying related documentation pages that use this symbol.
+ * A minimal section displaying related documentation pages that use this symbol.
  * Shows 5 docs by default, expandable to show all (up to 20).
  */
 export function RelatedDocsSection({ docs, totalCount, className }: RelatedDocsSectionProps) {
   const [expanded, setExpanded] = useState(false);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  const toggleExpanded = useCallback(() => setExpanded((prev) => !prev), []);
 
   // Default to showing 5, expand to show all (up to 20)
   const displayLimit = expanded ? 20 : 5;
@@ -39,118 +41,55 @@ export function RelatedDocsSection({ docs, totalCount, className }: RelatedDocsS
   }
 
   return (
-    <section
-      id="related-docs"
-      className={cn(
-        "scroll-mt-24",
-        "rounded-lg border",
-        "border-slate-200 dark:border-slate-700",
-        "bg-white dark:bg-slate-900",
-        className,
-      )}
-    >
-      {/* Header */}
-      <div
-        className={cn(
-          "flex items-center justify-between px-4 py-3",
-          "border-b border-slate-200 dark:border-slate-700",
-        )}
-      >
-        <h2 className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
-          <DocsIcon className="h-4 w-4 text-blue-500" />
-          Related Documentation
-          <span className="text-xs text-slate-400 font-normal">
-            ({totalCount} page{totalCount !== 1 ? "s" : ""})
-          </span>
-        </h2>
-      </div>
+    <section id="related-docs" className={cn("scroll-mt-24", className)}>
+      {/* Header - minimal style like "Bases" */}
+      <h2 className="text-sm font-semibold text-foreground-secondary uppercase tracking-wider mb-2">
+        Used in Docs
+      </h2>
 
-      {/* Doc entries list */}
-      <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+      {/* Doc entries as simple text links */}
+      <ul className="space-y-1 pl-2">
         {displayedDocs.map((doc, index) => (
-          <li key={`${doc.path}-${index}`}>
+          <li key={`${doc.path}-${index}`} className="flex items-center gap-2">
             <a
               href={`${DOCS_BASE_URL}${doc.path}`}
               target="_blank"
               rel="noopener noreferrer"
               className={cn(
-                "flex items-start gap-3 px-4 py-3",
-                "hover:bg-slate-50 dark:hover:bg-slate-800/50",
-                "transition-colors duration-150",
-                "group",
+                "text-sm text-blue-600 dark:text-blue-400",
+                "hover:text-blue-700 dark:hover:text-blue-300",
+                "hover:underline cursor-pointer",
               )}
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
             >
-              <FileText className="h-4 w-4 mt-0.5 text-slate-400 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {doc.title}
-                  </span>
-                  <ExternalLink className="h-3 w-3 text-slate-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors" />
-                </div>
-                {doc.description && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                    {doc.description}
-                  </p>
-                )}
-              </div>
+              {doc.title}
             </a>
+            {hoveredIndex === index && (
+              <span className="text-xs text-gray-400 dark:text-gray-500 truncate max-w-[300px]">
+                ({`${DOCS_BASE_URL}${doc.path}`})
+              </span>
+            )}
           </li>
         ))}
       </ul>
 
-      {/* Expand/collapse button and extra count */}
+      {/* Expand/collapse and extra count */}
       {(hasMore || extraNotShown > 0) && (
-        <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="mt-2 ml-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           {hasMore && (
             <button
-              onClick={() => setExpanded(!expanded)}
-              className={cn(
-                "flex items-center gap-1 text-xs font-medium",
-                "text-blue-600 dark:text-blue-400",
-                "hover:text-blue-700 dark:hover:text-blue-300",
-                "transition-colors",
-              )}
+              onClick={toggleExpanded}
+              className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
             >
-              {expanded ? (
-                <>
-                  <ChevronUp className="h-3 w-3" />
-                  Show less
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="h-3 w-3" />
-                  Show {Math.min(docs.length - 5, 15)} more
-                </>
-              )}
+              {expanded ? "Show less" : `+${docs.length - 5} more`}
             </button>
           )}
           {extraNotShown > 0 && (
-            <span className="text-xs text-slate-400 ml-auto">+{extraNotShown} more not shown</span>
+            <span className="text-slate-400">({extraNotShown} more not shown)</span>
           )}
         </div>
       )}
     </section>
-  );
-}
-
-/**
- * Documentation icon component.
- */
-function DocsIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
-      <path d="M9 10h6" />
-      <path d="M9 14h6" />
-    </svg>
   );
 }

@@ -1623,6 +1623,15 @@ export async function SymbolPage({
           {/* Description */}
           {symbol.docs?.description && <MarkdownContent>{symbol.docs.description}</MarkdownContent>}
 
+          {/* Related Documentation */}
+          {relatedDocsResult.entries.length > 0 && (
+            <RelatedDocsSection
+              docs={relatedDocsResult.entries}
+              totalCount={relatedDocsResult.totalCount}
+              className="mt-6"
+            />
+          )}
+
           {/* Sections (parameters, examples, etc.) */}
           {symbol.docs?.sections?.map((section, i) => (
             <Section
@@ -1669,15 +1678,6 @@ export async function SymbolPage({
                 View source on GitHub
               </a>
             </div>
-          )}
-
-          {/* Related Documentation */}
-          {relatedDocsResult.entries.length > 0 && (
-            <RelatedDocsSection
-              docs={relatedDocsResult.entries}
-              totalCount={relatedDocsResult.totalCount}
-              className="mt-6"
-            />
           )}
 
           {/* Version History */}
